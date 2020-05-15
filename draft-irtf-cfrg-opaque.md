@@ -397,7 +397,6 @@ require an additional round trip.
 
 ## Requirements Notation
 
-
 {::boilerplate bcp14}
 
 ## Notation
