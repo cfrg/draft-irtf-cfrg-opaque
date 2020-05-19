@@ -884,8 +884,9 @@ a = H(ePubU, IdS) and b = H(ePubS, IdU).
 <!--     (a and b are often denoted d and e)   -->
 
 FOR 3DH, Info="3DH keys" and IKM = K3dh | IdU | IdS. Here, K3dh is the
-concatenation of 3 DH values computed. Specifically, K3dh = ePubS^ePrivU | PubS^ePrivU | ePubS^PrivU
-for clients and K3dh = ePubU^ePrivS | PubU^ePrivS | ePubU^PrivS for servers.
+concatenation of 3 DH values computed. Specifically, 
+for client: K3dh = ePubS^ePrivU | PubS^ePrivU | ePubS^PrivU 
+for server: K3dh = ePubU^ePrivS | ePubU^PrivS | PubU^ePrivS
 
 ## Instantiation of OPAQUE with SIGMA-I {#SecSigma}
 
