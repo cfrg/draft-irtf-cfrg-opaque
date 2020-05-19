@@ -877,8 +877,8 @@ gets the most significant bytes of the key stream, Km2 the next bunch, etc.
 Values IKM and info are defined for each protocol:
 
 FOR HMQV, Info="HMQV keys" and IKM = Khmqv | IdU | IdS. Here,
-Khmqv = (ePubS \* PubS^b)^{ePrivU + a\*PrivU} for clients and
-Khmqv = (ePubU \* PubU^a)^{ePrivS + b\*PrivS} for servers, with
+for client: Khmqv = (ePubS \* PubS^b)^{ePrivU + a\*PrivU} 
+for server: Khmqv = (ePubU \* PubU^a)^{ePrivS + b\*PrivS} 
 a = H(ePubU, IdS) and b = H(ePubS, IdU).
 
 <!--     (a and b are often denoted d and e)   -->
