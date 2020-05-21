@@ -302,7 +302,8 @@ pre-computation attacks at the expense of an additional OPRF execution.
 
 It is worth noting that the currently most deployed (PKI-free) aPAKE is
 SRP {{?RFC2945}}, which is open to pre-computation attacks, is inefficient
-relative to OPAQUE and does not have an elliptic-curve version (it works for RSA).
+relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
+multiplication operations, and thus does not work over plain elliptic curves.
 OPAQUE is therefore a suitable replacement.
 
 OPAQUE's design builds on a line of work initiated in the seminal
@@ -470,7 +471,7 @@ secure also without hashing g^k.
 ## DH-OPRF instantiation and detailed specification
 
 The above description of DH-OPRF is generic and applicable to any cyclic group.
-Detailed specification for concrete implementations of DH-OPEF can be found in
+Detailed specification for concrete implementations of DH-OPRF can be found in
 {{I-D.irtf-cfrg-voprf}} which defines several instantiation suites for
 DH-OPRF, including the choice of hash-to-curve functions (denoted H' above)
 as detailed in {{I-D.irtf-cfrg-hash-to-curve}}.
