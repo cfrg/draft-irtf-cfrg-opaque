@@ -872,21 +872,37 @@ SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
 ~~~
 
 where L is the sum of lengths of SK, Km2, Km3, Ke2, Ke3, and SK
-gets the most significant bytes of the key stream, Km2 the next bunch, etc.
+gets the most significant bytes of the HKDF output, Km2 the next bytes, etc.
 
 Values IKM and info are defined for each protocol:
 
-FOR HMQV, Info="HMQV keys" and IKM = Khmqv | IdU | IdS. Here,
-for client: Khmqv = (ePubS \* PubS^b)^{ePrivU + a\*PrivU} 
-for server: Khmqv = (ePubU \* PubU^a)^{ePrivS + b\*PrivS} 
-a = H(ePubU, IdS) and b = H(ePubS, IdU).
+For HMQV:
+
+ - info = "HMQV keys" \| nonceU \| nonceS \| IdU \| IdS
+
+ - IKM = Khmqv
+
+   where Khmqv is computed:
+
+   - by the client:  Khmqv = (ePubS \* PubS^b)^{ePrivU + a\*PrivU}
+
+   - by the server:  Khmqv = (ePubU \* PubU^a)^{ePrivS + b\*PrivS}
+
+   and a = H(ePubU, IdS) and b = H(ePubS, IdU).
 
 <!--     (a and b are often denoted d and e)   -->
 
-FOR 3DH, Info="3DH keys" and IKM = K3dh | IdU | IdS. Here, K3dh is the
-concatenation of 3 DH values computed. Specifically, 
-for client: K3dh = ePubS^ePrivU | PubS^ePrivU | ePubS^PrivU 
-for server: K3dh = ePubU^ePrivS | ePubU^PrivS | PubU^ePrivS
+FOR 3DH:
+
+ - info = "3DH keys" \| nonceU \| nonceS \| IdU \| IdS
+
+ - IKM = K3dh
+
+   where K3dh is the concatenation of three DH values computed:
+
+   - by the client:  K3dh = ePubS^ePrivU \| PubS^ePrivU \| ePubS^PrivU
+
+   - by the server:  K3dh = ePubU^ePrivS \| ePubU^PrivS \| PubU^ePrivS
 
 ## Instantiation of OPAQUE with SIGMA-I {#SecSigma}
 
@@ -916,16 +932,24 @@ information removed if so desired.
 
 KEY DERIVATION. Key in SIGMA-I are derived as
 
+~~~
 SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
+~~~
 
-where L is the sum of lengths of SK, Km2, Km3, Ke2, Ke3, and SK
-gets the most significant bytes of the stream, Km2 the next bunch, etc.
+ where
 
-info = "SIGMA-I keys" and IKM is computed
+ - L is the sum of lengths of SK, Km2, Km3, Ke2, Ke3, and SK gets the most
+   significant bytes of the HKDF output, Km2 the next bytes, etc.,
 
-- by the client as IKM = ePubS^ePrivU
+ - info = "SIGMA-I keys" \| nonceU \| nonceS \| IdU \| IdS
 
-- by the server as IKM = ePubU^ePrivS
+ - IKM = Ksigma
+
+   and Ksigma is computed:
+
+   - by the client: Ksigma = ePubS^ePrivU
+
+   - by the server: Ksigma = ePubU^ePrivS
 
 
 # Integrating OPAQUE with TLS 1.3 {#SecTls13}
