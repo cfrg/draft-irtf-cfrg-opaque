@@ -17,6 +17,11 @@ author:
     name: Hugo Krawczyk
     organization: Algorand Foundation
     email: hugokraw@gmail.com
+ -
+    ins: C. A. Wood
+    name: Christopher A. Wood
+    organization: Cloudflare
+    email: caw@heapingbits.net
 
 informative:
 
