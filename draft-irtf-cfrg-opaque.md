@@ -241,7 +241,7 @@ for implementation is beyond the current scope of this document
 
 --- middle
 
-# Introduction
+# Introduction {#intro}
 
 <!-- Remember this can be used for comments -->
 
@@ -415,7 +415,27 @@ pseudorandom function.
 The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
 (the name OPAKE was taken).
 
-# DH-OPRF {#SecOprf}
+# Cryptographic Dependencies
+
+OPAQUE relies on the following primitives:
+
+- An Oblivious Pseudorandom Function (OPRF):
+  - GenerateScalar(): XXX
+  - Blind(x): XXX
+  - Evaluate(x): XXX
+  - Unblind(x): XXX
+  - EncodeElement(XXX): XXX
+  - DecodeElement(XXX): XXX
+
+- Random-Key Robustness Authenticated Encryption (RRAEAD):
+  - Seal(): XXX
+  - Open(): XXX
+
+- A Memory Hard Function (MHF):
+  - Harden(msg, params): Repeatedly apply a memory hard function with parameters
+    params to strengthen the input msg against offline dictionary attacks.
+
+## DH-OPRF {#SecOprf}
 
 OPAQUE uses in a fundamental way an Oblivious Pseudo Random Function (OPRF).
 
@@ -467,7 +487,7 @@ under the hash function H in order to provide security for fixed-base
 blinding. However, {{Blinding}} proved recently that fixed-base blinding is
 secure also without hashing g^k.
 
-## DH-OPRF instantiation and detailed specification
+### DH-OPRF instantiation and detailed specification
 
 The above description of DH-OPRF is generic and applicable to any cyclic group.
 Detailed specification for concrete implementations of DH-OPEF can be found in
@@ -479,7 +499,7 @@ elliptic curves. The latter will determine implementation details for such
 curves including ways to check curve membership, the suitability of
 co-factor mechanisms, etc.
 
-## Hardening OPRF via user iterations {#SecHardening}
+### Hardening OPRF via user iterations {#SecHardening}
 
 Protocol OPAQUE is strengthened against offline
 dictionary attacks by applying to the output of DH-OPRF a hardening procedure
@@ -500,51 +520,256 @@ communicates these parameters to the user during OPAQUE executions together
 with the second OPRF message. We note that the salt value typically input
 into the KDF can be set to a constant, e.g., all zeros.
 
-# OPAQUE Specification
+# OPAQUE Protocol {#protocol}
 
-OPAQUE consists of the concurrent run of an OPRF protocol and a
-key-exchange protocol KE (one that provides mutual authentication
-based on public keys and satisfies the KCI requirement discussed in the
-introduction). We first
-define OPAQUE in a generic way based on any OPRF and any PK-based KE,
-and later show specific instantiation using DH-OPRF (defined in {{SecOprf}})
-and several KE protocols.
-The user, running on a client machine, takes the role of initiator in these
-protocols and the server the responder's. The private-public keys for the
-user are denoted PrivU and PubU, and for the server PrivS and PubS.
+OPAQUE consists of two stages: registration and authentication. In the first stage,
+a client stores its encrypted credentials on the server. In the second stage, a
+client obtains and uses those credentials to authenticate itself to the server.
 
-## Password registration {#SecPasReg}
+Both registration and authentication stages require running an OPRF protocol.
+The authentication stage additionally requires running a mutually-authenticated
+key-exchange protocol KE using credentials recovered after the OPRF protocol completes.
+(The key-exchange protocol MUST satisfy the KCI requirement discussed in {{intro}}.)
+Specification of the key-exchange protocol is out of scope for this document.
 
-Password registration is executed between a user U (running on a client
-machine) and a server S.
-It is assumed the server can identify the user and the client can authenticate
-the server during this registration phase. This is the only part in OPAQUE
-that requires an authenticated channel, either physical, out-of-band,
-PKI-based, etc.
+We first define OPAQUE in a generic way based on any OPRF and any PK-based KE,
+and later show specific instantiation using DH-OPRF (defined in {{SecOprf}}) and
+several KE protocols. The user, running on a client machine, takes the role of
+initiator in these protocols and the server the responder's. The private-public keys
+for the user are denoted PrivU and PubU, and for the server PrivS and PubS.
 
-- U chooses password PwdU and a pair of private-public keys PrivU
- and PubU for the given protocol KE.
-- S chooses OPRF key kU (random and independent for each user),
- chooses its own pair of private-public
- keys PrivS and PubS for use with protocol KE (S can use
- the same pair of keys with multiple users), and sends PubS to the client.
-- Client and S run the OPRF F(kU; PwdU) as defined in {{SecOprf}}
- with only the client learning the result.
- The client then applies a hardening function, as described in {{SecHardening}},
- to this result obtaining a value denoted RwdU (for "Randomized PwdU").
- The parameters of the hardening function can be public and known to client
- machines or they can be stored by S and communicated to the client
- during registration and login sessions.
+## Protocol messages {#protocol-messages}
 
-- Client generates an "envelope" EnvU that contains PrivU and PubS protected under
- RwdU. PrivU is encrypted and authenticated while PubS is
- authenticated and optionally encrypted. EnvU may also include the user's
- public key and parties' identities.
+The OPAQUE protocol runs the OPRF protocol in two stages: registration and
+authentication. A client and server exchange protocol messages in executing these
+stages. This section specifies the structure of these protocol messages using
+TLS notation (see {{RFC8446}}, Section 3).
 
- EnvU can be thought of as an authenticated encryption scheme with optional
- authenticated-only data. However, for technical reasons, not all
- authenticated encryption schemes can be used for building EnvU. Therefore,
- we provide a precise specification of the enveloping function in {{SecEnvU}}.
+~~~
+enum {
+    registration_request(1),
+    registration_response(2),
+    registration_upload(3),
+    auth_request(4),
+    auth_response(5),
+    (255)
+} ProtocolMessageType;
+
+struct {
+    ProtocolMessageType msg_type;    /* protocol message type */
+    uint24 length;                   /* remaining bytes in message */
+    select (ProtocolMessage.msg_type) {
+        case registration_request: RegistrationRequest;
+        case registration_response: RegistrationResponse;
+        case registration_upload: RegistrationUpload;
+        case auth_request: AuthRequest;
+        case auth_response: AuthResponse;
+    };
+} ProtocolMessage;
+~~~
+
+Additionally, OPAQUE makes use of an additional structure to store user (client)
+credentials, called an Envelope. It is structured as follows.
+
+[[TODO: figure out the best way to describe these public keys]]
+
+~~~
+struct {
+  opaque client_private_key<1..2^16-1>;
+  opaque client_public_key<1..2^16-1;
+  opaque server_public_key<1..2^16-1;
+  opaque server_identity<1..2^16-1;
+} Envelope;
+~~~
+
+client_private_key
+: An encoded private key.
+
+client_public_key
+: An encoded public key corresponding to private_key.
+
+server_public_key
+: An encoded public key corresponding to the server.
+
+server_identity
+: An identity of the server. This is typically a domain name, e.g., example.com.
+See {{SecIdentities}} for information about this identity.
+
+## Registration stage {#SecPasReg}
+
+Registration is executed between a user U (running on a client machine) and a
+server S. It is assumed the server can identify the user and the client can
+authenticate the server during this registration phase. This is the only part
+in OPAQUE that requires an authenticated channel, either physical, out-of-band,
+PKI-based, etc. This section describes the registration flow, message encoding,
+and helper functions.
+
+### Registration flow
+
+To begin, U chooses password PwdU and a pair of private-public keys PrivU
+and PubU for the given protocol KE. S also chooses its own pair of private-public
+keys PrivS and PubS for use with protocol KE. S can use the same pair of keys with
+multiple users. These steps can happen offline, i.e., before the registration phase.
+Once complete, the registration process proceeds as follows:
+
+~~~
+ Client (IdU, PwdU, PrivU, PubU)                 Server (PrivS, PubS)
+  -----------------------------------------------------------------
+   request, input = CreateRegistrationRequest(IdU, PwdU)
+
+                                   request
+                              ----------------->
+
+            (response, kU) = CreateRegistrationResponse(request, PubS)
+
+                                   response
+                              <-----------------
+
+   commitment = FinalizeRequest(IdU, PwdU, input, request, response)
+
+                                   commitment
+                              ------------------>
+
+                                       StoreUserCommitment(commitment)
+~~~
+
+### Registration messages
+
+~~~
+struct {
+    opaque context<0..2^8-1>;
+    opaque id<0..2^16-1>;
+    opaque data<1..2^16-1>;
+} RegistrationRequest;
+~~~
+
+context
+: An opaque string which identifies the registration request and which will be
+echoed in the response. Clients use this to tie requests and responses together.
+
+id
+: An opaque string carrying the client account information, if available.
+
+data
+: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
+description of this encoding.
+
+~~~
+struct {
+    opaque data_blind<1..2^16-1>;
+} RegistrationInput;
+~~~
+
+data_blind
+: An encoded OPRF scalar element. See {{I-D.irtf-cfrg-voprf}} for a
+description of this encoding.
+
+~~~
+struct {
+    opaque context<0..2^8-1>;
+    opaque data<0..2^16-1>;
+} RegistrationResponse;
+~~~
+
+context
+: An opaque string matching the context provided in the corresponding registration
+request, or empty string if one was not provided.
+
+data
+: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
+description of this encoding.
+
+~~~
+struct {
+    opaque context<0..2^8-1>;
+    opaque envelope<0..2^16-1>;
+    opaque client_public_key<0..2^16-1>;
+} RegistrationUpload;
+~~~
+
+context
+: An opaque string matching the context set in the corresponding registration
+request.
+
+envelope
+: An encryption of an Envelope. The encryption procedure is defined in {{SecEnvU}}.
+
+client_public_key
+: An encoded public key, matching the public key contained within the encrypted
+envelope.
+
+### Registration functions
+
+#### CreateRegistrationRequest
+
+[[TODO: should we blind both the identity and password?]]
+
+~~~
+CreateRegistrationRequest(IdU, PwdU)
+
+Input:
+- IdU, an opaque byte string containing the user's identity
+- PwdU, an opaque byte string containing the user's password
+
+Output:
+- request, a RegistrationRequest structure
+- input, a RegistrationInput structure
+
+Steps:
+1. Compute context = GetUnusedContext()
+2. Compute (r, M) = oprf.Blind(PwdU)
+3. Compute data = M.Encode()
+4. Create RegistrationRequest request with (context, Id, data)
+5. Create RegistrationInput input with r.Encode()
+6. Output (request, input)
+~~~
+
+#### CreateRegistrationResponse
+
+~~~
+CreateRegistrationResponse(request, PubS)
+
+Input:
+- request, a RegistrationRequest structure
+- PubS, the server's public KE key
+
+Output:
+- response, a RegistrationResponse structure
+- kU, Per-user OPRF key
+
+Steps:
+1. Compute kU = oprf.GenerateKeyPair()
+2. Compute M = oprf.Decode(request.data)
+3. Compute Z = oprf.Evaluate(kU, M)
+4. Compute data = Z.encode()
+5. Create RegistrationResponse response with (request.context, data)
+6. Output (response, kU)
+~~~
+
+#### FinalizeRequest
+
+~~~
+FinalizeRequest(IdU, PwdU, input, request, response)
+
+Input:
+- IdU, XXX
+- PwdU, XXX
+- input, a RegistrationInput structure
+- request, a RegistrationRequest structure
+- response, a RegistrationResponse structure
+
+Output:
+- RegistrationUpload structure
+
+Steps:
+1. Compute Z = oprf.Decode(response.data)
+2. Compute N = oprf.Unblind(input.data_blind, Z)
+3. Compute y = oprf.Finalize(PwdU, N, "RFCXXXX")
+4. Compute RwdU = Harden(y)
+5. Create Envelope E with (TODO)
+6. Compute EnvU = Seal(RwdU, E)
+7. Output RegistrationUpload with (request.context, EnvU, PubU)
+~~~
 
 <!--
      EnvU = AuthEnc(RwdU; PrivU, PubU, PubS)
@@ -559,24 +784,78 @@ PKI-based, etc.
      from PrivU.
 -->
 
-- The client sends EnvU and PubU to S and erases PwdU, RwdU and all keys.
- S stores (EnvU, PubS, PrivS, PubU, kU) in a user-specific record.
- If PrivS and PubS are used for multiple users, S can store these
- values separately and omit them from the user's record.
+#### StoreUserCommitment
 
-Note (salt). We note that in OPAQUE the OPRF key acts as the secret
-salt value that ensures the infeasibility of pre-computation attacks.
-No extra salt value is needed.
+The StoreUserCommitment function stores the tuple (EnvU, PubS, PrivS, PubU, kU),
+where EnvU and PubU are obtained from the input RegistrationUpload message in
+a record associated with the user's account IdU. If PrivS and PubS are used for
+multiple users, the server can store these values separately and omit them from
+the user's record.
 
-Note (password rules). The above procedure has the significant advantage
-that the user's password is never disclosed to the server even during
-registration. Some sites require learning the user's password for
-enforcing password rules. Doing so voids this important security
-property of OPAQUE and is not recommended. Moving the password check
-procedure to the client side is a more secure alternative (limited checks
-at the server are possible to implement, e.g., detecting repeated passwords).
+## Authentication stage
 
-## Online OPAQUE protocol (Login and key exchange))
+The authentication stage is composed of a sequential OPRF and key exchange flow.
+At the end, both client and server agree on the knowledge of the password and have
+mutually authenticated one another. This section describes the authentication flow,
+message encoding, and helper functions.
+
+### Authentication flow
+
+TODO(caw): figure out how to invoke the key exchange protocol
+
+~~~
+ Client (IdU, PwdU, PrivU, PubU)                 Server (PrivS, PubS)
+  -----------------------------------------------------------------
+   request, input = CreateRegistrationRequest(IdU, PwdU)
+
+                                   request
+                              ----------------->
+~~~
+
+
+### Authentication messages
+
+~~~
+struct {
+    opaque context<0..2^8-1>;
+    opaque id<0..2^16-1>;
+    opaque data<1..2^16-1>;
+} AuthRequest;
+~~~
+
+context
+: An opaque string which identifies the authentication request and which will be
+echoed in the response. Clients use this to tie requests and responses together.
+
+id
+: An opaque string carrying the client account information, if available. If absent,
+the server is assumed to have some way of ascertaining the client account information
+out of band.
+
+data
+: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
+description of this encoding.
+
+~~~
+struct {
+    opaque context<0..2^8-1>;
+    opaque data<1..2^16-1>;
+    opaque envelope<1..2^16-1>;
+} AuthResponse;
+~~~
+
+context
+: An opaque string matching the context provided in the corresponding authentication
+request, or empty string if one was not provided.
+
+data
+: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
+description of this encoding.
+
+envelope
+: An encryption of an Envelope. The encryption procedure is defined in {{SecEnvU}}.
+
+### Authentication functions
 
 After registration, the user (through a client machine) and server can run
 the OPAQUE protocol as a password-authenticated key exchange.
@@ -603,28 +882,7 @@ to obtain EnvU and RwdU (i.e., complete the OPRF protocol)
 before it can use its own private key PrivU and the server's public key PubS
 in the run of KE.
 
-## Party Identities {#SecIdentities}
-
-Authenticated key-exchange protocols generate keys that need to be uniquely
-and verifiably bound to a pair of identities, in the case of OPAQUE a user and a
-server. Thus, it is essential for the parties to agree on such identities,
-including an agreed bit representation of these identities as needed,
-for example, when inputting identities to a key derivation function.
-When referring to identities IdU and IdS in this document, we refer to such
-agreed identities.
-
-Applications may have different policies about how and when identities are
-determined. A natural approach is to tie IdU to the identity the server uses
-to fetch EnvU (hence determined during password registration) and to tie IdS
-to the server identity used by the client to initiate a password registration
-or login sessions. IdS and IdU can also be part of EnvU or be tied to the
-parties' public keys. In principle, it is possible that identities change
-across different sessions as long as there is a policy that can establish if
-the identity is acceptable or not to the peer. However, we note that the
-public keys of both the server and the user must always be those defined at
-time of password registration.
-
-# Specification of the EnvU envelope  {#SecEnvU}
+## Envelope Encryption {#SecEnvU}
 
 In {{SecPasReg}}, EnvU was defined as an envelope containing the user's
 private key PrivU and server's public key PubS protected under RwdU.
@@ -752,6 +1010,26 @@ consisting of PubS and HMAC(Khmac; Pubs).
 <!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
 EnvU (for settings where storage and/or communication is expensive) -->
 
+## Party Identities {#SecIdentities}
+
+Authenticated key-exchange protocols generate keys that need to be uniquely
+and verifiably bound to a pair of identities, in the case of OPAQUE a user and a
+server. Thus, it is essential for the parties to agree on such identities,
+including an agreed bit representation of these identities as needed,
+for example, when inputting identities to a key derivation function.
+When referring to identities IdU and IdS in this document, we refer to such
+agreed identities.
+
+Applications may have different policies about how and when identities are
+determined. A natural approach is to tie IdU to the identity the server uses
+to fetch EnvU (hence determined during password registration) and to tie IdS
+to the server identity used by the client to initiate a password registration
+or login sessions. IdS and IdU can also be part of EnvU or be tied to the
+parties' public keys. In principle, it is possible that identities change
+across different sessions as long as there is a policy that can establish if
+the identity is acceptable or not to the peer. However, we note that the
+public keys of both the server and the user must always be those defined at
+time of password registration.
 
 # OPAQUE Instantiations
 
@@ -951,15 +1229,14 @@ SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
 
    - by the server: Ksigma = ePubU^ePrivS
 
-
-# Integrating OPAQUE with TLS 1.3 {#SecTls13}
+## Integrating OPAQUE with TLS 1.3 {#SecTls13}
 
 This section is intended as a discussion of ways to integrate OPAQUE with
 TLS 1.3.
 Precise protocol details are left for a future separate specification.
 A very preliminary draft is {{I-D.sullivan-tls-opaque}}.
 
-As stated in the introduction, the security of the standard password-over-TLS
+As stated in {{intro}}, the security of the standard password-over-TLS
 mechanism for password authentication suffers from its essential reliance on
 PKI and the exposure of passwords to the server (and possibly others) upon
 TLS decryption. Integrating OPAQUE with TLS removes these vulnerabilities
@@ -1104,58 +1381,6 @@ of TLS 1.3 and the exported authenticators from
 and negotiation information suggested in {{I-D.barnes-tls-pake}} can
 be used in the OPAQUE setting.
 
-# User enumeration  {#SecEnumeration}
-
-User enumeration refers to attacks where the attacker tries to learn
-whether a given user identity is registered with a server. Preventing
-such attack requires the server to act with unknown user identities
-in a way that is indistinguishable from its behavior with existing
-users. Here we suggest a way to implement such defense, namely, a way for
-simulating the values beta and EnvU for non-existing users.
-Note that if the same pair of user identity IdU and value alpha is received
-twice by the server, the response needs to be the same in both cases (since
-this would be the case for real users).
-For protection against this attack, one would apply the encryption function in
-the construction of EnvU ({{SecEnvU}}) to all the key material in EnvU,
-namely, AOenv will be empty.
-The server S will have two keys MK, MK' for a PRF f
-(this refers to a regular PRF such as HMAC or CMAC).
-Upon receiving a pair of user identity IdU and value alpha for a non-existing
-user IdU, S computes kU=f(MK; IdU) and kU'=f(MK'; IdU) and responds with
-values beta=alpha^kU and EnvU, where the latter is computed as follows.
-RwdU is set to kU' and AEenv is set to the all-zero string (of the
-length of a regular EnvU plaintext). Care needs to be taken to avoid side
-channel leakage (e.g., timing) from helping differentiate these
-operations from a regular server response.
-The above requires changes to the server-side implementation but not to the
-protocol itself or the client side.
-
-There is one form of leakage that the above allows and whose prevention would
-require a change in OPAQUE.
-Note that an attacker that tests a IdU (and same alpha) twice and receives
-different responses can conclude that either the user registered with the
-service between these two activations or that the user was registered before
-but changed its password in between the activations (assuming the server
-changes kU at the time of a password change). In any case, this
-indicates that IdU is a registered user at the time of the second activation.
-To conceal this information, S can implement the derivation of kU
-as kU=f(MK; IdU) also for registered users. Hiding changes in EnvU, however,
-requires a change in the protocol. Instead of sending EnvU as is,
-S would send an encryption of EnvU under a key that the user derives from the
-OPRF result (similarly to RwdU) and that S stores during password
-registration. During login, the user will derive this key from the OPRF
-result, will use it to decrypt EnvU, and continue with the regular protocol.
-If S uses a randomized encryption, the encrypted EnvU will look each time as a
-fresh random string, hence S can simulate the encrypted EnvU also for
-non-existing users.
-
-Note that the first case above does not change the protocol so its
-implementation is a server's decision (the client side is not changed).
-The second case, requires changes on the client side so it changes OPAQUE
-itself.
-
-[[TODO: Should this variant be documented/standardized?]
-
 # Security considerations
 
 This is an early draft presenting the OPAQUE concept and its
@@ -1215,6 +1440,74 @@ leaving the door open for others to enter freely.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
+
+## User enumeration  {#SecEnumeration}
+
+User enumeration refers to attacks where the attacker tries to learn
+whether a given user identity is registered with a server. Preventing
+such attack requires the server to act with unknown user identities
+in a way that is indistinguishable from its behavior with existing
+users. Here we suggest a way to implement such defense, namely, a way for
+simulating the values beta and EnvU for non-existing users.
+Note that if the same pair of user identity IdU and value alpha is received
+twice by the server, the response needs to be the same in both cases (since
+this would be the case for real users).
+For protection against this attack, one would apply the encryption function in
+the construction of EnvU ({{SecEnvU}}) to all the key material in EnvU,
+namely, AOenv will be empty.
+The server S will have two keys MK, MK' for a PRF f
+(this refers to a regular PRF such as HMAC or CMAC).
+Upon receiving a pair of user identity IdU and value alpha for a non-existing
+user IdU, S computes kU=f(MK; IdU) and kU'=f(MK'; IdU) and responds with
+values beta=alpha^kU and EnvU, where the latter is computed as follows.
+RwdU is set to kU' and AEenv is set to the all-zero string (of the
+length of a regular EnvU plaintext). Care needs to be taken to avoid side
+channel leakage (e.g., timing) from helping differentiate these
+operations from a regular server response.
+The above requires changes to the server-side implementation but not to the
+protocol itself or the client side.
+
+There is one form of leakage that the above allows and whose prevention would
+require a change in OPAQUE.
+Note that an attacker that tests a IdU (and same alpha) twice and receives
+different responses can conclude that either the user registered with the
+service between these two activations or that the user was registered before
+but changed its password in between the activations (assuming the server
+changes kU at the time of a password change). In any case, this
+indicates that IdU is a registered user at the time of the second activation.
+To conceal this information, S can implement the derivation of kU
+as kU=f(MK; IdU) also for registered users. Hiding changes in EnvU, however,
+requires a change in the protocol. Instead of sending EnvU as is,
+S would send an encryption of EnvU under a key that the user derives from the
+OPRF result (similarly to RwdU) and that S stores during password
+registration. During login, the user will derive this key from the OPRF
+result, will use it to decrypt EnvU, and continue with the regular protocol.
+If S uses a randomized encryption, the encrypted EnvU will look each time as a
+fresh random string, hence S can simulate the encrypted EnvU also for
+non-existing users.
+
+Note that the first case above does not change the protocol so its
+implementation is a server's decision (the client side is not changed).
+The second case, requires changes on the client side so it changes OPAQUE
+itself.
+
+[[TODO: Should this variant be documented/standardized?]
+
+## Password salt and storage implications
+
+In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibility
+of pre-computation attacks. No extra salt value is needed. Also, clients never
+disclose their password to the server, even during registration. Note that this
+does not prevent a malicious server from conducting a dictionary attack on inputs
+provided by the client. OPAQUE assumes the server is honest, and only guarantees
+safeguards against parties who may later compromise the server and any stored
+user account information.
+
+Some applications may require learning the user's password for enforcing password
+rules. Doing so invalidates this important security property of OPAQUE and is
+NOT RECOMMENDED. Applications should move such checks to the client. Note that
+limited checks at the server are possible to implement, e.g., detecting repeated
+passwords.
 
 # IANA Considerations
 
