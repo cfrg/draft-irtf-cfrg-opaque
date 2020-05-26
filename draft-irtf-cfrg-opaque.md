@@ -116,7 +116,6 @@ key exchange resilient to server compromise"
 
   I-D.ietf-tls-exported-authenticator:
   I-D.barnes-tls-pake:
-  I-D.irtf-cfrg-argon2:
   I-D.irtf-cfrg-hash-to-curve:
   I-D.irtf-cfrg-voprf:
   I-D.sullivan-tls-opaque:
@@ -214,7 +213,6 @@ online)"
 
   RFC2945:
   RFC5869:
-  RFC7914:
   RFC8018:
   RFC8125:
   RFC8446:
@@ -412,7 +410,7 @@ operations, roles, and behaviors of OPAQUE:
 
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
-- (skX, pkX): A group key pair used in role X; skX is the private key and pkX is
+- (skX, pkX): A key pair used in role X; skX is the private key and pkX is
 the public key. For example, (skU, pkU) refers to the U's private and public key.
 - pk(skX): The public key corresponding to private key skX.
 - encode_big_endian(x, n): An byte string encoding the integer value x as an n-byte
@@ -424,9 +422,9 @@ big-endian value.
 
 Except if said otherwise, random choices in this specification refer to
 drawing with uniform distribution from a given set (i.e., "random" is short
-for "uniformly random"). All sources of randomness SHOULD adhere to the requirements
-in {{!RFC4086}}. Where noted, random choices can be replaced with fresh outputs
-from a cryptographically strong pseudorandom generator or pseudorandom function.
+for "uniformly random"). Random choices can be replaced with fresh outputs from
+a cryptographically strong pseudorandom generator, according to the requirements
+in {{!RFC4086}}, or pseudorandom function.
 
 The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
 (the name OPAKE was taken).
@@ -438,33 +436,30 @@ OPAQUE relies on the following protocols and primitives:
 - Oblivious Pseudorandom Function (OPRF):
   - GenerateScalar(): This function generates a random scalar (private key) in
     the OPRF group base field.
-  - Blind(x): Convert input `x` into an element of the OPRF group and randomize
-    it using a randomly chosen scalar `r`, producing `M`, and output (`r`, `M`).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some value `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Compute the scalar multiplication `k*M` and output the
     result `Z`.
-  - Unblind(r, Z): Remove the randomize scalar `r` from `Z`, yielding output `N`.
+  - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
   - Finalize(x, N, dst): Compute the OPRF output using input `x`, `N`, and domain
-    separation tag `dst`. [[TODO: point to ways in which we can best describe domain separation.]]
+    separation tag `dst`.
   - EncodeElement(x): Encode the OPRF group element x as a fixed-length byte string
     `enc`. The size of `enc` is determined by the underlying OPRF group.
   - DecodeElement(enc): Decode a byte string `enc` into an OPRF group element `x`,
     or produce an error of `enc` is an invalid encoding.
 
-- Random-Key Robustness Authenticated Encryption (RRAEAD): <!-- EnvU = AuthEnc(RwdU; skU, pkU, pkS) -->
+- Random-Key Robustness Authenticated Encryption (RKR-AEAD): <!-- EnvU = AuthEnc(RwdU; skU, pkU, pkS) -->
   - Seal(k, n, aad, pt): Encrypt plaintext `pt` with additional
-    associated data `aad` using the key `k` and nonce `n`, producing a
-    ciphertext `ct`.
+    associated data `aad` using the key `k` of length `Nk` and nonce `n` of length
+    `Nn`, producing a ciphertext `ct` and tag `t`.
 
-  - Open(k, n, aad, ct): Decrypt ciphertext `ct` with additional associated data
-    `aad` using the key `k` and nonce `n`, producing plaintext `pt` on success
-     or an error on failure.
+  - Open(k, n, aad, ct): Decrypt ciphertext `ct` with tag `t` and additional associated data
+    `aad` using the key `k` of length `Nk` and nonce `n` of length `Nn`, producing
+    plaintext `pt` on success or an error on failure.
 
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
-
-- Authentication Protocol:
-  - GenerateKeyPair(): Generate a public and private key pair `(skX, pkX)`.
 
 ## DH-OPRF {#SecOprf}
 
@@ -480,11 +475,108 @@ the following ciphersuites:
 
 The output of the OPRF Finalize() operation may be hardened using a MHF F.
 This greatly increases the cost of an offline attack upon the compromise of
-the password file at the server. Supported MHFs include Argon2 {{I-D.irtf-cfrg-argon2}}
-and scrypt {{RFC7914}}, with suitable parameter choices public values or set at
-the time of password registration and stored at the server. In this case, the
-server communicates these parameters to the user during OPAQUE executions together
-with the second OPRF message.
+the password file at the server. Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}},
+scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}}. with suitable parameter choices
+public values or set at the time of password registration and stored at the server.
+In this case, the server communicates these parameters to the user during OPAQUE
+executions together with the second OPRF message.
+
+## CTR+HMAC RKR-AEAD {#SecEnvU}
+
+A RKR-AEAD algorithm is one in which, given a pair of AEAD keys it is infeasible
+to create an authenticated ciphertext that successfully decrypts under both keys.
+Standard AEAD schemes such as AES-GCM do not satisfy this property.
+Therefore, we specify a scheme for implementing RKR-AEAD based on counter-mode
+encryption and HMAC, hereby referred to as CTR+HMAC, using AES-256 and HMAC-SHA256.
+
+The algorithm works by encrypting the plaintext with the input nonce, concatenating
+the resulting ciphertext to the additional data, computing an HMAC tag over the
+resulting string, and outputting the (nonce, ciphertext, tag) tuple.
+
+We first define the function `DeriveKeys` used for key derivation. In particular,
+it extracts and expands the input AEAD key `k` into three keys: an HMAC
+authentication key, AEAD encryption key, and derivation key of length `L1`, `L2`,
+and `L3`, respectively. As specified, `L1 = L2 = L3 = 32`, `Nn = 8`, and `Nk = 32`.
+
+~~~
+DeriveKeys(k)
+
+- L1, length of HmacKey in octets
+- L2, length of EncKey in octets
+- L3, length of KdKey in octets, where L3=L1.
+
+Input:
+- k, an opaque key of Nk bytes
+
+Output:
+- K1, a key of length L1
+- K2, a key of length L2
+- K3, a key of length L3
+
+Steps:
+1. KEYS = HKDF(salt=0, IKM=k, info="EnvU", Length=L1+L2+L3)
+2. HmacKey = KEYS[0:L1]
+3. EncKey = KEYS[L1:L1+L2]
+4. KdKey = KEYS[L1+L2:] to the next L3 bytes.
+5. Output (EncKey, HmacKey, KdKey)
+~~~
+
+We then define the Seal and Open implementations using AES-CTR and HMAC, in conjunction
+with `DeriveKeys`. For completeness, we specify AES-CTR in Appendix {{AppCTR}}.
+CTR+HMAC uses AES-256 in counter mode with key EncKey and an initial counter value
+defined as the concatenation of the random `Nn`-byte nonce provided as input
+to Seal and an eight-byte encoding of of 1.
+
+~~~
+Seal(k, n, aad, pt)
+
+Input:
+- k, an opaque key of Nk bytes
+- n, an opaque nonce of length Nn bytes
+- aad, additional associated data to authenticate
+- pt, plaintext to encrypt
+
+Output:
+- ct, a ciphertext value of length equal to pt
+- t, an authentication tag
+
+Steps:
+1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
+2. IV = n || [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
+3. ct = AES-CTR(EncKey, IV, pt)
+4. t = HMAC(HmacKey, ct || aad)
+5. Output (ct, t)
+~~~
+
+Open is implemented similar to Seal, as defined below.
+
+~~~
+Open(k, n, aad, ct, t)
+
+Input:
+- k, an opaque key of Nk bytes
+- n, an opaque nonce of length Nn bytes
+- aad, additional associated data to authenticate
+- ct, ciphertext to decrypt
+- t, ciphertext authentication tag
+
+Output:
+- pt, decrypted plaintext, or an error upon failure
+
+Steps:
+1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
+2. IV = n || [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
+3. pt = AES-CTR(EncKey, IV, ct)
+4. t' = HMAC(HmacKey, ct || aad)
+5. If CT_EQUAL(t, t'), output pt
+6. Else, output error
+~~~
+
+[[TODO: If an RFC defining this mode exists, we should refer to it instead.
+The mode is defined in [RFC3686] but in the context of IPsec's ESP, so having
+a distilled version as in the Appendix may be worthwhile, particularly as we
+use a different initial value (the above RFC assumes a given IV which we do
+not have here).]]
 
 # OPAQUE Protocol {#protocol}
 
@@ -543,9 +635,10 @@ for TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}
 ~~~
 struct {
   opaque skU<1..2^16-1>;
-  opaque pkU<1..2^16-1;
-  opaque pkS<1..2^16-1;
-  opaque idS<1..2^16-1;
+  opaque pkU<0..2^16-1>; // optional
+  opaque pkS<1..2^16-1>;
+  opaque idU<0..2^16-1>; // optional
+  opaque idS<0..2^16-1>; // optional
 } Credentials;
 ~~~
 
@@ -553,14 +646,18 @@ skU
 : An encoded private key.
 
 pkU
-: An encoded public key corresponding to private_key.
+: An encoded public key corresponding to private_key. This field is optional.
 
 pkS
 : An encoded public key corresponding to the server.
 
+idU
+: The user identity. This is an application-specific value, e.g., an e-mail
+address or normal account name. This field is optional.
+
 idS
 : An identity of the server. This is typically a domain name, e.g., example.com.
-See {{SecIdentities}} for information about this identity.
+See {{SecIdentities}} for information about this identity. This field is optional.
 
 ## Offline registration stage {#SecPasReg}
 
@@ -569,7 +666,9 @@ server S. It is assumed the server can identify the user and the client can
 authenticate the server during this registration phase. This is the only part
 in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
-and helper functions.
+and helper functions. Moreover, it is assumed the user has a key pair (skU, pkU)
+that it wishes to register. These may be randomly generated for the account,
+or may be keys located in persistent storage, such as a hardware token.
 
 To begin, U chooses password PwdU, and S chooses its own pair of private-public
 keys skS and pkS for use with protocol KE. S can use the same pair of keys with
@@ -670,8 +769,6 @@ envelope.
 
 #### CreateRegistrationRequest
 
-[[TODO: should we blind both the identity and password?]]
-
 ~~~
 CreateRegistrationRequest(IdU, PwdU)
 
@@ -717,7 +814,10 @@ Steps:
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(IdU, PwdU, metadata, request, response)
+FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
+
+Parameters:
+- params, the MHF parameters established out of band
 
 Input:
 - IdU, an opaque byte string containing the user's identity
@@ -733,19 +833,24 @@ Steps:
 1. Z = Decode(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. RwdU = Harden(y)
-5. (skU, pkU) = GenerateKeyPair()
-5. Credential C with (skU, pkU, response.pkS, IdS)
-6. EnvU = Seal(RwdU, C)
-7. Output RegistrationUpload with (request.context, EnvU, pkU)
+4. RwdU = Harden(y, params)
+5. Keys = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk+Nh)
+6. k = Keys[0:Nk]
+7. n = Keys[Nk:]
+8. Credentials C with (skU=skU, pkS=response.pkS).
+9. (ct, t) = Seal(k, n, "", C)
+10. EnvU = (ct, t)
+11. Output RegistrationUpload with EnvU
 ~~~
+
+[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+
+The application may optionally include pk(skU), IdS, and IdU in the Credentials
+structure C at step 8.
 
 The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
 server domain name.
-
-[[TODO: we should probably improve this a bit and provide guidance for
-where and how IdS is provisioned to clients]]
 
 #### StoreUserCommitment
 
@@ -758,10 +863,11 @@ the user's record.
 ## Online authentication stage
 
 After registration, the user (through a client machine) and server run the
-authentication stage of the OPAQUE protocol. This stage is composed of a sequential
-OPRF and key exchange flow. At the end, both client and server agree on the knowledge
-of the password and have mutually authenticated one another. This section describes
-the authentication flow, message encoding, and helper functions.
+authentication stage of the OPAQUE protocol. This stage is composed of a concurrent
+OPRF and key exchange flow. At the end, the client proves the user's knowledge
+of the password, and both client and server agree on a mutually authenticated shared
+secret key. This section describes the authentication flow, message encoding, and
+helper functions.
 
 ~~~
  Client (IdU, PwdU)                           Server (skS, pkS)
@@ -776,7 +882,7 @@ the authentication flow, message encoding, and helper functions.
                                    response
                               <-----------------
 
-    creds = RecoverCredentials(IdU, PwdU, metadata, request, response)
+    creds = RecoverCredentials(PwdU, metadata, request, response)
 
                                (AKE with creds)
                               <================>
@@ -880,167 +986,49 @@ Steps:
 6. Output (response, pkU)
 ~~~
 
-#### creds = RecoverCredentials(IdU, PwdU, metadata, request, response)
+#### RecoverCredentials(IdU, PwdU, metadata, request, response)
 
 ~~~
-RecoverCredentials(IdU, PwdU, metadata, request, response)
+RecoverCredentials(PwdU, metadata, request, response)
+
+Parameters:
+- params, the MHF parameters established out of band
 
 Input:
-- IdU, an opaque byte string containing the user's identity
 - PwdU, an opaque byte string containing the user's password
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
 
 Output:
-- creds, a Credentials structure
+- C, a Credentials structure
 
 Steps:
 1. Z = Decode(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. RwdU = Harden(y)
-6. creds = Open(RwdU, response.envelope)
-7. Output creds
+4. RwdU = Harden(y, params)
+5. Keys = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk+Nh)
+6. k = Keys[0:Nk]
+7. n = Keys[Nk:]
+8. (ct, t) = response.envelope
+8. C = Open(k, n, "", ct, t)
+9. Output C
 ~~~
 
-## Envelope Encryption {#SecEnvU}
+[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
-In {{SecPasReg}}, EnvU was defined as an envelope containing the user's
-private key skU and server's public key pkS protected under RwdU.
-Optionally, EnvU may also contain pkU and identities IdS, IdU.
-Part of this information, e.g., skU, requires secrecy and authentication
-while other values may only need authentication.
-A natural way to build EnvU is using authenticated encryption with additional
-authenticated data.
-However, as proven in {{OPAQUE}}, the security of OPAQUE requires the
-authenticated encryption scheme, AuthEnc, used to build EnvU to satisfy the property of
-"random-key robustness". That is, given a pair of random AuthEnc keys, it
-should be infeasible to create an authenticated ciphertext that successfully
-decrypts (i.e., passes authentication) under the two keys. Some natural
-AuthEnc schemes, including GCM, do not satisfy this property and therefore,
-here we specify a particular scheme for implementing EnvU that enjoys this
-property. It is based on counter-mode encryption and HMAC.
+## AKE Execution and Party Identities {#SecIdentities}
 
-We define EnvU on the basis of two fields, AEenv and AOenv, one of which (but
-not both) can be empty. AEenv contains information that needs to be protected
-under authenticated encryption while AOenv only requires authentication.
-Typically, AEenv includes skU, and AOenv includes pkS and possibly pkU
-(pkU may be omitted if not needed for running the user side of the key exchange,
-or if it is re-computed by the client on the basis of skU). On the other
-hand, some applications may want to hide the public key(s) from eavesdroppers
-in which case these keys would go under AEenv. As noted below, there is also
-the possibility of omitting skU from EnvU and derive it from RwdU in which
-case AEenv may be empty. In all cases, EnvU must include the authenticated pkS,
-either under AEenv or AOenv.
-Additionally, EnvU may be used to transmit the user or server identities
-(see {{SecIdentities}}).
+The AKE protocol is run concurrently along with the online authentication
+flow described above. The AKE MUST authenticate the OPAQUE transcript, which
+consists of the encoded `request` and `response` messages exchanged during the
+OPRF computation and credential fetch flow.
 
-EnvU is built by encrypting AEenv (if not empty), concatenating to it AOenv
-(if not empty), and computing HMAC on the concatenation (which must never be
-empty). HMAC must use a hash of length 256 bits or more to ensure collision
-resistance. For the benefit of interoperability we specify the  use of a
-block cipher (AES256) in counter mode as the encryption function, however,
-any secure (not necessarily authenticated) encryption scheme can be used for
-the encryption of AEenv.  HMAC can also be replaced but only by a collision
-resistant MAC. Note that not all MAC functions are collision resistant.
-
-We start by defining the key derivation function to derive three keys: a HMAC
-key HMACkey, an AES256 key EncKey and a third key KdKey for applications that
-choose to process user information beyond the OPAQUE functionality (e.g.,
-additional secrets or credentials). We specify KdKey to be of the same length
-as HMACkey so it can be used, if needed, with HKDF-Expand.
-
-Let L1, L2, L3 be the lengths in octets of HmacKey, EncKey and KdKey,
-respectively, where L3=L1. If any one of EncKey or KdKey is omitted, its
-length is set to 0.  We define:
-
-KEYS = HKDF(salt=0, IKM=RwdU, info="EnvU", Length=L1+L2+L3)
-
-and set HmacKey to the most significant L1 bytes of KEYS, EncKey to the next
-significant L2 bytes, and KdKey to the next L3 bytes.  (For AES256 and
-HMAC-SHA256, the keys are of length 32 bytes each.)
-
-We define EnvU to be the concatenation of E and the authentication tag
-HMAC(HmacKey; E) where E is the concatenation of AES-CTR(EncKey; AEenv) and
-AOenv.
-
-Recall that EnvU is computed during password registration and is decrypted by
-the client during login. Decryption proceeds by deriving HmacKey and EncKey,
-verifying the HMAC tag, and if this is successful, decrypting E. If HMAC
-verification fails, the session is aborted.
-
-[[TODO: More precise specification needed here, such as default order of
-elements, their encodings, etc.]]
-
-In this specification, encryption of AEenv uses AES256 in counter mode with
-key EncKey and an initial counter value (that is part of the ciphertext)
-defined as the concatenation of a random 8-byte nonce chosen by the
-encrypting party (i.e., the client during password registration)
-and an 8-byte representation of 1 (7 zero bytes followed by 0x01).
-We refer to this initial value as CTRBASE.
-
-For completeness, we specify AES-CTR in Appendix {{AppCTR}}.
-
-[[TODO: If an RFC defining this mode exists, we should refer to it instead.
-The mode is defined in [RFC3686] but in the context of IPsec's ESP, so having
-a distilled version as in the Appendix may be worthwhile, particularly as we
-use a different initial value (the above RFC assumes a given IV which we do
-not have here).]]
-
-Note (rationale of CTRBASE): The nonce used in defining CTRBASE is needed,
-for example, for the case where a user registers the same password
-repeatedly, choosing a fresh skU each time while the value of the server's
-OPRF key kU stays fixed. This results in the same encryption key but
-different plaintexts which requires a changing nonce. Eight bytes are more
-than enough for this.
-
-Note (using GCM): Can one replace AES-CTR with GCM-AES for encrypting AEenv?
-Yes, as long as one keeps the HMAC authentication. As said, any secure
-encryption can be used for encrypting AEenv. However, GCM also produces an
-authentication tag that is not needed here. As a result, using GCM may tempt
-someone to drop the HMAC authentication which would be insecure since
-standalone GCM is not random-key robust. For this reason it may be better not
-to replace plain AES-CTR with GCM or any other authenticated encryption.
-
-Note (storage/communication efficient authentication-only EnvU):
-It is possible to dispense with encryption in the construction of EnvU to
-obtain a shorter EnvU (resulting in less storage at the server and less
-communication from server to client). The idea is to derive skU from RwdU.
-However, for cases where skU is not a random string of a given length, we
-define a more general procedure. Namely, what's derived from RwdU is a random
-seed used as an input to a key generation procedure that generates the pair
-(skU, pkU). In this case, AEenv is empty and AOenv contains pkS. The
-random key generation seed is defined as
-HKDF-Expand(KdKey; info="KG seed", L)
-where L is the required seed length. We note that in this encryption-less
-scheme, the authentication still needs to be random-key robust which HMAC
-satisfies.
-
-<!--
-Mention advantage of avoidable equivocable encryption? Still needs equivocable
-authentication, but that one gets by modeling HMAC as programmable RO - check.
--->
-
-To further minimize storage space, the server can derive per-user OPRF keys
-kU from a single global secret key, and it can use the same pair
-(skS,pkS) for all users. In this case, the per-user OPAQUE storage
-consists of pkU and HMAC(Khmac; pkS), a total of 64-byte overhead with a
-256-bit curve and hash. EnvU communicated to the user is of the same length,
-consisting of pkS and HMAC(Khmac; pkS).
-
-<!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
-EnvU (for settings where storage and/or communication is expensive) -->
-
-## Party Identities {#SecIdentities}
-
-Authenticated key-exchange protocols generate keys that need to be uniquely
-and verifiably bound to a pair of identities, in the case of OPAQUE a user and a
-server. Thus, it is essential for the parties to agree on such identities,
-including an agreed bit representation of these identities as needed,
-for example, when inputting identities to a key derivation function.
-When referring to identities IdU and IdS in this document, we refer to such
-agreed identities.
+Also, authenticated key-exchange protocols generate keys that need to be uniquely
+and verifiably bound to a pair of identities. In the case of OPAQUE, those identities
+correspond to IdU and IdS. Thus, it is essential for the parties to agree on such
+identities, including an agreed bit representation of these identities as needed.
 
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie IdU to the identity the server uses
@@ -1462,6 +1450,52 @@ leaving the door open for others to enter freely.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
+
+## Envelope considerations
+
+Note (rationale of CTRBASE): The nonce used in defining CTRBASE is needed,
+for example, for the case where a user registers the same password
+repeatedly, choosing a fresh skU each time while the value of the server's
+OPRF key kU stays fixed. This results in the same encryption key but
+different plaintexts which requires a changing nonce. Eight bytes are more
+than enough for this.
+
+Note (using GCM): Can one replace AES-CTR with GCM-AES for encrypting AEenv?
+Yes, as long as one keeps the HMAC authentication. As said, any secure
+encryption can be used for encrypting AEenv. However, GCM also produces an
+authentication tag that is not needed here. As a result, using GCM may tempt
+someone to drop the HMAC authentication which would be insecure since
+standalone GCM is not random-key robust. For this reason it may be better not
+to replace plain AES-CTR with GCM or any other authenticated encryption.
+
+Note (storage/communication efficient authentication-only EnvU):
+It is possible to dispense with encryption in the construction of EnvU to
+obtain a shorter EnvU (resulting in less storage at the server and less
+communication from server to client). The idea is to derive skU from RwdU.
+However, for cases where skU is not a random string of a given length, we
+define a more general procedure. Namely, what's derived from RwdU is a random
+seed used as an input to a key generation procedure that generates the pair
+(skU, pkU). In this case, AEenv is empty and AOenv contains pkS. The
+random key generation seed is defined as
+HKDF-Expand(KdKey; info="KG seed", L)
+where L is the required seed length. We note that in this encryption-less
+scheme, the authentication still needs to be random-key robust which HMAC
+satisfies.
+
+<!--
+Mention advantage of avoidable equivocable encryption? Still needs equivocable
+authentication, but that one gets by modeling HMAC as programmable RO - check.
+-->
+
+To further minimize storage space, the server can derive per-user OPRF keys
+kU from a single global secret key, and it can use the same pair
+(skS,pkS) for all users. In this case, the per-user OPAQUE storage
+consists of pkU and HMAC(Khmac; pkS), a total of 64-byte overhead with a
+256-bit curve and hash. EnvU communicated to the user is of the same length,
+consisting of pkS and HMAC(Khmac; pkS).
+
+<!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
+EnvU (for settings where storage and/or communication is expensive) -->
 
 ## User enumeration  {#SecEnumeration}
 
