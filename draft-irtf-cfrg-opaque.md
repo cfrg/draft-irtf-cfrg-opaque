@@ -413,8 +413,6 @@ operations, roles, and behaviors of OPAQUE:
 - (skX, pkX): A key pair used in role X; skX is the private key and pkX is
 the public key. For example, (skU, pkU) refers to the U's private and public key.
 - pk(skX): The public key corresponding to private key skX.
-- encode_big_endian(x, n): An byte string encoding the integer value x as an n-byte
-big-endian value.
 - concat(x0, ..., xN): Concatenation of byte strings.
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - zero(n): An all-zero byte string of length `n` bytes. `zero(4) = 0x00000000` and
@@ -443,10 +441,11 @@ OPAQUE relies on the following protocols and primitives:
   - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
   - Finalize(x, N, dst): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `dst`.
-  - EncodeElement(x): Encode the OPRF group element x as a fixed-length byte string
+  - Encode(x): Encode the OPRF group element x as a fixed-length byte string
     `enc`. The size of `enc` is determined by the underlying OPRF group.
-  - DecodeElement(enc): Decode a byte string `enc` into an OPRF group element `x`,
-    or produce an error of `enc` is an invalid encoding.
+  - Decode(enc): Decode a byte string `enc` into an OPRF group element `x`,
+    or produce an error of `enc` is an invalid encoding. This is the inverse
+    of Encode, i.e., `x = Decode(Encode(x))`.
 
 - Random-Key Robustness Authenticated Encryption (RKR-AEAD): <!-- EnvU = AuthEnc(RwdU; skU, pkU, pkS) -->
   - Seal(k, n, aad, pt): Encrypt plaintext `pt` with additional
@@ -483,9 +482,9 @@ executions together with the second OPRF message.
 
 ## CTR+HMAC RKR-AEAD {#SecEnvU}
 
-A RKR-AEAD algorithm is one in which, given a pair of AEAD keys it is infeasible
+A RKR-AEAD algorithm is one in which, given a pair of random AEAD keys it is infeasible
 to create an authenticated ciphertext that successfully decrypts under both keys.
-Standard AEAD schemes such as AES-GCM do not satisfy this property.
+Not all AEAD schemes satisfy this property, and this includes AES-GCM.
 Therefore, we specify a scheme for implementing RKR-AEAD based on counter-mode
 encryption and HMAC, hereby referred to as CTR+HMAC, using AES-256 and HMAC-SHA256.
 
@@ -542,9 +541,9 @@ Output:
 
 Steps:
 1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
-2. IV = n || [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
+2. IV = concat(n, zero(7), [0x01])
 3. ct = AES-CTR(EncKey, IV, pt)
-4. t = HMAC(HmacKey, ct || aad)
+4. t = HMAC(HmacKey, concat(ct, aad))
 5. Output (ct, t)
 ~~~
 
@@ -565,9 +564,9 @@ Output:
 
 Steps:
 1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
-2. IV = n || [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
+2. IV = concat(n, zero(7), [0x01])
 3. pt = AES-CTR(EncKey, IV, ct)
-4. t' = HMAC(HmacKey, ct || aad)
+4. t' = HMAC(HmacKey, concat(ct, aad))
 5. If CT_EQUAL(t, t'), output pt
 6. Else, output error
 ~~~
@@ -580,28 +579,28 @@ not have here).]]
 
 # OPAQUE Protocol {#protocol}
 
-OPAQUE consists of two stages: registration and authentication. In the first stage,
-a client stores its encrypted credentials on the server. In the second stage, a
-client obtains those credentials and subsequently uses them as input to an
-authenticated key exchange (AKE) protocol.
+OPAQUE consists of two stages: registration and authenticated key exchange.
+In the first stage, a client stores its encrypted credentials on the server.
+In the second stage, a client obtains those credentials and subsequently uses
+them as input to an authenticated key exchange (AKE) protocol.
 
-Both registration and authentication stages require running an OPRF protocol.
-The authentication stage additionally requires running a mutually-authenticated
+Both registration and authenticated key exchange stages require running an OPRF protocol.
+The latter stage additionally requires running a mutually-authenticated
 key-exchange protocol KE using credentials recovered after the OPRF protocol completes.
 (The key-exchange protocol MUST satisfy the KCI requirement discussed in {{intro}}.)
 Specification of the key-exchange protocol is out of scope for this document.
 
 We first define the core OPAQUE protocol based on any OPRF, RRAEAD, and MHF functions.
 {{instantiations}} describes specific instantiations of OPAQUE using various
-AKE and authentication protocols, including: HMQV, 3DH, and SIGMA-I.
-{{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
+AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
+discusses integration with TLS 1.3 {{RFC8446}}.
 
 ## Protocol messages {#protocol-messages}
 
 The OPAQUE protocol runs the OPRF protocol in two stages: registration and
-authentication. A client and server exchange protocol messages in executing these
-stages. This section specifies the structure of these protocol messages using
-TLS notation (see {{RFC8446}}, Section 3).
+authenticated key exchange. A client and server exchange protocol messages in
+executing these stages. This section specifies the structure of these protocol
+messages using TLS notation (see {{RFC8446}}, Section 3).
 
 ~~~
 enum {
@@ -628,9 +627,9 @@ struct {
 
 Additionally, OPAQUE makes use of an additional structure `Credentials` to store
 user (client) credentials. It is structured as follows. Each public and
-private key value is an opaque byte string, specific to the AKE or authentication
-protocol in which OPAQUE is instantiated. For example, if used as raw public keys
-for TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
+private key value is an opaque byte string, specific to the AKE protocol in
+which OPAQUE is instantiated. For example, if used as raw public keys for
+TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
 
 ~~~
 struct {
@@ -688,12 +687,12 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
-  commitment = FinalizeRequest(IdU, PwdU, metadata, request, response)
+    record = FinalizeRequest(IdU, PwdU, metadata, request, response)
 
-                                   commitment
+                                    record
                               ------------------>
 
-                                       StoreUserCommitment(commitment)
+                                             StoreUserRecord(record)
 ~~~
 
 ### Registration messages
@@ -744,7 +743,7 @@ data
 description of this encoding.
 
 pkS
-: An encoded public key that will be used for the online authentication stage.
+: An encoded public key that will be used for the online authenticated key exchange stage.
 
 ~~~
 struct {
@@ -852,22 +851,22 @@ The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
 server domain name.
 
-#### StoreUserCommitment
+#### StoreUserRecord
 
-The StoreUserCommitment function stores the tuple (EnvU, pkS, skS, pkU, kU),
+The StoreUserRecord function stores the tuple (EnvU, pkS, skS, pkU, kU),
 where EnvU and pkU are obtained from the input RegistrationUpload message in
 a record associated with the user's account IdU. If skS and pkS are used for
 multiple users, the server can store these values separately and omit them from
 the user's record.
 
-## Online authentication stage
+## Online authenticated key exchange stage
 
 After registration, the user (through a client machine) and server run the
-authentication stage of the OPAQUE protocol. This stage is composed of a concurrent
+authenticated key exchange stage of the OPAQUE protocol. This stage is composed of a concurrent
 OPRF and key exchange flow. At the end, the client proves the user's knowledge
 of the password, and both client and server agree on a mutually authenticated shared
-secret key. This section describes the authentication flow, message encoding, and
-helper functions.
+secret key. This section describes the message flow, encoding, and helper functions
+used in this stage.
 
 ~~~
  Client (IdU, PwdU)                           Server (skS, pkS)
@@ -899,7 +898,7 @@ RwdU (i.e., complete the OPRF protocol) before it can use its own private key
 skU and the server's public key pkS in the run of KE. See {{instantiations}}
 for examples of this integration.
 
-### Authentication messages
+### Authenticated key exchange messages
 
 ~~~
 struct {
@@ -910,7 +909,7 @@ struct {
 ~~~
 
 context
-: An opaque string which identifies the authentication request and which will be
+: An opaque string which identifies the credential request and which will be
 echoed in the response. Clients use this to tie requests and responses together.
 
 id
@@ -931,7 +930,7 @@ struct {
 ~~~
 
 context
-: An opaque string matching the context provided in the corresponding authentication
+: An opaque string matching the context provided in the corresponding credential
 request, or empty string if one was not provided.
 
 data
@@ -941,7 +940,7 @@ description of this encoding.
 envelope
 : An encryption of an Credentials. The encryption procedure is defined in {{SecEnvU}}.
 
-### Authentication functions
+### Authenticated key exchange functions
 
 #### CreateCredentialRequest(IdU, PwdU)
 
@@ -1020,7 +1019,7 @@ Steps:
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
-The AKE protocol is run concurrently along with the online authentication
+The AKE protocol is run as part of the online authenticated key exchange
 flow described above. The AKE MUST authenticate the OPAQUE transcript, which
 consists of the encoded `request` and `response` messages exchanged during the
 OPRF computation and credential fetch flow.
@@ -1033,8 +1032,9 @@ identities, including an agreed bit representation of these identities as needed
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie IdU to the identity the server uses
 to fetch EnvU (hence determined during password registration) and to tie IdS
-to the server identity used by the client to initiate a password registration
-or login sessions. IdS and IdU can also be part of EnvU or be tied to the
+to the server identity used by the client to initiate an offline password
+registration or online authenticated key exchange session.
+IdS and IdU can also be part of EnvU or be tied to the
 parties' public keys. In principle, it is possible that identities change
 across different sessions as long as there is a policy that can establish if
 the identity is acceptable or not to the peer. However, we note that the
@@ -1497,7 +1497,7 @@ consisting of pkS and HMAC(Khmac; pkS).
 <!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
 EnvU (for settings where storage and/or communication is expensive) -->
 
-## User enumeration  {#SecEnumeration}
+## User enumeration {#SecEnumeration}
 
 User enumeration refers to attacks where the attacker tries to learn
 whether a given user identity is registered with a server. Preventing
@@ -1536,11 +1536,11 @@ as kU=f(MK; IdU) also for registered users. Hiding changes in EnvU, however,
 requires a change in the protocol. Instead of sending EnvU as is,
 S would send an encryption of EnvU under a key that the user derives from the
 OPRF result (similarly to RwdU) and that S stores during password
-registration. During login, the user will derive this key from the OPRF
-result, will use it to decrypt EnvU, and continue with the regular protocol.
-If S uses a randomized encryption, the encrypted EnvU will look each time as a
-fresh random string, hence S can simulate the encrypted EnvU also for
-non-existing users.
+registration. During the authenticated key exchange stage, the user will derive
+this key from the OPRF result, will use it to decrypt EnvU, and continue with the
+regular protocol. If S uses a randomized encryption, the encrypted EnvU will look
+each time as a fresh random string, hence S can simulate the encrypted EnvU also
+for non-existing users.
 
 Note that the first case above does not change the protocol so its
 implementation is a server's decision (the client side is not changed).
