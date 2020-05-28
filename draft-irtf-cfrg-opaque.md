@@ -415,6 +415,7 @@ the public key. For example, (skU, pkU) refers to the U's private and public key
 - pk(skX): The public key corresponding to private key skX.
 - concat(x0, ..., xN): Concatenation of byte strings.
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
+- random(n): Generate a random byte string of length `n` bytes.
 - zero(n): An all-zero byte string of length `n` bytes. `zero(4) = 0x00000000` and
   `zero(0)` is the empty byte string.
 
@@ -833,13 +834,12 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. Keys = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk+Nh)
-6. k = Keys[0:Nk]
-7. n = Keys[Nk:]
-8. Credentials C with (skU=skU, pkS=response.pkS).
-9. (ct, t) = Seal(k, n, "", C)
-10. EnvU = (ct, t)
-11. Output RegistrationUpload with EnvU
+5. k = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk)
+6. n = random(Nh)
+7. Credentials C with (skU=skU, pkS=response.pkS)
+8. (ct, t) = Seal(k, n, "", C)
+9. EnvU = (n, ct, t)
+10. Output RegistrationUpload with envelope value EnvU
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
@@ -1007,12 +1007,10 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. Keys = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk+Nh)
-6. k = Keys[0:Nk]
-7. n = Keys[Nk:]
-8. (ct, t) = response.envelope
-8. C = Open(k, n, "", ct, t)
-9. Output C
+5. k = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk)
+6. (n, ct, t) = response.envelope
+7. C = Open(k, n, "", ct, t)
+8. Output C
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
