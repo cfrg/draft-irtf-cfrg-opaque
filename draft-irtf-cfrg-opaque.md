@@ -1170,13 +1170,13 @@ For HMQV:
 
    where Khmqv is computed:
 
-   - by the client:  Khmqv = (epkS \* pkS^b)^{eskU + a\*skU}
+   - by the client:  Khmqv = (epkS \* pkS^s)^{eskU + u\*skU}
 
-   - by the server:  Khmqv = (epkU \* pkU^a)^{eskS + b\*skS}
+   - by the server:  Khmqv = (epkU \* pkU^u)^{eskS + u\*skS}
 
-   and a = H(epkU, IdS) and b = H(epkS, IdU).
+   and u = H(epkU \| "user" \| info) and s = H(epkS \| "srvr" \| info).
 
-<!--     (a and b are often denoted d and e)   -->
+<!--     (u and s are often denoted d and e)   -->
 
 FOR 3DH:
 
