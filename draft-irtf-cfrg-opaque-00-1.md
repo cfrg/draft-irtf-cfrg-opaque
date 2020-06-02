@@ -1093,7 +1093,7 @@ will be adapted from the corresponding standards for different elliptic curves.
 PROTOCOL MESSAGES. OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
 - KE1 = OPRF1, nonceU, info1*, IdU*, epkU
-- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*, Mac(Km2; xcript2),
+- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*, Mac(Km3; xcript2),
 - KE3 = info3*, Einfo3*, Mac(Km3; xcript3)}
 
 where:
