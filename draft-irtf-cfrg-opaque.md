@@ -433,8 +433,7 @@ The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF):
-  - GenerateScalar(): This function generates a random scalar (private key) in
-    the OPRF group base field.
+  - GenerateKeyPair(): This function generates public and private key for the OPRF group.
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some value `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Compute the scalar multiplication `k*M` and output the
@@ -442,11 +441,11 @@ OPAQUE relies on the following protocols and primitives:
   - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
   - Finalize(x, N, dst): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `dst`.
-  - Encode(x): Encode the OPRF group element x as a fixed-length byte string
+  - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
     `enc`. The size of `enc` is determined by the underlying OPRF group.
-  - Decode(enc): Decode a byte string `enc` into an OPRF group element `x`,
+  - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
     or produce an error of `enc` is an invalid encoding. This is the inverse
-    of Encode, i.e., `x = Decode(Encode(x))`.
+    of Encode, i.e., `x = Deserialize(Serialize(x))`.
 
 - Random-Key Robustness Authenticated Encryption (RKR-AEAD): <!-- EnvU = AuthEnc(RwdU; skU, pkU, pkS) -->
   - Seal(k, n, aad, pt): Encrypt plaintext `pt` with additional
@@ -783,9 +782,9 @@ Output:
 Steps:
 1. context = GetUnusedContext()
 2. (r, M) = Blind(PwdU)
-3. data = M.Encode()
+3. data = Serialize(M)
 4. Create RegistrationRequest request with (context, Id, data)
-5. Create RequestMetadata metadata with r.Encode()
+5. Create RequestMetadata metadata with Serialize(r)
 6. Output (request, metadata)
 ~~~
 
@@ -803,8 +802,8 @@ Output:
 - kU, Per-user OPRF key
 
 Steps:
-1. kU = GenerateScalar()
-2. M = Decode(request.data)
+1. (kU, pkU) = GenerateKeyPair() # pkU is ignored
+2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
 5. Create RegistrationResponse response with (request.context, data)
@@ -830,7 +829,7 @@ Output:
 - RegistrationUpload structure
 
 Steps:
-1. Z = Decode(response.data)
+1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
@@ -958,9 +957,9 @@ Output:
 Steps:
 1. context = GetUnusedContext()
 2. (r, M) = Blind(PwdU)
-3. data = M.Encode()
+3. data = Serialize(M)
 4. Create CredentialRequest request with (context, IdU, data)
-5. Create RequestMetadata metadata with r.Encode()
+5. Create RequestMetadata metadata with Serialize(r)
 6. Output (request, metadata)
 ~~~
 
@@ -978,7 +977,7 @@ Output:
 
 Steps:
 1. (kU, EnvU, pkU) = LookupUserRecord(request.id)
-2. M = Decode(request.data)
+2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
 5. Create CredentialResponse response with (request.context, data, EnvU)
@@ -1003,7 +1002,7 @@ Output:
 - C, a Credentials structure
 
 Steps:
-1. Z = Decode(response.data)
+1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
