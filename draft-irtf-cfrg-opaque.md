@@ -494,31 +494,28 @@ the resulting ciphertext to the additional data, computing an HMAC tag over the
 resulting string, and outputting the (nonce, ciphertext, tag) tuple.
 
 We first define the function `DeriveKeys` used for key derivation. In particular,
-it extracts and expands the input AEAD key `k` into three keys: an HMAC
-authentication key, AEAD encryption key, and derivation key of length `L1`, `L2`,
-and `L3`, respectively. As specified, `L1 = L2 = L3 = 32`, `Nn = 8`, and `Nk = 32`.
+it extracts and expands the input AEAD key `k` into two keys: an authentication key and
+encryption key of length `La` and `Le`, respectively.
+As specified, `La = Le = 32`, `Nn = 8`, and `Nk = 32`.
 
 ~~~
 DeriveKeys(k)
 
-- L1, length of HmacKey in octets
-- L2, length of EncKey in octets
-- L3, length of KdKey in octets, where L3=L1.
+- La, length of the authentication key in octets
+- Le, length of the encryption key in octets
 
 Input:
 - k, an opaque key of Nk bytes
 
 Output:
-- K1, a key of length L1
-- K2, a key of length L2
-- K3, a key of length L3
+- Ka, a key of length La
+- Ke, a key of length Le
 
 Steps:
-1. KEYS = HKDF(salt=0, IKM=k, info="EnvU", Length=L1+L2+L3)
-2. HmacKey = KEYS[0:L1]
-3. EncKey = KEYS[L1:L1+L2]
-4. KdKey = KEYS[L1+L2:] to the next L3 bytes.
-5. Output (EncKey, HmacKey, KdKey)
+1. uniform_bytes = HKDF-Expand(key=k, info="EnvU", Length=La+Le)
+2. Ka = uniform_bytes[0:La]
+3. Ke = uniform_bytes[La:]
+5. Output (Ka, Ke)
 ~~~
 
 We then define the Seal and Open implementations using AES-CTR and HMAC, in conjunction
@@ -541,10 +538,10 @@ Output:
 - t, an authentication tag
 
 Steps:
-1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
+1. (Ka, Ke) = DeriveKeys(k)
 2. IV = concat(n, zero(7), [0x01])
-3. ct = AES-CTR(EncKey, IV, pt)
-4. t = HMAC(HmacKey, concat(ct, aad))
+3. ct = AES-CTR(Ke, IV, pt)
+4. t = HMAC(Ka, concat(ct, aad))
 5. Output (ct, t)
 ~~~
 
@@ -564,10 +561,10 @@ Output:
 - pt, decrypted plaintext, or an error upon failure
 
 Steps:
-1. (HmacKey, EncKey, KdKey) = DeriveKeys(k)
+1. (Ka, Ke) = DeriveKeys(k)
 2. IV = concat(n, zero(7), [0x01])
-3. pt = AES-CTR(EncKey, IV, ct)
-4. t' = HMAC(HmacKey, concat(ct, aad))
+3. pt = AES-CTR(Ke, IV, ct)
+4. t' = HMAC(Ka, concat(ct, aad))
 5. If CT_EQUAL(t, t'), output pt
 6. Else, output error
 ~~~
@@ -827,19 +824,22 @@ Input:
 - response, a RegistrationResponse structure
 
 Output:
-- RegistrationUpload structure
+- upload, a RegistrationUpload structure
+- exporter_key, an additional key
 
 Steps:
 1. Z = Decode(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. k = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk)
-6. n = random(Nh)
-7. Credentials C with (skU=skU, pkS=response.pkS)
-8. (ct, t) = Seal(k, n, "", C)
-9. EnvU = (n, ct, t)
-10. Output RegistrationUpload with envelope value EnvU
+5. credentials_key = HKDF(salt=0, IKM=RwdU, "CredentialsKey", Nk)
+6. exporter_key = HKDF(salt=0, IKM=RwdU, "ExporterKey", Nk)
+7. n = random(Nh) # generate a fresh nonce randomly
+8. Credentials C with (skU=skU, pkS=response.pkS)
+9. (ct, t) = Seal(k, n, "", C)
+10. EnvU = (n, ct, t)
+11. Create RegistrationUpload upload with envelope value EnvU
+11. Output (upload, exporter_key)
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
@@ -850,6 +850,8 @@ structure C at step 8.
 The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
 server domain name.
+
+See {{exporter-usage}} for details about the output exporter_key usage.
 
 #### StoreUserRecord
 
@@ -1001,19 +1003,28 @@ Input:
 
 Output:
 - C, a Credentials structure
+- exporter_key, an additional key
 
 Steps:
 1. Z = Decode(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. k = HKDF(salt=0, IKM=RwdU, "CredentialsKeys", Nk)
-6. (n, ct, t) = response.envelope
-7. C = Open(k, n, "", ct, t)
-8. Output C
+5. credentials_key = HKDF(salt=0, IKM=RwdU, "CredentialsKey", Nk)
+6. exporter_key = HKDF(salt=0, IKM=RwdU, "ExporterKey", Nk)
+7. (n, ct, t) = response.envelope
+8. C = Open(credentials_key, n, "", ct, t)
+9. Output C, exporter_key
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+
+## Exporter Keys {#exporter-usage}
+
+In addition to Credentials, OPAQUE outputs an exporter_key that may be used for additional
+application-specific purposes. For example, one might expand the use of OPAQUE with a
+credential-retrieval functionality that is separate from the contents of the Credentials
+structure.
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
