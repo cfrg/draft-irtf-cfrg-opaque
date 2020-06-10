@@ -1213,16 +1213,14 @@ PROTOCOL MESSAGES. OPAQUE with SIGMA-I comprises:
 
 - KE1 = OPRF1, nonceU, info1*, IdU*, epkU
 - KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*,
-       Sign(skS; xcript2-), Mac(Km2; IdU),
-- KE3 = info3*, Einfo3*, Sign(skU; xcript3-), Mac(Km3; IdS)}
+       Sign(skS; xcript2-), Mac(Km2; IdS),
+- KE3 = info3*, Einfo3*, Sign(skU; xcript3-), Mac(Km3; IdU)}
 
 See explanation of fields above. In addition, for the signed material,
 xscript2- is defined similarly to xscript2, however if xscript2 includes
 information that identifies the user, such information can be eliminated in
 xscript2- (this is advised if signing user's identification information by
-the server is deemed to have adverse privacy consequences). In SIGMA,
-including the peer's identity under the MAC is necessary and sufficient for
-security, but including it under the signature is not necessary.
+the server is deemed to have adverse privacy consequences). 
 Similarly, xscript3- is defined as xcript3 with server identification
 information removed if so desired.
 
