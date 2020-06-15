@@ -279,7 +279,7 @@ passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
 Despite the existence of multiple designs for
-(PKI-free) aPAKE protocols, none of these protocols is secure against
+(PKI-free) aPAKE protocols, none of these protocols are secure against
 pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
@@ -289,12 +289,12 @@ secrecy of the salt and its defense against pre-computation. Furthermore,
 transmitting the salt may require additional protocol messages.
 
 This draft describes OPAQUE, a PKI-free secure aPAKE that is
-secure against pre-computation attacks and capable of using secret
+secure against pre-computation attacks and capable of using a secret
 salt. Jarecki et al. {{OPAQUE}} recently proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. In contrast, very few aPAKE protocols have
-been proven formally and those proven were analyzed in a weak
+been proven formally, and those proven were analyzed in a weak
 security model that allows for pre-computation attacks (e.g.,
 {{GMR06}}). This is not just a formal issue: these protocols are
 actually vulnerable to such attacks. This includes protocols that have recent
@@ -304,7 +304,7 @@ in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
 It is worth noting that the currently most deployed (PKI-free) aPAKE is
-SRP {{?RFC2945}}, which is open to pre-computation attacks, is inefficient
+SRP {{?RFC2945}}, which is open to pre-computation attacks, and is inefficient
 relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
 multiplication operations, and thus does not work over plain elliptic curves.
 OPAQUE is therefore a suitable replacement.
@@ -330,7 +330,7 @@ the protocol to support storage and
 retrieval of user's secrets solely based on a password; and being
 amenable to a multi-server distributed implementation where offline
 dictionary attacks are not possible without breaking into a threshold
-of servers (such distributed solution requires no change or awareness
+of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two
@@ -368,9 +368,9 @@ server without first running an exhaustive dictionary attack.
 Another essential requirement from KE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
 
-This draft presents a high-level description of OPAQUE highlighting
+This draft presents a high-level description of OPAQUE, highlighting
 its components and modular design. It also provides the basis for a
-specification for standardization but a detailed specification ready
+specification for standardization, but a detailed specification ready
 for implementation is beyond the current scope of this document
 (which may be expanded in future revisions or done separately).
 
@@ -433,7 +433,7 @@ The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF):
-  - GenerateKeyPair(): This function generates public and private key for the OPRF group.
+  - GenerateKeyPair(): This function generates a public and private key for the OPRF group.
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some value `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Compute the scalar multiplication `k*M` and output the
@@ -489,7 +489,7 @@ Therefore, we specify a scheme for implementing RKR-AEAD based on counter-mode
 encryption and HMAC, hereby referred to as CTR+HMAC, using AES-256 and HMAC-SHA256.
 
 The algorithm works by encrypting the plaintext with the input nonce, concatenating
-the resulting ciphertext to the additional data, computing an HMAC tag over the
+the resulting ciphertext to the nonce, computing an HMAC tag over the
 resulting string, and outputting the (nonce, ciphertext, tag) tuple.
 
 We first define the function `DeriveKeys` used for key derivation. In particular,
@@ -504,7 +504,7 @@ DeriveKeys(k)
 - Le, length of the encryption key in octets
 
 Input:
-- k, an opaque key of Nk bytes
+- k, a key of length Nk
 
 Output:
 - Ka, a key of length La
@@ -587,7 +587,7 @@ key-exchange protocol KE using credentials recovered after the OPRF protocol com
 (The key-exchange protocol MUST satisfy the KCI requirement discussed in {{intro}}.)
 Specification of the key-exchange protocol is out of scope for this document.
 
-We first define the core OPAQUE protocol based on any OPRF, RRAEAD, and MHF functions.
+We first define the core OPAQUE protocol based on any OPRF, RKR-AEAD, and MHF functions.
 {{instantiations}} describes specific instantiations of OPAQUE using various
 AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
 discusses integration with TLS 1.3 {{RFC8446}}.
@@ -780,7 +780,7 @@ Steps:
 1. context = GetUnusedContext()
 2. (r, M) = Blind(PwdU)
 3. data = Serialize(M)
-4. Create RegistrationRequest request with (context, Id, data)
+4. Create RegistrationRequest request with (context, IdU, data)
 5. Create RequestMetadata metadata with Serialize(r)
 6. Output (request, metadata)
 ~~~
@@ -833,10 +833,10 @@ Steps:
 4. RwdU = Harden(y, params)
 5. credentials_key = HKDF(salt=0, IKM=RwdU, "CredentialsKey", Nk)
 6. exporter_key = HKDF(salt=0, IKM=RwdU, "ExporterKey", Nk)
-7. n = random(Nh) # generate a fresh nonce randomly
+7. n = random(Nn) # generate a fresh nonce randomly
 8. Credentials C with (skU=skU, pkS=response.pkS)
-9. (ct, t) = Seal(k, n, "", C)
-10. EnvU = (n, ct, t)
+9. (ct, t) = Seal(credentials_key, n, "", C)
+10. EnvU = concat(n, ct, t)
 11. Create RegistrationUpload upload with envelope value EnvU
 11. Output (upload, exporter_key)
 ~~~
@@ -1091,7 +1091,7 @@ key-exchange protocol of {{SIGNAL}}.
 
 Importantly, many other protocols follow a similar format with differences
 mainly in the key derivation function. This includes the Noise family of
-protocols. Extension may also apply to KEM-based KE protocols as in many
+protocols. Extensions may also apply to KEM-based KE protocols as in many
 post-quantum candidates.
 
 The private and public keys of the parties in these examples are
@@ -1103,8 +1103,8 @@ will be adapted from the corresponding standards for different elliptic curves.
 PROTOCOL MESSAGES. OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
 - KE1 = OPRF1, nonceU, info1*, IdU*, epkU
-- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*, Mac(Km2; xcript2),
-- KE3 = info3*, Einfo3*, Mac(Km3; xcript3)}
+- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*, Mac(Km2; transcript2),
+- KE3 = info3*, Einfo3*, Mac(Km3; transcript3)}
 
 where:
 
@@ -1137,21 +1137,21 @@ field (encrypted or not), part of EnvU, or can be known from other context
 - epkU, epkS are Diffie-Hellman ephemeral public keys chosen by user and
 server, respectively;
 
-- xcript2 includes the concatenation of the values OPRF1, nonceU, info1*, IdU*, epkU,
+- transcript2 includes the concatenation of the values OPRF1, nonceU, info1*, IdU*, epkU,
 OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*;
 
-- xscript3 includes the concatenation of all elements in xscript2 followed by
+- transcript3 includes the concatenation of all elements in transcript2 followed by
 info3*, Einfo3*;
 
 Notes:
 
-- The explicit concatenation of elements under xscript2 and xscript3 can be
+- The explicit concatenation of elements under transcript2 and transcript3 can be
  replaced with hashed values of these elements, or their combinations, using
  a collision-resistant hash (e.g., as in the transcript-hash of TLS 1.3).
 
-- The inclusion of the values OPRF1 and OPRF2 under xscript2 is needed for
+- The inclusion of the values OPRF1 and OPRF2 under transcript2 is needed for
  binding the OPRF execution to that of the KE session. On the other hand,
- including EnvU in xscript2 is not mandatory.
+ including EnvU in transcript2 is not mandatory.
 
 - The ephemeral keys epkU, epkS, can be exchanged prior to the above 3
  messages, e.g., when running these protocols under TLS 1.3.
@@ -1213,15 +1213,15 @@ PROTOCOL MESSAGES. OPAQUE with SIGMA-I comprises:
 
 - KE1 = OPRF1, nonceU, info1*, IdU*, epkU
 - KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*,
-       Sign(skS; xcript2-), Mac(Km2; IdS),
-- KE3 = info3*, Einfo3*, Sign(skU; xcript3-), Mac(Km3; IdU)}
+       Sign(skS; transcript2-), Mac(Km2; IdS),
+- KE3 = info3*, Einfo3*, Sign(skU; transcript3-), Mac(Km3; IdU)}
 
 See explanation of fields above. In addition, for the signed material,
-xscript2- is defined similarly to xscript2, however if xscript2 includes
+transcript2- is defined similarly to transcript2, however if transcript2 includes
 information that identifies the user, such information can be eliminated in
-xscript2- (this is advised if signing user's identification information by
-the server is deemed to have adverse privacy consequences). 
-Similarly, xscript3- is defined as xcript3 with server identification
+transcript2- (this is advised if signing user's identification information by
+the server is deemed to have adverse privacy consequences).
+Similarly, transcript3- is defined as transcript3 with server identification
 information removed if so desired.
 
 KEY DERIVATION. Key in SIGMA-I are derived as
