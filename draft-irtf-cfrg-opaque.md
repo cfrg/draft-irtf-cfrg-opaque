@@ -697,6 +697,9 @@ FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nn, length of the key derivation nonce
+- Na, length of the authentication key
+- Ne, length of the exporter key
 
 Input:
 - IdU, an opaque byte string containing the user's identity
@@ -716,14 +719,14 @@ Steps:
 4. RwdU = Harden(y, params)
 5. Credentials C with (skU=skU, pkS=response.pkS).
 6. pt = SerializeCredentials(C)
-7. n = random(Nn)
-8. pseudorandom_pad = HKDF-Expand(salt=n, IKM=RwdU, "Pad", len(pt))
-9. auth_key = HKDF-Expand(salt=n, IKM=RwdU, "AuthKey", Na)
-10. exporter_key = HKDF-Expand(salt=n, IKM=RwdU, "ExporterKey", Ne)
+7. nonce = random(Nn)
+8. pseudorandom_pad = HKDF-Expand(key=RwdU, info=contact("Pad", nonce), len(pt))
+9. auth_key = HKDF-Expand(key=RwdU, info=contact("AuthKey", nonce), Na)
+10. exporter_key = HKDF-Expand(key=RwdU, info=concat("ExporterKey", nonce), Ne)
 11. ct = xor(pt, pseudorandom_pad)
 12. t = HMAC(auth_key, concat(ct, aad)), where aad is application-specific
 additional associated data.
-13. EnvU = concat(n, ct, aad, t)
+13. EnvU = concat(nonce, ct, aad, t)
 14. Create RegistrationUpload upload with envelope value (EnvU, pkU).
 15. Output (upload, exporter_key)
 ~~~
@@ -871,6 +874,9 @@ RecoverCredentials(PwdU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nn, length of the key derivation nonce
+- Na, length of the authentication key
+- Ne, length of the exporter key
 
 Input:
 - PwdU, an opaque byte string containing the user's password
@@ -886,11 +892,11 @@ Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. (n, ct, aad, t) = response.envelope
+4. (nonce, ct, aad, t) = response.envelope
 5. RwdU = Harden(y, params)
-6. pseudorandom_pad = HKDF-Expand(salt=n, IKM=RwdU, "Pad", len(pt))
-7. auth_key = HKDF-Expand(salt=n, IKM=RwdU, "AuthKey", Na)
-8. exporter_key = HKDF-Expand(salt=n, IKM=RwdU, "ExporterKey", Ne)
+6. pseudorandom_pad = HKDF-Expand(key=RwdU, info=concat("Pad", nonce), len(pt))
+7. auth_key = HKDF-Expand(key=RwdU, info=concat("AuthKey", nonce), Na)
+8. exporter_key = HKDF-Expand(key=RwdU, info=concat("ExporterKey", nonce), Ne)
 9. t' = HMAC(auth_key, concat(ct, aad)), where aad is application-specific
 additional associated data.
 10. If !CT_EQUAL(t, t'), ABORT()
