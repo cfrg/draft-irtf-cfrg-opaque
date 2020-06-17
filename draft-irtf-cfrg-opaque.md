@@ -465,12 +465,11 @@ OPAQUE relies on the following protocols and primitives:
 OPAQUE uses DH-OPRF instantiations from {{I-D.irtf-cfrg-voprf}}. It supports
 the following ciphersuites:
 
-- OPRF-curve448-HKDF-SHA512-ELL2-RO
-- OPRF-P384-HKDF-SHA512-SSWU-RO
-- OPRF-P521-HKDF-SHA512-SSWU-RO
-- VOPRF-curve448-HKDF-SHA512-ELL2-RO
-- VOPRF-P384-HKDF-SHA512-SSWU-RO
-- VOPRF-P521-HKDF-SHA512-SSWU-RO
+- OPRF-curve25519_XMD:SHA-512_ELL2_RO_
+- OPRF-curve448_XMD:SHA-512_ELL2_RO_
+- OPRF-P256_XMD:SHA-256_SSWU_RO_
+- OPRF-P384_XMD:SHA-512_SSWU_RO_
+- OPRF-P521_XMD:SHA-512_SSWU_RO_
 
 The output of the OPRF Finalize() operation may be hardened using a MHF F.
 This greatly increases the cost of an offline attack upon the compromise of
