@@ -468,7 +468,7 @@ the following ciphersuites:
 The output of the OPRF Finalize() operation may be hardened using a MHF F.
 This greatly increases the cost of an offline attack upon the compromise of
 the password file at the server. Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}},
-scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}}. with suitable parameter choices.
+scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with suitable parameter choices.
 
 # OPAQUE Protocol {#protocol}
 
