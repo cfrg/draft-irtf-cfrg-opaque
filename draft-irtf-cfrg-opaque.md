@@ -917,11 +917,11 @@ application-specific additional associated data.
 13. Output C, exporter_key
 ~~~
 
+[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+
 As in the registration phase, applications MUST authenticate pkS; secrecy of pkS is
 optional. If an application requires secrecy of pkS, this value SHOULD be omitted
 from the HMAC computation (step 9).
-
-[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
 ## Exporter Keys {#exporter-usage}
 
