@@ -1042,7 +1042,7 @@ include authentication of the OPRF messages (or at least of the value alpha)
 for binding between the OPRF run and the KE session.
 
 Next, we present three instantiations of OPAQUE - with HMQV, 3DH and SIGMA-I.
-In {{SecTls13}} we discuss integration with TLS 1.3 {{RFC8446}}.
+{{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
 
 ## Instantiation of OPAQUE with HMQV and 3DH {#SecHmqv}
 
@@ -1171,8 +1171,7 @@ FOR 3DH:
 
 We show how OPAQUE is built around the 3-message SIGMA-I protocol {{SIGMA}}.
 This is an example of a signature-based protocol and also serves
-as a basis for integration of OPAQUE with TLS 1.3, as the latter follows the
-design of SIGMA-I (see {{SecTls13}}.
+as a basis for integration of OPAQUE with TLS 1.3 as specified in {{I-D.sullivan-tls-opaque}}.
 This specification can be extended to the 4-message SIGMA-R protocol as used
 in IKEv2.
 
@@ -1211,158 +1210,6 @@ SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
    - by the client: Ksigma = epkS^eskU
 
    - by the server: Ksigma = epkU^eskS
-
-## Integrating OPAQUE with TLS 1.3 {#SecTls13}
-
-This section is intended as a discussion of ways to integrate OPAQUE with
-TLS 1.3.
-Precise protocol details are left for a future separate specification.
-A very preliminary draft is {{I-D.sullivan-tls-opaque}}.
-
-As stated in {{intro}}, the security of the standard password-over-TLS
-mechanism for password authentication suffers from its essential reliance on
-PKI and the exposure of passwords to the server (and possibly others) upon
-TLS decryption. Integrating OPAQUE with TLS removes these vulnerabilities
-while at the same time it armors TLS itself against PKI failures. Such
-integration also benefits OPAQUE by leveraging the standardized negotiation
-and record-layer security of TLS. Furthermore, TLS offers an initial
-PKI-authenticated channel to protect the privacy of account information such
-as user name transmitted between client and server.
-
-If one is willing to forgo protection of user account information
-transmitted between user and server, integrating OPAQUE with TLS
-1.3 is relatively straightforward and follows essentially the same approach
-as with SIGMA-I in {{SecSigma}}. Specifically, one reuses the Diffie-Hellman
-exchange from TLS and uses the user's private key skU retrieved from
-the server as a signature key for TLS client authentication. The
-integrated protocol will have as its first message the TLS's Client
-Hello augmented with user account information and with the DH-OPRF first
-message (the value alpha).
-The server's response includes the regular TLS 1.3 second flight
-augmented with the second OPRF message which includes the values beta
-and EnvU. For its TLS signature, the server uses the private key
-skS whose corresponding public key pkS is authenticated as part of
-the user envelope EnvU (there is no need to send a regular TLS certificate in
-this case). Finally, the third flight consists of the standard client
-Finish message with client authentication where the client's signature
-is produced with the user's private key skU retrieved from EnvU and
-verified by the server using public key pkU.
-
-The above scheme is depicted in {{TLS3Flows}} where the sign + indicates
-fields added by OPAQUE, and OPRF1, OPRF2 denote
-the two DH-OPRF messages. Other messages in the figure are the same
-as in TLS 1.3. Notation {...} indicates encryption under handshake
-keys. Note that ServerSignature and ClientSignature are performed
-with the private keys defined by OPAQUE and they replace signatures
-by traditional TLS certificates.
-
-<!--   The ~~~ (any number of ~ larger than 2?)
-       defines a figure; it seems equivalent to enclosing within
-      <figure><artwork>   </artwork></figure>
--->
-
-~~~
-        Client                                               Server
-
-        ClientHello
-        key_share
-        + userid + OPRF1        -------->
-                                                        ServerHello
-                                                          key_share
-                                                {+    OPRF2 + EnvU}
-                                                  {ServerSignature}
-                                <--------          {ServerFinished}
-
-        {ClientSignature}
-        {ClientFinished}        -------->
-~~~~~~
-{: #TLS3Flows title="Integration of OPAQUE in TLS 1.3 (no userid confidentiality)"}
-
-
-Note that in order to send OPRF1 in the first message, the client needs to
-know the DH group the server uses for OPRF, or it needs to "guess" it.
-This issue already appears in TLS 1.3 where the client needs to guess the
-key_share group and it should be handled similarly in OPAQUE
-(e.g., the client may try one or more groups in its first message).
-
-Protection of user's account information can be added through TLS
-1.3 pre-shared/resumption mechanisms where the account information
-appended to the ClientHello message would be encrypted under the
-pre-shared key.
-
-When a resumable session or pre-shared key between the client and the
-server do not exist, user account protection requires a server
-certificate. One option that does not add round trips is to use a
-mechanism similar to the proposed ESNI extension {{I-D.ietf-tls-esni}}
-or a semi-static TLS exchange as in {{I-D.ietf-tls-semistatic-dh}}.
-Without such extensions, one would run a TLS 1.3 handshake augmented with
-the two first OPAQUE messages interleaved between the second and third
-flight of the regular TLS handshake. That is, the protocol consists
-of five flights as follows: (i) A regular 2-flight 1-RTT handshake to
-produce handshake traffic keys authenticated by the server's TLS
-certificate; (ii) two OPAQUE messages that include user identification
-information, the DH-OPRF messages exchanged between client and
-server, and the retrieved EnvU, all encrypted under the handshake
-traffic keys (thus providing privacy to user account information);
-(iii) the TLS 1.3 client authentication flight where client
-authentication uses the user's private signature key skU retrieved
-from the server in step (ii).
-
-Note that server authentication in step (i) uses TLS certificates hence
-PKI is used for user account privacy but not for user authentication
-or other purposes. (In some applications, PKI may be trusted also for server
-authentication in which case server authentication through OPAQUE may be
-forgone).
-In OPAQUE the server authenticates
-using the private key skS whose corresponding
-public key pkS is sent to the user as part of EnvU. There are
-two options: If pkS is the same as the public key the server used in
-the 1-RTT authentication (step (i)) then there is no need for further
-authentication.
-<!-- In this case, the client gets assurance from the authenticated
-EnvU, not (only) from the PKI certificates. -->
-Otherwise, the server needs to
-send a signature under skS that is piggybacked to the second OPAQUE
-message in (ii). In this case, the signature would cover the running
-transcript hash as is standard in TLS 1.3. The client signature in
-the last message also covers the transcript hash including the
-regular handshake and OPAQUE messages.
-
-The described scheme is depicted in {{TLS5Flows}}. Please refer to the text
-before {{TLS3Flows}} describing notation. Note the asterisk in the
-ServerSignature message. This indicates that this message is optional
-as it is used only if the server's key pkS in OPAQUE is different
-than the one in the server's certificate (transmitted in the second
-protocol flight).
-
-~~~~
-        Client                                               Server
-
-        ClientHello
-        key_share               -------->
-                                                         ServerHello
-                                                           key_share
-                                                       {Certificate}
-                                                 {CertificateVerify}
-                                <--------           {ServerFinished}
-
-        {+ userid + OPRF1}      -------->
-
-                                                    {+ OPRF2 + EnvU}
-                                <--------       {+ ServerSignature*}
-
-        {ClientSignature}
-        {ClientFinished}        -------->
-~~~~~~
-{: #TLS5Flows title="Integration of OPAQUE in TLS 1.3 (with userid confidentiality)"}
-
-
-We note that the above approaches for integration of OPAQUE with TLS
-may benefit from the post-handshake client authentication mechanism
-of TLS 1.3 and the exported authenticators from
-{{I-D.ietf-tls-exported-authenticator}}. Also, formatting of messages
-and negotiation information suggested in {{I-D.barnes-tls-pake}} can
-be used in the OPAQUE setting.
 
 # Security considerations
 
