@@ -668,6 +668,8 @@ description of this encoding.
 struct {
     opaque data<0..2^16-1>;
     opaque pkS<0..2^16-1>;
+    CredentialType secret_types<2..254>;
+    CredentialType cleartext_types<2..254>;
 } RegistrationResponse;
 ~~~
 
@@ -721,6 +723,12 @@ Steps:
 ~~~
 CreateRegistrationResponse(request, pkS)
 
+Parameters:
+- secret_credentials_list, a list of CredentialType values clients should include
+ in the secret_credentials list of their Credentials structure
+- cleartext_credentials_list, a list of CredentialType values clients should include
+ in the cleartext_credentials list of their Credentials structure
+
 Input:
 - request, a RegistrationRequest structure
 - pkS, the server's public key
@@ -734,7 +742,8 @@ Steps:
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
-5. Create RegistrationResponse response with (data)
+5. Create RegistrationResponse response with
+     (data, pkS, secret_credentials_list, cleartext_credentials_list)
 6. Output (response, kU)
 ~~~
 
@@ -766,31 +775,35 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. Create Credentials C according to server policy
-6. pt = SerializeExtensions(C.secret_credentials)
-7. nonce = random(Nn)
-8. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
-9. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
-10. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
-11. ct = xor(pt, pseudorandom_pad)
-12. auth_data = SerializeExtensions(C.cleartext_credentials)
-13. t = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
-14. Create Envelope EnvU with (nonce, ct, auth_data, t)
-15. Create RegistrationUpload upload with envelope value (EnvU, pkU).
-16. Output (upload, exporter_key)
+5. Create secret_credentials with CredentialExtensions matching that
+   contained in response.secret_credentials_list
+6. Create cleartext_credentials with CredentialExtensions matching that
+   contained in response.cleartext_credentials_list
+7. pt = SerializeExtensions(secret_credentials)
+8. nonce = random(Nn)
+9. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
+10. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
+11. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
+12. ct = xor(pt, pseudorandom_pad)
+13. auth_data = SerializeExtensions(cleartext_credentials)
+14. t = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+15. Create Envelope EnvU with (nonce, ct, auth_data, t)
+16. Create RegistrationUpload upload with envelope value (EnvU, pkU).
+17. Output (upload, exporter_key)
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
-Applications MUST encrypt and authenticate skU, and MUST authenticate pkS.
-Secrecy of pkS is optional. If an application requires secrecy of pkS, this value
-SHOULD be included in the `Credentials.secret_credentials` list (step 5).
-Applications may optionally include pkU, IdU, or IdS in the
-`Credentials.secret_credentials` structure (step 5) if secrecy of these values
-is desired. Otherwise, if an application does not require secrecy for these values
-but does require authentication, they may be appended to `Credentials.cleartext_credentials`.
-Servers MUST specify how clients encode extensions in the `Credentials` structure
-as part of this registration phase.
+The inputs to HKDF-Expand are as specified in {{RFC5869}}.
+
+All `CredentialExtension` values require authentication. Only skU requires secrecy.
+If an application requires secrecy of pkS, this value SHOULD be included in the
+`Credentials.secret_credentials` list (step 5). Applications may optionally include
+pkU, IdU, or IdS in the `Credentials.secret_credentials` structure (step 5) if secrecy
+of these values is desired. Otherwise, if an application does not require secrecy for
+these values but does require authentication, they may be appended to
+`Credentials.cleartext_credentials`. Servers MUST specify how clients encode extensions
+in the `Credentials` structure as part of this registration phase.
 
 The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
@@ -926,9 +939,6 @@ Steps:
 5. Create CredentialResponse response with (data, EnvU, pkS)
 6. Output (response, pkU)
 ~~~
-
-Applications which include pkS in the Credentials structure MAY omit
-pkS from the CredentialResponse.
 
 #### RecoverCredentials(PwdU, aad, metadata, request, response)
 
@@ -1458,7 +1468,7 @@ Note that if the same pair of user identity IdU and value alpha is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
-the construction of EnvU to all the key material in EnvU, namely, aad will be empty.
+the construction of EnvU to all the key material in EnvU, namely, cleartext_credentials will be empty.
 The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
 Upon receiving a pair of user identity IdU and value alpha for a non-existing
