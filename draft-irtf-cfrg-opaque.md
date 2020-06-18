@@ -913,7 +913,7 @@ Steps:
 7. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
 8. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
 9. auth_data = response.pkS
-10. t' = HMAC(auth_key, concat(nonce, ct, concat(response.pkS, aad)))
+10. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
 11. If !CT_EQUAL(t, t'), raise DecryptionError
 12. pt = xor(ct, pseudorandom_pad)
 13. C = DeserializeCredentials(pt)
