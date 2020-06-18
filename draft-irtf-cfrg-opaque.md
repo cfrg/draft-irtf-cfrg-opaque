@@ -219,28 +219,14 @@ online)"
 
 --- abstract
 
-This draft describes the OPAQUE protocol, a secure asymmetric
+This document describes the OPAQUE protocol, a secure asymmetric
 password authenticated key exchange (aPAKE) that supports mutual
 authentication in a client-server setting without reliance on PKI and
 with security against pre-computation attacks upon server compromise.
-Prior aPAKE protocols either did not use salt or transmitted the salt
-in the clear, which allows targeted pre-computed dictionary attacks.
-Jarecki et al. (Eurocrypt 2018) proved OPAQUE security in a strong and
-universally composable formal model of aPAKE security. In addition,
-the protocol provides forward secrecy and the ability to hide the
-password from the server, even during password registration.
-
-Strong security, versatility through modularity, good performance,
-and an array of additional features make OPAQUE a natural candidate
-for practical use and for adoption as a standard. To this end, this
-draft presents several instantiations of OPAQUE and ways of
-integrating OPAQUE with TLS.
-
-This draft presents a high-level description of OPAQUE highlighting
-its components and modular design. It also provides the basis for a
-specification for standardization but a detailed specification ready
-for implementation is beyond the current scope of this document
-(which may be expanded in future revisions or done separately).
+In addition, the protocol provides forward secrecy and the ability to
+hide the password from the server, even during password registration.
+This document specifies the core OPAQUE protocol, along with several
+instantiations in different authenticated key exchange protocols.
 
 --- middle
 
