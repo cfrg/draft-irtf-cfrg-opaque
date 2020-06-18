@@ -527,7 +527,7 @@ TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
 ~~~
 struct {
   opaque skU<1..2^16-1>;
-  opaque pkS<1..2^16-1>;
+  opaque pkS<0..2^16-1>; // optional
   opaque pkU<0..2^16-1>; // optional
   opaque idU<0..2^16-1>; // optional
   opaque idS<0..2^16-1>; // optional
@@ -538,7 +538,7 @@ skU
 : An encoded private key.
 
 pkS
-: An encoded public key corresponding to the server.
+: An encoded public key corresponding to the server. This field is optional.
 
 pkU
 : An encoded public key corresponding to skU. This field is optional.
@@ -639,7 +639,7 @@ struct {
 ~~~
 
 envelope
-: An encryption of a Credentials structure.
+: An authenticated encoding of a Credentials structure.
 
 pkU
 : An encoded public key, matching the public key contained within the encrypted
@@ -698,8 +698,7 @@ FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 Parameters:
 - params, the MHF parameters established out of band
 - Nn, length of the key derivation nonce
-- Na, length of the authentication key
-- Ne, length of the exporter key
+- Nk, length of the authentication and exporter keys
 
 Input:
 - IdU, an opaque byte string containing the user's identity
@@ -717,15 +716,15 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. Credentials C with (skU=skU, pkS=response.pkS).
+5. Credentials C with (skU=skU).
 6. pt = SerializeCredentials(C)
 7. nonce = random(Nn)
-8. pseudorandom_pad = HKDF-Expand(key=RwdU, info=contact("Pad", nonce), len(pt))
-9. auth_key = HKDF-Expand(key=RwdU, info=contact("AuthKey", nonce), Na)
-10. exporter_key = HKDF-Expand(key=RwdU, info=concat("ExporterKey", nonce), Ne)
+8. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
+9. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
+10. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
 11. ct = xor(pt, pseudorandom_pad)
-12. t = HMAC(auth_key, concat(ct, aad)), where aad is application-specific
-additional associated data.
+12. t = HMAC(auth_key, concat(nonce, ct, concat(pkS, aad))), where aad is
+application-specific additional associated data.
 13. EnvU = concat(nonce, ct, aad, t)
 14. Create RegistrationUpload upload with envelope value (EnvU, pkU).
 15. Output (upload, exporter_key)
@@ -733,7 +732,12 @@ additional associated data.
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
-Applications may optionally include pk(skU), IdU, or IdS in the Credentials structure
+Applications MUST encrypt and authenticate skU, and MUST authenticate pkS.
+Secrecy of pkS is optional. If an application requires secrecy of pkS, this value
+SHOULD be included in the Credentials structure (step 5) and omitted from the HMAC
+computation (step 12).
+
+Applications may optionally include pkU, IdU, or IdS in the Credentials structure
 at step 5 if secrecy of these values is desired. If an application does not encrypt any
 of these values, they may be included in the aad. Instantiations of OPAQUE MUST specify
 how aad is constructed and serialized.
@@ -769,7 +773,7 @@ used in this stage.
                                    request
                               ----------------->
 
-              (response, pkU) = CreateCredentialResponse(request)
+         (response, pkU) = CreateCredentialResponse(request, pkS)
 
                                    response
                               <-----------------
@@ -813,6 +817,7 @@ description of this encoding.
 struct {
     opaque data<1..2^16-1>;
     opaque envelope<1..2^16-1>;
+    opaque pkS<0..2^16-1;
 } CredentialResponse;
 ~~~
 
@@ -821,7 +826,11 @@ data
 description of this encoding.
 
 envelope
-: An encryption of an Credentials.
+: An authenticated encoding of a Credentials structure.
+
+pkS
+: An encoded public key that will be used for the online authenticated key
+exchange stage. This field is optional.
 
 ### Authenticated key exchange functions
 
@@ -846,26 +855,30 @@ Steps:
 5. Output (request, metadata)
 ~~~
 
-#### CreateCredentialResponse(request)
+#### CreateCredentialResponse(request, pkS)
 
 ~~~
-CreateCredentialResponse(request)
+CreateCredentialResponse(request, pkS)
 
 Input:
 - request, an CredentialRequest structure
+- pkS, public key of the server
 
 Output:
 - response, a RegistrationUpload structure
-- pkU, Public key of the user
+- pkU, public key of the user
 
 Steps:
 1. (kU, EnvU, pkU) = LookupUserRecord(request.id)
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
-5. Create CredentialResponse response with (data, EnvU)
+5. Create CredentialResponse response with (data, EnvU, pkS)
 6. Output (response, pkU)
 ~~~
+
+Applications which include pkS in the Credentials structure MAY omit
+pkS from the CredentialResponse.
 
 #### RecoverCredentials(IdU, PwdU, metadata, request, response)
 
@@ -875,8 +888,7 @@ RecoverCredentials(PwdU, metadata, request, response)
 Parameters:
 - params, the MHF parameters established out of band
 - Nn, length of the key derivation nonce
-- Na, length of the authentication key
-- Ne, length of the exporter key
+- Nk, length of the authentication and exporter keys
 
 Input:
 - PwdU, an opaque byte string containing the user's password
@@ -894,16 +906,20 @@ Steps:
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. (nonce, ct, aad, t) = response.envelope
 5. RwdU = Harden(y, params)
-6. pseudorandom_pad = HKDF-Expand(key=RwdU, info=concat("Pad", nonce), len(pt))
-7. auth_key = HKDF-Expand(key=RwdU, info=concat("AuthKey", nonce), Na)
-8. exporter_key = HKDF-Expand(key=RwdU, info=concat("ExporterKey", nonce), Ne)
-9. t' = HMAC(auth_key, concat(ct, aad)), where aad is application-specific
-additional associated data.
-10. If !CT_EQUAL(t, t'), ABORT()
+6. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
+7. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
+8. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
+9. t' = HMAC(auth_key, concat(nonce, ct, concat(response.pkS, aad))), where aad is
+application-specific additional associated data.
+10. If !CT_EQUAL(t, t'), raise DecryptionError
 11. pt = xor(ct, pseudorandom_pad)
 12. C = DeserializeCredentials(pt)
 13. Output C, exporter_key
 ~~~
+
+As in the registration phase, applications MUST authenticate pkS; secrecy of pkS is
+optional. If an application requires secrecy of pkS, this value SHOULD be omitted
+from the HMAC computation (step 9).
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
