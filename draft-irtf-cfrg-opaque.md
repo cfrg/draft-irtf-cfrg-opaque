@@ -618,7 +618,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (IdU, PwdU, aad, skU, pkU)                 Server (skS, pkS)
+ Client (IdU, PwdU, skU, pkU)                 Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateRegistrationRequest(IdU, PwdU)
 
@@ -630,7 +630,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(IdU, PwdU, aad, skU, metadata, request, response)
+ record = FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 
                                     record
                               ------------------>
@@ -750,7 +750,7 @@ Steps:
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(IdU, PwdU, aad, skU, metadata, request, response)
+FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -760,7 +760,6 @@ Parameters:
 Input:
 - IdU, an opaque byte string containing the user's identity
 - PwdU, an opaque byte string containing the user's password
-- aad, application-specific additional associated data
 - skU, the user's private key
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
@@ -786,7 +785,7 @@ Steps:
 11. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
 12. ct = xor(pt, pseudorandom_pad)
 13. auth_data = SerializeExtensions(cleartext_credentials)
-14. t = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+14. t = HMAC(auth_key, concat(nonce, ct, auth_data))
 15. Create Envelope EnvU with (nonce, ct, auth_data, t)
 16. Create RegistrationUpload upload with envelope value (EnvU, pkU).
 17. Output (upload, exporter_key)
@@ -841,7 +840,7 @@ used in this stage.
                                    response
                               <-----------------
 
-    creds = RecoverCredentials(PwdU, aad, metadata, request, response)
+    creds = RecoverCredentials(PwdU, metadata, request, response)
 
                                (AKE with creds)
                               <================>
@@ -940,10 +939,10 @@ Steps:
 6. Output (response, pkU)
 ~~~
 
-#### RecoverCredentials(PwdU, aad, metadata, request, response)
+#### RecoverCredentials(PwdU, metadata, request, response)
 
 ~~~
-RecoverCredentials(PwdU, aad, metadata, request, response)
+RecoverCredentials(PwdU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -952,7 +951,6 @@ Parameters:
 
 Input:
 - PwdU, an opaque byte string containing the user's password
-- aad, application-specific additional associated data
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
@@ -972,7 +970,7 @@ Steps:
 8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
 9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
 10. auth_data = response.envelope.auth_data
-11. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+11. t' = HMAC(auth_key, concat(nonce, ct, auth_data))
 12. If !CT_EQUAL(response.envelope.auth_tag, t'), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_credentials = DeserializeExtensions(pt)
