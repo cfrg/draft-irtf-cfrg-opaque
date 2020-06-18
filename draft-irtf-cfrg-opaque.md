@@ -418,6 +418,9 @@ the public key. For example, (skU, pkU) refers to the U's private and public key
 - random(n): Generate a random byte string of length `n` bytes.
 - zero(n): An all-zero byte string of length `n` bytes. `zero(4) = 0x00000000` and
   `zero(0)` is the empty byte string.
+- `xor(a,b)`: XOR of byte strings; `xor(0xF0F0, 0x1234) = 0xE2C4`.
+  It is an error to call this function with two arguments of unequal
+  length.
 
 Except if said otherwise, random choices in this specification refer to
 drawing with uniform distribution from a given set (i.e., "random" is short
@@ -447,15 +450,6 @@ OPAQUE relies on the following protocols and primitives:
     or produce an error of `enc` is an invalid encoding. This is the inverse
     of Encode, i.e., `x = Deserialize(Serialize(x))`.
 
-- Random-Key Robustness Authenticated Encryption (RKR-AEAD): <!-- EnvU = AuthEnc(RwdU; skU, pkU, pkS) -->
-  - Seal(k, n, aad, pt): Encrypt plaintext `pt` with additional
-    associated data `aad` using the key `k` of length `Nk` and nonce `n` of length
-    `Nn`, producing a ciphertext `ct` and tag `t`.
-
-  - Open(k, n, aad, ct): Decrypt ciphertext `ct` with tag `t` and additional associated data
-    `aad` using the key `k` of length `Nk` and nonce `n` of length `Nn`, producing
-    plaintext `pt` on success or an error on failure.
-
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
@@ -474,104 +468,10 @@ the following ciphersuites:
 The output of the OPRF Finalize() operation may be hardened using a MHF F.
 This greatly increases the cost of an offline attack upon the compromise of
 the password file at the server. Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}},
-scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}}. with suitable parameter choices
-public values or set at the time of password registration and stored at the server.
-In this case, the server communicates these parameters to the user during OPAQUE
-executions together with the second OPRF message.
-
-## CTR+HMAC RKR-AEAD {#SecEnvU}
-
-A RKR-AEAD algorithm is one in which, given a pair of random AEAD keys it is infeasible
-to create an authenticated ciphertext that successfully decrypts under both keys.
-Not all AEAD schemes satisfy this property, and this includes AES-GCM.
-Therefore, we specify a scheme for implementing RKR-AEAD based on counter-mode
-encryption and HMAC, hereby referred to as CTR+HMAC, using AES-256 and HMAC-SHA256.
-
-The algorithm works by encrypting the plaintext with the input nonce, concatenating
-the resulting ciphertext to the nonce, computing an HMAC tag over the
-resulting string, and outputting the (nonce, ciphertext, tag) tuple.
-
-We first define the function `DeriveKeys` used for key derivation. In particular,
-it extracts and expands the input AEAD key `k` into two keys: an authentication key and
-encryption key of length `La` and `Le`, respectively.
-As specified, `La = Le = 32`, `Nn = 8`, and `Nk = 32`.
-
-~~~
-DeriveKeys(k)
-
-- La, length of the authentication key in octets
-- Le, length of the encryption key in octets
-
-Input:
-- k, a key of length Nk
-
-Output:
-- Ka, a key of length La
-- Ke, a key of length Le
-
-Steps:
-1. uniform_bytes = HKDF-Expand(key=k, info="EnvU", Length=La+Le)
-2. Ka = uniform_bytes[0:La]
-3. Ke = uniform_bytes[La:]
-5. Output (Ka, Ke)
-~~~
-
-We then define the Seal and Open implementations using AES-CTR and HMAC, in conjunction
-with `DeriveKeys`. For completeness, we specify AES-CTR in Appendix {{AppCTR}}.
-CTR+HMAC uses AES-256 in counter mode with key EncKey and an initial counter value
-defined as the concatenation of the random `Nn`-byte nonce provided as input
-to Seal and an eight-byte encoding of of 1.
-
-~~~
-Seal(k, n, aad, pt)
-
-Input:
-- k, an opaque key of Nk bytes
-- n, an opaque nonce of length Nn bytes
-- aad, additional associated data to authenticate
-- pt, plaintext to encrypt
-
-Output:
-- ct, a ciphertext value of length equal to pt
-- t, an authentication tag
-
-Steps:
-1. (Ka, Ke) = DeriveKeys(k)
-2. IV = concat(n, zero(7), [0x01])
-3. ct = AES-CTR(Ke, IV, pt)
-4. t = HMAC(Ka, concat(ct, aad))
-5. Output (ct, t)
-~~~
-
-Open is implemented similar to Seal, as defined below.
-
-~~~
-Open(k, n, aad, ct, t)
-
-Input:
-- k, an opaque key of Nk bytes
-- n, an opaque nonce of length Nn bytes
-- aad, additional associated data to authenticate
-- ct, ciphertext to decrypt
-- t, ciphertext authentication tag
-
-Output:
-- pt, decrypted plaintext, or an error upon failure
-
-Steps:
-1. (Ka, Ke) = DeriveKeys(k)
-2. IV = concat(n, zero(7), [0x01])
-3. pt = AES-CTR(Ke, IV, ct)
-4. t' = HMAC(Ka, concat(ct, aad))
-5. If CT_EQUAL(t, t'), output pt
-6. Else, output error
-~~~
-
-[[TODO: If an RFC defining this mode exists, we should refer to it instead.
-The mode is defined in [RFC3686] but in the context of IPsec's ESP, so having
-a distilled version as in the Appendix may be worthwhile, particularly as we
-use a different initial value (the above RFC assumes a given IV which we do
-not have here).]]
+scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with suitable parameter choices.
+These may be constant values or set at the time of password registration and stored
+at the server. In the latter case, the server communicates these parameters to the
+client during login.
 
 # OPAQUE Protocol {#protocol}
 
@@ -603,8 +503,8 @@ enum {
     registration_request(1),
     registration_response(2),
     registration_upload(3),
-    cred_request(4),
-    cred_response(5),
+    credential_request(4),
+    credential_response(5),
     (255)
 } ProtocolMessageType;
 
@@ -615,44 +515,91 @@ struct {
         case registration_request: RegistrationRequest;
         case registration_response: RegistrationResponse;
         case registration_upload: RegistrationUpload;
-        case cred_request: CredentialRequest;
-        case cred_response: CredentialResponse;
+        case credential_request: CredentialRequest;
+        case credential_response: CredentialResponse;
     };
 } ProtocolMessage;
 ~~~
 
 Additionally, OPAQUE makes use of an additional structure `Credentials` to store
-user (client) credentials. It is structured as follows. Each public and
-private key value is an opaque byte string, specific to the AKE protocol in
-which OPAQUE is instantiated. For example, if used as raw public keys for
-TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
+user (client) credentials. A `Credentials` structure consists of secret and
+cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
+the type of extension and carries the raw bytes. This specification includes
+extensions for OPAQUE, including:
+
+- skU: The encoded user private key.
+- pkU: The encoded user public key.
+- pkS: The encoded server public key.
+- idU: The user identity. This is an application-specific value, e.g., an e-mail
+  address or normal account name.
+- idS: The server identity. This is typically a domain name, e.g., example.com.
+  See {{SecIdentities}} for information about this identity.
+
+Applications MUST include skU and pkU in each `Credentials` structure. The other
+extensions are optional.
+
+Each public and private key value is an opaque byte string, specific to the AKE
+protocol in which OPAQUE is instantiated. For example, if used as raw public keys
+for TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
+
+The full `Credentials` encoding is as follows.
 
 ~~~
+enum {
+  skU(1),
+  pkU(2),
+  pkS(3),
+  idU(4),
+  idS(5),
+  (255)
+} CredentialType;
+
+opaque CredentialData<0..2^16-1>
+
 struct {
-  opaque skU<1..2^16-1>;
-  opaque pkU<0..2^16-1>; // optional
-  opaque pkS<1..2^16-1>;
-  opaque idU<0..2^16-1>; // optional
-  opaque idS<0..2^16-1>; // optional
+  CredentialType type;
+  CredentialData data<0..2^16-1>;
+} CredentialExtension;
+
+struct {
+  CredentialExtension secret_credentials<1..2^16-1>;
+  CredentialExtension cleartext_credentials<0..2^16-1>;
 } Credentials;
 ~~~
 
-skU
-: An encoded private key.
+secret_credentials
+: OPAQUE credentials which require secrecy and authentication.
 
-pkU
-: An encoded public key corresponding to private_key. This field is optional.
+cleartext_credentials
+: OPAQUE credentials which require authentication but not secrecy.
 
-pkS
-: An encoded public key corresponding to the server.
+Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
+which translate a list of `CredentialExtension` structures to and from a unique byte string
+encoding.
 
-idU
-: The user identity. This is an application-specific value, e.g., an e-mail
-address or normal account name. This field is optional.
+OPAQUE uses an `Envelope` structure to encapsulate an encrypted `Credentials` structure.
+It is encoded as follows.
 
-idS
-: An identity of the server. This is typically a domain name, e.g., example.com.
-See {{SecIdentities}} for information about this identity. This field is optional.
+~~~
+struct {
+  opaque nonce[Nn];
+  opaque ct<1..2^16-1>;
+  opaque auth_data<0..2^16-1>;
+  opaque auth_tag<1..2^16-1>;
+} Envelope;
+~~~
+
+nonce
+: A unique Nh-byte nonce used to protect this Envelope.
+
+ct
+: Encoding of encrypted and authenticated credential extensions list.
+
+auth_data
+: Encoding of an authenticated credential extensions list.
+
+auth_tag
+: Authentication tag protecting the contents of the envelope.
 
 ## Offline registration stage {#SecPasReg}
 
@@ -671,7 +618,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (IdU, PwdU, skU, pkU)                 Server (skS, pkS)
+ Client (IdU, PwdU, aad, skU, pkU)                 Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateRegistrationRequest(IdU, PwdU)
 
@@ -683,7 +630,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
-    record = FinalizeRequest(IdU, PwdU, metadata, request, response)
+ record = FinalizeRequest(IdU, PwdU, aad, skU, metadata, request, response)
 
                                     record
                               ------------------>
@@ -695,15 +642,10 @@ Once complete, the registration process proceeds as follows:
 
 ~~~
 struct {
-    opaque context<0..2^8-1>;
     opaque id<0..2^16-1>;
     opaque data<1..2^16-1>;
 } RegistrationRequest;
 ~~~
-
-context
-: An opaque string which identifies the registration request and which will be
-echoed in the response. Clients use this to tie requests and responses together.
 
 id
 : An opaque string carrying the client account information, if available.
@@ -724,15 +666,12 @@ description of this encoding.
 
 ~~~
 struct {
-    opaque context<0..2^8-1>;
     opaque data<0..2^16-1>;
     opaque pkS<0..2^16-1>;
+    CredentialType secret_types<2..254>;
+    CredentialType cleartext_types<2..254>;
 } RegistrationResponse;
 ~~~
-
-context
-: An opaque string matching the context provided in the corresponding registration
-request, or empty string if one was not provided.
 
 data
 : An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
@@ -743,18 +682,14 @@ pkS
 
 ~~~
 struct {
-    opaque context<0..2^8-1>;
-    opaque envelope<0..2^16-1>;
+    Envelope envelope;
     opaque pkU<0..2^16-1>;
 } RegistrationUpload;
 ~~~
 
-context
-: An opaque string matching the context set in the corresponding registration
-request.
-
 envelope
-: An encryption of a Credentials structure. The encryption procedure is defined in {{SecEnvU}}.
+: An authenticated encoding of a Credentials structure with additional application-specific
+data.
 
 pkU
 : An encoded public key, matching the public key contained within the encrypted
@@ -776,12 +711,11 @@ Output:
 - metadata, a RequestMetadata structure
 
 Steps:
-1. context = GetUnusedContext()
-2. (r, M) = Blind(PwdU)
-3. data = Serialize(M)
-4. Create RegistrationRequest request with (context, IdU, data)
-5. Create RequestMetadata metadata with Serialize(r)
-6. Output (request, metadata)
+1. (r, M) = Blind(PwdU)
+2. data = Serialize(M)
+3. Create RegistrationRequest request with (IdU, data)
+4. Create RequestMetadata metadata with Serialize(r)
+5. Output (request, metadata)
 ~~~
 
 #### CreateRegistrationResponse
@@ -789,9 +723,15 @@ Steps:
 ~~~
 CreateRegistrationResponse(request, pkS)
 
+Parameters:
+- secret_credentials_list, a list of CredentialType values clients should include
+ in the secret_credentials list of their Credentials structure
+- cleartext_credentials_list, a list of CredentialType values clients should include
+ in the cleartext_credentials list of their Credentials structure
+
 Input:
 - request, a RegistrationRequest structure
-- pkS, the server's public KE key
+- pkS, the server's public key
 
 Output:
 - response, a RegistrationResponse structure
@@ -802,21 +742,26 @@ Steps:
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
-5. Create RegistrationResponse response with (request.context, data)
+5. Create RegistrationResponse response with
+     (data, pkS, secret_credentials_list, cleartext_credentials_list)
 6. Output (response, kU)
 ~~~
 
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
+FinalizeRequest(IdU, PwdU, aad, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nn, length of the key derivation nonce
+- Nk, length of the authentication and exporter keys
 
 Input:
 - IdU, an opaque byte string containing the user's identity
 - PwdU, an opaque byte string containing the user's password
+- aad, application-specific additional associated data
+- skU, the user's private key
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
@@ -830,20 +775,35 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. credentials_key = HKDF(salt=0, IKM=RwdU, "CredentialsKey", Nk)
-6. exporter_key = HKDF(salt=0, IKM=RwdU, "ExporterKey", Nk)
-7. n = random(Nn) # generate a fresh nonce randomly
-8. Credentials C with (skU=skU, pkS=response.pkS)
-9. (ct, t) = Seal(credentials_key, n, "", C)
-10. EnvU = concat(n, ct, t)
-11. Create RegistrationUpload upload with envelope value EnvU
-11. Output (upload, exporter_key)
+5. Create secret_credentials with CredentialExtensions matching that
+   contained in response.secret_credentials_list
+6. Create cleartext_credentials with CredentialExtensions matching that
+   contained in response.cleartext_credentials_list
+7. pt = SerializeExtensions(secret_credentials)
+8. nonce = random(Nn)
+9. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
+10. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
+11. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
+12. ct = xor(pt, pseudorandom_pad)
+13. auth_data = SerializeExtensions(cleartext_credentials)
+14. t = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+15. Create Envelope EnvU with (nonce, ct, auth_data, t)
+16. Create RegistrationUpload upload with envelope value (EnvU, pkU).
+17. Output (upload, exporter_key)
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
-The application may optionally include pk(skU), IdS, and IdU in the Credentials
-structure C at step 8.
+The inputs to HKDF-Expand are as specified in {{RFC5869}}.
+
+All `CredentialExtension` values require authentication. Only skU requires secrecy.
+If an application requires secrecy of pkS, this value SHOULD be included in the
+`Credentials.secret_credentials` list (step 5). Applications may optionally include
+pkU, IdU, or IdS in the `Credentials.secret_credentials` structure (step 5) if secrecy
+of these values is desired. Otherwise, if an application does not require secrecy for
+these values but does require authentication, they may be appended to
+`Credentials.cleartext_credentials`. Servers MUST specify how clients encode extensions
+in the `Credentials` structure as part of this registration phase.
 
 The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
@@ -876,12 +836,12 @@ used in this stage.
                                    request
                               ----------------->
 
-              (response, pkU) = CreateCredentialResponse(request)
+         (response, pkU) = CreateCredentialResponse(request, pkS)
 
                                    response
                               <-----------------
 
-    creds = RecoverCredentials(PwdU, metadata, request, response)
+    creds = RecoverCredentials(PwdU, aad, metadata, request, response)
 
                                (AKE with creds)
                               <================>
@@ -902,15 +862,10 @@ for examples of this integration.
 
 ~~~
 struct {
-    opaque context<0..2^8-1>;
     opaque id<0..2^16-1>;
     opaque data<1..2^16-1>;
 } CredentialRequest;
 ~~~
-
-context
-: An opaque string which identifies the credential request and which will be
-echoed in the response. Clients use this to tie requests and responses together.
 
 id
 : An opaque string carrying the client account information, if available. If absent,
@@ -923,22 +878,22 @@ description of this encoding.
 
 ~~~
 struct {
-    opaque context<0..2^8-1>;
     opaque data<1..2^16-1>;
     opaque envelope<1..2^16-1>;
+    opaque pkS<0..2^16-1;
 } CredentialResponse;
 ~~~
-
-context
-: An opaque string matching the context provided in the corresponding credential
-request, or empty string if one was not provided.
 
 data
 : An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
 description of this encoding.
 
 envelope
-: An encryption of an Credentials. The encryption procedure is defined in {{SecEnvU}}.
+: An authenticated encoding of a Credentials structure.
+
+pkS
+: An encoded public key that will be used for the online authenticated key
+exchange stage. This field is optional.
 
 ### Authenticated key exchange functions
 
@@ -956,45 +911,48 @@ Output:
 - metadata, a RequestMetadata structure
 
 Steps:
-1. context = GetUnusedContext()
-2. (r, M) = Blind(PwdU)
-3. data = Serialize(M)
-4. Create CredentialRequest request with (context, IdU, data)
-5. Create RequestMetadata metadata with Serialize(r)
-6. Output (request, metadata)
+1. (r, M) = Blind(PwdU)
+2. data = Serialize(M)
+3. Create CredentialRequest request with (IdU, data)
+4. Create RequestMetadata metadata with Serialize(r)
+5. Output (request, metadata)
 ~~~
 
-#### CreateCredentialResponse(request)
+#### CreateCredentialResponse(request, pkS)
 
 ~~~
-CreateCredentialResponse(request)
+CreateCredentialResponse(request, pkS)
 
 Input:
 - request, an CredentialRequest structure
+- pkS, public key of the server
 
 Output:
 - response, a RegistrationUpload structure
-- pkU, Public key of the user
+- pkU, public key of the user
 
 Steps:
 1. (kU, EnvU, pkU) = LookupUserRecord(request.id)
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
-5. Create CredentialResponse response with (request.context, data, EnvU)
+5. Create CredentialResponse response with (data, EnvU, pkS)
 6. Output (response, pkU)
 ~~~
 
-#### RecoverCredentials(IdU, PwdU, metadata, request, response)
+#### RecoverCredentials(PwdU, aad, metadata, request, response)
 
 ~~~
-RecoverCredentials(PwdU, metadata, request, response)
+RecoverCredentials(PwdU, aad, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nn, length of the key derivation nonce
+- Nk, length of the authentication and exporter keys
 
 Input:
 - PwdU, an opaque byte string containing the user's password
+- aad, application-specific additional associated data
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
@@ -1007,15 +965,27 @@ Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. RwdU = Harden(y, params)
-5. credentials_key = HKDF(salt=0, IKM=RwdU, "CredentialsKey", Nk)
-6. exporter_key = HKDF(salt=0, IKM=RwdU, "ExporterKey", Nk)
-7. (n, ct, t) = response.envelope
-8. C = Open(credentials_key, n, "", ct, t)
-9. Output C, exporter_key
+4. nonce = response.envelope.nonce
+5. ct = response.envelope.ct
+6. RwdU = Harden(y, params)
+7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
+8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
+9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
+10. auth_data = response.envelope.auth_data
+11. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+12. If !CT_EQUAL(response.envelope.auth_tag, t'), raise DecryptionError
+13. pt = xor(ct, pseudorandom_pad)
+14. secret_credentials = DeserializeExtensions(pt)
+15. cleartext_credentials = DeserializeExtensions(auth_data)
+16. Create Credentials C with (secret_credentials, cleartext_credentials)
+17. Output C, exporter_key
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+
+As in the registration phase, applications MUST authenticate pkS; secrecy of pkS is
+optional. If an application requires secrecy of pkS, this value SHOULD be omitted
+from auth_data (step 9).
 
 ## Exporter Keys {#exporter-usage}
 
@@ -1458,22 +1428,6 @@ This draft complies with the requirements for PAKE protocols set forth in
 
 ## Envelope considerations
 
-Note (rationale of CTRBASE): The nonce used in defining CTRBASE is needed,
-for example, for the case where a user registers the same password
-repeatedly, choosing a fresh skU each time while the value of the server's
-OPRF key kU stays fixed. This results in the same encryption key but
-different plaintexts which requires a changing nonce. Eight bytes are more
-than enough for this.
-
-Note (using GCM): Can one replace AES-CTR with GCM-AES for encrypting AEenv?
-Yes, as long as one keeps the HMAC authentication. As said, any secure
-encryption can be used for encrypting AEenv. However, GCM also produces an
-authentication tag that is not needed here. As a result, using GCM may tempt
-someone to drop the HMAC authentication which would be insecure since
-standalone GCM is not random-key robust. For this reason it may be better not
-to replace plain AES-CTR with GCM or any other authenticated encryption.
-
-Note (storage/communication efficient authentication-only EnvU):
 It is possible to dispense with encryption in the construction of EnvU to
 obtain a shorter EnvU (resulting in less storage at the server and less
 communication from server to client). The idea is to derive skU from RwdU.
@@ -1514,8 +1468,7 @@ Note that if the same pair of user identity IdU and value alpha is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
-the construction of EnvU ({{SecEnvU}}) to all the key material in EnvU,
-namely, AOenv will be empty.
+the construction of EnvU to all the key material in EnvU, namely, cleartext_credentials will be empty.
 The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
 Upon receiving a pair of user identity IdU and value alpha for a non-existing
@@ -1572,56 +1525,9 @@ passwords.
 
 # IANA Considerations
 
-TODO
+This document makes no IANA requests.
 
 --- back
-
-# Counter mode encryption {#AppCTR}
-
-We define counter mode encryption to be used with EnvU ({{SecEnvU}}).
-The specification is based on [RFC3686] with a different initial value of
-CTRBLK. The description refers to AES but it applies to any block cipher
-(with its corresponding block size).
-
-Let PT be the plaintext to be encrypted and CTRBASE a 128-bit initial value
-(see {{SecEnvU}} for the OPAQUE-specific CTRBASE value).
-Partition PT into 128-bit blocks PT = PT[1] PT[2] ... PT[n] where the
-final block can be shorter than 128 bits. To compute the ciphertext
-CT, each block PT[i] is XORed with a block KS[i] of a key stream KS
-obtained by applying AES to a 128-bit counter CTRBLK initialized to CTRBASE
-and incremented for each block KS[i]. The last value KS[n] is truncated,
-if necessary, to the length of PT[n]. The ciphertext CT includes n+1
-blocks defined as CT[0]=CTRBASE and CT[i]=PT[i] xor KS[i], for i=1,...,n,
-with the final block possibly shorter than 128 bits.
-
-The encryption of n plaintext blocks can be summarized as:
-
-~~~
-  CT[0] := CTRBASE
-  CTRBLK := CTRBASE
-  FOR i := 1 to n-1 DO
-    CT[i] := PT[i] XOR AES(CTRBLK)
-    CTRBLK := CTRBLK + 1
-  END
-  CT[n] := PT[n] XOR TRUNC(AES(CTRBLK))
-~~~
-
-The AES() function performs AES encryption with key EncKey.
-The TRUNC() function truncates the output of the AES encrypt
-operation to the same length as the final plaintext block, returning
-the most significant bits.
-
-Decryption is similar. The decryption of ciphertext CT= CT[0] ... CT[n]
-summarized as:
-
-~~~
-  CTRBLK := C[0]
-  FOR i := 1 to n-1 DO
-    PT[i] := CT[i] XOR AES(CTRBLK)
-    CTRBLK := CTRBLK + 1
-  END
-  PT[n] := CT[n] XOR TRUNC(AES(CTRBLK))
-~~~
 
 # Acknowledgments
 
