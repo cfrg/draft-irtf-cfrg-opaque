@@ -469,6 +469,9 @@ The output of the OPRF Finalize() operation may be hardened using a MHF F.
 This greatly increases the cost of an offline attack upon the compromise of
 the password file at the server. Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}},
 scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with suitable parameter choices.
+These may be constant values or set at the time of password registration and stored
+at the server. In the latter case, the server communicates these parameters to the
+client during login.
 
 # OPAQUE Protocol {#protocol}
 
@@ -519,40 +522,81 @@ struct {
 ~~~
 
 Additionally, OPAQUE makes use of an additional structure `Credentials` to store
-user (client) credentials. It is structured as follows. Each public and
-private key value is an opaque byte string, specific to the AKE protocol in
-which OPAQUE is instantiated. For example, if used as raw public keys for
-TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
+user (client) credentials. A `Credentials` structure consists of secret and
+cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
+the type of extension and carries the raw bytes. This specification includes
+extensions essential for OPAQUE, including:
+
+- skU: The encoded user private key.
+- pkU: The encoded user public key.
+- pkS: The encoded server public key.
+- idU: The user identity. This is an application-specific value, e.g., an e-mail
+  address or normal account name.
+- idS: The server identity. This is typically a domain name, e.g., example.com.
+  See {{SecIdentities}} for information about this identity.
+
+Each public and private key value is an opaque byte string, specific to the AKE
+protocol in which OPAQUE is instantiated. For example, if used as raw public keys
+for TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
+
+The full `Credentials` encoding is as follows.
 
 ~~~
+enum {
+  skU(1),
+  pkU(2),
+  pkS(3),
+  idU(4),
+  idS(5),
+  (255)
+} CredentialType;
+
+opaque CredentialData<0..2^16-1>
+
 struct {
-  opaque skU<1..2^16-1>;
-  opaque pkS<0..2^16-1>; // optional
-  opaque pkU<0..2^16-1>; // optional
-  opaque idU<0..2^16-1>; // optional
-  opaque idS<0..2^16-1>; // optional
+  CredentialType type;
+  CredentialData data<0..2^16-1>;
+} CredentialExtension;
+
+struct {
+  CredentialExtension secret_credentials<1..2^16-1>;
+  CredentialExtension cleartext_credentials<0..2^16-1>;
 } Credentials;
 ~~~
 
-skU
-: An encoded private key.
+secret_credentials
+: Application credentials which require secrecy and authentication.
 
-pkS
-: An encoded public key corresponding to the server. This field is optional.
+cleartext_credentials
+: Application credentials which require authentication.
 
-pkU
-: An encoded public key corresponding to skU. This field is optional.
+Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
+which translate a list of `CredentialExtension` structures to and from a unique byte string
+encoding.
 
-idU
-: The user identity. This is an application-specific value, e.g., an e-mail
-address or normal account name. This field is optional.
+OPAQUE uses an `Envelope` structure to encapsulate an encrypted `Credentials` structure.
+It is encoded as follows.
 
-idS
-: The server identity. This is typically a domain name, e.g., example.com.
-See {{SecIdentities}} for information about this identity. This field is optional.
+~~~
+struct {
+  opaque nonce[Nn];
+  opaque ct<1..2^16-1>;
+  opaque auth_data<0..2^16-1>;
+  opaque tag<1..2^16-1>;
+} Envelope;
+~~~
 
-Additionally, we assume helper functions `SerializeCredentials` and `DeserializeCredentials`
-which translate a Credentials structure to and from a unique byte string encoding.
+nonce
+: A unique Nh-byte nonce used to protect this Envelope.
+
+ct
+: Encoding of encrypted and authenticated credential extensions list.
+
+auth_data
+: Encoding of an authenticated credential extensions list.
+
+tag
+: Authentication tag protecting the contents of the envelope.
 
 ## Offline registration stage {#SecPasReg}
 
@@ -633,13 +677,14 @@ pkS
 
 ~~~
 struct {
-    opaque envelope<1..2^16-1>;
+    Envelope envelope;
     opaque pkU<0..2^16-1>;
 } RegistrationUpload;
 ~~~
 
 envelope
-: An authenticated encoding of a Credentials structure.
+: An authenticated encoding of a Credentials structure with additional application-specific
+data.
 
 pkU
 : An encoded public key, matching the public key contained within the encrypted
@@ -718,16 +763,16 @@ Steps:
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. RwdU = Harden(y, params)
-5. Credentials C with (skU=skU).
-6. pt = SerializeCredentials(C)
+5. Create Credentials C according to server policy
+6. pt = SerializeExtensions(C.secret_credentials)
 7. nonce = random(Nn)
 8. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
 9. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
 10. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
 11. ct = xor(pt, pseudorandom_pad)
-12. auth_data = pkS
+12. auth_data = SerializeExtensions(C.cleartext_credentials)
 13. t = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
-14. EnvU = concat(nonce, ct, aad, t)
+14. Create Envelope EnvU with (nonce, ct, auth_data, t)
 15. Create RegistrationUpload upload with envelope value (EnvU, pkU).
 16. Output (upload, exporter_key)
 ~~~
@@ -736,13 +781,13 @@ Steps:
 
 Applications MUST encrypt and authenticate skU, and MUST authenticate pkS.
 Secrecy of pkS is optional. If an application requires secrecy of pkS, this value
-SHOULD be included in the Credentials structure (step 5) and omitted from
-auth_data (step 12).
-
-Applications may optionally include pkU, IdU, or IdS in the Credentials structure
-(step 5) if secrecy of these values is desired. If an application does not require secrecy
-for these values, they may be appended to auth_data (step 12). Instantiations of OPAQUE
-MUST specify how auth_data is constructed.
+SHOULD be included in the `Credentials.secret_credentials` list (step 5).
+Applications may optionally include pkU, IdU, or IdS in the
+`Credentials.secret_credentials` structure (step 5) if secrecy of these values
+is desired. Otherwise, if an application does not require secrecy for these values
+but does require authentication, they may be appended to `Credentials.cleartext_credentials`.
+Servers MUST specify how clients encode extensions in the `Credentials` structure
+as part of this registration phase.
 
 The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
@@ -907,17 +952,20 @@ Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. (nonce, ct, aad, t) = response.envelope
-5. RwdU = Harden(y, params)
-6. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
-7. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-8. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
-9. auth_data = response.pkS
-10. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
-11. If !CT_EQUAL(t, t'), raise DecryptionError
-12. pt = xor(ct, pseudorandom_pad)
-13. C = DeserializeCredentials(pt)
-14. Output C, exporter_key
+4. nonce = response.envelope.tag
+5. ct = response.envelope.ct
+6. RwdU = Harden(y, params)
+7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
+8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
+9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
+10. auth_data = response.envelope.auth_data
+11. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
+12. If !CT_EQUAL(response.envelope.tag, t'), raise DecryptionError
+13. pt = xor(ct, pseudorandom_pad)
+14. secret_credentials = DeserializeExtensions(pt)
+15. cleartext_credentials = DeserializeExtensions(auth_data)
+16. Create Credentials C with (secret_credentials, cleartext_credentials)
+17. Output C, exporter_key
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
