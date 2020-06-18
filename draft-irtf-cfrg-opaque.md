@@ -525,7 +525,7 @@ Additionally, OPAQUE makes use of an additional structure `Credentials` to store
 user (client) credentials. A `Credentials` structure consists of secret and
 cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
 the type of extension and carries the raw bytes. This specification includes
-extensions essential for OPAQUE, including:
+extensions for OPAQUE, including:
 
 - skU: The encoded user private key.
 - pkU: The encoded user public key.
@@ -534,6 +534,9 @@ extensions essential for OPAQUE, including:
   address or normal account name.
 - idS: The server identity. This is typically a domain name, e.g., example.com.
   See {{SecIdentities}} for information about this identity.
+
+Applications MUST include skU and pkU in each `Credentials` structure. The other
+extensions are optional.
 
 Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
@@ -565,10 +568,10 @@ struct {
 ~~~
 
 secret_credentials
-: Application credentials which require secrecy and authentication.
+: OPAQUE credentials which require secrecy and authentication.
 
 cleartext_credentials
-: Application credentials which require authentication.
+: OPAQUE credentials which require authentication but not secrecy.
 
 Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
 which translate a list of `CredentialExtension` structures to and from a unique byte string
@@ -582,7 +585,7 @@ struct {
   opaque nonce[Nn];
   opaque ct<1..2^16-1>;
   opaque auth_data<0..2^16-1>;
-  opaque tag<1..2^16-1>;
+  opaque auth_tag<1..2^16-1>;
 } Envelope;
 ~~~
 
@@ -595,7 +598,7 @@ ct
 auth_data
 : Encoding of an authenticated credential extensions list.
 
-tag
+auth_tag
 : Authentication tag protecting the contents of the envelope.
 
 ## Offline registration stage {#SecPasReg}
@@ -952,7 +955,7 @@ Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. nonce = response.envelope.tag
+4. nonce = response.envelope.nonce
 5. ct = response.envelope.ct
 6. RwdU = Harden(y, params)
 7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
@@ -960,7 +963,7 @@ Steps:
 9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
 10. auth_data = response.envelope.auth_data
 11. t' = HMAC(auth_key, concat(nonce, ct, concat(auth_data, aad)))
-12. If !CT_EQUAL(response.envelope.tag, t'), raise DecryptionError
+12. If !CT_EQUAL(response.envelope.auth_tag, t'), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_credentials = DeserializeExtensions(pt)
 15. cleartext_credentials = DeserializeExtensions(auth_data)
