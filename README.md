@@ -28,17 +28,9 @@ The purpose of these implementations is for generating test vectors and enabling
 This is a (likely incomplete) list of other libraries that have implemented an old version of the OPAQUE specification.
 
 - [https://github.com/novifinancial/opaque-ke](https://github.com/novifinancial/opaque-ke) (version -05)
-- [https://github.com/gustin/opaque](https://github.com/gustin/opaque) (version -03)
 - [https://github.com/cretz/gopaque](https://github.com/cretz/gopaque) (version -01)
-- [https://github.com/GeorgeLyon/Opaque](https://github.com/GeorgeLyon/Opaque) (version -00)
 - [https://github.com/frekui/opaque](https://github.com/frekui/opaque) (version -00)
-- [https://github.com/noisat-labs/opaque](https://github.com/noisat-labs/opaque) (version ??)
-
-The following is a list of incompatible or otherwise extended variants of OPAQUE.
-
-- [https://github.com/stef/libsphinx](https://github.com/stef/libsphinx) (SPHINX implementation)
-- [https://github.com/mmou/threshold-OPAQUE/](https://github.com/mmou/threshold-OPAQUE/) (threshold OPAQUE)
-- [https://github.com/Lldenaurois/opaque-rs](https://github.com/Lldenaurois/opaque-rs)
+- [https://github.com/noisat-labs/opaque](https://github.com/noisat-labs/opaque) (version --00)
 
 ## Contributing
 
