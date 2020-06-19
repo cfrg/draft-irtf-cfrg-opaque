@@ -440,25 +440,6 @@ OPAQUE relies on the following protocols and primitives:
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
 
-## DH-OPRF {#SecOprf}
-
-OPAQUE uses DH-OPRF instantiations from {{I-D.irtf-cfrg-voprf}}. It supports
-the following ciphersuites:
-
-- OPRF-curve25519_XMD:SHA-512_ELL2_RO_
-- OPRF-curve448_XMD:SHA-512_ELL2_RO_
-- OPRF-P256_XMD:SHA-256_SSWU_RO_
-- OPRF-P384_XMD:SHA-512_SSWU_RO_
-- OPRF-P521_XMD:SHA-512_SSWU_RO_
-
-The output of the OPRF Finalize() operation may be hardened using a MHF F.
-This greatly increases the cost of an offline attack upon the compromise of
-the password file at the server. Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}},
-scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with suitable parameter choices.
-These may be constant values or set at the time of password registration and stored
-at the server. In the latter case, the server communicates these parameters to the
-client during login.
-
 # OPAQUE Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
@@ -1002,6 +983,24 @@ the identity is acceptable or not to the peer. However, we note that the
 public keys of both the server and the user must always be those defined at
 time of password registration.
 
+# OPAQUE Configurations {#configurations}
+
+An OPAQUE configuration must specify the OPRF protocol variant and MHF function.
+OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}}, and supports the following
+ciphersuites:
+
+- OPRF-curve25519_XMD:SHA-512_ELL2_RO_
+- OPRF-curve448_XMD:SHA-512_ELL2_RO_
+- OPRF-P256_XMD:SHA-256_SSWU_RO_
+- OPRF-P384_XMD:SHA-512_SSWU_RO_
+- OPRF-P521_XMD:SHA-512_SSWU_RO_
+
+Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
+and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
+values or set at the time of password registration and stored at the server.
+In the latter case, the server communicates these parameters to the client during
+login.
+
 # OPAQUE Instantiations {#instantiations}
 
 We present several instantiations of OPAQUE using DH-OPRF
@@ -1064,7 +1063,7 @@ where:
 - \* denotes optional elements;
 
 - OPRF1, OPRF2 denote the DH-OPRF values alpha, beta sent by user and server,
-respectively, as defined in {{SecOprf}};
+respectively, as defined by the chosen OPRF in {{configurations}};
 
 - EnvU is the OPAQUE's envelope stored by the server containing keying
 information for the client to run the AKE with the server;
@@ -1268,6 +1267,12 @@ is essential for binding this enforcement to the authentication step.
 Skipping the key exchange part is analogous to carefully checking a
 visitor's credential at the door and then leaving the door open for
 others to enter freely.
+
+## OPRF Hardening
+
+Hardening the output of the OPRF greatly increases the cost of an offline
+attack upon the compromise of the password file at the server. Applications
+SHOULD select parameters that balance cost and complexity.
 
 ## Envelope considerations
 
