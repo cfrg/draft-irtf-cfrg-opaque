@@ -1257,6 +1257,18 @@ leaving the door open for others to enter freely.
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
 
+## User authentication versus Authenticated Key Exchange
+
+OPAQUE provides PAKE (password-based authenticated key exchange)
+functionality in the client-server setting. While in the case of user
+identification, wherein the focus is often on authentication, we stress
+that the key exchange element is essential. Indeed, in most cases,
+user authentication enforces some policy, and the key exchange step
+is essential for binding this enforcement to the authentication step.
+Skipping the key exchange part is analogous to carefully checking a
+visitor's credential at the door and then leaving the door open for
+others to enter freely.
+
 ## Envelope considerations
 
 It is possible to dispense with encryption in the construction of EnvU to
