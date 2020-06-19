@@ -557,7 +557,7 @@ struct {
 ~~~
 
 nonce
-: A unique Nh-byte nonce used to protect this Envelope.
+: A unique Nn-byte nonce used to protect this Envelope.
 
 ct
 : Encoding of encrypted and authenticated credential extensions list.
