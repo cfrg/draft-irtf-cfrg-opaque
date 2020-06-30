@@ -407,6 +407,8 @@ the public key. For example, (skU, pkU) refers to the U's private and public key
 - `xor(a,b)`: XOR of byte strings; `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with two arguments of unequal
   length.
+- `ct_equal(a, b)`: Return `true` if `a` is equal to `b`, and false otherwise.
+  This function runs in constant time, irrespective of the values `a` or `b`.
 
 Except if said otherwise, random choices in this specification refer to
 drawing with uniform distribution from a given set (i.e., "random" is short
@@ -422,14 +424,12 @@ The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF):
-  - GenerateKeyPair(): This function generates a public and private key for the OPRF group.
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some value `r`, producing `M`, and output (`r`, `M`).
-  - Evaluate(k, M): Compute the scalar multiplication `k*M` and output the
-    result `Z`.
+  - Evaluate(k, M): Evaluate input `M` using private key `k`.
   - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
-  - Finalize(x, N, dst): Compute the OPRF output using input `x`, `N`, and domain
-    separation tag `dst`.
+  - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
+    separation tag `info`.
   - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
     `enc`. The size of `enc` is determined by the underlying OPRF group.
   - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
@@ -439,6 +439,9 @@ OPAQUE relies on the following protocols and primitives:
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
+
+We also assume the existence of a function `KeyGen`, which generates an OPRF private
+and public key. We write `(skU, pkU) = KeyGen()` to denote this function.
 
 # OPAQUE Protocol {#protocol}
 
@@ -705,7 +708,7 @@ Output:
 - kU, Per-user OPRF key
 
 Steps:
-1. (kU, pkU) = GenerateKeyPair() # pkU is ignored
+1. (kU, _) = KeyGen()
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
@@ -938,7 +941,7 @@ Steps:
 9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
 10. auth_data = response.envelope.auth_data
 11. t' = HMAC(auth_key, concat(nonce, ct, auth_data))
-12. If !CT_EQUAL(response.envelope.auth_tag, t'), raise DecryptionError
+12. If !ct_equal(response.envelope.auth_tag, t'), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_credentials = DeserializeExtensions(pt)
 15. cleartext_credentials = DeserializeExtensions(auth_data)
