@@ -897,7 +897,7 @@ Input:
 - pkS, public key of the server
 
 Output:
-- response, a RegistrationUpload structure
+- response, a CredentialResponse structure
 - pkU, public key of the user
 
 Steps:
