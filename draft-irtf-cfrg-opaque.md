@@ -750,8 +750,8 @@ Steps:
    contained in response.cleartext_credentials_list
 7. pt = SerializeExtensions(secret_credentials)
 8. nonce = random(Nn)
-9. pseudorandom_pad = HKDF-Expand(RwdU, contact(nonce, "Pad"), len(pt))
-10. auth_key = HKDF-Expand(RwdU, contact(nonce, "AuthKey"), Nk)
+9. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
+10. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
 11. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
 12. ct = xor(pt, pseudorandom_pad)
 13. auth_data = SerializeExtensions(cleartext_credentials)
