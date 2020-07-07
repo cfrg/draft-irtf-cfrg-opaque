@@ -505,7 +505,7 @@ extensions for OPAQUE, including:
 - idS: The server identity. This is typically a domain name, e.g., example.com.
   See {{SecIdentities}} for information about this identity.
 
-Applications MUST include skU and pkU in each `Credentials` structure. The other
+Applications MUST include skU and pkS in each `Credentials` structure. The other
 extensions are optional.
 
 Each public and private key value is an opaque byte string, specific to the AKE
