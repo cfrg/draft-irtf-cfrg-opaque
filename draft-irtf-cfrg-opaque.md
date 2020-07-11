@@ -18,6 +18,11 @@ author:
     organization: Algorand Foundation
     email: hugokraw@gmail.com
  -
+    ins: K. Lewi
+    name: Kevin Lewi
+    organization: Facebook
+    email: klewi@cs.stanford.edu
+ -
     ins: C. A. Wood
     name: Christopher A. Wood
     organization: Cloudflare
@@ -290,7 +295,7 @@ in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
 It is worth noting that the currently most deployed (PKI-free) aPAKE is
-SRP {{?RFC2945}}, which is open to pre-computation attacks, and is inefficient
+SRP {{?RFC2945}}, which is open to pre-computation attacks, and less efficient
 relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
 multiplication operations, and thus does not work over plain elliptic curves.
 OPAQUE is therefore a suitable replacement.
@@ -439,6 +444,7 @@ OPAQUE relies on the following protocols and primitives:
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
+    This function also needs to satisfy collision resistance.
 
 We also assume the existence of a function `KeyGen`, which generates an OPRF private
 and public key. We write `(skU, pkU) = KeyGen()` to denote this function.
@@ -725,7 +731,7 @@ FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 Parameters:
 - params, the MHF parameters established out of band
 - Nn, length of the key derivation nonce
-- Nk, length of the authentication and exporter keys
+- Nk, length of the authentication and export keys
 
 Input:
 - IdU, an opaque byte string containing the user's identity
@@ -737,28 +743,28 @@ Input:
 
 Output:
 - upload, a RegistrationUpload structure
-- exporter_key, an additional key
+- export_key, an additional key
 
 Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(PwdU, N, "RFCXXXX")
-4. RwdU = Harden(y, params)
+4. RwdU = HKDF-Extract("RwdU", Harden(y, params))
 5. Create secret_credentials with CredentialExtensions matching that
    contained in response.secret_credentials_list
 6. Create cleartext_credentials with CredentialExtensions matching that
    contained in response.cleartext_credentials_list
 7. pt = SerializeExtensions(secret_credentials)
 8. nonce = random(Nn)
-9. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
+9. pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
 10. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-11. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey"), Nk)
-12. ct = xor(pt, pseudorandom_pad)
+11. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
+12. ct = xor(pt, pad)
 13. auth_data = SerializeExtensions(cleartext_credentials)
 14. t = HMAC(auth_key, concat(nonce, ct, auth_data))
 15. Create Envelope EnvU with (nonce, ct, auth_data, t)
 16. Create RegistrationUpload upload with envelope value (EnvU, pkU).
-17. Output (upload, exporter_key)
+17. Output (upload, export_key)
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
@@ -778,7 +784,7 @@ The server identity `IdS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
 server domain name.
 
-See {{exporter-usage}} for details about the output exporter_key usage.
+See {{export-usage}} for details about the output export_key usage.
 
 #### StoreUserRecord
 
@@ -917,7 +923,7 @@ RecoverCredentials(PwdU, metadata, request, response)
 Parameters:
 - params, the MHF parameters established out of band
 - Nn, length of the key derivation nonce
-- Nk, length of the authentication and exporter keys
+- Nk, length of the authentication and export keys
 
 Input:
 - PwdU, an opaque byte string containing the user's password
@@ -927,7 +933,7 @@ Input:
 
 Output:
 - C, a Credentials structure
-- exporter_key, an additional key
+- export_key, an additional key
 
 Steps:
 1. Z = Deserialize(response.data)
@@ -935,10 +941,10 @@ Steps:
 3. y = Finalize(PwdU, N, "RFCXXXX")
 4. nonce = response.envelope.nonce
 5. ct = response.envelope.ct
-6. RwdU = Harden(y, params)
+4. RwdU = HKDF-Extract("RwdU", Harden(y, params))
 7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
 8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-9. exporter_key = HKDF-Expand(RwdU, concat(nonce, "ExporterKey", nonce), Nk)
+9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey", nonce), Nk)
 10. auth_data = response.envelope.auth_data
 11. t' = HMAC(auth_key, concat(nonce, ct, auth_data))
 12. If !ct_equal(response.envelope.auth_tag, t'), raise DecryptionError
@@ -946,7 +952,7 @@ Steps:
 14. secret_credentials = DeserializeExtensions(pt)
 15. cleartext_credentials = DeserializeExtensions(auth_data)
 16. Create Credentials C with (secret_credentials, cleartext_credentials)
-17. Output C, exporter_key
+17. Output C, export_key
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
@@ -955,9 +961,9 @@ As in the registration phase, applications MUST authenticate pkS; secrecy of pkS
 optional. If an application requires secrecy of pkS, this value SHOULD be omitted
 from auth_data (step 9).
 
-## Exporter Keys {#exporter-usage}
+## Export Key {#export-usage}
 
-In addition to Credentials, OPAQUE outputs an exporter_key that may be used for additional
+In addition to Credentials, OPAQUE outputs an export_key that may be used for additional
 application-specific purposes. For example, one might expand the use of OPAQUE with a
 credential-retrieval functionality that is separate from the contents of the Credentials
 structure.
