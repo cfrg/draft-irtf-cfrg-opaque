@@ -549,7 +549,8 @@ cleartext_credentials
 Applications MUST include `skU` in `secret_credentials` and `pkS` in either `cleartext_credentials`
 or `secret_credentials`. All other CredentialExtension values are optional. It is RECOMMENDED
 that applications include `pkS` and `idS` in `cleartext_credentials`, as this allows servers
-to not store redundant encryptions of these (shared) values for each user.
+to not store redundant encryptions of these values for each user in case the server uses the
+same values for multiple users.
 
 Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
 which translate a list of `CredentialExtension` structures to and from a unique byte string
