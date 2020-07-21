@@ -944,7 +944,7 @@ Steps:
 4. RwdU = HKDF-Extract("RwdU", Harden(y, params))
 7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
 8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey", nonce), Nk)
+9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
 10. auth_data = response.envelope.auth_data
 11. t' = HMAC(auth_key, concat(nonce, ct, auth_data))
 12. If !ct_equal(response.envelope.auth_tag, t'), raise DecryptionError
