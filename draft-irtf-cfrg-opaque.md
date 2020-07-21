@@ -511,9 +511,6 @@ extensions for OPAQUE, including:
 - idS: The server identity. This is typically a domain name, e.g., example.com.
   See {{SecIdentities}} for information about this identity.
 
-Applications MUST include skU and pkS in each `Credentials` structure. The other
-extensions are optional.
-
 Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
 for TLS 1.3 {{?RFC8446}}, they may be RSA, DSA, or ECDSA keys as per {{?RFC7250}}.
@@ -548,6 +545,12 @@ secret_credentials
 
 cleartext_credentials
 : OPAQUE credentials which require authentication but not secrecy.
+
+Applications MUST include `skU` in `secret_credentials` and `pkS` in either `cleartext_credentials`
+or `secret_credentials`. All other CredentialExtension values are optional. It is RECOMMENDED
+that applications include `pkS` and `idS` in `cleartext_credentials`, as this allows servers
+to not store redundant encryptions of these values for each user in case the server uses the
+same values for multiple users.
 
 Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
 which translate a list of `CredentialExtension` structures to and from a unique byte string
