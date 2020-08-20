@@ -21,7 +21,7 @@ author:
     ins: K. Lewi
     name: Kevin Lewi
     organization: Facebook
-    email: klewi@cs.stanford.edu
+    email: lewi.kevin.k@gmail.com
  -
     ins: C. A. Wood
     name: Christopher A. Wood
@@ -527,8 +527,6 @@ enum {
   (255)
 } CredentialType;
 
-opaque CredentialData<0..2^16-1>
-
 struct {
   CredentialType type;
   CredentialData data<0..2^16-1>;
@@ -647,8 +645,8 @@ description of this encoding.
 struct {
     opaque data<0..2^16-1>;
     opaque pkS<0..2^16-1>;
-    CredentialType secret_types<2..254>;
-    CredentialType cleartext_types<2..254>;
+    CredentialType secret_types<1..255>;
+    CredentialType cleartext_types<0..255>;
 } RegistrationResponse;
 ~~~
 
@@ -858,7 +856,7 @@ description of this encoding.
 struct {
     opaque data<1..2^16-1>;
     opaque envelope<1..2^16-1>;
-    opaque pkS<0..2^16-1;
+    opaque pkS<0..2^16-1>;
 } CredentialResponse;
 ~~~
 
