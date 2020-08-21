@@ -580,7 +580,7 @@ auth_data
 auth_tag
 : Authentication tag protecting the contents of the envelope.
 
-## Offline registration stage {#SecPasReg}
+## Offline registration stage {#offline-phase}
 
 Registration is executed between a user U (running on a client machine) and a
 server S. It is assumed the server can identify the user and the client can
@@ -589,7 +589,9 @@ in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, it is assumed the user has a key pair (skU, pkU)
 that it wishes to register. These may be randomly generated for the account,
-or may be keys located in persistent storage, such as a hardware token.
+or may be keys located in persistent storage, such as a hardware token. Importantly,
+this key pair MUST be suitable for the particular AKE instantiation of OPAQUE;
+See {{online-phase}}.
 
 To begin, U chooses password PwdU, and S chooses its own pair of private-public
 keys skS and pkS for use with protocol KE. S can use the same pair of keys with
@@ -797,14 +799,19 @@ a record associated with the user's account IdU. If skS and pkS are used for
 multiple users, the server can store these values separately and omit them from
 the user's record.
 
-## Online authenticated key exchange stage
+## Online authenticated key exchange stage {#online-phase}
 
 After registration, the user (through a client machine) and server run the
 authenticated key exchange stage of the OPAQUE protocol. This stage is composed of a concurrent
-OPRF and key exchange flow. At the end, the client proves the user's knowledge
-of the password, and both client and server agree on a mutually authenticated shared
-secret key. This section describes the message flow, encoding, and helper functions
-used in this stage.
+OPRF and key exchange flow. The key exchange protocol is authenticated using the
+client and server private keys established during the offline phase; see {{offline-phase}}.
+The type of keys MUST be suitable for the key exchange protocol. For example, if
+the key exchange protocol is 3DH, as described in {{SecHmqv}}, then the private and
+public keys must be Diffie-Hellman keys. At the end, the client proves the user's
+knowledge of the password, and both client and server agree on a mutually authenticated
+shared secret key.
+
+This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
  Client (IdU, PwdU)                           Server (skS, pkS)
@@ -949,8 +956,8 @@ Steps:
 8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
 9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
 10. auth_data = response.envelope.auth_data
-11. t' = HMAC(auth_key, concat(nonce, ct, auth_data))
-12. If !ct_equal(response.envelope.auth_tag, t'), raise DecryptionError
+11. expected_tag = HMAC(auth_key, concat(nonce, ct, auth_data))
+12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_credentials = DeserializeExtensions(pt)
 15. cleartext_credentials = DeserializeExtensions(auth_data)
@@ -1001,11 +1008,11 @@ An OPAQUE configuration must specify the OPRF protocol variant and MHF function.
 OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}}, and supports the following
 ciphersuites:
 
-- OPRF-curve25519_XMD:SHA-512_ELL2_RO_
-- OPRF-curve448_XMD:SHA-512_ELL2_RO_
-- OPRF-P256_XMD:SHA-256_SSWU_RO_
-- OPRF-P384_XMD:SHA-512_SSWU_RO_
-- OPRF-P521_XMD:SHA-512_SSWU_RO_
+- OPRF(curve25519, SHA-512)
+- OPRF(curve448, SHA-512)
+- OPRF(P-256, SHA-512)
+- OPRF(P-384, SHA-512)
+- OPRF(P-521, SHA-512)
 
 Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
@@ -1015,11 +1022,10 @@ login.
 
 # OPAQUE Instantiations {#instantiations}
 
-We present several instantiations of OPAQUE using DH-OPRF
-and different KE protocols. For the sake of concreteness we focus on
-KE protocols consisting of three messages, denoted KE1, KE2, KE3, and
-such that KE1 and KE2 include DH values sent by user and server,
-respectively, and KE3 provides explicit user authentication.
+This section describes several instantiations of OPAQUE using different KE protocols.
+For the sake of concreteness it only includes KE protocols consisting of three messages,
+denoted KE1, KE2, KE3, where KE1 and KE2 include DH values sent by client and
+server, respectively, and KE3 provides explicit client authentication.
 As shown in {{OPAQUE}}, OPAQUE cannot use less than three messages
 so the 3-message instantiations presented here are optimal in terms
 of number of messages.
@@ -1027,16 +1033,16 @@ On the other hand, there is no impediment of using OPAQUE with protocols with
 more than 3 messages as in the case of IKEv2 (or the underlying SIGMA-R
 protocol {{SIGMA}}).
 
-OPAQUE generic outline with 3-message KE:
+The generic outline of OPAQUE with a 3-message KE protocol is as follows:
 
-- C to S: IdU, alpha=H'(PwdU)^r, KE1
-- S to C: beta=alpha^kU, EnvU, KE2
+- C to S: credential_request, KE1
+- S to C: credential_response, KE2
 - C to S: KE3
 
 Key derivation and other details of the protocol are specified by the
-KE scheme. We do note that by the results in {{OPAQUE}}, KE2 and KE3 should
-include authentication of the OPRF messages (or at least of the value alpha)
-for binding between the OPRF run and the KE session.
+KE scheme. We note that by the results in {{OPAQUE}}, KE2 and KE3 should
+authenticate credential request and response, respectively, for binding
+between the underlying OPRF protocol messages and the KE session.
 
 Next, we present three instantiations of OPAQUE - with HMQV, 3DH and SIGMA-I.
 {{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
@@ -1061,24 +1067,24 @@ post-quantum candidates.
 The private and public keys of the parties in these examples are
 Diffie-Hellman keys, namely, pkU=g^skU and pkS=g^skS.
 
-Specification/implementation details that are specific to the choice of group G
-will be adapted from the corresponding standards for different elliptic curves.
+Implementation details that are specific to the choice of group G will be
+adapted from the corresponding standards for different elliptic curves.
 
-PROTOCOL MESSAGES. OPAQUE with HMQV and OPAQUE with 3DH comprises:
+### HMQV and 3DH protocol messages
 
-- KE1 = OPRF1, nonceU, info1*, IdU*, epkU
-- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*, Mac(Km2; transcript2),
-- KE3 = info3*, Einfo3*, Mac(Km3; transcript3)}
+OPAQUE with HMQV and OPAQUE with 3DH comprises:
+
+- KE1 = credential_request, nonceU, info1*, IdU*, epkU
+- KE2 = credential_response, nonceS, info2*, epkS, Einfo2*, MAC(Km2; transcript2),
+- KE3 = info3*, Einfo3*, MAC(Km3; transcript3)}
 
 where:
 
-- \* denotes optional elements;
+- '\*' denotes optional elements;
 
-- OPRF1, OPRF2 denote the DH-OPRF values alpha, beta sent by user and server,
-respectively, as defined by the chosen OPRF in {{configurations}};
-
-- EnvU is the OPAQUE's envelope stored by the server containing keying
-information for the client to run the AKE with the server;
+- credential_request and credential_response denote the online OPAQUE
+protocol messages (defined in {{online-phase}}) which carry the client
+and server OPRF values, respectively, as well as the envelope.
 
 - nonceU, nonceS are fresh random nonces chosen by client and server,
 respectively;
@@ -1090,9 +1096,9 @@ hardening function, etc.);
 - Einfo2, Einfo3 denotes optional application-specific information sent
 encrypted under keys Ke2, Ke3 defined below;
 
-- IdU is the user's identity used by the server to fetch the corresponding user
-record, including EnvU, OPRF key, etc. (it can be omitted from message KE1 if
-the information is available to the server in some other way);
+- IdU is the user's identity used by the server to construct `credential_response`,
+which contains the server's OPRF response and EnvU. IdU can be omitted from message
+KE1 if the information is available to the server in some other way;
 
 - IdS, the server's identity, is not shown explicitly, it can be part of an info
 field (encrypted or not), part of EnvU, or can be known from other context
@@ -1101,31 +1107,35 @@ field (encrypted or not), part of EnvU, or can be known from other context
 - epkU, epkS are Diffie-Hellman ephemeral public keys chosen by user and
 server, respectively;
 
-- transcript2 includes the concatenation of the values OPRF1, nonceU, info1*, IdU*, epkU,
-OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*;
+- transcript2 includes the concatenation of the values
+credential_request, nonceU, info1*, IdU*, epkU, credential_response,
+nonceS, info2*, epkS, Einfo2*;
 
-- transcript3 includes the concatenation of all elements in transcript2 followed by
-info3*, Einfo3*;
+- transcript3 includes the concatenation of all elements in transcript2
+followed by info3*, Einfo3*;
 
 Notes:
 
 - The explicit concatenation of elements under transcript2 and transcript3 can be
  replaced with hashed values of these elements, or their combinations, using
- a collision-resistant hash (e.g., as in the transcript-hash of TLS 1.3).
+ a collision-resistant hash (e.g., as in the transcript-hash of TLS 1.3 {{RFC8446}}).
 
-- The inclusion of the values OPRF1 and OPRF2 under transcript2 is needed for
- binding the OPRF execution to that of the KE session. On the other hand,
- including EnvU in transcript2 is not mandatory.
+- The inclusion of the values credential_request and credential_response under
+ transcript2 is needed for binding the underlying OPRF execution to that of the
+ KE session. On the other hand, including EnvU in transcript2 is not mandatory
+ for security, though done as part of including credential_response.
 
 - The ephemeral keys epkU, epkS, can be exchanged prior to the above 3
  messages, e.g., when running these protocols under TLS 1.3.
 
-KEY DERIVATION. The above protocol requires MAC keys Km2, Km3, and optional
-encryption keys Ke2, Ke3, as well as generating a session key SK which is the
+### HMQV and 3DH key derivation
+
+The above protocol requires MAC keys Km2, Km3, and optional encryption keys
+Ke2, Ke3, as well as generating a session key SK which is the
 AKE output for protecting subsequent traffic (or for generating further key
-material). Key derivation uses HKDF [RFC5869] with a combination of the parties static
+material). Key derivation uses HKDF {{RFC5869}} with a combination of the parties static
 and ephemeral private-public key pairs and the parties' identities IdU, IdS.
-See {{SecIdentities}}.
+See {{SecIdentities}} for more information about these identities.
 
 ~~~
 SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
@@ -1136,7 +1146,7 @@ gets the most significant bytes of the HKDF output, Km2 the next bytes, etc.
 
 Values IKM and info are defined for each protocol:
 
-For HMQV:
+#### HMQV key derivation
 
  - info = "HMQV keys" \| nonceU \| nonceS \| IdU \| IdS
 
@@ -1148,11 +1158,11 @@ For HMQV:
 
    - by the server:  Khmqv = (epkU \* pkU^u)^{eskS + u\*skS}
 
-   and u = H(epkU \| "user" \| info) and s = H(epkS \| "srvr" \| info).
+   and u = H(epkU \| "client" \| info) and s = H(epkS \| "server" \| info).
 
 <!--     (u and s are often denoted d and e)   -->
 
-FOR 3DH:
+#### 3DH key derivation
 
  - info = "3DH keys" \| nonceU \| nonceS \| IdU \| IdS
 
@@ -1172,12 +1182,14 @@ as a basis for integration of OPAQUE with TLS 1.3 as specified in {{I-D.sullivan
 This specification can be extended to the 4-message SIGMA-R protocol as used
 in IKEv2.
 
-PROTOCOL MESSAGES. OPAQUE with SIGMA-I comprises:
+### SIGMA protocol messages
 
-- KE1 = OPRF1, nonceU, info1*, IdU*, epkU
-- KE2 = OPRF2, EnvU, nonceS, info2*, epkS, Einfo2*,
-       Sign(skS; transcript2-), Mac(Km2; IdS),
-- KE3 = info3*, Einfo3*, Sign(skU; transcript3-), Mac(Km3; IdU)}
+OPAQUE with SIGMA-I comprises:
+
+- KE1 = credential_request, info1*, IdU*, nonceU, epkU
+- KE2 = credential_response, nonceS, info2*, epkS, Einfo2*,
+       Sign(skS; transcript2-), MAC(Km2; IdS),
+- KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; IdU)}
 
 See explanation of fields above. In addition, for the signed material,
 transcript2- is defined similarly to transcript2, however if transcript2 includes
@@ -1186,8 +1198,12 @@ transcript2- (this is advised if signing user's identification information by
 the server is deemed to have adverse privacy consequences).
 Similarly, transcript3- is defined as transcript3 with server identification
 information removed if so desired.
+Note that the MAC in KE3 is computed over IdU, which the initiator is the identity
+used to create `credential_request`.
 
-KEY DERIVATION. Key in SIGMA-I are derived as
+### SIGMA key derivation
+
+Keys in SIGMA-I are derived as
 
 ~~~
 SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
@@ -1216,8 +1232,8 @@ security considerations will be provided in future drafts. We note
 that the security of OPAQUE is formally proved in {{OPAQUE}} under a
 strong model of aPAKE security assuming the security of the OPRF
 function and of the underlying key-exchange protocol. In turn, the
-security of DH-OPRF is proven in the random oracle model under the
-One-More Diffie-Hellman assumption {{JKKX16}}.
+security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
+in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
 
 Best practices regarding implementation of cryptographic schemes
 apply to OPAQUE. Particular care needs to be given to the
@@ -1230,7 +1246,7 @@ implementation guidance.
 While one can expect the practical security of the OPRF function
 (namely, the hardness of computing the function without knowing the
 key) to be in the order of computing discrete logarithms or solving
-Diffie-Hellman, Brown and Gallant [BG04] and Cheon [Cheon06] show an
+Diffie-Hellman, Brown and Gallant [BG04] and Cheon {{Cheon06}} show an
 attack that slightly improves on generic attacks. For the case that
 q-1 or q+1, where q is the order of the group G, has a t-bit divisor,
 they show an attack that calls the OPRF on 2^t chosen inputs and
