@@ -1030,7 +1030,9 @@ login.
 This section describes several instantiations of OPAQUE using different KE protocols.
 For the sake of concreteness it only includes KE protocols consisting of three messages,
 denoted KE1, KE2, KE3, where KE1 and KE2 include DH values sent by client and
-server, respectively, and KE3 provides explicit client authentication.
+server, respectively, and KE3 provides explicit client authentication and full
+forward security (without it, forward secrecy is only achieved against eavesdroppers).
+
 As shown in {{OPAQUE}}, OPAQUE cannot use less than three messages
 so the 3-message instantiations presented here are optimal in terms
 of number of messages.
