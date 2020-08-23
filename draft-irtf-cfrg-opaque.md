@@ -127,6 +127,8 @@ key exchange resilient to server compromise"
   I-D.ietf-tls-esni:
   I-D.ietf-tls-semistatic-dh:
 
+  keyagreement: DOI.10.6028/NIST.SP.800-56Ar3
+
   OPAQUE:
     title: "OPAQUE: An Asymmetric PAKE Protocol Secure Against Pre-Computation
     Attacks"
@@ -462,7 +464,7 @@ key-exchange protocol KE using credentials recovered after the OPRF protocol com
 (The key-exchange protocol MUST satisfy the KCI requirement discussed in {{intro}}.)
 Specification of the key-exchange protocol is out of scope for this document.
 
-We first define the core OPAQUE protocol based on any OPRF, RKR-AEAD, and MHF functions.
+We first define the core OPAQUE protocol based on any OPRF and MHF functions.
 {{instantiations}} describes specific instantiations of OPAQUE using various
 AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
 discusses integration with TLS 1.3 {{RFC8446}}.
@@ -618,6 +620,9 @@ Once complete, the registration process proceeds as follows:
 
                                              StoreUserRecord(record)
 ~~~
+
+Both client and server MUST validate the other party's public key before use.
+See {{validation}} for more details.
 
 ### Registration messages
 
@@ -833,8 +838,8 @@ This section describes the message flow, encoding, and helper functions used in 
 ~~~
 
 The protocol messages below do not include the AKE protocol. Instead, OPAQUE
-assumes the client and server run the AKE using the credentials recovered after
-the OPRF protocol completes.
+assumes the client and server run the AKE using the credentials recovered from
+the OPRF protocol.
 
 Note also that the authenticate stage can run the OPRF and AKE protocols concurrently
 with interleaved and combined messages (while preserving the internal ordering of
@@ -1041,8 +1046,8 @@ The generic outline of OPAQUE with a 3-message KE protocol is as follows:
 
 Key derivation and other details of the protocol are specified by the
 KE scheme. We note that by the results in {{OPAQUE}}, KE2 and KE3 should
-authenticate credential request and response, respectively, for binding
-between the underlying OPRF protocol messages and the KE session.
+authenticate credential_request and credential_response, respectively,
+for binding between the underlying OPRF protocol messages and the KE session.
 
 Next, we present three instantiations of OPAQUE - with HMQV, 3DH and SIGMA-I.
 {{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
@@ -1057,18 +1062,11 @@ DH exchange. However, HMQV is encumbered by an IBM patent, hence we also
 present OPAQUE with 3DH which only differs in the key derivation function
 at the cost of an extra exponentiation (and less resilience to the compromise
 of ephemeral exponents). We note that 3DH serves as a basis for the
-key-exchange protocol of {{SIGNAL}}.
-
-Importantly, many other protocols follow a similar format with differences
+key-exchange protocol of {{SIGNAL}}. Importantly, many other protocols
+follow a similar format with differences
 mainly in the key derivation function. This includes the Noise family of
 protocols. Extensions may also apply to KEM-based KE protocols as in many
 post-quantum candidates.
-
-The private and public keys of the parties in these examples are
-Diffie-Hellman keys, namely, pkU=g^skU and pkS=g^skS.
-
-Implementation details that are specific to the choice of group G will be
-adapted from the corresponding standards for different elliptic curves.
 
 ### HMQV and 3DH protocol messages
 
@@ -1081,6 +1079,9 @@ OPAQUE with HMQV and OPAQUE with 3DH comprises:
 where:
 
 - '\*' denotes optional elements;
+
+- The private and public keys of the parties in these examples are
+Diffie-Hellman keys, namely, pkU=g^skU and pkS=g^skS.
 
 - credential_request and credential_response denote the online OPAQUE
 protocol messages (defined in {{online-phase}}) which carry the client
@@ -1105,7 +1106,8 @@ field (encrypted or not), part of EnvU, or can be known from other context
 (see {{SecIdentities}}); it is used crucially for key derivation (see below);
 
 - epkU, epkS are Diffie-Hellman ephemeral public keys chosen by user and
-server, respectively;
+server, respectively, which MUST be validated to be in the correct group
+(see {{validation}});
 
 - transcript2 includes the concatenation of the values
 credential_request, nonceU, info1*, IdU*, epkU, credential_response,
@@ -1124,9 +1126,6 @@ Notes:
  transcript2 is needed for binding the underlying OPRF execution to that of the
  KE session. On the other hand, including EnvU in transcript2 is not mandatory
  for security, though done as part of including credential_response.
-
-- The ephemeral keys epkU, epkS, can be exchanged prior to the above 3
- messages, e.g., when running these protocols under TLS 1.3.
 
 ### HMQV and 3DH key derivation
 
@@ -1186,7 +1185,7 @@ in IKEv2.
 
 OPAQUE with SIGMA-I comprises:
 
-- KE1 = credential_request, info1*, IdU*, nonceU, epkU
+- KE1 = credential_request, nonceU, info1*, IdU*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*,
        Sign(skS; transcript2-), MAC(Km2; IdS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; IdU)}
@@ -1198,8 +1197,6 @@ transcript2- (this is advised if signing user's identification information by
 the server is deemed to have adverse privacy consequences).
 Similarly, transcript3- is defined as transcript3 with server identification
 information removed if so desired.
-Note that the MAC in KE3 is computed over IdU, which the initiator is the identity
-used to create `credential_request`.
 
 ### SIGMA key derivation
 
@@ -1283,6 +1280,20 @@ leaving the door open for others to enter freely.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
+
+## Input validation {#validation}
+
+Both client and server MUST validate the other party's public key(s) used
+for the execution of OPAQUE. This includes the keys shared during the
+offline registration phase, as well as any keys shared during the online
+key agreement phase. The validation procedure varies
+depending on the type of key. For example, for OPAQUE instantiations
+using 3DH with P-256, P-384, or P-521 as the underlying group, validation
+is as specified in Section 5.6.2.3.4 of {{keyagreement}}. This includes
+checking that the coordinates are in the correct range, that the point
+is on the curve, and that the point is not the point at infinity.
+Additionally, validation MUST ensure the Diffie-Hellman shared secret is
+not the point at infinity.
 
 ## User authentication versus Authenticated Key Exchange
 
