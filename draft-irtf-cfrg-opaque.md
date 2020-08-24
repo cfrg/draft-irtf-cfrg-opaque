@@ -1070,6 +1070,10 @@ post-quantum candidates.
 
 ### HMQV and 3DH protocol messages
 
+HMQV and 3DH are both implemented using a suitable cyclic group of prime order p.
+All operations in the key derivation steps in {{derive-hmqv}} and {{derive-3dh}}
+are performed in this group using multiplicative notation.
+
 OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
 - KE1 = credential_request, nonceU, info1*, IdU*, epkU
@@ -1145,33 +1149,75 @@ gets the most significant bytes of the HKDF output, Km2 the next bytes, etc.
 
 Values IKM and info are defined for each protocol:
 
-#### HMQV key derivation
+#### HMQV key derivation {#derive-hmqv}
 
- - info = "HMQV keys" \| nonceU \| nonceS \| IdU \| IdS
+The HKDF input parameter `info` is computed as follows:
 
- - IKM = Khmqv
+~~~
+info = "HMQV keys" || len(nonceU) || nonceU
+                   || len(nonceS) || nonceS
+                   || len(IdU) || IdU
+                   || len(IdS) || IdS
+~~~
 
-   where Khmqv is computed:
+The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as follows:
 
-   - by the client:  Khmqv = (epkS \* pkS^s)^{eskU + u\*skU}
+~~~
+1. u' = (eskU + u\*skU) mod p
+2. Khmqv = (epkS \* pkS^s)^u'
+~~~
 
-   - by the server:  Khmqv = (epkU \* pkU^u)^{eskS + u\*skS}
+Hash is the same hash function used in the main OPAQUE protocol for key derivation.
+Its output length must be at least the length of the group order p.
 
-   and u = H(epkU \| "client" \| info) and s = H(epkS \| "server" \| info).
+Likewise, servers compute `Khmqv` as follows:
 
-<!--     (u and s are often denoted d and e)   -->
+~~~
+1. s' = (eskS + s\*skS) mod p
+2. Khmqv = (epkU \* pkU^u)^s'
+~~~
 
-#### 3DH key derivation
+In both cases, `u` is computed as follows:
 
- - info = "3DH keys" \| nonceU \| nonceS \| IdU \| IdS
+~~~
+hashInput = len(epkU) || epkU ||
+            len(info) || info ||
+            len("client") || "client"
+u = Hash(hashInput) mod (len(p)-1)
+~~~
 
- - IKM = K3dh
+Likewise, `s` is computed as follows:
 
-   where K3dh is the concatenation of three DH values computed:
+~~~
+hashInput = len(epkS) || epkS ||
+            len(info) || info ||
+            len("server") || "server"
+s = Hash(hashInput) mod (len(p)-1)
+~~~
 
-   - by the client:  K3dh = epkS^eskU \| pkS^eskU \| epkS^skU
+#### 3DH key derivation {#derive-3dh}
 
-   - by the server:  K3dh = epkU^eskS \| epkU^skS \| pkU^eskS
+The HKDF input parameter `info` is computed as follows:
+
+~~~
+info = "3DH keys" || len(nonceU) || nonceU
+                  || len(nonceS) || nonceS
+                  || len(IdU) || IdU
+                  || len(IdS) || IdS
+~~~
+
+The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
+three DH values computed by the client as follows:
+
+~~~
+K3dh = epkS^eskU || pkS^eskU || epkS^skU
+~~~
+
+Likewise, `K3dh` is computed by the server as follows:
+
+~~~
+K3dh = epkU^eskS || epkU^skS || pkU^eskS
+~~~
 
 ## Instantiation of OPAQUE with SIGMA-I {#SecSigma}
 
@@ -1200,26 +1246,25 @@ information removed if so desired.
 
 ### SIGMA key derivation
 
-Keys in SIGMA-I are derived as
+Keys in SIGMA-I are derived as follows:
 
 ~~~
 SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
 ~~~
 
- where
+The HKDF input parameter `L` is the sum of lengths of SK, Km2, Km3, Ke2,
+Ke3, and SK gets the most significant bytes of the HKDF output, Km2 the
+next bytes, etc. The input parameter `info` is computed as follows:
 
- - L is the sum of lengths of SK, Km2, Km3, Ke2, Ke3, and SK gets the most
-   significant bytes of the HKDF output, Km2 the next bytes, etc.,
+~~~
+info = "SIGMA-I keys" || len(nonceU) || nonceU
+                      || len(nonceS) || nonceS
+                      || len(IdU) || IdU
+                      || len(IdS) || IdS
+~~~
 
- - info = "SIGMA-I keys" \| nonceU \| nonceS \| IdU \| IdS
-
- - IKM = Ksigma
-
-   and Ksigma is computed:
-
-   - by the client: Ksigma = epkS^eskU
-
-   - by the server: Ksigma = epkU^eskS
+The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
+as `epkS^eskU` and by servers as `epkU^eskS`.
 
 # Security considerations
 
@@ -1392,7 +1437,7 @@ implementation is a server's decision (the client side is not changed).
 The second case, requires changes on the client side so it changes OPAQUE
 itself.
 
-[[TODO: Should this variant be documented/standardized?]
+[[OPEN ISSUE: Should this variant be documented/standardized?]
 
 ## Password salt and storage implications
 
