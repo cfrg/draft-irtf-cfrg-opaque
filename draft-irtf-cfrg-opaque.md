@@ -1131,7 +1131,7 @@ Notes:
  KE session. On the other hand, including EnvU in transcript2 is not mandatory
  for security, though done as part of including credential_response.
 
-### HMQV and 3DH key derivation {#derive-hmqv}
+### HMQV and 3DH key derivation
 
 The above protocol requires MAC keys Km2, Km3, and optional encryption keys
 Ke2, Ke3, as well as generating a session key SK which is the
@@ -1149,14 +1149,14 @@ gets the most significant bytes of the HKDF output, Km2 the next bytes, etc.
 
 Values IKM and info are defined for each protocol:
 
-#### HMQV key derivation {#derive-3dh}
+#### HMQV key derivation {#derive-hmqv}
 
 The HKDF input parameter `info` is computed as follows:
 
 ~~~
 info = "HMQV keys" || len(nonceU) || nonceU
                    || len(nonceS) || nonceS
-                   || len (IdU) || IdU
+                   || len(IdU) || IdU
                    || len(IdS) || IdS
 ~~~
 
@@ -1165,15 +1165,6 @@ The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as
 ~~~
 1. u' = (eskU + u\*skU) mod p
 2. Khmqv = (epkS \* pkS^s)^u'
-~~~
-
-where `u` is computed as follows:
-
-~~~
-hashInput = len(epkU) || epkU ||
-            len(info) || info ||
-            len("client") || "client"
-u = Hash(hashInput) mod p
 ~~~
 
 Hash is the same hash function used in the main OPAQUE protocol for key derivation.
@@ -1186,23 +1177,32 @@ Likewise, servers compute `Khmqv` as follows:
 2. Khmqv = (epkU \* pkU^u)^s'
 ~~~
 
-where `s` is computed as follows:
+In both cases, `u` is computed as follows:
+
+~~~
+hashInput = len(epkU) || epkU ||
+            len(info) || info ||
+            len("client") || "client"
+u = Hash(hashInput) mod (len(p)-1)
+~~~
+
+Likewise, `s` is computed as follows:
 
 ~~~
 hashInput = len(epkS) || epkS ||
             len(info) || info ||
-            len("server") || "client"
-s = Hash(hashInput) mod p
+            len("server") || "server"
+s = Hash(hashInput) mod (len(p)-1)
 ~~~
 
-#### 3DH key derivation
+#### 3DH key derivation {#derive-3dh}
 
 The HKDF input parameter `info` is computed as follows:
 
 ~~~
 info = "3DH keys" || len(nonceU) || nonceU
                   || len(nonceS) || nonceS
-                  || len (IdU) || IdU
+                  || len(IdU) || IdU
                   || len(IdS) || IdS
 ~~~
 
@@ -1259,7 +1259,7 @@ next bytes, etc. The input parameter `info` is computed as follows:
 ~~~
 info = "SIGMA-I keys" || len(nonceU) || nonceU
                       || len(nonceS) || nonceS
-                      || len (IdU) || IdU
+                      || len(IdU) || IdU
                       || len(IdS) || IdS
 ~~~
 
