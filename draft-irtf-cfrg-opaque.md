@@ -1067,7 +1067,7 @@ Where HkdfLabel is specified as:
 ~~~
 struct {
    uint16 length = Length;
-   opaque label<7..255> = "tls13 " + Label;
+   opaque label<7..255> = "OPAQUE " + Label;
    opaque context<0..255> = Context;
 } HkdfLabel;
 
