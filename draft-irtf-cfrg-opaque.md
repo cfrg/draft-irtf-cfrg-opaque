@@ -1177,7 +1177,7 @@ HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, an
       +--> Derive-Secret(., "session secret", info) = SK
 ~~~
 
-From `handshake_secret` and Km2, Km3, Ke2, and Ke3 are computed as follows:
+From `handshake_secret`, Km2, Km3, Ke2, and Ke3 are computed as follows:
 
 ~~~
 Km2 = HKDF-Expand-Label(handshake_secret, "client auth", "", Hash.length)
