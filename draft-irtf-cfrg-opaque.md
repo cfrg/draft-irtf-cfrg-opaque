@@ -1170,18 +1170,26 @@ See {{SecIdentities}} for more information about these identities.
 The HMQV and 3DH key schedule for computing Km2, Km3, Ke2, Ke3, and SK is as follows:
 
 ~~~
-HKDF-Extract(salt=0, IKM)
-    |
-    +--> Derive-Secret(., "SK", info) = SK
-    |
-    +--> Derive-Secret(., "Km2", info) = Km2
-    |
-    +--> Derive-Secret(., "Km3", info) = Km3
-    |
-    +--> Derive-Secret(., "Ke2", info) = Ke2
-    |
-    +--> Derive-Secret(., "Ke3", info) = Ke3
+  HKDF-Extract(salt=0, IKM) = handshake_secret
+      |
+      +--> Derive-Secret(., "c hs secret", info) = client_handshake_secret
+      |
+      +--> Derive-Secret(., "s hs secret", info) = server_handshake_secret
+      |
+      v
+Derive-Secret(., "derived", "")
+      |
+      v
+  HKDF-Extract(salt=0, handshake_secret) = main_secret
+      |
+      +--> Derive-Secret(., "session key", info) = SK
 ~~~
+
+The MAC keys Km2 and Km3 are computed as HKDF-Expand-Label(Secret, "auth", "", Hash.length),
+where Secret is client_handshake_secret for clients and server_handshake_secret for servers.
+The encryption keys Ke2 and Ke3 are computed as HKDF-Expand-Label(Secret, "enc", "", key_length),
+where Secret is client_handshake_secret for clients and server_handshake_secret for servers,
+and `key_length` is the length of the key required for the AKE handshake encryption algorithm.
 
 Values `IKM` and `info` are defined for each instantiation in the following sections.
 
