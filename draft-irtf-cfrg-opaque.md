@@ -1167,29 +1167,26 @@ material). Key derivation uses HKDF {{RFC5869}} with a combination of the partie
 and ephemeral private-public key pairs and the parties' identities IdU, IdS.
 See {{SecIdentities}} for more information about these identities.
 
-The HMQV and 3DH key schedule for computing Km2, Km3, Ke2, Ke3, and SK is as follows:
+HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, and SK:
 
 ~~~
-  HKDF-Extract(salt=0, IKM) = handshake_secret
+  HKDF-Extract(salt=0, IKM)
       |
-      +--> Derive-Secret(., "c hs secret", info) = client_handshake_secret
+      +--> Derive-Secret(., "handshake secret", info) = handshake_secret
       |
-      +--> Derive-Secret(., "s hs secret", info) = server_handshake_secret
-      |
-      v
-Derive-Secret(., "derived", "")
-      |
-      v
-  HKDF-Extract(salt=0, handshake_secret) = main_secret
-      |
-      +--> Derive-Secret(., "session key", info) = SK
+      +--> Derive-Secret(., "session secret", info) = SK
 ~~~
 
-The MAC keys Km2 and Km3 are computed as HKDF-Expand-Label(Secret, "auth", "", Hash.length),
-where Secret is client_handshake_secret for clients and server_handshake_secret for servers.
-The encryption keys Ke2 and Ke3 are computed as HKDF-Expand-Label(Secret, "enc", "", key_length),
-where Secret is client_handshake_secret for clients and server_handshake_secret for servers,
-and `key_length` is the length of the key required for the AKE handshake encryption algorithm.
+From `handshake_secret` and Km2, Km3, Ke2, and Ke3 are computed as follows:
+
+~~~
+Km2 = HKDF-Expand-Label(handshake_secret, "client auth", "", Hash.length)
+Km3 = HKDF-Expand-Label(handshake_secret, "server auth", "", Hash.length)
+Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
+Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+~~~
+
+`key_length` is the length of the key required for the AKE handshake encryption algorithm.
 
 Values `IKM` and `info` are defined for each instantiation in the following sections.
 
