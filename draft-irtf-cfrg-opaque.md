@@ -1052,7 +1052,34 @@ for binding between the underlying OPRF protocol messages and the KE session.
 Next, we present three instantiations of OPAQUE - with HMQV, 3DH and SIGMA-I.
 {{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
 
-## Instantiation of OPAQUE with HMQV and 3DH {#SecHmqv}
+## Key Schedule Utility Functions
+
+The key derivation procedures for HMQV, 3DH, and SIGMA-I instantiations
+all make use of the functions below, re-purposed from TLS 1.3 {{?RFC8446}}.
+
+~~~
+HKDF-Expand-Label(Secret, Label, Context, Length) =
+  HKDF-Expand(Secret, HkdfLabel, Length)
+~~~
+
+Where HkdfLabel is specified as:
+
+~~~
+struct {
+   uint16 length = Length;
+   opaque label<8..255> = "OPAQUE " + Label;
+   opaque context<0..255> = Context;
+} HkdfLabel;
+
+Derive-Secret(Secret, Label, Transcript) =
+    HKDF-Expand-Label(Secret, Label, Hash(Transcript), Hash.length)
+~~~
+
+HKDF uses Hash as its underlying hash function, which is the same as that
+which is indicated by the OPAQUE instantiation. Hash.length is its output
+length in bytes.
+
+## Instantiation with HMQV and 3DH {#SecHmqv}
 
 The integration of OPAQUE with HMQV {{HMQV}} leads to the most
 efficient instantiation of OPAQUE in terms of exponentiations count.
@@ -1131,7 +1158,7 @@ Notes:
  KE session. On the other hand, including EnvU in transcript2 is not mandatory
  for security, though done as part of including credential_response.
 
-### HMQV and 3DH key derivation
+### HMQV and 3DH key derivation {#hmqv-key-schedule}
 
 The above protocol requires MAC keys Km2, Km3, and optional encryption keys
 Ke2, Ke3, as well as generating a session key SK which is the
@@ -1140,14 +1167,28 @@ material). Key derivation uses HKDF {{RFC5869}} with a combination of the partie
 and ephemeral private-public key pairs and the parties' identities IdU, IdS.
 See {{SecIdentities}} for more information about these identities.
 
+HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, and SK:
+
 ~~~
-SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
+  HKDF-Extract(salt=0, IKM)
+      |
+      +--> Derive-Secret(., "handshake secret", info) = handshake_secret
+      |
+      +--> Derive-Secret(., "session secret", info) = SK
 ~~~
 
-where L is the sum of lengths of SK, Km2, Km3, Ke2, Ke3, and SK
-gets the most significant bytes of the HKDF output, Km2 the next bytes, etc.
+From `handshake_secret`, Km2, Km3, Ke2, and Ke3 are computed as follows:
 
-Values IKM and info are defined for each protocol:
+~~~
+Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
+Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
+Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
+Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+~~~
+
+`key_length` is the length of the key required for the AKE handshake encryption algorithm.
+
+Values `IKM` and `info` are defined for each instantiation in the following sections.
 
 #### HMQV key derivation {#derive-hmqv}
 
@@ -1219,7 +1260,7 @@ Likewise, `K3dh` is computed by the server as follows:
 K3dh = epkU^eskS || epkU^skS || pkU^eskS
 ~~~
 
-## Instantiation of OPAQUE with SIGMA-I {#SecSigma}
+## Instantiation with SIGMA-I {#SecSigma}
 
 We show how OPAQUE is built around the 3-message SIGMA-I protocol {{SIGMA}}.
 This is an example of a signature-based protocol and also serves
@@ -1246,15 +1287,9 @@ information removed if so desired.
 
 ### SIGMA key derivation
 
-Keys in SIGMA-I are derived as follows:
-
-~~~
-SK, Km2, Km3, Ke2, Ke3 = HKDF(salt=0, IKM, info, L)
-~~~
-
-The HKDF input parameter `L` is the sum of lengths of SK, Km2, Km3, Ke2,
-Ke3, and SK gets the most significant bytes of the HKDF output, Km2 the
-next bytes, etc. The input parameter `info` is computed as follows:
+The key schedule for computing Km2, Km3, Ke2, Ke3, and SK is the same as
+specified in {{hmqv-key-schedule}}. The HKDF input parameter `info` is
+computed as follows:
 
 ~~~
 info = "SIGMA-I keys" || len(nonceU) || nonceU
