@@ -1180,8 +1180,8 @@ HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, an
 From `handshake_secret`, Km2, Km3, Ke2, and Ke3 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "client auth", "", Hash.length)
-Km3 = HKDF-Expand-Label(handshake_secret, "server auth", "", Hash.length)
+Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
+Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
 Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
 Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
 ~~~
