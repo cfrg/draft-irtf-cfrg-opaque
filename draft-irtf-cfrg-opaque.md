@@ -776,6 +776,8 @@ Steps:
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
+[[OPEN ISSUE: Should the nonce size be a parameter?]]
+
 The inputs to HKDF-Expand are as specified in {{RFC5869}}.
 
 All `CredentialExtension` values require authentication. Only skU requires secrecy.
