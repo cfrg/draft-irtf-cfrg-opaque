@@ -781,7 +781,8 @@ Steps:
 
 [[OPEN ISSUE: Should the nonce size be a parameter?]]
 
-The inputs to HKDF-Expand are as specified in {{RFC5869}}.
+The inputs to HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
+is that which is associated with the OPAQUE configuration (see {{configurations}}).
 
 All `CredentialExtension` values require authentication. Only skU requires secrecy.
 If an application requires secrecy of pkS, this value SHOULD be included in the
@@ -1009,15 +1010,18 @@ time of password registration.
 
 # OPAQUE Configurations {#configurations}
 
-An OPAQUE configuration must specify the OPRF protocol variant and MHF function.
-OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}}, and supports the following
-ciphersuites:
+An OPAQUE configuration must specify the OPRF protocol variant, a cryptographic
+hash function, and MHF function. OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}},
+and supports the following ciphersuites:
 
 - OPRF(curve25519, SHA-512)
 - OPRF(curve448, SHA-512)
 - OPRF(P-256, SHA-512)
 - OPRF(P-384, SHA-512)
 - OPRF(P-521, SHA-512)
+
+The OPAQUE hash function is that which is associated with the OPRF variant.
+For the variants specified here, only SHA-512 is supported.
 
 Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
