@@ -561,7 +561,7 @@ It is encoded as follows.
 
 ~~~
 struct {
-  opaque nonce[Nn];
+  opaque nonce[32];
   opaque ct<1..2^16-1>;
   opaque auth_data<0..2^16-1>;
   opaque auth_tag<1..2^16-1>;
@@ -569,7 +569,7 @@ struct {
 ~~~
 
 nonce
-: A unique Nn-byte nonce used to protect this Envelope.
+: A unique 32-byte nonce used to protect this Envelope.
 
 ct
 : Encoding of encrypted and authenticated credential extensions list.
@@ -738,7 +738,6 @@ FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nn, length of the key derivation nonce
 - Nk, length of the authentication and export keys
 
 Input:
@@ -763,7 +762,7 @@ Steps:
 6. Create cleartext_credentials with CredentialExtensions matching that
    contained in response.cleartext_credentials_list
 7. pt = SerializeExtensions(secret_credentials)
-8. nonce = random(Nn)
+8. nonce = random(32)
 9. pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
 10. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
 11. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
@@ -776,6 +775,8 @@ Steps:
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+
+[[OPEN ISSUE: Should the nonce size be a parameter?]]
 
 The inputs to HKDF-Expand are as specified in {{RFC5869}}.
 
@@ -935,7 +936,6 @@ RecoverCredentials(PwdU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nn, length of the key derivation nonce
 - Nk, length of the authentication and export keys
 
 Input:
