@@ -1023,6 +1023,8 @@ and supports the following ciphersuites:
 The OPAQUE hash function is that which is associated with the OPRF variant.
 For the variants specified here, only SHA-512 is supported.
 
+[[OPEN ISSUE: Consider SHA-256 for the curve25519 OPRF suite -- SHA-512 is excessive]]
+
 Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
 values or set at the time of password registration and stored at the server.
