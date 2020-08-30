@@ -443,6 +443,10 @@ OPAQUE relies on the following protocols and primitives:
     or produce an error of `enc` is an invalid encoding. This is the inverse
     of Encode, i.e., `x = Deserialize(Serialize(x))`.
 
+- Cryptographic hash function:
+  - Hash(m): Compute the cryptographic hash of input message "m".
+  - Nh: The output size of the Hash function.
+
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
@@ -738,7 +742,6 @@ FinalizeRequest(IdU, PwdU, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nk, length of the authentication and export keys
 
 Input:
 - IdU, an opaque byte string containing the user's identity
@@ -764,8 +767,8 @@ Steps:
 7. pt = SerializeExtensions(secret_credentials)
 8. nonce = random(32)
 9. pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(pt))
-10. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-11. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
+10. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nh)
+11. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nh)
 12. ct = xor(pt, pad)
 13. auth_data = SerializeExtensions(cleartext_credentials)
 14. t = HMAC(auth_key, concat(nonce, ct, auth_data))
@@ -778,7 +781,8 @@ Steps:
 
 [[OPEN ISSUE: Should the nonce size be a parameter?]]
 
-The inputs to HKDF-Expand are as specified in {{RFC5869}}.
+The inputs to HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
+is that which is associated with the OPAQUE configuration (see {{configurations}}).
 
 All `CredentialExtension` values require authentication. Only skU requires secrecy.
 If an application requires secrecy of pkS, this value SHOULD be included in the
@@ -936,7 +940,6 @@ RecoverCredentials(PwdU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nk, length of the authentication and export keys
 
 Input:
 - PwdU, an opaque byte string containing the user's password
@@ -956,8 +959,8 @@ Steps:
 5. ct = response.envelope.ct
 4. RwdU = HKDF-Extract("RwdU", Harden(y, params))
 7. pseudorandom_pad = HKDF-Expand(RwdU, concat(nonce, "Pad"), len(ct))
-8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nk)
-9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nk)
+8. auth_key = HKDF-Expand(RwdU, concat(nonce, "AuthKey"), Nh)
+9. export_key = HKDF-Expand(RwdU, concat(nonce, "ExportKey"), Nh)
 10. auth_data = response.envelope.auth_data
 11. expected_tag = HMAC(auth_key, concat(nonce, ct, auth_data))
 12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
@@ -1007,15 +1010,20 @@ time of password registration.
 
 # OPAQUE Configurations {#configurations}
 
-An OPAQUE configuration must specify the OPRF protocol variant and MHF function.
-OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}}, and supports the following
-ciphersuites:
+An OPAQUE configuration must specify the OPRF protocol variant, a cryptographic
+hash function, and MHF function. OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}},
+and supports the following ciphersuites:
 
 - OPRF(curve25519, SHA-512)
 - OPRF(curve448, SHA-512)
 - OPRF(P-256, SHA-512)
 - OPRF(P-384, SHA-512)
 - OPRF(P-521, SHA-512)
+
+The OPAQUE hash function is that which is associated with the OPRF variant.
+For the variants specified here, only SHA-512 is supported.
+
+[[OPEN ISSUE: Consider SHA-256 for the curve25519 OPRF suite -- SHA-512 is excessive]]
 
 Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
