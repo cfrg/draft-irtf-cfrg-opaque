@@ -984,7 +984,8 @@ application-specific purposes. For example, one might expand the use of OPAQUE w
 credential-retrieval functionality that is separate from the contents of the Credentials
 structure.
 
-The exporter_key MUST NOT be used in any way before the HMAC value in envelope is validated.
+The exporter_key MUST NOT be used in any way before the HMAC value in the
+envelope is validated.
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
