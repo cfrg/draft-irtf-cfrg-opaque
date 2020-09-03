@@ -1216,7 +1216,7 @@ values or set at the time of password registration and stored at the server.
 In the latter case, the server communicates these parameters to the client during
 login.
 
-# Security considerations
+# Security Considerations
 
 OPAQUE is defined and proven as the composition of two
 functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
