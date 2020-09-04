@@ -276,26 +276,21 @@ dictionary attacks are not possible without breaking into a threshold
 of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
-Comment (Hugo): I think that something about the modularity and generic composition should be said. Particularly, as to explain the use of the word "modulatity" below. I added the next paragraph. I see now this text is part of the security considerations, I still think it would be would to say thsi in the intro. ANyway, feel free to edit.
-
-OPAQUE is defined and proven as the composition of two
-functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
-It can be seen as a "compiler" for transforming any key-exchange
-protocol (with KCI security and forward secrecy - see {{Security considerations}})
-into a secure aPAKE
-protocol. 
-
-This document specifies OPAQUE instantiations using an OPRF protocol,
-memory hard function (MHF), and key exchange protocols, including the HMQV {{HMQV}},
-3DH {{SIGNAL}} and SIGMA {{SIGMA}} protocols. In general, the modularity
-of OPAQUE's design makes it easy to integrate with additional key-exchange
-protocols, e.g., IKEv2, and with future ones such as those based on post-quantum techniques.
+OPAQUE is defined and proven as the composition of two functionalities:
+an Oblivious PRF (OPRF) and a key-exchange (KE) protocol. It can be seen
+as a "compiler" for transforming any suitable KE protocol into a secure
+aPAKE protocol. (See {{security-considerations}} for requirements of the
+OPRF and KE protocols.) This document specifies OPAQUE instantiations based
+on a variety of KE protocols, including HMQV {{HMQV}}, 3DH {{SIGNAL}}
+and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
+easy to integrate with additional KE protocols, e.g., IKEv2, and with future
+ones such as those based on post-quantum techniques.
 
 Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
 vulnerable to pre-computation attacks, and less efficient relative to OPAQUE.
 Moreover, SRP requires a ring as it mixes addition and multiplication operations,
-and thus does not work over plain elliptic curves.
-OPAQUE is therefore a suitable replacement for applications that use SRP.
+and thus does not work over plain elliptic curves. OPAQUE is therefore a suitable
+replacement for applications that use SRP.
 
 ## Requirements Notation
 
@@ -376,9 +371,10 @@ We first define the core OPAQUE protocol based on any OPRF and MHF functions.
 AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
 discusses integration with TLS 1.3 {{RFC8446}}.
 
-Comment (Hugo):  We should refer somewhere (intro?) to the issue of user account
-information privacy and running OPAQUE under/over TLS could address that.
-
+The instantiations that follow transmit IdU in cleartext. Applications that require
+IdU privacy should encrypt this using appropriately. Mechanisms for doing so are
+outside the scope of this document, though may be addressed elsewhere, such as
+in {{I-D.sullivan-tls-opaque}}.
 
 ## Protocol messages {#protocol-messages}
 
@@ -1228,7 +1224,7 @@ values or set at the time of password registration and stored at the server.
 In the latter case, the server communicates these parameters to the client during
 login.
 
-# Security Considerations
+# Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
 functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
