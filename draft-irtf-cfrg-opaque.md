@@ -234,7 +234,7 @@ to middle boxes, and more.
 
 Asymmetric (or augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
-mutually authenticated key exchange without relying on PKI (except
+mutually authenticated key exchange in a client-server setting without relying on PKI (except
 during user/password registration) and without disclosing passwords
 to servers or other entities other than the client machine. A secure
 aPAKE should provide the best possible security for a password
@@ -261,12 +261,11 @@ transmitting the salt may require additional protocol messages.
 
 This document describes OPAQUE, a PKI-free secure aPAKE that is secure
 against pre-computation attacks and capable of using a secret salt.
-Moreover, OPAQUE's security features include forward secrecy (essential for
+OPAQUE provides forward secrecy (essential for
 protecting past communications in case of password leakage) and the
 ability to hide the password from the server - even during password
-registration. Furthermore, good performance and an array of additional
-features make OPAQUE a natural candidate for practical use and for
-adoption as a standard. Such features include the ability to increase
+registration. Furthermore, OPAQUE enjoys good performance and an array of additional
+features including the ability to increase
 the difficulty of offline dictionary attacks via iterated hashing
 or other hardening schemes, and offloading these operations to the
 client (that also helps against online guessing attacks); extensibility of
@@ -277,11 +276,20 @@ dictionary attacks are not possible without breaking into a threshold
 of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
+Comment (Hugo): I think that something about the modularity and generic composition should be said. Particularly, as to explain the use of the word "modulatity" below. I added the next paragraph. I see now this text is part of the security considerations, I still think it would be would to say thsi in the intro. ANyway, feel free to edit.
+
+OPAQUE is defined and proven as the composition of two
+functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
+It can be seen as a "compiler" for transforming any key-exchange
+protocol (with KCI security and forward secrecy - see {{Security considerations}})
+into a secure aPAKE
+protocol. 
+
 This document specifies OPAQUE instantiations using an OPRF protocol,
 memory hard function (MHF), and key exchange protocols, including the HMQV {{HMQV}},
 3DH {{SIGNAL}} and SIGMA {{SIGMA}} protocols. In general, the modularity
 of OPAQUE's design makes it easy to integrate with additional key-exchange
-protocols, e.g., IKEv2.
+protocols, e.g., IKEv2, and with future ones such as those based on post-quantum techniques.
 
 Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
 vulnerable to pre-computation attacks, and less efficient relative to OPAQUE.
@@ -367,6 +375,10 @@ We first define the core OPAQUE protocol based on any OPRF and MHF functions.
 {{instantiations}} describes specific instantiations of OPAQUE using various
 AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
 discusses integration with TLS 1.3 {{RFC8446}}.
+
+Comment (Hugo):  We should refer somewhere (intro?) to the issue of user account
+information privacy and running OPAQUE under/over TLS could address that.
+
 
 ## Protocol messages {#protocol-messages}
 
@@ -1462,7 +1474,7 @@ passwords.
 
 The computational cost of OPAQUE is determined by the cost of the OPRF,
 the cost of a regular Diffie-Hellman exchange, and the cost of
-authenticating such exchange. In our elliptic-curve implementation of
+authenticating such exchange. In an elliptic-curve implementation of
 the OPRF, the cost for the client is two exponentiations (one or two
 of which can be fixed base) and one hashing-into-curve operation
 {{I-D.irtf-cfrg-hash-to-curve}}; for the server, it is just one
