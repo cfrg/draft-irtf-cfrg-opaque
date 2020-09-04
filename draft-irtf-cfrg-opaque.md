@@ -264,7 +264,7 @@ against pre-computation attacks and capable of using a secret salt.
 Moreover, OPAQUE's security features include forward secrecy (essential for
 protecting past communications in case of password leakage) and the
 ability to hide the password from the server - even during password
-registration. Moreover, good performance and an array of additional
+registration. Furthermore, good performance and an array of additional
 features make OPAQUE a natural candidate for practical use and for
 adoption as a standard. Such features include the ability to increase
 the difficulty of offline dictionary attacks via iterated hashing
