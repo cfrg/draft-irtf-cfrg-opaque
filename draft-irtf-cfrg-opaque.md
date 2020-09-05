@@ -119,13 +119,9 @@ key exchange resilient to server compromise"
     seriesinfo: http://eprint.iacr.org/2018/286
     date: 2018
 
-  I-D.ietf-tls-exported-authenticator:
-  I-D.barnes-tls-pake:
   I-D.irtf-cfrg-hash-to-curve:
   I-D.irtf-cfrg-voprf:
   I-D.sullivan-tls-opaque:
-  I-D.ietf-tls-esni:
-  I-D.ietf-tls-semistatic-dh:
 
   keyagreement: DOI.10.6028/NIST.SP.800-56Ar3
 
@@ -145,21 +141,6 @@ key exchange resilient to server compromise"
         name: Jiayu Xu
     seriesinfo: Eurocrypt
     date: 2018
-
-  Blinding:
-    title: "Multiplicative DH-OPRF and Its Applications to Password Protocols"
-    author:
-      -
-        ins: S. Jarecki
-        name: Stanislaw Jarecki
-      -
-        ins: H. Krawczyk
-        name: Hugo Krawczyk
-      -
-        ins: J. Xu
-        name: Jiayu Xu
-    seriesinfo: Manuscript
-    date: 2020
 
   JKKX16:
     title: "Highly-efficient and composable
@@ -220,7 +201,6 @@ online)"
 
   RFC2945:
   RFC5869:
-  RFC8018:
   RFC8125:
   RFC8446:
 
@@ -239,12 +219,10 @@ instantiations in different authenticated key exchange protocols.
 
 # Introduction {#intro}
 
-<!-- Remember this can be used for comments -->
-
 Password authentication is the prevalent form of authentication in
-the web and in most other applications. In the most common
+the web and in many other applications. In the most common
 implementation, a user authenticates to a server by sending its user
-id and password to the server over a TLS connection. This makes
+ID and password to the server over a TLS connection. This makes
 the password vulnerable to server mishandling, including accidentally
 logging the password or storing it in cleartext in a database. Server
 compromise resulting in access to these plaintext passwords is not an
@@ -256,7 +234,7 @@ to middle boxes, and more.
 
 Asymmetric (or augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
-mutually authenticated key exchange without relying on PKI (except
+mutually authenticated key exchange in a client-server setting without relying on PKI (except
 during user/password registration) and without disclosing passwords
 to servers or other entities other than the client machine. A secure
 aPAKE should provide the best possible security for a password
@@ -281,41 +259,13 @@ transmit the salt from server to user in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation. Furthermore,
 transmitting the salt may require additional protocol messages.
 
-This draft describes OPAQUE, a PKI-free secure aPAKE that is
-secure against pre-computation attacks and capable of using a secret
-salt. Jarecki et al. {{OPAQUE}} recently proved the security of OPAQUE
-in a strong aPAKE model that ensures security against pre-computation attacks
-and is formulated in the Universal Composability (UC) framework {{Canetti01}}
-under the random oracle model. In contrast, very few aPAKE protocols have
-been proven formally, and those proven were analyzed in a weak
-security model that allows for pre-computation attacks (e.g.,
-{{GMR06}}). This is not just a formal issue: these protocols are
-actually vulnerable to such attacks. This includes protocols that have recent
-analyses in the UC model such as AuCPace {{AuCPace}} and SPAKE2+ {{SPAKE2plus}}.
-We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
-in the model from {{GMR06}}, can be converted into an aPAKE secure against
-pre-computation attacks at the expense of an additional OPRF execution.
-
-It is worth noting that the currently most deployed (PKI-free) aPAKE is
-SRP {{?RFC2945}}, which is open to pre-computation attacks, and less efficient
-relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
-multiplication operations, and thus does not work over plain elliptic curves.
-OPAQUE is therefore a suitable replacement.
-
-OPAQUE's design builds on a line of work initiated in the seminal
-paper of Ford and Kaliski {{FK00}} and is based on the HPAKE protocol
-of Xavier Boyen {{Boyen09}} and the (1,1)-PPSS protocol from Jarecki
-et al. {{JKKX16}}. None of these papers considered security against
-pre-computation attacks or presented a proof of aPAKE security
-(not even in a weak model).
-
-In addition to its proven resistance to pre-computation attacks,
-OPAQUE's security features include forward secrecy (essential for
+This document describes OPAQUE, a PKI-free secure aPAKE that is secure
+against pre-computation attacks and capable of using a secret salt.
+OPAQUE provides forward secrecy (essential for
 protecting past communications in case of password leakage) and the
 ability to hide the password from the server - even during password
-registration. Moreover, good performance and an array of additional
-features make OPAQUE a natural candidate for practical use and for
-adoption as a standard. Such features include the ability to increase
+registration. Furthermore, OPAQUE enjoys good performance and an array of additional
+features including the ability to increase
 the difficulty of offline dictionary attacks via iterated hashing
 or other hardening schemes, and offloading these operations to the
 client (that also helps against online guessing attacks); extensibility of
@@ -326,71 +276,21 @@ dictionary attacks are not possible without breaking into a threshold
 of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
-OPAQUE is defined and proven as the composition of two
-functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
-It can be seen as a "compiler" for transforming any key-exchange
-protocol (with KCI security and forward secrecy - see below)
-into a secure aPAKE
-protocol. In OPAQUE, the user stores a secret private key at the
-server during password registration and retrieves this key each time
-it needs to authenticate to the server. The OPRF security properties
-ensure that only the correct password can unlock the private key
-while at the same time avoiding potential offline guessing attacks.
-This general composability property provides great flexibility and
-enables a variety of OPAQUE instantiations, from optimized
-performance to integration with TLS. The latter aspect is of prime
-importance as the use of OPAQUE with TLS constitutes a major security
-improvement relative to the standard password-over-TLS practice.
-At the same
-time, the combination with TLS builds OPAQUE as a fully functional
-secure communications protocol and can help provide privacy to
-account information sent by the user to the server prior to authentication.
+OPAQUE is defined and proven as the composition of two functionalities:
+an Oblivious PRF (OPRF) and a key-exchange (KE) protocol. It can be seen
+as a "compiler" for transforming any suitable KE protocol into a secure
+aPAKE protocol. (See {{security-considerations}} for requirements of the
+OPRF and KE protocols.) This document specifies OPAQUE instantiations based
+on a variety of KE protocols, including HMQV {{HMQV}}, 3DH {{SIGNAL}}
+and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
+easy to integrate with additional KE protocols, e.g., IKEv2, and with future
+ones such as those based on post-quantum techniques.
 
-The KCI property required from KE protocols for use with OPAQUE
-states that knowledge of a party's private key does not allow an attacker
-to impersonate others to that party. This is an important security
-property achieved by most public-key based KE protocols, including
-protocols that use signatures or public key encryption for
-authentication. It is also a property of many implicitly
-authenticated protocols (e.g., HMQV) but not all of them. We also note that
-key exchange protocols based on shared keys do not satisfy the KCI
-requirement, hence they are not considered in the OPAQUE setting.
-We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
-compromise of the server, the attacker cannot impersonate the user to the
-server without first running an exhaustive dictionary attack.
-Another essential requirement from KE protocols for use in OPAQUE is to
-provide forward secrecy (against active attackers).
-
-This draft presents a high-level description of OPAQUE, highlighting
-its components and modular design. It also provides the basis for a
-specification for standardization, but a detailed specification ready
-for implementation is beyond the current scope of this document
-(which may be expanded in future revisions or done separately).
-
-We describe OPAQUE with a specific instantiation of the OPRF component
-over elliptic curves and with a few KE schemes, including the HMQV {{HMQV}},
-3DH {{SIGNAL}} and SIGMA {{SIGMA}} protocols.
-We also present several strategies for
-integrating OPAQUE with TLS 1.3 {{RFC8446}} offering different tradeoffs
-between simplicity, performance and user privacy.  In general, the modularity
-of OPAQUE's design makes it easy to integrate with additional key-exchange
-protocols, e.g., IKEv2.
-
-The computational cost of OPAQUE is determined by the cost of the OPRF,
-the cost of a regular Diffie-Hellman exchange, and the cost of
-authenticating such exchange. In our elliptic-curve implementation of
-the OPRF, the cost for the client is two exponentiations (one or two
-of which can be fixed base) and one hashing-into-curve operation
-{{I-D.irtf-cfrg-hash-to-curve}}; for the server, it is just one
-exponentiation. The cost of a Diffie-Hellman exchange is as usual two
-exponentiations per party (one of which is fixed-base). Finally, the
-cost of authentication per party depends on the specific KE protocol:
-it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
-and it is one signature generation and verification in the case of SIGMA and
-TLS 1.3.
-These instantiations preserve the number of messages in the underlying KE
-protocol except in one of the TLS instantiations where user privacy may
-require an additional round trip.
+Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
+vulnerable to pre-computation attacks, and less efficient relative to OPAQUE.
+Moreover, SRP requires a ring as it mixes addition and multiplication operations,
+and thus does not work over plain elliptic curves. OPAQUE is therefore a suitable
+replacement for applications that use SRP.
 
 ## Requirements Notation
 
@@ -409,8 +309,6 @@ the public key. For example, (skU, pkU) refers to the U's private and public key
 - concat(x0, ..., xN): Concatenation of byte strings.
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a random byte string of length `n` bytes.
-- zero(n): An all-zero byte string of length `n` bytes. `zero(4) = 0x00000000` and
-  `zero(0)` is the empty byte string.
 - `xor(a,b)`: XOR of byte strings; `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with two arguments of unequal
   length.
@@ -423,8 +321,8 @@ for "uniformly random"). Random choices can be replaced with fresh outputs from
 a cryptographically strong pseudorandom generator, according to the requirements
 in {{!RFC4086}}, or pseudorandom function.
 
-The name OPAQUE: A homonym of O-PAKE where O is for Oblivious
-(the name OPAKE was taken).
+The name OPAQUE is a homonym of O-PAKE where O is for Oblivious (the name
+OPAKE was taken).
 
 # Cryptographic Protocol and Algorithm Dependencies
 
@@ -455,7 +353,7 @@ OPAQUE relies on the following protocols and primitives:
 We also assume the existence of a function `KeyGen`, which generates an OPRF private
 and public key. We write `(skU, pkU) = KeyGen()` to denote this function.
 
-# OPAQUE Protocol {#protocol}
+# Core Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client stores its encrypted credentials on the server.
@@ -472,6 +370,11 @@ We first define the core OPAQUE protocol based on any OPRF and MHF functions.
 {{instantiations}} describes specific instantiations of OPAQUE using various
 AKE protocols, including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}}
 discusses integration with TLS 1.3 {{RFC8446}}.
+
+The instantiations that follow transmit IdU in cleartext. Applications that require
+IdU privacy should encrypt this using appropriately. Mechanisms for doing so are
+outside the scope of this document, though may be addressed elsewhere, such as
+in {{I-D.sullivan-tls-opaque}}.
 
 ## Protocol messages {#protocol-messages}
 
@@ -593,9 +496,8 @@ in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, it is assumed the user has a key pair (skU, pkU)
 that it wishes to register. These may be randomly generated for the account,
-or may be keys located in persistent storage, such as a hardware token. Importantly,
-this key pair MUST be suitable for the particular AKE instantiation of OPAQUE;
-See {{online-phase}}.
+or may be provided by the calling client. Importantly, this key pair MUST be
+suitable for the particular AKE instantiation of OPAQUE; See {{online-phase}}.
 
 To begin, U chooses password PwdU, and S chooses its own pair of private-public
 keys skS and pkS for use with protocol KE. S can use the same pair of keys with
@@ -1011,30 +913,7 @@ the identity is acceptable or not to the peer. However, we note that the
 public keys of both the server and the user must always be those defined at
 time of password registration.
 
-# OPAQUE Configurations {#configurations}
-
-An OPAQUE configuration must specify the OPRF protocol variant, a cryptographic
-hash function, and MHF function. OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}},
-and supports the following ciphersuites:
-
-- OPRF(curve25519, SHA-512)
-- OPRF(curve448, SHA-512)
-- OPRF(P-256, SHA-512)
-- OPRF(P-384, SHA-512)
-- OPRF(P-521, SHA-512)
-
-The OPAQUE hash function is that which is associated with the OPRF variant.
-For the variants specified here, only SHA-512 is supported.
-
-[[OPEN ISSUE: Consider SHA-256 for the curve25519 OPRF suite -- SHA-512 is excessive]]
-
-Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
-and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
-values or set at the time of password registration and stored at the server.
-In the latter case, the server communicates these parameters to the client during
-login.
-
-# OPAQUE Instantiations {#instantiations}
+# Key Exchange Protocol Instantiations {#instantiations}
 
 This section describes several instantiations of OPAQUE using different KE protocols.
 For the sake of concreteness it only includes KE protocols consisting of three messages,
@@ -1062,6 +941,13 @@ for binding between the underlying OPRF protocol messages and the KE session.
 
 Next, we present three instantiations of OPAQUE - with HMQV, 3DH and SIGMA-I.
 {{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
+
+OPAQUE may be instantiated with any post quantum KE protocol that has the message
+flow above. This document does not specify such an instantiation. Note that such
+an instantiation is not quantum safe unless the OPRF is quantum safe. However,
+such an instantiation may have benefits since breaking the OPRF does not retroactively
+affect the security of data transferred over a secure channel protected with a
+PQ KE protocol.
 
 ## Key Schedule Utility Functions
 
@@ -1312,16 +1198,92 @@ info = "SIGMA-I keys" || len(nonceU) || nonceU
 The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
 as `epkS^eskU` and by servers as `epkU^eskS`.
 
-# Security considerations
+# Configurations {#configurations}
 
-This is an early draft presenting the OPAQUE concept and its
-potential instantiations. More precise details and
-security considerations will be provided in future drafts. We note
-that the security of OPAQUE is formally proved in {{OPAQUE}} under a
-strong model of aPAKE security assuming the security of the OPRF
+An OPAQUE configuration must specify the OPRF protocol variant, a cryptographic
+hash function, a MHF function, and the corresponding KE protocol (HMQV, 3DH, or a
+variant of SIGMA, such as TLS 1.3).
+
+OPAQUE uses the OPRF protocol from {{I-D.irtf-cfrg-voprf}}, and supports the
+following ciphersuites:
+
+- OPRF(curve25519, SHA-512)
+- OPRF(curve448, SHA-512)
+- OPRF(P-256, SHA-512)
+- OPRF(P-384, SHA-512)
+- OPRF(P-521, SHA-512)
+
+The OPAQUE hash function is that which is associated with the OPRF variant.
+For the variants specified here, only SHA-512 is supported.
+
+[[OPEN ISSUE: Consider SHA-256 for the curve25519 OPRF suite -- SHA-512 is excessive]]
+
+Supported MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
+and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
+values or set at the time of password registration and stored at the server.
+In the latter case, the server communicates these parameters to the client during
+login.
+
+# Security Considerations {#security-considerations}
+
+OPAQUE is defined and proven as the composition of two
+functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
+It can be seen as a "compiler" for transforming any key-exchange
+protocol (with KCI security and forward secrecy - see below)
+into a secure aPAKE protocol. In OPAQUE, the user stores a secret private key at the
+server during password registration and retrieves this key each time
+it needs to authenticate to the server. The OPRF security properties
+ensure that only the correct password can unlock the private key
+while at the same time avoiding potential offline guessing attacks.
+This general composability property provides great flexibility and
+enables a variety of OPAQUE instantiations, from optimized
+performance to integration with TLS. The latter aspect is of prime
+importance as the use of OPAQUE with TLS constitutes a major security
+improvement relative to the standard password-over-TLS practice.
+At the same time, the combination with TLS builds OPAQUE as a fully functional
+secure communications protocol and can help provide privacy to
+account information sent by the user to the server prior to authentication.
+
+The KCI property required from KE protocols for use with OPAQUE
+states that knowledge of a party's private key does not allow an attacker
+to impersonate others to that party. This is an important security
+property achieved by most public-key based KE protocols, including
+protocols that use signatures or public key encryption for
+authentication. It is also a property of many implicitly
+authenticated protocols (e.g., HMQV) but not all of them. We also note that
+key exchange protocols based on shared keys do not satisfy the KCI
+requirement, hence they are not considered in the OPAQUE setting.
+We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
+compromise of the server, the attacker cannot impersonate the user to the
+server without first running an exhaustive dictionary attack.
+Another essential requirement from KE protocols for use in OPAQUE is to
+provide forward secrecy (against active attackers).
+
+Jarecki et al. {{OPAQUE}} recently proved the security of OPAQUE
+in a strong aPAKE model that ensures security against pre-computation attacks
+and is formulated in the Universal Composability (UC) framework {{Canetti01}}
+under the random oracle model. This assumes security of the OPRF
 function and of the underlying key-exchange protocol. In turn, the
 security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
 in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
+
+Very few aPAKE protocols have been proven formally, and those proven were analyzed
+in a weak security model that allows for pre-computation attacks (e.g.,
+{{GMR06}}). This is not just a formal issue: these protocols are
+actually vulnerable to such attacks. This includes protocols that have recent
+analyses in the UC model such as AuCPace {{AuCPace}} and SPAKE2+ {{SPAKE2plus}}.
+We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+in the model from {{GMR06}}, can be converted into an aPAKE secure against
+pre-computation attacks at the expense of an additional OPRF execution.
+
+OPAQUE's design builds on a line of work initiated in the seminal
+paper of Ford and Kaliski {{FK00}} and is based on the HPAKE protocol
+of Xavier Boyen {{Boyen09}} and the (1,1)-PPSS protocol from Jarecki
+et al. {{JKKX16}}. None of these papers considered security against
+pre-computation attacks or presented a proof of aPAKE security
+(not even in a weak model).
+
+## Configuration Choice
 
 Best practices regarding implementation of cryptographic schemes
 apply to OPAQUE. Particular care needs to be given to the
@@ -1330,6 +1292,8 @@ avoiding timing and other side channel leakage in the hash-to-curve
 mapping. Drafts {{I-D.irtf-cfrg-hash-to-curve}} and
 {{I-D.irtf-cfrg-voprf}} have detailed instantiation and
 implementation guidance.
+
+## Static Diffie-Hellman Oracles
 
 While one can expect the practical security of the OPRF function
 (namely, the hardness of computing the function without knowing the
@@ -1446,7 +1410,8 @@ Note that if the same pair of user identity IdU and value alpha is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
-the construction of EnvU to all the key material in EnvU, namely, cleartext_credentials will be empty.
+the construction of EnvU to all the key material in EnvU, namely,
+cleartext_credentials will be empty.
 The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
 Upon receiving a pair of user identity IdU and value alpha for a non-existing
@@ -1500,6 +1465,24 @@ rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
 passwords.
+
+# Performance Considerations
+
+The computational cost of OPAQUE is determined by the cost of the OPRF,
+the cost of a regular Diffie-Hellman exchange, and the cost of
+authenticating such exchange. In an elliptic-curve implementation of
+the OPRF, the cost for the client is two exponentiations (one or two
+of which can be fixed base) and one hashing-into-curve operation
+{{I-D.irtf-cfrg-hash-to-curve}}; for the server, it is just one
+exponentiation. The cost of a Diffie-Hellman exchange is as usual two
+exponentiations per party (one of which is fixed-base). Finally, the
+cost of authentication per party depends on the specific KE protocol:
+it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
+and it is one signature generation and verification in the case of SIGMA and
+TLS 1.3.
+These instantiations preserve the number of messages in the underlying KE
+protocol except in one of the TLS instantiations where user privacy may
+require an additional round trip.
 
 # IANA Considerations
 
