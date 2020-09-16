@@ -498,6 +498,7 @@ and helper functions. Moreover, it is assumed the user has a key pair (skU, pkU)
 that it wishes to register. These may be randomly generated for the account,
 or may be provided by the calling client. Importantly, this key pair MUST be
 suitable for the particular AKE instantiation of OPAQUE; See {{online-phase}}.
+Clients MUST NOT use the same key pair (skU, pkU) for two different accounts.
 
 To begin, U chooses password PwdU, and S chooses its own pair of private-public
 keys skS and pkS for use with protocol KE. S can use the same pair of keys with
