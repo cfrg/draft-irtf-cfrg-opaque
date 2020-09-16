@@ -306,9 +306,10 @@ operations, roles, and behaviors of OPAQUE:
 
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
-- (skX, pkX): A key pair used in role X; skX is the private key and pkX is
+- (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
 the public key. For example, (skU, pkU) refers to U's private and public key.
-- pk(skX): The public key corresponding to private key skX.
+- kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
+  key.
 - concat(x0, ..., xN): Concatenation of byte strings.
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a random byte string of length `n` bytes.
