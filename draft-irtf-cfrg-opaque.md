@@ -287,10 +287,10 @@ easy to integrate with additional AKE protocols, e.g., IKEv2, and with future
 ones such as those based on post-quantum techniques.
 
 Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
-vulnerable to pre-computation attacks, and less efficient relative to OPAQUE.
-Moreover, SRP requires a ring as it mixes addition and multiplication operations,
-and thus does not work over plain elliptic curves. OPAQUE is therefore a suitable
-replacement for applications that use SRP.
+vulnerable to pre-computation attacks, lacks a proof of security, and is less efficient
+relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
+multiplication operations, and thus does not work over plain elliptic curves. OPAQUE
+is therefore a suitable replacement for applications that use SRP.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
@@ -317,7 +317,8 @@ the public key. For example, (skU, pkU) refers to U's private and public key.
   It is an error to call this function with two arguments of unequal
   length.
 - `ct_equal(a, b)`: Return `true` if `a` is equal to `b`, and false otherwise.
-  This function runs in constant time, irrespective of the values `a` or `b`.
+  This function is constant-time in the length of `a` and `b`, which are assumed
+  to be of equal length, irrespective of the values `a` or `b`.
 
 Except if said otherwise, random choices in this specification refer to
 drawing with uniform distribution from a given set (i.e., "random" is short
@@ -355,8 +356,9 @@ OPAQUE relies on the following protocols and primitives:
     This function also needs to satisfy collision resistance.
 
 We also assume the existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
-generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
-We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`.
+generates an OPRF private and public key. OPAQUE only requires an OPRF private key
+We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
+(and discarding the corresponding public key).
 
 # Core Protocol {#protocol}
 
@@ -685,17 +687,18 @@ Steps:
 The inputs to HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
 
-All `CredentialExtension` values require authentication. Only skU requires secrecy.
-If an application requires secrecy of pkS, this value SHOULD be included in the
+OPAQUE security requires authentication for all `CredentialExtension` values,
+and secrecy for `skU`. If an application additionally requires secrecy of `pkS`,
+this value SHOULD be included in the
 `Credentials.secret_credentials` list (step 5), and MUST NOT be included in the
 `Credentials.cleartext_credentials` list. Applications may optionally include
-pkU, idU, or IdS in the `Credentials.secret_credentials` structure (step 5) if secrecy
+`pkU`, `idU`, or `idS` in the `Credentials.secret_credentials` structure (step 5) if secrecy
 of these values is desired. Otherwise, if an application does not require secrecy for
 these values but does require authentication, they may be appended to
 `Credentials.cleartext_credentials`. Servers MUST specify how clients encode extensions
 in the `Credentials` structure as part of this registration phase.
 
-The server identity `IdS` comes from context. For example, if registering with
+The server identity `idS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
 server domain name.
 
@@ -703,9 +706,9 @@ See {{export-usage}} for details about the output export_key usage.
 
 #### StoreUserRecord
 
-The StoreUserRecord function stores the tuple (envU, pkS, skS, pkU, kU),
+The StoreUserRecord function stores the tuple `(envU, pkS, skS, pkU, kU)`,
 where envU and pkU are obtained from the input RegistrationUpload message in
-a record associated with the user's account idU. If skS and pkS are used for
+a record associated with the user's account idU. If `skS` and `pkS` are used for
 multiple users, the server can store these values separately and omit them from
 the user's record.
 
@@ -898,15 +901,15 @@ OPRF computation and credential fetch flow.
 
 Also, authenticated key-exchange protocols generate keys that need to be uniquely
 and verifiably bound to a pair of identities. In the case of OPAQUE, those identities
-correspond to idU and IdS. Thus, it is essential for the parties to agree on such
+correspond to idU and idS. Thus, it is essential for the parties to agree on such
 identities, including an agreed bit representation of these identities as needed.
 
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie idU to the identity the server uses
-to fetch envU (hence determined during password registration) and to tie IdS
+to fetch envU (hence determined during password registration) and to tie idS
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session.
-IdS and idU can also be part of envU or be tied to the
+idS and idU can also be part of envU or be tied to the
 parties' public keys. In principle, it is possible that identities change
 across different sessions as long as there is a policy that can establish if
 the identity is acceptable or not to the peer. However, we note that the
@@ -1032,7 +1035,7 @@ encrypted under keys Ke2, Ke3 defined below;
 which contains the server's OPRF response and envU. idU can be omitted from message
 KE1 if the information is available to the server in some other way;
 
-- IdS, the server's identity, is not shown explicitly, it can be part of an info
+- idS, the server's identity, is not shown explicitly, it can be part of an info
 field (encrypted or not), part of envU, or can be known from other context
 (see {{SecIdentities}}); it is used crucially for key derivation (see below);
 
@@ -1064,7 +1067,7 @@ The above protocol requires MAC keys Km2, Km3, and optional encryption keys
 Ke2, Ke3, as well as generating a session key SK which is the
 AKE output for protecting subsequent traffic (or for generating further key
 material). Key derivation uses HKDF {{RFC5869}} with a combination of the parties static
-and ephemeral private-public key pairs and the parties' identities idU, IdS.
+and ephemeral private-public key pairs and the parties' identities idU, idS.
 See {{SecIdentities}} for more information about these identities.
 
 HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, and SK:
@@ -1098,7 +1101,7 @@ The HKDF input parameter `info` is computed as follows:
 info = "HMQV keys" || len(nonceU) || nonceU
                    || len(nonceS) || nonceS
                    || len(idU) || idU
-                   || len(IdS) || IdS
+                   || len(idS) || idS
 ~~~
 
 The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as follows:
@@ -1144,7 +1147,7 @@ The HKDF input parameter `info` is computed as follows:
 info = "3DH keys" || len(nonceU) || nonceU
                   || len(nonceS) || nonceS
                   || len(idU) || idU
-                  || len(IdS) || IdS
+                  || len(idS) || idS
 ~~~
 
 The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
@@ -1174,7 +1177,7 @@ OPAQUE with SIGMA-I comprises:
 
 - KE1 = credential_request, nonceU, info1*, idU*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*,
-       Sign(skS; transcript2-), MAC(Km2; IdS),
+       Sign(skS; transcript2-), MAC(Km2; idS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; idU)}
 
 See explanation of fields above. In addition, for the signed material,
@@ -1195,7 +1198,7 @@ computed as follows:
 info = "SIGMA-I keys" || len(nonceU) || nonceU
                       || len(nonceS) || nonceS
                       || len(idU) || idU
-                      || len(IdS) || IdS
+                      || len(idS) || idS
 ~~~
 
 The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
