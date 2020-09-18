@@ -496,6 +496,7 @@ PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, U has a key pair (skU, pkU) for an AKE protocol
 which is suitable for use with OPAQUE; See {{online-phase}}. (skU, pkU) may be
 randomly generated for the account or provided by the calling client.
+Clients MUST NOT use the same key pair (skU, pkU) for two different accounts.
 
 To begin, U chooses password pwdU, and S chooses its own pair of private-public
 keys skS and pkS for use with the AKE. S can use the same pair of keys with
