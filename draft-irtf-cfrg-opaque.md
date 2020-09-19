@@ -344,7 +344,7 @@ OPAQUE relies on the following protocols and primitives:
     `enc`. The size of `enc` is determined by the underlying OPRF group.
   - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
     or produce an error if `enc` is an invalid encoding. This is the inverse
-    of Encode, i.e., `x = Deserialize(Serialize(x))`.
+    of Serialize, i.e., `x = Deserialize(Serialize(x))`.
 
 - Cryptographic hash function:
   - Hash(m): Compute the cryptographic hash of input message "m".
@@ -373,9 +373,9 @@ key-exchange protocol (AKE) using credentials recovered after the OPRF protocol 
 (The key-exchange protocol MUST satisfy the KCI requirement discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
-Specification of the AKE is out of scope for this document. {{instantiations}} describes
-specific instantiations of OPAQUE using various AKE protocols, including: HMQV, 3DH, and
-SIGMA-I. {{I-D.sullivan-tls-opaque}} discusses integration with TLS 1.3 {{RFC8446}}.
+{{instantiations}} describes specific instantiations of OPAQUE using various AKE protocols,
+including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}} discusses integration with
+TLS 1.3 {{RFC8446}}.
 
 ## Protocol messages {#protocol-messages}
 
@@ -472,7 +472,11 @@ struct {
   opaque nonce[32];
   opaque ct<1..2^16-1>;
   opaque auth_data<0..2^16-1>;
-  opaque auth_tag<16..2^8-1>;
+} InnerEnvelope;
+
+struct {
+  InnerEnvelope contents;
+  opaque auth_tag[Nh];
 } Envelope;
 ~~~
 
@@ -669,20 +673,21 @@ Steps:
    contained in response.cleartext_credentials_list
 7. pt = SerializeExtensions(secret_credentials)
 8. nonce = random(32)
-9. pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
+9. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
 10. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 11. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-12. ct = xor(pt, pad)
+12. ct = xor(pt, pseudorandom_pad)
 13. auth_data = SerializeExtensions(cleartext_credentials)
-14. t = HMAC(auth_key, concat(nonce, ct, auth_data))
-15. Create Envelope envU with (nonce, ct, auth_data, t)
-16. Create RegistrationUpload upload with envelope value (envU, pkU).
-17. Output (upload, export_key)
+14. Create InnerEnvelope contents with (nonce, ct, auth_data)
+15. t = HMAC(auth_key, contents)
+16. Create Envelope envU with (contents, t)
+17. Create RegistrationUpload upload with envelope value (envU, pkU)
+18. Output (upload, export_key)
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
 
-[[OPEN ISSUE: Should the nonce size be a parameter?]]
+[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/58: Should the nonce size be a parameter?]]
 
 The inputs to HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
@@ -692,11 +697,10 @@ and secrecy for `skU`. If an application additionally requires secrecy of `pkS`,
 this value SHOULD be included in the
 `Credentials.secret_credentials` list (step 5), and MUST NOT be included in the
 `Credentials.cleartext_credentials` list. Applications may optionally include
-`pkU`, `idU`, or `idS` in the `Credentials.secret_credentials` structure (step 5) if secrecy
-of these values is desired. Otherwise, if an application does not require secrecy for
-these values but does require authentication, they may be appended to
-`Credentials.cleartext_credentials`. Servers MUST specify how clients encode extensions
-in the `Credentials` structure as part of this registration phase.
+`pkU`, `idU`, or `idS` in the `Credentials.cleartext_credentials` structure, or in
+`Credentials.secret_credentials` if secrecy of these values is desired.
+Servers MUST specify how clients encode extensions in the `Credentials` structure
+as part of this registration phase.
 
 The server identity `idS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
@@ -739,7 +743,7 @@ This section describes the message flow, encoding, and helper functions used in 
                                    response
                               <-----------------
 
-    creds = RecoverCredentials(pwdU, metadata, request, response)
+  creds, export_key = RecoverCredentials(pwdU, metadata, request, response)
 
                                (AKE with creds)
                               <================>
@@ -749,9 +753,9 @@ The protocol messages below do not include the AKE protocol. Instead, OPAQUE
 assumes the client and server run the AKE using the credentials recovered from
 the OPRF protocol.
 
-Note also that the authenticate stage can run the OPRF and AKE protocols concurrently
-with interleaved and combined messages (while preserving the internal ordering of
-messages in each protocol). In all cases, the client needs to obtain envU and
+Note also that the authenticated key exchange stage can run the OPRF and AKE protocols
+concurrently with interleaved and combined messages (while preserving the internal ordering
+of messages in each protocol). In all cases, the client needs to obtain envU and
 rwdU (i.e., complete the OPRF protocol) before it can use its own private key
 skU and the server's public key pkS in the AKE. See {{instantiations}} for examples
 of this integration.
@@ -860,27 +864,23 @@ Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
 3. y = Finalize(pwdU, N, "RFCXXXX")
-4. nonce = response.envelope.nonce
-5. ct = response.envelope.ct
-4. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
-8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-10. auth_data = response.envelope.auth_data
-11. expected_tag = HMAC(auth_key, concat(nonce, ct, auth_data))
+4. contents = response.envelope.contents
+5. nonce = contents.nonce
+6. ct = contents.ct
+7. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
+9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+11. expected_tag = HMAC(auth_key, contents)
 12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_credentials = DeserializeExtensions(pt)
 15. cleartext_credentials = DeserializeExtensions(auth_data)
-16. Create Credentials C with (secret_credentials, cleartext_credentials)
-17. Output C, export_key
+16. Create Credentials creds with (secret_credentials, cleartext_credentials)
+17. Output creds, export_key
 ~~~
 
 [[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
-
-As in the registration phase, applications MUST authenticate pkS; secrecy of pkS is
-optional. If an application requires secrecy of pkS, this value MUST be omitted
-from auth_data (step 10).
 
 ## Export Key {#export-usage}
 
@@ -918,8 +918,8 @@ time of password registration.
 
 # Authenticated Key Exchange Protocol Instantiations {#instantiations}
 
-This section describes several instantiations of OPAQUE using different AKE protocols.
-As discussed in {{security-considerations}}, each AKE protocol requires KCI resistance.
+This section describes several instantiations of OPAQUE using different AKE protocols, all of
+which satisfy the forward secrecy and KCI properties discussed in {{security-considerations}}.
 For the sake of concreteness it only includes AKE protocols consisting of three messages,
 denoted KE1, KE2, KE3, where KE1 and KE2 include key exchange shares (DH values) sent by
 client and server, respectively, and KE3 provides explicit client authentication and full
@@ -950,11 +950,12 @@ outside the scope of this document, though may be addressed elsewhere, such as
 in {{I-D.sullivan-tls-opaque}}.
 
 OPAQUE may be instantiated with any post-quantum (PQ) AKE protocol that has the message
-flow above and KCI resistance. This document does not specify such an instantiation.
-Note that such an instantiation is not quantum safe unless the OPRF is quantum safe. However,
-such an instantiation may have benefits since breaking the OPRF does not retroactively
-affect the security of data transferred over a secure channel protected with a
-PQ AKE protocol.
+flow above and security properties (KCI resistance and forward secrecy) outlined
+in {{security-considerations}}. This document does not specify such an instantiation.
+Note that such an instantiation is not quantum safe unless the OPRF and data encryption schemes
+are quantum safe. However, such an instantiation may have benefits since breaking the OPRF
+does not retroactively affect the security of data transferred over a secure channel protected
+with a PQ AKE protocol.
 
 ## Key Schedule Utility Functions
 
@@ -1442,17 +1443,17 @@ implementation is a server's decision (the client side is not changed).
 The second case, requires changes on the client side so it changes OPAQUE
 itself.
 
-[[OPEN ISSUE: Should this variant be documented/standardized?]
+[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22: Should this variant be documented/standardized?]]
 
 ## Password salt and storage implications
 
 In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibility
 of pre-computation attacks. No extra salt value is needed. Also, clients never
-disclose their password to the server, even during registration. Note that this
-does not prevent a malicious server from conducting a dictionary attack on inputs
-provided by the client. OPAQUE assumes the server is honest, and only guarantees
-safeguards against parties who may later compromise the server and any stored
-user account information.
+disclose their password to the server, even during registration. Note that a corrupted
+server can run an exhaustive offline dictionary attack to validate guesses for the user's
+password; this is inevitable in any aPAKE protocol. (OPAQUE enables a defense against such
+offline dictionary attacks by distributing the server so that an offline attack is only
+possible if all - or a minimal number of - servers are compromised.)
 
 Some applications may require learning the user's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
@@ -1491,4 +1492,4 @@ Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
-Kevin Lewi, Payman Mohassel, Jason Resch, Nick Sullivan.
+Kevin Lewi, Payman Mohassel, Jason Resch, Greg Rubin, Nick Sullivan.
