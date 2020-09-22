@@ -1453,7 +1453,7 @@ disclose their password to the server, even during registration. Note that a cor
 server can run an exhaustive offline dictionary attack to validate guesses for the user's
 password; this is inevitable in any aPAKE protocol. (OPAQUE enables a defense against such
 offline dictionary attacks by distributing the server so that an offline attack is only
-possible if all - or a minimal number of - servers are compromised.)
+possible if all - or a minimal number of - servers are compromised {{OPAQUE}}.)
 
 Some applications may require learning the user's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
