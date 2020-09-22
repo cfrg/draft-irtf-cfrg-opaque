@@ -10,7 +10,6 @@
 .targets.mk
 /*-[0-9][0-9].xml
 archive.json
-draft-irtf-cfrg-opaque-00-1.md
 report.xml
 venv/
 lib
