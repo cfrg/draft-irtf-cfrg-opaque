@@ -1219,7 +1219,7 @@ drawn from {{I-D.irtf-cfrg-voprf}}. The following OPRF ciphersuites supports are
 The OPAQUE hash function is that which is associated with the OPRF variant.
 For the variants specified here, only SHA-512 is supported.
 
-[[OPEN ISSUE: Consider SHA-256 for the curve25519 OPRF suite -- SHA-512 is excessive]]
+[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/59: Consider SHA-256 for the Curve25519 OPRF suite -- SHA-512 is excessive]]
 
 The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
@@ -1230,6 +1230,8 @@ login.
 The OPAQUE AKE protocols are those which are specified in {{instantiations}}.
 Future specifications (such as {{I-D.sullivan-tls-opaque}}) MAY introduce other
 AKE instantiations.
+
+[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
 
 # Security Considerations {#security-considerations}
 
