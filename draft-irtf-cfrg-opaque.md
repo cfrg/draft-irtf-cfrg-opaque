@@ -665,7 +665,7 @@ Output:
 Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
-3. y = Finalize(pwdU, N, "RFCXXXX")
+3. y = Finalize(pwdU, N, "OPAQUE00")
 4. rwdU = HKDF-Extract("rwdU", Harden(y, params))
 5. Create secret_credentials with CredentialExtensions matching that
    contained in response.secret_credentials_list
@@ -685,7 +685,7 @@ Steps:
 18. Output (upload, export_key)
 ~~~
 
-[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/58: Should the nonce size be a parameter?]]
 
@@ -863,7 +863,7 @@ Output:
 Steps:
 1. Z = Deserialize(response.data)
 2. N = Unblind(input.data_blind, Z)
-3. y = Finalize(pwdU, N, "RFCXXXX")
+3. y = Finalize(pwdU, N, "OPAQUE00")
 4. contents = response.envelope.contents
 5. nonce = contents.nonce
 6. ct = contents.ct
@@ -880,7 +880,7 @@ Steps:
 17. Output creds, export_key
 ~~~
 
-[[RFC editor: please change "RFCXXXX" to the correct number before publication.]]
+[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
 
 ## Export Key {#export-usage}
 
