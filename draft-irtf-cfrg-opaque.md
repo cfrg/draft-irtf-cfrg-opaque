@@ -277,7 +277,7 @@ of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
-an Oblivious PRF (OPRF) and a key-exchange (KE) protocol. It can be seen
+an Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
@@ -356,21 +356,21 @@ OPAQUE relies on the following protocols and primitives:
     This function also needs to satisfy collision resistance.
 
 We also assume the existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
-generates an OPRF private and public key. OPAQUE only requires an OPRF private key
+generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
 
 # Core Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
-In the first stage, a client stores its encrypted credentials on the server.
-In the second stage, a client obtains those credentials and subsequently uses
+In the first stage, a client registers its password with the server and stores its encrypted credentials on the server.
+In the second stage, a client obtains those credentials, unlocks them using the user's password and subsequently uses
 them as input to an authenticated key exchange (AKE) protocol.
 
 Both registration and authenticated key exchange stages require running an OPRF protocol.
 The latter stage additionally requires running a mutually-authenticated
 key-exchange protocol (AKE) using credentials recovered after the OPRF protocol completes.
-(The key-exchange protocol MUST satisfy the KCI requirement discussed in {{security-considerations}}.)
+(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
 {{instantiations}} describes specific instantiations of OPAQUE using various AKE protocols,
@@ -407,7 +407,7 @@ struct {
 } ProtocolMessage;
 ~~~
 
-Additionally, OPAQUE makes use of an additional structure `Credentials` to store
+OPAQUE makes use of an additional structure `Credentials` to store
 user (client) credentials. A `Credentials` structure consists of secret and
 cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
 the type of extension and carries the raw bytes. This specification includes
@@ -689,7 +689,7 @@ Steps:
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/58: Should the nonce size be a parameter?]]
 
-The inputs to HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
+The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
 
 OPAQUE security requires authentication for all `CredentialExtension` values,
@@ -704,7 +704,7 @@ as part of this registration phase.
 
 The server identity `idS` comes from context. For example, if registering with
 a server within the context of a TLS connection, the identity might be the
-server domain name.
+server domain name. See {{SecIdentities}}.
 
 See {{export-usage}} for details about the output export_key usage.
 
@@ -751,7 +751,7 @@ This section describes the message flow, encoding, and helper functions used in 
 
 The protocol messages below do not include the AKE protocol. Instead, OPAQUE
 assumes the client and server run the AKE using the credentials recovered from
-the OPRF protocol.
+the OPRF protocol. 
 
 Note also that the authenticated key exchange stage can run the OPRF and AKE protocols
 concurrently with interleaved and combined messages (while preserving the internal ordering
@@ -923,7 +923,8 @@ which satisfy the forward secrecy and KCI properties discussed in {{security-con
 For the sake of concreteness it only includes AKE protocols consisting of three messages,
 denoted KE1, KE2, KE3, where KE1 and KE2 include key exchange shares (DH values) sent by
 client and server, respectively, and KE3 provides explicit client authentication and full
-forward security (without it, forward secrecy is only achieved against eavesdroppers).
+forward security (without it, forward secrecy is only achieved against eavesdroppers 
+which is insufficient for OPAQUE security).
 
 As shown in {{OPAQUE}}, OPAQUE cannot use less than three messages so the 3-message
 instantiations presented here are optimal in terms of number of messages.
@@ -953,9 +954,9 @@ OPAQUE may be instantiated with any post-quantum (PQ) AKE protocol that has the 
 flow above and security properties (KCI resistance and forward secrecy) outlined
 in {{security-considerations}}. This document does not specify such an instantiation.
 Note that such an instantiation is not quantum safe unless the OPRF and data encryption schemes
-are quantum safe. However, such an instantiation may have benefits since breaking the OPRF
-does not retroactively affect the security of data transferred over a secure channel protected
-with a PQ AKE protocol.
+are quantum safe. However, an instantiation where both AKE and data encryption are quantum safe,
+but the OPRF is not, would still ensure data security against future quantum attacks since breaking the OPRF
+does not retroactively affect the security of data transferred over a quantum-safe secure channel.
 
 ## Key Schedule Utility Functions
 
@@ -991,19 +992,19 @@ Performance is close to optimal due to the low cost of authentication in
 HMQV: Just 1/6 of an exponentiation for each party over the cost of a regular
 DH exchange. However, HMQV is encumbered by an IBM patent, hence we also
 present OPAQUE with 3DH which only differs in the key derivation function
-at the cost of an extra exponentiation (and less resilience to the compromise
+at the cost of two additional exponentiations (and less resilience to the compromise
 of ephemeral exponents). We note that 3DH serves as a basis for the
 key-exchange protocol of {{SIGNAL}}. Importantly, many other protocols
 follow a similar format with differences
 mainly in the key derivation function. This includes the Noise family of
-protocols. Extensions may also apply to KEM-based AKE protocols as in many
+protocols. Extensions also apply to KEM-based AKE protocols as in many
 post-quantum candidates.
 
-### HMQV and 3DH protocol messages
+### HMQV and 3DH protocol messages {#protocol-messages}
 
 HMQV and 3DH are both implemented using a suitable cyclic group of prime order p.
 All operations in the key derivation steps in {{derive-hmqv}} and {{derive-3dh}}
-are performed in this group using multiplicative notation.
+are performed in this group and represented here using multiplicative notation.
 
 OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
@@ -1166,7 +1167,7 @@ K3dh = epkU^eskS || epkU^skS || pkU^eskS
 
 ## Instantiation with SIGMA-I {#SecSigma}
 
-We show how OPAQUE is built around the 3-message SIGMA-I protocol {{SIGMA}}.
+We show the integration of OPAQUE with the 3-message SIGMA-I protocol {{SIGMA}}.
 This is an example of a signature-based protocol and also serves
 as a basis for integration of OPAQUE with TLS 1.3 as specified in {{I-D.sullivan-tls-opaque}}.
 This specification can be extended to the 4-message SIGMA-R protocol as used
@@ -1181,7 +1182,7 @@ OPAQUE with SIGMA-I comprises:
        Sign(skS; transcript2-), MAC(Km2; idS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; idU)}
 
-See explanation of fields above. In addition, for the signed material,
+See explanation of fields in {{protocol-messages}}. In addition, for the signed material,
 transcript2- is defined similarly to transcript2, however if transcript2 includes
 information that identifies the user, such information can be eliminated in
 transcript2- (this is advised if signing user's identification information by
@@ -1236,8 +1237,8 @@ AKE instantiations.
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
-functionalities: An Oblivious PRF (OPRF) and a key-exchange protocol.
-It can be seen as a "compiler" for transforming any key-exchange
+functionalities: An Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol.
+It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy - see below)
 into a secure aPAKE protocol. In OPAQUE, the user stores a secret private key at the
 server during password registration and retrieves this key each time
@@ -1268,7 +1269,7 @@ server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
 
-Jarecki et al. {{OPAQUE}} recently proved the security of OPAQUE
+Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
@@ -1478,8 +1479,8 @@ it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
 and it is one signature generation and verification in the case of SIGMA and
 TLS 1.3.
 These instantiations preserve the number of messages in the underlying AKE
-protocol except in one of the TLS instantiations where user privacy may
-require an additional round trip.
+protocol except in implementations such as {{I-D.sullivan-tls-opaque}} where 
+an additional round trip is required to provide privacy to account information. 
 
 # IANA Considerations
 
