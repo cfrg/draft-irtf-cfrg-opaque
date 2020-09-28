@@ -1348,7 +1348,9 @@ is as specified in Section 5.6.2.3.4 of {{keyagreement}}. This includes
 checking that the coordinates are in the correct range, that the point
 is on the curve, and that the point is not the point at infinity.
 Additionally, validation MUST ensure the Diffie-Hellman shared secret is
-not the point at infinity.
+not the point at infinity. For X25519 and X448, validation is as described in
+{{?RFC7748}}. In particular, where applicable, endpoints MUST check whether
+the Diffie-Hellman shared secret is the all-zero value and abort if so.
 
 ## User authentication versus Authenticated Key Exchange
 
