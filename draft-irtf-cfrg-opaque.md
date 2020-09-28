@@ -751,7 +751,7 @@ This section describes the message flow, encoding, and helper functions used in 
 
 The protocol messages below do not include the AKE protocol. Instead, OPAQUE
 assumes the client and server run the AKE using the credentials recovered from
-the OPRF protocol. 
+the OPRF protocol.
 
 Note also that the authenticated key exchange stage can run the OPRF and AKE protocols
 concurrently with interleaved and combined messages (while preserving the internal ordering
@@ -923,7 +923,7 @@ which satisfy the forward secrecy and KCI properties discussed in {{security-con
 For the sake of concreteness it only includes AKE protocols consisting of three messages,
 denoted KE1, KE2, KE3, where KE1 and KE2 include key exchange shares (DH values) sent by
 client and server, respectively, and KE3 provides explicit client authentication and full
-forward security (without it, forward secrecy is only achieved against eavesdroppers 
+forward security (without it, forward secrecy is only achieved against eavesdroppers
 which is insufficient for OPAQUE security).
 
 As shown in {{OPAQUE}}, OPAQUE cannot use less than three messages so the 3-message
@@ -1000,7 +1000,7 @@ mainly in the key derivation function. This includes the Noise family of
 protocols. Extensions also apply to KEM-based AKE protocols as in many
 post-quantum candidates.
 
-### HMQV and 3DH protocol messages {#protocol-messages}
+### HMQV and 3DH protocol messages {#hmqv-3dh-protocol-messages}
 
 HMQV and 3DH are both implemented using a suitable cyclic group of prime order p.
 All operations in the key derivation steps in {{derive-hmqv}} and {{derive-3dh}}
@@ -1182,7 +1182,8 @@ OPAQUE with SIGMA-I comprises:
        Sign(skS; transcript2-), MAC(Km2; idS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; idU)}
 
-See explanation of fields in {{protocol-messages}}. In addition, for the signed material,
+See explanation of fields in {{hmqv-3dh-protocol-messages}}.
+In addition, for the signed material,
 transcript2- is defined similarly to transcript2, however if transcript2 includes
 information that identifies the user, such information can be eliminated in
 transcript2- (this is advised if signing user's identification information by
@@ -1479,8 +1480,8 @@ it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
 and it is one signature generation and verification in the case of SIGMA and
 TLS 1.3.
 These instantiations preserve the number of messages in the underlying AKE
-protocol except in implementations such as {{I-D.sullivan-tls-opaque}} where 
-an additional round trip is required to provide privacy to account information. 
+protocol except in implementations such as {{I-D.sullivan-tls-opaque}} where
+an additional round trip is required to provide privacy to account information.
 
 # IANA Considerations
 
