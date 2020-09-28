@@ -310,6 +310,9 @@ operations, roles, and behaviors of OPAQUE:
 the public key. For example, (skU, pkU) refers to U's private and public key.
 - kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
   key.
+- I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
+  described in {{?RFC8017}}. Note that these functions operate on byte strings in
+  big-endian byte order.
 - concat(x0, ..., xN): Concatenation of byte strings.
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a random byte string of length `n` bytes.
@@ -1100,10 +1103,10 @@ Values `IKM` and `info` are defined for each instantiation in the following sect
 The HKDF input parameter `info` is computed as follows:
 
 ~~~
-info = "HMQV keys" || len(nonceU) || nonceU
-                   || len(nonceS) || nonceS
-                   || len(idU) || idU
-                   || len(idS) || idS
+info = "HMQV keys" || I2OSP(len(nonceU), 2) || nonceU
+                   || I2OSP(len(nonceS), 2) || nonceS
+                   || I2OSP(len(idU), 2) || idU
+                   || I2OSP(len(idS), 2) || idS
 ~~~
 
 The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as follows:
@@ -1126,18 +1129,18 @@ Likewise, servers compute `Khmqv` as follows:
 In both cases, `u` is computed as follows:
 
 ~~~
-hashInput = len(epkU) || epkU ||
-            len(info) || info ||
-            len("client") || "client"
+hashInput = I2OSP(len(epkU), 2) || epkU ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("client"), 2) || "client"
 u = Hash(hashInput) mod (len(p)-1)
 ~~~
 
 Likewise, `s` is computed as follows:
 
 ~~~
-hashInput = len(epkS) || epkS ||
-            len(info) || info ||
-            len("server") || "server"
+hashInput = I2OSP(len(epkS), 2) || epkS ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("server"), 2) || "server"
 s = Hash(hashInput) mod (len(p)-1)
 ~~~
 
@@ -1146,10 +1149,10 @@ s = Hash(hashInput) mod (len(p)-1)
 The HKDF input parameter `info` is computed as follows:
 
 ~~~
-info = "3DH keys" || len(nonceU) || nonceU
-                  || len(nonceS) || nonceS
-                  || len(idU) || idU
-                  || len(idS) || idS
+info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
+                  || I2OSP(len(nonceS), 2) || nonceS
+                  || I2OSP(len(idU), 2) || idU
+                  || I2OSP(len(idS), 2) || idS
 ~~~
 
 The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
@@ -1198,10 +1201,10 @@ specified in {{hmqv-key-schedule}}. The HKDF input parameter `info` is
 computed as follows:
 
 ~~~
-info = "SIGMA-I keys" || len(nonceU) || nonceU
-                      || len(nonceS) || nonceS
-                      || len(idU) || idU
-                      || len(idS) || idS
+info = "SIGMA-I keys" || I2OSP(len(nonceU), 2) || nonceU
+                      || I2OSP(len(nonceS), 2) || nonceS
+                      || I2OSP(len(idU), 2) || idU
+                      || I2OSP(len(idS), 2) || idS
 ~~~
 
 The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
@@ -1338,8 +1341,8 @@ an attack with 25759 calls that reduces security by 7 bits and one with
 Both client and server MUST validate the other party's public key(s) used
 for the execution of OPAQUE. This includes the keys shared during the
 offline registration phase, as well as any keys shared during the online
-key agreement phase. The validation procedure varies
-depending on the type of key. For example, for OPAQUE instantiations
+key agreement phase. The validation procedure varies depending on the
+type of key. For example, for OPAQUE instantiations
 using 3DH with P-256, P-384, or P-521 as the underlying group, validation
 is as specified in Section 5.6.2.3.4 of {{keyagreement}}. This includes
 checking that the coordinates are in the correct range, that the point
