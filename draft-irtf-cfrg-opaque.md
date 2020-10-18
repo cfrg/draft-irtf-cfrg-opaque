@@ -525,7 +525,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(idU, pwdU, skU, metadata, request, response)
+ record = FinalizeRequest(idU, pwdU, skU, pkU, metadata, request, response)
 
                                     record
                               ------------------>
@@ -639,7 +639,7 @@ Steps:
 1. (kU, _) = KeyGen()
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
-4. data = Z.encode()
+4. data = Serialize(Z)
 5. Create RegistrationResponse response with
      (data, pkS, secret_credentials_list, cleartext_credentials_list)
 6. Output (response, kU)
@@ -648,7 +648,7 @@ Steps:
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(idU, pwdU, skU, metadata, request, response)
+FinalizeRequest(idU, pwdU, skU, pkU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -657,6 +657,7 @@ Input:
 - idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 - skU, the user's private key
+- pkU, the user's public key
 - metadata, a RequestMetadata structure
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
@@ -667,25 +668,26 @@ Output:
 
 Steps:
 1. Z = Deserialize(response.data)
-2. N = Unblind(input.data_blind, Z)
+2. N = Unblind(metadata.data_blind, Z)
 3. y = Finalize(pwdU, N, "OPAQUE00")
-4. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-5. Create secret_credentials with CredentialExtensions matching that
+4. y_harden = Harden(y, params)
+5. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+6. Create secret_credentials with CredentialExtensions matching that
    contained in response.secret_credentials_list
-6. Create cleartext_credentials with CredentialExtensions matching that
+7. Create cleartext_credentials with CredentialExtensions matching that
    contained in response.cleartext_credentials_list
-7. pt = SerializeExtensions(secret_credentials)
-8. nonce = random(32)
-9. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
-10. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-11. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-12. ct = xor(pt, pseudorandom_pad)
-13. auth_data = SerializeExtensions(cleartext_credentials)
-14. Create InnerEnvelope contents with (nonce, ct, auth_data)
-15. t = HMAC(auth_key, contents)
-16. Create Envelope envU with (contents, t)
-17. Create RegistrationUpload upload with envelope value (envU, pkU)
-18. Output (upload, export_key)
+8. pt = SerializeExtensions(secret_credentials)
+9. nonce = random(32)
+10. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
+11. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+12. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+13. ct = xor(pt, pseudorandom_pad)
+14. auth_data = SerializeExtensions(cleartext_credentials)
+15. Create InnerEnvelope contents with (nonce, ct, auth_data)
+17. t = HMAC(auth_key, contents)
+18. Create Envelope envU with (contents, t)
+19. Create RegistrationUpload upload with envelope value (envU, pkU)
+20. Output (upload, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
