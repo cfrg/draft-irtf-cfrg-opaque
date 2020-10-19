@@ -20,7 +20,7 @@ author:
  -
     ins: K. Lewi
     name: Kevin Lewi
-    organization: Facebook
+    organization: Novi
     email: lewi.kevin.k@gmail.com
  -
     ins: C. A. Wood
@@ -442,7 +442,7 @@ enum {
 
 struct {
   CredentialType type;
-  CredentialData data<0..2^16-1>;
+  opaque data<0..2^16-1>;
 } CredentialExtension;
 
 struct {
