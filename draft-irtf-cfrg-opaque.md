@@ -784,7 +784,7 @@ description of this encoding.
 ~~~
 struct {
     opaque data<1..2^16-1>;
-    opaque envelope<1..2^16-1>;
+    Envelope envelope;
     opaque pkS<0..2^16-1>;
 } CredentialResponse;
 ~~~
