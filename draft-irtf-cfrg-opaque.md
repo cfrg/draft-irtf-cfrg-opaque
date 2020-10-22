@@ -515,7 +515,7 @@ Once complete, the registration process proceeds as follows:
 ~~~
  Client (idU, pwdU, skU, pkU)                 Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateRegistrationRequest(idU, pwdU)
+   request, metadata = CreateRegistrationRequest(pwdU)
 
                                    request
                               ----------------->
@@ -525,7 +525,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(idU, pwdU, skU, metadata, request, response)
+ record = FinalizeRequest(pwdU, skU, metadata, request, response)
 
                                     record
                               ------------------>
@@ -540,13 +540,9 @@ See {{validation}} for more details.
 
 ~~~
 struct {
-    opaque id<0..2^16-1>;
     opaque data<1..2^16-1>;
 } RegistrationRequest;
 ~~~
-
-id
-: An opaque string carrying the client account information, if available.
 
 data
 : An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
@@ -598,10 +594,9 @@ envelope.
 #### CreateRegistrationRequest
 
 ~~~
-CreateRegistrationRequest(idU, pwdU)
+CreateRegistrationRequest(pwdU)
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 
 Output:
@@ -611,7 +606,7 @@ Output:
 Steps:
 1. (r, M) = Blind(pwdU)
 2. data = Serialize(M)
-3. Create RegistrationRequest request with (idU, data)
+3. Create RegistrationRequest request with data
 4. Create RequestMetadata metadata with Serialize(r)
 5. Output (request, metadata)
 ~~~
@@ -648,13 +643,12 @@ Steps:
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(idU, pwdU, skU, metadata, request, response)
+FinalizeRequest(pwdU, skU, metadata, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 - skU, the user's private key
 - metadata, a RequestMetadata structure
@@ -736,7 +730,7 @@ This section describes the message flow, encoding, and helper functions used in 
 ~~~
  Client (idU, pwdU)                           Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateCredentialRequest(idU, pwdU)
+   request, metadata = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
@@ -767,7 +761,6 @@ of this integration.
 
 ~~~
 struct {
-    opaque id<0..2^16-1>;
     opaque data<1..2^16-1>;
 } CredentialRequest;
 ~~~
@@ -802,13 +795,12 @@ exchange stage. This field is optional.
 
 ### Authenticated key exchange functions
 
-#### CreateCredentialRequest(idU, pwdU)
+#### CreateCredentialRequest(pwdU)
 
 ~~~
-CreateCredentialRequest(idU, pwdU)
+CreateCredentialRequest(pwdU)
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 
 Output:
@@ -818,7 +810,7 @@ Output:
 Steps:
 1. (r, M) = Blind(pwdU)
 2. data = Serialize(M)
-3. Create CredentialRequest request with (idU, data)
+3. Create CredentialRequest request with data
 4. Create RequestMetadata metadata with Serialize(r)
 5. Output (request, metadata)
 ~~~
