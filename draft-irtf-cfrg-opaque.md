@@ -741,7 +741,7 @@ This section describes the message flow, encoding, and helper functions used in 
                                    request
                               ----------------->
 
-         (response, pkU) = CreateCredentialResponse(request, pkS)
+         (response, pkU) = CreateCredentialResponse(request)
 
                                    response
                               <-----------------
@@ -785,7 +785,6 @@ description of this encoding.
 struct {
     opaque data<1..2^16-1>;
     Envelope envelope;
-    opaque pkS<0..2^16-1>;
 } CredentialResponse;
 ~~~
 
@@ -795,10 +794,6 @@ description of this encoding.
 
 envelope
 : An authenticated encoding of a Credentials structure.
-
-pkS
-: An encoded public key that will be used for the online authenticated key
-exchange stage. This field is optional.
 
 ### Authenticated key exchange functions
 
@@ -823,14 +818,13 @@ Steps:
 5. Output (request, metadata)
 ~~~
 
-#### CreateCredentialResponse(request, pkS)
+#### CreateCredentialResponse(request)
 
 ~~~
-CreateCredentialResponse(request, pkS)
+CreateCredentialResponse(request)
 
 Input:
-- request, an CredentialRequest structure
-- pkS, public key of the server
+- request, a CredentialRequest structure
 
 Output:
 - response, a CredentialResponse structure
@@ -841,7 +835,7 @@ Steps:
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
-5. Create CredentialResponse response with (data, envU, pkS)
+5. Create CredentialResponse response with (data, envU)
 6. Output (response, pkU)
 ~~~
 
