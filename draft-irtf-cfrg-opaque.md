@@ -1454,24 +1454,6 @@ NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
 passwords.
 
-# Performance Considerations
-
-The computational cost of OPAQUE is determined by the cost of the OPRF,
-the cost of a regular Diffie-Hellman exchange, and the cost of
-authenticating such exchange. In an elliptic-curve implementation of
-the OPRF, the cost for the client is two exponentiations (one or two
-of which can be fixed base) and one hashing-into-curve operation
-{{I-D.irtf-cfrg-hash-to-curve}}; for the server, it is just one
-exponentiation. The cost of a Diffie-Hellman exchange is as usual two
-exponentiations per party (one of which is fixed-base). Finally, the
-cost of authentication per party depends on the specific AKE protocol:
-it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
-and it is one signature generation and verification in the case of SIGMA and
-TLS 1.3.
-These instantiations preserve the number of messages in the underlying AKE
-protocol except in implementations such as {{I-D.sullivan-tls-opaque}} where
-an additional round trip is required to provide privacy to account information.
-
 # IANA Considerations
 
 This document makes no IANA requests.
