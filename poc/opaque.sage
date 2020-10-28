@@ -4,16 +4,14 @@
 import os
 import sys
 import json
-
 import hmac
 import hashlib
-
 import struct
 
 from collections import namedtuple
 
 try:
-    from sagelib.oprf import Evaluation
+    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation
     from sagelib.oprf import ciphersuite_p256_hkdf_sha512_sswu_ro, Ciphersuite, GroupP256
     from sagelib import ristretto255
 except ImportError as e:
@@ -70,19 +68,19 @@ def harden(y, params):
     # https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/69
     return y
 
-def hkdf_extract(salt, ikm):
-    return hmac.digest(salt, ikm, hashlib.sha256)
+def hkdf_extract(config, salt, ikm):
+    return hmac.digest(salt, ikm, config.hash_alg)
 
-def hkdf_expand(prk, info, L):
+def hkdf_expand(config, prk, info, L):
     # https://tools.ietf.org/html/rfc5869
     # N = ceil(L/HashLen)
     # T = T(1) | T(2) | T(3) | ... | T(N)
     # OKM = first L octets of T
-    hash_length = 32
+    hash_length = config.hash_alg().digest_size
     N = ceil(L / hash_length)
     Ts = [bytes(bytearray([]))]
     for i in range(N):
-        Ts.append(hmac.digest(prk, Ts[i] + info + int(i+1).to_bytes(1, 'big'), hashlib.sha256))
+        Ts.append(hmac.digest(prk, Ts[i] + info + int(i+1).to_bytes(1, 'big'), config.hash_alg))
 
     def concat(a, b):
         return a + b
@@ -97,18 +95,17 @@ def hkdf_expand(prk, info, L):
 #    opaque label<8..255> = "OPAQUE " + Label;
 #    opaque context<0..255> = Context;
 # } HkdfLabel;
-def hkdf_expand_label(secret, label, context, length):
+def hkdf_expand_label(config, secret, label, context, length):
     def build_label(length, label, context):
         return int(length).to_bytes(2, 'big') + encode_vector_len(_as_bytes("OPAQUE ") + label, 1) + encode_vector_len(context, 1)
     hkdf_label = build_label(length, label, context)
-    return hkdf_expand(secret, hkdf_label, length)
+    return hkdf_expand(config, secret, hkdf_label, length)
 
 # Derive-Secret(Secret, Label, Transcript) =
 #     HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
-def derive_secret(secret, label, transcript):
-    # TODO(caw): this needs to be parameterized by the hash function
-    transcript_hash = hashlib.sha256(transcript).digest()
-    return hkdf_expand_label(secret, label, transcript_hash, 32)
+def derive_secret(config, secret, label, transcript):
+    transcript_hash = config.hash_alg(transcript).digest()
+    return hkdf_expand_label(config, secret, label, transcript_hash, config.hash_alg().digest_size)
 
 # enum {
 #     registration_request(1),
@@ -169,16 +166,16 @@ class InnerEnvelope(object):
 #   InnerEnvelope contents;
 #   opaque auth_tag[Nh];
 # } Envelope;
-def deserialize_envelope(data):
+def deserialize_envelope(config, data):
     contents, offset = deserialize_inner_envelope(data)
-    if offset+32 > len(data):
+    Nh = config.hash_alg().digest_size
+    if offset + Nh > len(data):
         raise Exception("Insufficient bytes")
-    auth_tag = data[offset:offset+32]
-    return Envelope(contents, auth_tag), offset+32
+    auth_tag = data[offset:offset+Nh]
+    return Envelope(contents, auth_tag), offset+Nh
 
 class Envelope(object):
     def __init__(self, contents, auth_tag):
-        assert(len(auth_tag) == 32)
         self.contents = contents
         self.auth_tag = auth_tag
 
@@ -284,7 +281,7 @@ class Credentials(object):
         cleartext_creds = serialize_extensions(self.cleartext_credentials)
         return secret_creds + cleartext_creds
 
-def deserialize_message(msg_data):
+def deserialize_message(config, msg_data):
     if len(msg_data) < 4:
         raise Exception("Insufficient bytes")
     msg_type = int.from_bytes(msg_data[0:1], "big")
@@ -293,15 +290,15 @@ def deserialize_message(msg_data):
         raise Exception("Insufficient bytes")
 
     if msg_type == opaque_message_registration_request:
-        return deserialize_registration_request(msg_data[4:4+msg_length]), 4+msg_length
+        return deserialize_registration_request(config, msg_data[4:4+msg_length]), 4+msg_length
     elif msg_type == opaque_message_registration_response:
-        return deserialize_registration_response(msg_data[4:4+msg_length]), 4+msg_length
+        return deserialize_registration_response(config, msg_data[4:4+msg_length]), 4+msg_length
     elif msg_type == opaque_message_registration_upload:
-        return deserialize_registration_upload(msg_data[4:4+msg_length]), 4+msg_length
+        return deserialize_registration_upload(config, msg_data[4:4+msg_length]), 4+msg_length
     elif msg_type == opaque_message_credential_request:
-        return deserialize_credential_request(msg_data[4:4+msg_length]), 4+msg_length
+        return deserialize_credential_request(config, msg_data[4:4+msg_length]), 4+msg_length
     elif msg_type == opaque_message_credential_response:
-        return deserialize_credential_response(msg_data[4:4+msg_length]), 4+msg_length
+        return deserialize_credential_response(config, msg_data[4:4+msg_length]), 4+msg_length
     else:
         raise Exception("Invalid message type:", msg_type)
 
@@ -323,7 +320,7 @@ class ProtocolMessage(object):
 # struct {
 #     opaque data<1..2^16-1>;
 # } RegistrationRequest;
-def deserialize_registration_request(msg_bytes):
+def deserialize_registration_request(config, msg_bytes):
     data, offset = decode_vector(msg_bytes)
     return RegistrationRequest(data)
 
@@ -341,7 +338,7 @@ class RegistrationRequest(ProtocolMessage):
 #     CredentialType secret_types<1..255>;
 #     CredentialType cleartext_types<0..255>;
 # } RegistrationResponse;
-def deserialize_registration_response(msg_bytes):
+def deserialize_registration_response(config, msg_bytes):
     offset = 0
 
     data, data_offset = decode_vector(msg_bytes[offset:])
@@ -374,10 +371,10 @@ class RegistrationResponse(ProtocolMessage):
 #     Envelope envelope;
 #     opaque pkU<0..2^16-1>;
 # } RegistrationUpload;
-def deserialize_registration_upload(msg_bytes):
+def deserialize_registration_upload(config, msg_bytes):
     offset = 0
 
-    envU, envU_offset = deserialize_envelope(msg_bytes[offset:])
+    envU, envU_offset = deserialize_envelope(config, msg_bytes[offset:])
     offset += envU_offset
 
     pkU, pkU_offset = decode_vector(msg_bytes[offset:])
@@ -397,7 +394,7 @@ class RegistrationUpload(ProtocolMessage):
 # struct {
 #     opaque data<1..2^16-1>;
 # } CredentialRequest;
-def deserialize_credential_request(msg_bytes):
+def deserialize_credential_request(config, msg_bytes):
     data, offset = decode_vector(msg_bytes)
     return CredentialRequest(data)
 
@@ -413,13 +410,13 @@ class CredentialRequest(ProtocolMessage):
 #     opaque data<1..2^16-1>;
 #     Envelope envelope;
 # } CredentialResponse;
-def deserialize_credential_response(msg_bytes):
+def deserialize_credential_response(config, msg_bytes):
     offset = 0
 
     data, data_offset = decode_vector(msg_bytes[offset:])
     offset += data_offset
 
-    envU, envU_offset = deserialize_envelope(msg_bytes[offset:])
+    envU, envU_offset = deserialize_envelope(config, msg_bytes[offset:])
     offset += envU_offset
 
     return CredentialResponse(data, envU)
@@ -463,7 +460,9 @@ class RequestMetadata(object):
                                              StoreUserRecord(record)
 '''
 
-def create_registration_request(oprf_context, pwdU):
+def create_registration_request(config, pwdU):
+    oprf_context = SetupBaseClient(config.oprf_suite)
+
     r, M, _ = oprf_context.blind(pwdU)
     data = oprf_context.suite.group.serialize(M)
     blind = oprf_context.suite.group.serialize_scalar(r)
@@ -473,7 +472,8 @@ def create_registration_request(oprf_context, pwdU):
 
     return request, request_metadata
 
-def create_registration_response(oprf_context, request, pkS, secret_list, cleartext_list):
+def create_registration_response(config, request, pkS, secret_list, cleartext_list):
+    oprf_context = SetupBaseServer(config.oprf_suite)
     kU = oprf_context.skS
 
     M = oprf_context.suite.group.deserialize(request.data)
@@ -484,21 +484,24 @@ def create_registration_response(oprf_context, request, pkS, secret_list, cleart
 
     return response, kU
 
-def derive_secrets(oprf_context, pwdU, response, metadata, nonce, Npt, Nh):
+def derive_secrets(config, pwdU, response, metadata, nonce, Npt):
+    oprf_context = SetupBaseClient(config.oprf_suite)
     Z = oprf_context.suite.group.deserialize(response.data)
     r = oprf_context.suite.group.deserialize_scalar(metadata.data_blind)
     N = oprf_context.unblind(Evaluation(Z, None), r, None) # TODO(caw): https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/68
     y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE00"))
-    y_harden = harden(y, params=None) # TODO(caw): figure out how to specify and pass in Harden params
-    rwdU = hkdf_extract(_as_bytes("rwdU"), y_harden)
+    y_harden = config.harden(y, params=None)
+    rwdU = hkdf_extract(config, _as_bytes("rwdU"), y_harden)
 
-    pseudorandom_pad = hkdf_expand(rwdU, nonce + _as_bytes("Pad"), Npt)
-    auth_key = hkdf_expand(rwdU, nonce + _as_bytes("AuthKey"), Nh)
-    export_key = hkdf_expand(rwdU, nonce + _as_bytes("ExportKey"), Nh)
+    Nh = config.hash_alg().digest_size
+
+    pseudorandom_pad = hkdf_expand(config, rwdU, nonce + _as_bytes("Pad"), Npt)
+    auth_key = hkdf_expand(config, rwdU, nonce + _as_bytes("AuthKey"), Nh)
+    export_key = hkdf_expand(config, rwdU, nonce + _as_bytes("ExportKey"), Nh)
 
     return pseudorandom_pad, auth_key, export_key
 
-def finalize_request(oprf_context, idU, pwdU, skU, pkU, metadata, request, response, kU):
+def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, kU):
     secret_credentials = []
     for credential_type in response.secret_list:
         if credential_type == credential_skU:
@@ -518,12 +521,12 @@ def finalize_request(oprf_context, idU, pwdU, skU, pkU, metadata, request, respo
     auth_data = serialize_extensions(cleartext_credentials)
 
     nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-    pseudorandom_pad, auth_key, export_key = derive_secrets(oprf_context, pwdU, response, metadata, nonce, len(pt), 32)
+    pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(pt))
     ct = xor(pt, pseudorandom_pad)
 
     contents = InnerEnvelope(nonce, ct, auth_data)
     serialized_contents = contents.serialize()
-    auth_tag = hmac.digest(auth_key, serialized_contents, hashlib.sha256)
+    auth_tag = hmac.digest(auth_key, serialized_contents, config.hash_alg)
 
     envU = Envelope(contents, auth_tag)
     upload = RegistrationUpload(envU, pkU)
@@ -551,7 +554,8 @@ def finalize_request(oprf_context, idU, pwdU, skU, pkU, metadata, request, respo
                               <================>
 '''
 
-def create_credential_request(oprf_context, pwdU):
+def create_credential_request(config, pwdU):
+    oprf_context = SetupBaseClient(config.oprf_suite)
     r, M, _ = oprf_context.blind(pwdU)
     data = oprf_context.suite.group.serialize(M)
     blind = oprf_context.suite.group.serialize_scalar(r)
@@ -561,9 +565,10 @@ def create_credential_request(oprf_context, pwdU):
 
     return request, request_metadata
 
-def create_credential_response(oprf_context, request, pkS, kU, record):
+def create_credential_response(config, request, pkS, kU, record):
     envU, pkU = record.envU, record.pkU
 
+    oprf_context = SetupBaseServer(config.oprf_suite)
     oprf_context.skS = kU
 
     M = oprf_context.suite.group.deserialize(request.data)
@@ -574,15 +579,15 @@ def create_credential_response(oprf_context, request, pkS, kU, record):
 
     return response, pkU
 
-def recover_credentials(oprf_context, pwdU, metadata, request, response):
+def recover_credentials(config, pwdU, metadata, request, response):
     contents = response.envU.contents
     serialized_contents = contents.serialize()
     nonce = contents.nonce
     ct = contents.ct
     auth_data = contents.auth_data
 
-    pseudorandom_pad, auth_key, export_key = derive_secrets(oprf_context, pwdU, response, metadata, nonce, len(ct), 32)
-    expected_tag = hmac.digest(auth_key, serialized_contents, hashlib.sha256)
+    pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(ct))
+    expected_tag = hmac.digest(auth_key, serialized_contents, config.hash_alg)
 
     if expected_tag != response.envU.auth_tag:
         raise Exception("Invalid tag")
@@ -601,14 +606,16 @@ def recover_credentials(oprf_context, pwdU, metadata, request, response):
 ####
 
 class Configuration(object):
-    def __init__(self, oprf, hasher, harden):
-        self.oprf = oprf
-        self.hasher = hasher
+    def __init__(self, oprf_suite, hash_alg, harden):
+        self.oprf_suite = oprf_suite
+        self.hash_alg = hash_alg
         self.harden = harden
+
+
 
 # # TODO(caw): update this to ristretto255
 default_oprf_ciphersuite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
-default_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, harden)
+default_opaque_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, harden)
 
 '''
 Docs: https://docs.google.com/document/d/1Gl97UFfydWFZyGVnDV1rcxqBVtyHbuIr400zEkAIQ88/edit#
@@ -619,36 +626,6 @@ Length of secret credential types: LSCT
 Length of cleartext credentials types: LCCT
 '''
 
-# class Group(object):
-#     @classmethod
-#     def keygen(self):
-#         raise Exception("Not implemented")
-
-# class Element(object):
-#     def __init__(self):
-#         pass
-
-#     def multiply(self, k):
-#         raise Exception("Not implemented")
-
-#     def add(self, e):
-#         raise Exception("Not implemented")
-
-# class Ristretto255(Group):
-#     @classmethod
-#     def keygen(self):
-#         (sk, pk) = ristretto255.keygen()
-#         return Risretto255Element(pk)
-
-# class Risretto255Element(Element):
-#     def __init__(self, sk, pk):
-#         Element.__init__(self)
-#         self.sk = sk
-#         self.pk = pk
-
-
-
-
 class KeyExchange(object):
     def __init__(self):
         pass
@@ -656,10 +633,10 @@ class KeyExchange(object):
     def generate_ke1(self, l1):
         raise Exception("Not implemented")
 
-    def generate_ke2(self, l1, l2, ke1, pkU, skS):
+    def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
         raise Exception("Not implemented")
 
-    def generate_ke3(self, l2, ke2, ke1_state, pkS, skU):
+    def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
         raise Exception("Not implemented")
 
 class KeyExchangeMessage(object):
@@ -674,8 +651,9 @@ class KeyExchangeMessage(object):
 TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
 
 class TripleDH(KeyExchange):
-    def __init__(self):
+    def __init__(self, config):
         KeyExchange.__init__(self)
+        self.config = config
 
     def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, pkU, pkS):
         dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
@@ -695,10 +673,10 @@ class TripleDH(KeyExchange):
         info = _as_bytes("3DH keys") + encode_vector_len(client_nonce, 2) + encode_vector_len(server_nonce, 2) \
             + empty_vector + empty_vector # idU and idS are empty
 
-        output_size = 32 # 32B per key
-        prk = hkdf_extract(bytes([]), ikm)
-        handshake_secret = derive_secret(prk, _as_bytes("handshake secret"), info)
-        session_key = derive_secret(prk, _as_bytes("handshake secret"), info)
+        output_size = self.config.hash_alg().digest_size
+        prk = hkdf_extract(self.config, bytes([]), ikm)
+        handshake_secret = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
+        session_key = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
 
         # Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
         # Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
@@ -707,10 +685,10 @@ class TripleDH(KeyExchange):
         # TODO(caw): need to parameterize these values accordingly
         # TODO(caw): move these constant labels to actual constants
         empty_info = bytes([])
-        km2 = hkdf_expand_label(handshake_secret, _as_bytes("client mac"), empty_info, 32)
-        km3 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), empty_info, 32)
-        ke2 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), empty_info, 16)
-        ke3 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), empty_info, 16)
+        km2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("client mac"), empty_info, 32)
+        km3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 32)
+        ke2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 16)
+        ke3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 16)
 
         return km2, km3, ke2, ke3, session_key
 
