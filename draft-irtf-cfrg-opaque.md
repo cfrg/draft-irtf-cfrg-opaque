@@ -383,9 +383,9 @@ TLS 1.3 {{RFC8446}}.
 ## Protocol messages {#protocol-messages}
 
 The OPAQUE protocol runs the OPRF protocol in two stages: registration and
-authenticated key exchange. A client and server exchange protocol messages in
-executing these stages. This section specifies the structure of these protocol
-messages using TLS notation (see {{RFC8446}}, Section 3).
+authenticated key exchange. A client and server exchange messages in executing
+these stages. The encoding of these messages is specific to each instantiation of
+OPAQUE. See {{instantiations}} for examples.
 
 ~~~
 enum {

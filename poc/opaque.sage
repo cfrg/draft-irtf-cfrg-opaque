@@ -8,8 +8,14 @@ import json
 import hmac
 import hashlib
 
+import struct
+
+from collections import namedtuple
+
 try:
     from sagelib.oprf import Evaluation
+    from sagelib.oprf import ciphersuite_p256_hkdf_sha512_sswu_ro, Ciphersuite, GroupP256
+    from sagelib import ristretto255
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -20,6 +26,32 @@ if sys.version_info[0] == 3:
 else:
     _as_bytes = lambda x: x
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
+
+## TODO(caw): move these to common.sage
+
+# defined in RFC 3447, section 4.1
+def I2OSP(val, length):
+    val = int(val)
+    if val < 0 or val >= (1 << (8 * length)):
+        raise ValueError("bad I2OSP call: val=%d length=%d" % (val, length))
+    ret = [0] * length
+    val_ = val
+    for idx in reversed(xrange(0, length)):
+        ret[idx] = val_ & 0xff
+        val_ = val_ >> 8
+    ret = struct.pack("=" + "B" * length, *ret)
+    assert OS2IP(ret, True) == val
+    return ret
+
+# defined in RFC 3447, section 4.2
+def OS2IP(octets, skip_assert=False):
+    ret = 0
+    for octet in struct.unpack("=" + "B" * len(octets), octets):
+        ret = ret << 8
+        ret += octet
+    if not skip_assert:
+        assert octets == I2OSP(ret, len(octets))
+    return ret
 
 OPAQUE_NONCE_LENGTH = 32
 
@@ -57,6 +89,27 @@ def hkdf_expand(prk, info, L):
     T = reduce(concat, map(lambda c : c, Ts))
     return T[0:L]
 
+# HKDF-Expand-Label(Secret, Label, Context, Length) =
+#   HKDF-Expand(Secret, HkdfLabel, Length)
+#
+# struct {
+#    uint16 length = Length;
+#    opaque label<8..255> = "OPAQUE " + Label;
+#    opaque context<0..255> = Context;
+# } HkdfLabel;
+def hkdf_expand_label(secret, label, context, length):
+    def build_label(length, label, context):
+        return int(length).to_bytes(2, 'big') + encode_vector_len(_as_bytes("OPAQUE ") + label, 1) + encode_vector_len(context, 1)
+    hkdf_label = build_label(length, label, context)
+    return hkdf_expand(secret, hkdf_label, length)
+
+# Derive-Secret(Secret, Label, Transcript) =
+#     HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
+def derive_secret(secret, label, transcript):
+    # TODO(caw): this needs to be parameterized by the hash function
+    transcript_hash = hashlib.sha256(transcript).digest()
+    return hkdf_expand_label(secret, label, transcript_hash, 32)
+
 # enum {
 #     registration_request(1),
 #     registration_response(2),
@@ -71,16 +124,22 @@ opaque_message_registration_upload = 3
 opaque_message_credential_request = 4
 opaque_message_credential_response = 5
 
+def encode_vector_len(data, L):
+    return len(data).to_bytes(L, 'big') + data
+
+def decode_vector_len(data_bytes, L):
+    if len(data_bytes) < L:
+        raise Exception("Insufficient length")
+    data_len = int.from_bytes(data_bytes[0:L], 'big')
+    if len(data_bytes) < L+data_len:
+        raise Exception("Insufficient length")
+    return data_bytes[L:L+data_len], L+data_len
+
 def encode_vector(data):
-    return len(data).to_bytes(2, 'big') + data
+    return encode_vector_len(data, 2)
 
 def decode_vector(data_bytes):
-    if len(data_bytes) < 2:
-        raise Exception("Insufficient length")
-    data_len = int.from_bytes(data_bytes[0:2], 'big')
-    if len(data_bytes) < 2+data_len:
-        raise Exception("Insufficient length")
-    return data_bytes[2:2+data_len], 2+data_len
+    return decode_vector_len(data_bytes, 2)
 
 # struct {
 #   opaque nonce[32];
@@ -219,10 +278,10 @@ def deserialize_message(msg_data):
 
     if msg_type == opaque_message_registration_request:
         return deserialize_registration_request(data[4:4+msg_length]), 4+msg_length
+    # TODO(caw): implement the others
 
 def deserialize_registration_request(msg_bytes):
-    username, offset = decode_vector(msg_bytes)
-    data, offset = decode_vector(msg_bytes[offset:])
+    data, offset = decode_vector(msg_bytes)
     return RegistrationRequest(username, data)
 
 def serialize_message(msg):
@@ -233,24 +292,21 @@ class ProtocolMessage(object):
     def __init__(self, msg_type):
         self.msg_type = msg_type
 
-# TODO(caw): make clear what are the types of each thing
 class RegistrationRequest(ProtocolMessage):
-    def __init__(self, idU, data):
+    def __init__(self, data):
         ProtocolMessage.__init__(self, opaque_message_registration_request)
-        self.idU = idU
         self.data = data
 
     def serialize(self):
-        return encode_vector(self.idU) + encode_vector(self.data)
+        return encode_vector(self.data)
 
 class CredentialRequest(ProtocolMessage):
-    def __init__(self, idU, data):
+    def __init__(self, data):
         ProtocolMessage.__init__(self, opaque_message_credential_request)
-        self.idU = idU
         self.data = data
 
     def serialize(self):
-        return encode_vector(self.idU) + encode_vector(self.data)
+        return encode_vector(self.data)
 
 class RegistrationResponse(ProtocolMessage):
     def __init__(self, data, pkS, secret_list, cleartext_list):
@@ -271,7 +327,7 @@ class CredentialResponse(ProtocolMessage):
         self.pkS = pkS
 
     def serialize(self):
-        raise Exception("Not implemented")
+        return encode_vector(self.data) + self.envU.serialize() + encode_vector(self.pkS)
 
 class RegistrationUpload(ProtocolMessage):
     def __init__(self, envU, pkU):
@@ -312,12 +368,12 @@ class RequestMetadata(object):
                                              StoreUserRecord(record)
 '''
 
-def create_registration_request(oprf_context, idU, pwdU):
+def create_registration_request(oprf_context, pwdU):
     r, M, _ = oprf_context.blind(pwdU)
     data = oprf_context.suite.group.serialize(M)
     blind = oprf_context.suite.group.serialize_scalar(r)
 
-    request = RegistrationRequest(idU, data)
+    request = RegistrationRequest(data)
     request_metadata = RequestMetadata(blind)
 
     # TODO(caw): should we expose metadata as a struct as output here?
@@ -402,18 +458,19 @@ def finalize_request(oprf_context, idU, pwdU, skU, pkU, metadata, request, respo
                               <================>
 '''
 
-def create_credential_request(oprf_context, idU, pwdU, kU):
+def create_credential_request(oprf_context, pwdU):
     r, M, _ = oprf_context.blind(pwdU)
     data = oprf_context.suite.group.serialize(M)
     blind = oprf_context.suite.group.serialize_scalar(r)
 
-    request = CredentialRequest(idU, data)
+    request = CredentialRequest(data)
     request_metadata = RequestMetadata(blind)
 
     return request, request_metadata
 
-def create_credential_response(oprf_context, request, pkS, lookupFunction):
-    kU, envU, pkU = lookupFunction(request.idU)
+def create_credential_response(oprf_context, request, pkS, kU, record):
+    envU, pkU = record.envU, record.pkU
+
     oprf_context.skS = kU
 
     M = oprf_context.suite.group.deserialize(request.data)
@@ -443,3 +500,191 @@ def recover_credentials(oprf_context, pwdU, metadata, request, response):
     creds = Credentials(secret_credentials, cleartext_credentials)
 
     return creds, export_key
+
+####
+
+class Configuration(object):
+    def __init__(self, oprf, hasher, harden):
+        self.oprf = oprf
+        self.hasher = hasher
+        self.harden = harden
+
+# # TODO(caw): update this to ristretto255
+default_oprf_ciphersuite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
+default_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, harden)
+
+'''
+Docs: https://docs.google.com/document/d/1Gl97UFfydWFZyGVnDV1rcxqBVtyHbuIr400zEkAIQ88/edit#
+
+Length of group element: LG
+Length of keys: LK
+Length of secret credential types: LSCT
+Length of cleartext credentials types: LCCT
+'''
+
+class KeyExchange(object):
+    def __init__(self):
+        pass
+
+    def generate_ke1(self, l1):
+        raise Exception("Not implemented")
+
+    def generate_ke2(self, l1, l2, ke1, client_s_pk, server_s_sk):
+        raise Exception("Not implemented")
+
+    def generate_ke3(self, l2, ke2, ke1_state, server_s_pk, client_s_sk):
+        raise Exception("Not implemented")
+
+class KeyExchangeMessage(object):
+    def __init__(self, components):
+        self.components = components
+
+    def serialize(self):
+        def concat(a, b):
+            return a + b
+        T = reduce(concat, map(lambda c : c, self.components))
+
+TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
+
+class TripleDH(KeyExchange):
+    def __init__(self):
+        KeyExchange.__init__(self)
+
+    def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, client_s_pk, server_s_pk):
+        dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
+        dh2 = ristretto255._edw_mul(dh_components.sk2, dh_components.pk2)
+        dh3 = ristretto255._edw_mul(dh_components.sk3, dh_components.pk3)
+
+        dh1_encoded = ristretto255.ENCODE(*dh1)
+        dh2_encoded = ristretto255.ENCODE(*dh2)
+        dh3_encoded = ristretto255.ENCODE(*dh3)
+
+        print(dh1_encoded)
+        print(dh2_encoded)
+        print(dh3_encoded)
+
+        ikm = dh1_encoded + dh2_encoded + dh3_encoded
+
+        output_size = 32 # 32B per key
+        prk = hkdf_extract(bytes([]), ikm)
+        handshake_secret = derive_secret(prk, _as_bytes("handshake secret"), bytes([]))
+        session_key = derive_secret(prk, _as_bytes("handshake secret"), bytes([]))
+
+        # Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
+        # Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
+        # Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
+        # Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+        # TODO(caw): need to parameterize these values accordingly
+        # TODO(caw): move these constant labels to actual constants
+        km2 = hkdf_expand_label(handshake_secret, _as_bytes("client mac"), bytes([]), 32)
+        km3 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), bytes([]), 32)
+        ke2 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), bytes([]), 16)
+        ke3 = hkdf_expand_label(handshake_secret, _as_bytes("server mac"), bytes([]), 16)
+
+        return km2, km3, ke2, ke3, session_key
+
+    def generate_ke1(self, l1):
+        client_nonce = random_bytes(32)
+        (client_e_k, client_e_pk) = ristretto255.keygen()
+        ke1 = TripleDHMessageInit(client_nonce, ristretto255.ENCODE(*client_e_pk))
+        return (client_nonce, client_e_k, client_e_pk), KeyExchangeMessage([l1, ke1])
+
+    def generate_ke2(self, l1, l2, ke1, client_s_pk, server_s_sk, server_s_pk):
+        server_nonce = random_bytes(32)
+        (server_e_k, server_e_pk) = ristretto255.keygen()
+        client_nonce = ke1.components[1].client_nonce
+        client_e_pk = ristretto255.DECODE(ke1.components[1].client_e_pk)
+
+        # K3dh = epkU^eskS || epkU^skS || pkU^eskS
+        dh_components = TripleDHComponents(client_e_pk, server_e_k, client_e_pk, server_s_sk, client_s_pk, server_e_k)
+        km2, km3, ke2, ke3, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, client_s_pk, server_s_pk)
+
+        # TODO(caw): compute the transcript accordingly
+        mac = hmac.digest(km2, server_nonce, hashlib.sha256)
+        ke2 = TripleDHMessageRespond(server_nonce, ristretto255.ENCODE(*server_e_pk), mac)
+
+        return (server_e_k, server_e_pk), KeyExchangeMessage([l2, ke2])
+
+    def generate_ke3(self, l2, ke2, ke1_state, server_s_pk, client_s_sk, client_s_pk):
+        server_nonce = ke2.components[1].server_nonce
+        server_e_pk = ristretto255.DECODE(ke2.components[1].server_e_pk)
+        (client_nonce, client_e_k, client_e_pk) = ke1_state
+
+        # K3dh = epkS^eskU || pkS^eskU || epkS^skU
+        dh_components = TripleDHComponents(server_e_pk, client_e_k, server_s_pk, client_e_k, server_e_pk, client_s_sk)
+        km2, km3, _, _, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, client_s_pk, server_s_pk)
+
+        server_mac = hmac.digest(km2, server_nonce, hashlib.sha256)
+        assert server_mac == ke2.components[1].mac
+
+        client_mac = hmac.digest(km3, server_nonce, hashlib.sha256)
+        ke3 = TripleDHMessageFinish(client_mac)
+
+        return ke3
+
+# struct {
+#      opaque client_nonce[32];
+#      opaque client_e_pk[LK];
+#  } KE1M;
+def deserialize_tripleDH_init(data):
+    pass
+
+class TripleDHMessageInit(object):
+    def __init__(self, client_nonce, client_e_pk):
+        self.client_nonce = client_nonce
+        self.client_e_pk = client_e_pk
+
+    def serialize(self):
+        pass
+
+# struct {
+#      opaque server_nonce[32];
+#      opaque server_e_pk[LK];
+#      opaque mac[LH];
+#  } KE2M;
+def deserialize_tripleDH_respond(data):
+    pass
+
+class TripleDHMessageRespond(object):
+    def __init__(self, server_nonce, server_e_pk, mac):
+        self.server_nonce = server_nonce
+        self.server_e_pk = server_e_pk
+        self.mac = mac
+
+    def serialize(self):
+        pass
+
+# struct {
+#      opaque mac[LH];
+#  } KE3M;
+def deserialize_tripleDH_finish(data):
+    pass
+
+class TripleDHMessageFinish(object):
+    def __init__(self, mac):
+        self.mac = mac
+
+    def serialize(self):
+        pass
+
+class TripleDHClient(object):
+    def __init__(self):
+        pass
+
+    def create_session(self, idU, pwdU):
+        client_context = SetupBaseClient(default_oprf_ciphersuite)
+        request, metadata = create_registration_request(client_context, pwdU)
+        # keypair = ristretto255.FromUniformBytes(random_bytes(64))
+
+    def finish_session(self, ke2):
+        pass
+
+class TripleDHServer(object):
+    def __init__(self, password_table):
+        pass
+
+    def create_session(self, ke1):
+        server_context = SetupBaseServer(default_oprf_ciphersuite)
+
+    def finish_session(self, ke3):
+        pass

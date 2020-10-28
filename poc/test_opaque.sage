@@ -17,6 +17,9 @@ try:
         InnerEnvelope, deserialize_inner_envelope, \
         Envelope, deserialize_envelope, \
         serialize_extensions, deserialize_extensions
+    from sagelib.opaque import TripleDH
+    from sagelib import ristretto255
+    from sagelib.opaque import I2OSP, OS2IP
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -115,15 +118,15 @@ def test_registration_authentication_flow():
     # Run the registration flow to register credentials
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
-    request, metadata = create_registration_request(client_context, idU, pwdU)
+    request, metadata = create_registration_request(client_context, pwdU)
     response, kU = create_registration_response(server_context, request, pkS, secret_list, cleartext_list)
     record, export_key = finalize_request(client_context, idU, pwdU, skU, pkU, metadata, request, response, kU)
 
     # Run the authentication flow to recover credentials
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
-    cred_request, cred_metadata = create_credential_request(client_context, idU, pwdU, kU)
-    cred_response, recovered_pkU = create_credential_response(server_context, cred_request, pkS, lambda id : (kU, record.envU, record.pkU))
+    cred_request, cred_metadata = create_credential_request(client_context, pwdU)
+    cred_response, recovered_pkU = create_credential_response(server_context, cred_request, pkS, kU, record)
     creds, recovered_export_key = recover_credentials(client_context, pwdU, cred_metadata, cred_request, cred_response)
 
     # Check that recovered credentials match the registered credentials
@@ -137,24 +140,58 @@ def test_registration_authentication_flow():
     # Run with different credentials and expect failure
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
-    cred_request, cred_metadata = create_credential_request(client_context, idU, badPwdU, kU)
-    cred_response, recovered_pkU = create_credential_response(server_context, cred_request, pkS, lambda id : (kU, record.envU, record.pkU))
+    cred_request, cred_metadata = create_credential_request(client_context, badPwdU)
+    cred_response, recovered_pkU = create_credential_response(server_context, cred_request, pkS, kU, record)
     try:
         creds, recovered_export_key = recover_credentials(client_context, badPwdU, cred_metadata, cred_request, cred_response)
         assert False
     except:
         pass
 
+def test_3DH():
+    idU = _as_bytes("alice")
+    pwdU = _as_bytes("opaquerulez")
+    badPwdU = _as_bytes("iloveopaque")
+
+    (client_s_sk, client_s_pk) = ristretto255.keygen()
+    (server_s_sk, server_s_pk) = ristretto255.keygen()
+
+    skU = I2OSP(client_s_sk, 32)
+    pkU = ristretto255.ENCODE(*client_s_pk)
+    skS = I2OSP(server_s_sk, 32)
+    pkS = ristretto255.ENCODE(*server_s_pk)
+
+    # Create the OPRF context
+    suite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
+
+    secret_list = [credential_skU]
+    cleartext_list = [credential_idU]
+
+    # Run the registration flow to register credentials
+    client_context = SetupBaseClient(suite)
+    server_context = SetupBaseServer(suite)
+    request, metadata = create_registration_request(client_context, pwdU)
+    response, kU = create_registration_response(server_context, request, pkS, secret_list, cleartext_list)
+    record, export_key = finalize_request(client_context, idU, pwdU, skU, pkU, metadata, request, response, kU)
+
+    # Now run the authentication flow
+    kex = TripleDH()
+
+    request, metadata = create_credential_request(client_context, pwdU)
+    ke1_state, ke1 = kex.generate_ke1(request.serialize())
+
+    response, recovered_pkU = create_credential_response(server_context, request, pkS, kU, record)
+    ke2_state, ke2 = kex.generate_ke2(request.serialize(), response.serialize(), ke1, client_s_pk, server_s_sk, server_s_pk)
+    ke3 = kex.generate_ke3(response.serialize(), ke2, ke1_state, server_s_pk, client_s_sk, client_s_pk)
+
 def main(path="vectors"):
-    # Test serialization logic
     test_vector_serialization()
     test_credential_extension_serialization()
     test_credential_serialization()
     test_inner_envelope_serialization()
     test_envelope_serialization()
-
-    # Test OPAQUE flow(s), outside of a particular AKE
     test_registration_authentication_flow()
+    test_3DH()
 
     # with open(path + "/allVectors.json", 'wt') as f:
     #     json.dump(vectors, f, sort_keys=True, indent=2)
