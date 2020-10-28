@@ -684,8 +684,6 @@ Steps:
 
 [[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
 
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/58: Should the nonce size be a parameter?]]
-
 The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
 
