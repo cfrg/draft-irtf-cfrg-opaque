@@ -9,14 +9,16 @@ try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, SetupVerifiableServer, SetupVerifiableClient, oprf_ciphersuites, _as_bytes, Evaluation
     from sagelib.oprf import ciphersuite_p256_hkdf_sha512_sswu_ro, Ciphersuite, GroupP256
     from sagelib.opaque import encode_vector, decode_vector, random_bytes, _as_bytes
+    from sagelib.opaque import serialize_credential_list, deserialize_credential_list
+    from sagelib.opaque import serialize_extensions, deserialize_extensions
+    from sagelib.opaque import deserialize_message
     from sagelib.opaque import create_registration_request, create_registration_response, finalize_request, \
         create_credential_request, create_credential_response, recover_credentials
     from sagelib.opaque import CredentialExtension, deserialize_credential_extension, \
         Credentials, deserialize_credentials, \
         credential_idU, credential_skU, credential_pkS, \
         InnerEnvelope, deserialize_inner_envelope, \
-        Envelope, deserialize_envelope, \
-        serialize_extensions, deserialize_extensions
+        Envelope, deserialize_envelope
     from sagelib.opaque import TripleDH
     from sagelib import ristretto255
     from sagelib.opaque import I2OSP, OS2IP
@@ -32,8 +34,19 @@ def to_hex(octet_string):
 def test_vector_serialization():
     data = "hello".encode('utf-8')
     encoded_data = encode_vector(data)
+    assert len(encoded_data) == len(data) + 2
     recovered_data, length = decode_vector(encoded_data)
     assert data == recovered_data
+
+def test_credential_list_serialization():
+    types = [credential_pkS, credential_idU]
+
+    encoded_types = serialize_credential_list(types)
+    assert len(encoded_types) == len(types) + 1
+
+    decoded_types, offset = deserialize_credential_list(encoded_types)
+    assert offset == len(types) + 1
+    assert decoded_types == types
 
 def test_credential_extension_serialization():
     test_idU = b'\x01\x02\x03\x04'
@@ -118,15 +131,36 @@ def test_registration_authentication_flow():
     # Run the registration flow to register credentials
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
+
     request, metadata = create_registration_request(client_context, pwdU)
+    serialized_request = request.serialize_message()
+    deserialized_request, _ = deserialize_message(serialized_request)
+    assert request == deserialized_request
+
     response, kU = create_registration_response(server_context, request, pkS, secret_list, cleartext_list)
+    serialized_response = response.serialize_message()
+    deserialized_response, _ = deserialize_message(serialized_response)
+    assert response == deserialized_response
+
     record, export_key = finalize_request(client_context, idU, pwdU, skU, pkU, metadata, request, response, kU)
+    serialized_record = record.serialize_message()
+    deserialized_record, _ = deserialize_message(serialized_record)
+    assert record == deserialized_record
 
     # Run the authentication flow to recover credentials
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
+
     cred_request, cred_metadata = create_credential_request(client_context, pwdU)
+    serialized_request = cred_request.serialize_message()
+    deserialized_request, _ = deserialize_message(serialized_request)
+    assert cred_request == deserialized_request
+
     cred_response, recovered_pkU = create_credential_response(server_context, cred_request, pkS, kU, record)
+    serialized_response = cred_response.serialize_message()
+    deserialized_response, _ = deserialize_message(serialized_response)
+    assert cred_response == deserialized_response
+
     creds, recovered_export_key = recover_credentials(client_context, pwdU, cred_metadata, cred_request, cred_response)
 
     # Check that recovered credentials match the registered credentials
@@ -146,6 +180,7 @@ def test_registration_authentication_flow():
         creds, recovered_export_key = recover_credentials(client_context, badPwdU, cred_metadata, cred_request, cred_response)
         assert False
     except:
+        # We expect the MAC authentication tag to fail, so should get here
         pass
 
 def test_3DH():
@@ -153,13 +188,13 @@ def test_3DH():
     pwdU = _as_bytes("opaquerulez")
     badPwdU = _as_bytes("iloveopaque")
 
-    (client_s_sk, client_s_pk) = ristretto255.keygen()
-    (server_s_sk, server_s_pk) = ristretto255.keygen()
+    (skU, pkU) = ristretto255.keygen()
+    (skS, pkS) = ristretto255.keygen()
 
-    skU = I2OSP(client_s_sk, 32)
-    pkU = ristretto255.ENCODE(*client_s_pk)
-    skS = I2OSP(server_s_sk, 32)
-    pkS = ristretto255.ENCODE(*server_s_pk)
+    skU_bytes = I2OSP(skU, 32)
+    pkU_bytes = ristretto255.ENCODE(*pkU)
+    skS_bytes = I2OSP(skS, 32)
+    pkS_bytes = ristretto255.ENCODE(*pkS)
 
     # Create the OPRF context
     suite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
@@ -171,8 +206,8 @@ def test_3DH():
     client_context = SetupBaseClient(suite)
     server_context = SetupBaseServer(suite)
     request, metadata = create_registration_request(client_context, pwdU)
-    response, kU = create_registration_response(server_context, request, pkS, secret_list, cleartext_list)
-    record, export_key = finalize_request(client_context, idU, pwdU, skU, pkU, metadata, request, response, kU)
+    response, kU = create_registration_response(server_context, request, pkS_bytes, secret_list, cleartext_list)
+    record, export_key = finalize_request(client_context, idU, pwdU, skU_bytes, pkU_bytes, metadata, request, response, kU)
 
     # Now run the authentication flow
     kex = TripleDH()
@@ -180,12 +215,14 @@ def test_3DH():
     request, metadata = create_credential_request(client_context, pwdU)
     ke1_state, ke1 = kex.generate_ke1(request.serialize())
 
-    response, recovered_pkU = create_credential_response(server_context, request, pkS, kU, record)
-    ke2_state, ke2 = kex.generate_ke2(request.serialize(), response.serialize(), ke1, client_s_pk, server_s_sk, server_s_pk)
-    ke3 = kex.generate_ke3(response.serialize(), ke2, ke1_state, server_s_pk, client_s_sk, client_s_pk)
+    response, recovered_pkU = create_credential_response(server_context, request, pkS_bytes, kU, record)
+    ke2_state, ke2 = kex.generate_ke2(request.serialize(), response.serialize(), ke1, pkU, skS, pkS)
+    client_session_key, ke3 = kex.generate_ke3(response.serialize(), ke2, ke1_state, pkS, skU, pkU)
+    server_session_key = kex.finish(ke3, ke2_state)
 
 def main(path="vectors"):
     test_vector_serialization()
+    test_credential_list_serialization()
     test_credential_extension_serialization()
     test_credential_serialization()
     test_inner_envelope_serialization()
