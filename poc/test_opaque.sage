@@ -18,9 +18,9 @@ try:
         credential_idU, credential_skU, credential_pkS, \
         InnerEnvelope, deserialize_inner_envelope, \
         Envelope, deserialize_envelope
-    from sagelib.opaque import TripleDH
     from sagelib import ristretto255
     from sagelib.opaque import I2OSP, OS2IP
+    from sagelib.opaque_ake import TripleDH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -154,7 +154,7 @@ def test_registration_authentication_flow():
     deserialized_response, _ = deserialize_message(config, serialized_response)
     assert cred_response == deserialized_response
 
-    creds, recovered_export_key = recover_credentials(config, pwdU, cred_metadata, cred_request, cred_response)
+    creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(config, pwdU, cred_metadata, cred_request, cred_response)
 
     # Check that recovered credentials match the registered credentials
     assert recovered_pkU == pkU
@@ -168,7 +168,7 @@ def test_registration_authentication_flow():
     cred_request, cred_metadata = create_credential_request(config, badPwdU)
     cred_response, recovered_pkU = create_credential_response(config, cred_request, pkS, kU, record)
     try:
-        creds, recovered_export_key = recover_credentials(config, badPwdU, cred_metadata, cred_request, cred_response)
+        creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(config, badPwdU, cred_metadata, cred_request, cred_response)
         assert False
     except:
         # We expect the MAC authentication tag to fail, so should get here
@@ -209,6 +209,102 @@ def test_3DH():
     client_session_key, ke3 = kex.generate_ke3(response.serialize(), ke2, ke1_state, pkS, skU, pkU)
     server_session_key = kex.finish(ke3, ke2_state)
 
+class Protocol(object):
+    def __init__(self):
+        self.inputs = [
+            {
+                "idU": _as_bytes("alice"),
+                "pwdU": _as_bytes("opaquerulez"),
+                "skU": _as_bytes("skU"),
+                "pkU": _as_bytes("pkU"),
+                "pkS": _as_bytes("pkS"),
+            }
+        ]
+
+    def run_vector(self, vector):
+        raise Exception("Not implemented")
+
+    def run(self, config):
+        vectors = []
+        for x in self.inputs:
+            idU = x["idU"]
+            pwdU = x["pwdU"]
+            skU = x["skU"]
+            pkU = x["pkU"]
+            pkS = x["pkS"]
+
+            secret_list = [credential_skU]
+            cleartext_list = [credential_idU]
+
+            # Run the registration flow to register credentials
+            request, reg_metadata = create_registration_request(config, pwdU)
+            serialized_reg_request = request.serialize_message()
+            deserialized_request, _ = deserialize_message(config, serialized_reg_request)
+            assert request == deserialized_request
+
+            response, kU = create_registration_response(config, request, pkS, secret_list, cleartext_list)
+            serialized_reg_response = response.serialize_message()
+            deserialized_response, _ = deserialize_message(config, serialized_reg_response)
+            assert response == deserialized_response
+
+            record, export_key = finalize_request(config, idU, pwdU, skU, pkU, reg_metadata, request, response, kU)
+            serialized_record = record.serialize_message()
+            deserialized_record, _ = deserialize_message(config, serialized_record)
+            assert record == deserialized_record
+
+            # Run the authentication flow to recover credentials
+            cred_request, cred_metadata = create_credential_request(config, pwdU)
+            serialized_cred_request = cred_request.serialize_message()
+            deserialized_request, _ = deserialize_message(config, serialized_cred_request)
+            assert cred_request == deserialized_request
+
+            cred_response, recovered_pkU = create_credential_response(config, cred_request, pkS, kU, record)
+            serialized_cred_response = cred_response.serialize_message()
+            deserialized_response, _ = deserialize_message(config, serialized_cred_response)
+            assert cred_response == deserialized_response
+
+            creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(config, pwdU, cred_metadata, cred_request, cred_response)
+
+            # Check that recovered credentials match the registered credentials
+            assert recovered_pkU == pkU
+            assert export_key == recovered_export_key
+            assert len(creds.secret_credentials) == len(secret_list)
+            assert creds.secret_credentials[0].data == skU
+            assert len(creds.cleartext_credentials) == len(cleartext_list)
+            assert creds.cleartext_credentials[0].data == idU
+
+            vector = {}
+
+            # Protocol inputs
+            vector["idU"] = to_hex(idU)
+            vector["pwdU"] = to_hex(pwdU)
+            vector["skU"] = to_hex(skU)
+            vector["pkU"] = to_hex(pkU)
+            vector["pkS"] = to_hex(pkS)
+
+            # Protocol messages
+            vector["RegistrationRequest"] = to_hex(serialized_reg_request)
+            vector["RegistrationRequestMetadata"] = to_hex(reg_metadata.serialize())
+            vector["RegistrationResponse"] = to_hex(serialized_reg_response)
+            vector["RegistrationUpload"] = to_hex(serialized_record)
+            vector["CredentialRequest"] = to_hex(serialized_cred_request)
+            vector["CredentialRequestMetadata"] = to_hex(cred_metadata.serialize())
+            vector["CredentialResponse"] = to_hex(serialized_cred_response)
+
+            # Intermediate computations
+            vector["kU"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
+            vector["envU"] = to_hex(record.envU.serialize())
+            vector["rwdU"] = to_hex(rwdU)
+            vector["pseudorandom_pad"] = to_hex(pseudorandom_pad)
+            vector["auth_key"] = to_hex(auth_key)
+
+            # Protocol outputs
+            vector["export_key"] = to_hex(export_key)
+
+            vectors.append(vector)
+
+        return vectors
+
 def main(path="vectors"):
     test_vector_serialization()
     test_credential_list_serialization()
@@ -219,9 +315,12 @@ def main(path="vectors"):
     test_registration_authentication_flow()
     test_3DH()
 
-    # with open(path + "/allVectors.json", 'wt') as f:
-    #     json.dump(vectors, f, sort_keys=True, indent=2)
-    #     f.write("\n")
+    runner = Protocol()
+    vectors = runner.run(default_opaque_configuration)
+
+    with open(path + "/allVectors.json", 'wt') as f:
+        json.dump(vectors, f, sort_keys=True, indent=2)
+        f.write("\n")
 
 if __name__ == "__main__":
     main()

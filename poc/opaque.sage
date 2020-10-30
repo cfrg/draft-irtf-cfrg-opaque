@@ -8,12 +8,9 @@ import hmac
 import hashlib
 import struct
 
-from collections import namedtuple
-
 try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation
     from sagelib.oprf import ciphersuite_p256_hkdf_sha512_sswu_ro, Ciphersuite, GroupP256
-    from sagelib import ristretto255
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -24,8 +21,6 @@ if sys.version_info[0] == 3:
 else:
     _as_bytes = lambda x: x
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
-
-## TODO(caw): move these to common.sage
 
 # defined in RFC 3447, section 4.1
 def I2OSP(val, length):
@@ -51,8 +46,6 @@ def OS2IP(octets, skip_assert=False):
         assert octets == I2OSP(ret, len(octets))
     return ret
 
-OPAQUE_NONCE_LENGTH = 32
-
 def random_bytes(n):
     return os.urandom(n)
 
@@ -63,10 +56,7 @@ def xor(a, b):
         c[i] = c[i] ^^ v # bitwise XOR
     return bytes(c)
 
-def harden(y, params):
-    # TODO(caw): no-op as of now until we figure out parameters:
-    # https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/69
-    return y
+OPAQUE_NONCE_LENGTH = 32
 
 def hkdf_extract(config, salt, ikm):
     return hmac.digest(salt, ikm, config.hash_alg)
@@ -490,7 +480,7 @@ def derive_secrets(config, pwdU, response, metadata, nonce, Npt):
     r = oprf_context.suite.group.deserialize_scalar(metadata.data_blind)
     N = oprf_context.unblind(Evaluation(Z, None), r, None) # TODO(caw): https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/68
     y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE00"))
-    y_harden = config.harden(y, params=None)
+    y_harden = config.harden(y, params=[100000])
     rwdU = hkdf_extract(config, _as_bytes("rwdU"), y_harden)
 
     Nh = config.hash_alg().digest_size
@@ -499,7 +489,7 @@ def derive_secrets(config, pwdU, response, metadata, nonce, Npt):
     auth_key = hkdf_expand(config, rwdU, nonce + _as_bytes("AuthKey"), Nh)
     export_key = hkdf_expand(config, rwdU, nonce + _as_bytes("ExportKey"), Nh)
 
-    return pseudorandom_pad, auth_key, export_key
+    return rwdU, pseudorandom_pad, auth_key, export_key
 
 def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, kU):
     secret_credentials = []
@@ -521,7 +511,7 @@ def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, k
     auth_data = serialize_extensions(cleartext_credentials)
 
     nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-    pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(pt))
+    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(pt))
     ct = xor(pt, pseudorandom_pad)
 
     contents = InnerEnvelope(nonce, ct, auth_data)
@@ -586,7 +576,7 @@ def recover_credentials(config, pwdU, metadata, request, response):
     ct = contents.ct
     auth_data = contents.auth_data
 
-    pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(ct))
+    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(ct))
     expected_tag = hmac.digest(auth_key, serialized_contents, config.hash_alg)
 
     if expected_tag != response.envU.auth_tag:
@@ -597,13 +587,7 @@ def recover_credentials(config, pwdU, metadata, request, response):
     cleartext_credentials, _ = deserialize_extensions(auth_data)
     creds = Credentials(secret_credentials, cleartext_credentials)
 
-    return creds, export_key
-
-
-
-
-
-####
+    return creds, export_key, rwdU, pseudorandom_pad, auth_key
 
 class Configuration(object):
     def __init__(self, oprf_suite, hash_alg, harden):
@@ -611,204 +595,8 @@ class Configuration(object):
         self.hash_alg = hash_alg
         self.harden = harden
 
-
-
-# # TODO(caw): update this to ristretto255
 default_oprf_ciphersuite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
-default_opaque_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, harden)
 
-'''
-Docs: https://docs.google.com/document/d/1Gl97UFfydWFZyGVnDV1rcxqBVtyHbuIr400zEkAIQ88/edit#
-
-Length of group element: LG
-Length of keys: LK
-Length of secret credential types: LSCT
-Length of cleartext credentials types: LCCT
-'''
-
-class KeyExchange(object):
-    def __init__(self):
-        pass
-
-    def generate_ke1(self, l1):
-        raise Exception("Not implemented")
-
-    def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
-        raise Exception("Not implemented")
-
-    def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
-        raise Exception("Not implemented")
-
-class KeyExchangeMessage(object):
-    def __init__(self, components):
-        self.components = components
-
-    def serialize(self):
-        def concat(a, b):
-            return a + b
-        T = reduce(concat, map(lambda c : c, self.components))
-
-TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
-
-class TripleDH(KeyExchange):
-    def __init__(self, config):
-        KeyExchange.__init__(self)
-        self.config = config
-
-    def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, pkU, pkS):
-        dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
-        dh2 = ristretto255._edw_mul(dh_components.sk2, dh_components.pk2)
-        dh3 = ristretto255._edw_mul(dh_components.sk3, dh_components.pk3)
-
-        dh1_encoded = ristretto255.ENCODE(*dh1)
-        dh2_encoded = ristretto255.ENCODE(*dh2)
-        dh3_encoded = ristretto255.ENCODE(*dh3)
-        ikm = dh1_encoded + dh2_encoded + dh3_encoded
-
-        # info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
-        #           || I2OSP(len(nonceS), 2) || nonceS
-        #           || I2OSP(len(idU), 2) || idU
-        #           || I2OSP(len(idS), 2) || idS
-        empty_vector = encode_vector_len(bytes([]), 2)
-        info = _as_bytes("3DH keys") + encode_vector_len(client_nonce, 2) + encode_vector_len(server_nonce, 2) \
-            + empty_vector + empty_vector # idU and idS are empty
-
-        output_size = self.config.hash_alg().digest_size
-        prk = hkdf_extract(self.config, bytes([]), ikm)
-        handshake_secret = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
-        session_key = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
-
-        # Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
-        # Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
-        # Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
-        # Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
-        # TODO(caw): need to parameterize these values accordingly
-        # TODO(caw): move these constant labels to actual constants
-        empty_info = bytes([])
-        km2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("client mac"), empty_info, 32)
-        km3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 32)
-        ke2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 16)
-        ke3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, 16)
-
-        return km2, km3, ke2, ke3, session_key
-
-    def generate_ke1(self, l1):
-        client_nonce = random_bytes(32)
-        (eskU, epkU) = ristretto255.keygen()
-        ke1 = TripleDHMessageInit(client_nonce, ristretto255.ENCODE(*epkU))
-
-        hasher = hashlib.sha256()
-        hasher.update(l1)
-        hasher.update(client_nonce)
-        hasher.update(ristretto255.ENCODE(*epkU))
-
-        return (client_nonce, eskU, epkU, hasher), KeyExchangeMessage([l1, ke1])
-
-    def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
-        server_nonce = random_bytes(32)
-        (eskS, epkS) = ristretto255.keygen()
-        client_nonce = ke1.components[1].client_nonce
-        epkU = ristretto255.DECODE(ke1.components[1].epkU)
-
-        # K3dh = epkU^eskS || epkU^skS || pkU^eskS
-        dh_components = TripleDHComponents(epkU, eskS, epkU, skS, pkU, eskS)
-        km2, km3, _, _, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, pkU, pkS)
-
-        # transcript2 includes the concatenation of the values:
-        # credential_request, nonceU, info1, idU, epkU, credential_response, nonceS, info2, epkS, Einfo2;¶
-        hasher = hashlib.sha256()
-        hasher.update(l1)
-        hasher.update(client_nonce)
-        hasher.update(ristretto255.ENCODE(*epkU))
-        hasher.update(l2)
-        hasher.update(server_nonce)
-        hasher.update(ristretto255.ENCODE(*epkS))
-        transcript_hash = hasher.digest()
-
-        mac = hmac.digest(km2, transcript_hash, hashlib.sha256)
-        ke2 = TripleDHMessageRespond(server_nonce, ristretto255.ENCODE(*epkS), mac)
-
-        return (hasher, km3, session_key), KeyExchangeMessage([l2, ke2])
-
-    def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
-        server_nonce = ke2.components[1].server_nonce
-        epkS = ristretto255.DECODE(ke2.components[1].epkS)
-        (client_nonce, eskU, epkU, hasher) = ke1_state
-
-        # K3dh = epkS^eskU || pkS^eskU || epkS^skU
-        dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
-        km2, km3, _, _, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, pkU, pkS)
-
-        hasher.update(l2)
-        hasher.update(server_nonce)
-        hasher.update(ristretto255.ENCODE(*epkS))
-        transcript_hash = hasher.digest()
-
-        server_mac = hmac.digest(km2, transcript_hash, hashlib.sha256)
-        assert server_mac == ke2.components[1].mac
-
-        # transcript3 includes the concatenation of all elements in transcript2 followed by info3, Einfo3
-        # TODO(caw): include info3 and Einfo3
-        transcript_hash = hasher.digest()
-
-        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha256)
-        ke3 = TripleDHMessageFinish(client_mac)
-
-        return session_key, KeyExchangeMessage([ke3])
-
-    def finish(self, ke3, ke2_state):
-        (hasher, km3, session_key) = ke2_state
-
-        # transcript3 includes the concatenation of all elements in transcript2 followed by info3, Einfo3
-        # TODO(caw): include info3 and Einfo3
-        transcript_hash = hasher.digest()
-
-        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha256)
-        assert client_mac == ke3.components[0].mac
-
-        return session_key
-
-# struct {
-#      opaque client_nonce[32];
-#      opaque epkU[LK];
-#  } KE1M;
-def deserialize_tripleDH_init(data):
-    pass
-
-class TripleDHMessageInit(object):
-    def __init__(self, client_nonce, epkU):
-        self.client_nonce = client_nonce
-        self.epkU = epkU
-
-    def serialize(self):
-        pass
-
-# struct {
-#      opaque server_nonce[32];
-#      opaque epkS[LK];
-#      opaque mac[LH];
-#  } KE2M;
-def deserialize_tripleDH_respond(data):
-    pass
-
-class TripleDHMessageRespond(object):
-    def __init__(self, server_nonce, epkS, mac):
-        self.server_nonce = server_nonce
-        self.epkS = epkS
-        self.mac = mac
-
-    def serialize(self):
-        pass
-
-# struct {
-#      opaque mac[LH];
-#  } KE3M;
-def deserialize_tripleDH_finish(data):
-    pass
-
-class TripleDHMessageFinish(object):
-    def __init__(self, mac):
-        self.mac = mac
-
-    def serialize(self):
-        pass
+scrypt_harden = lambda y, params : hashlib.scrypt(y, "", b'salt', params[0], params[1], params[2])
+pbkdf_harden = lambda y, params : hashlib.pbkdf2_hmac('sha256', y, b'salt', params[0])
+default_opaque_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, pbkdf_harden)
