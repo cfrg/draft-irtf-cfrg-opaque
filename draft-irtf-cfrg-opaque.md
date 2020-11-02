@@ -1072,10 +1072,10 @@ HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, an
 From `handshake_secret`, Km2, Km3, Ke2, and Ke3 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
-Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
-Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
-Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
+Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
+Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+Ke3 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
 ~~~
 
 `key_length` is the length of the key required for the AKE handshake encryption algorithm.
@@ -1199,16 +1199,14 @@ as `epkS^eskU` and by servers as `epkU^eskS`.
 An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE). The OPAQUE OPRF protocol is
 drawn from {{I-D.irtf-cfrg-voprf}}. The following OPRF ciphersuites supports are supported:
 
-- OPRF(curve25519, SHA-512)
-- OPRF(curve448, SHA-512)
-- OPRF(P-256, SHA-512)
+- OPRF(ristretto255, SHA-256)
+- OPRF(decaf448, SHA-256)
+- OPRF(P-256, SHA-256)
 - OPRF(P-384, SHA-512)
 - OPRF(P-521, SHA-512)
 
 The OPAQUE hash function is that which is associated with the OPRF variant.
 For the variants specified here, only SHA-512 is supported.
-
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/59: Consider SHA-256 for the Curve25519 OPRF suite -- SHA-512 is excessive]]
 
 The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
