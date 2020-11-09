@@ -358,7 +358,9 @@ OPAQUE relies on the following protocols and primitives:
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
 
-We also assume the existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
+Note that we only need the base mode variant (as opposed to the verifiable mode
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. We also assume the
+existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
 generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
@@ -1197,7 +1199,8 @@ as `epkS^eskU` and by servers as `epkU^eskS`.
 # Configurations {#configurations}
 
 An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE). The OPAQUE OPRF protocol is
-drawn from {{I-D.irtf-cfrg-voprf}}. The following OPRF ciphersuites supports are supported:
+drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The following OPRF
+ciphersuites supports are supported:
 
 - OPRF(ristretto255, SHA-256)
 - OPRF(decaf448, SHA-256)
