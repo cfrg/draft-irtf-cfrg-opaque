@@ -20,7 +20,7 @@ author:
  -
     ins: K. Lewi
     name: Kevin Lewi
-    organization: Novi
+    organization: Novi Research
     email: lewi.kevin.k@gmail.com
  -
     ins: C. A. Wood
@@ -997,7 +997,7 @@ are performed in this group and represented here using multiplicative notation.
 
 OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
-- KE1 = credential_request, nonceU, info1*, idU*, epkU
+- KE1 = credential_request, nonceU, info1*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*, MAC(Km2; transcript2),
 - KE3 = info3*, Einfo3*, MAC(Km3; transcript3)}
 
@@ -1022,20 +1022,12 @@ hardening function, etc.);
 - Einfo2, Einfo3 denotes optional application-specific information sent
 encrypted under keys Ke2, Ke3 defined below;
 
-- idU is the user's identity used by the server to construct `credential_response`,
-which contains the server's OPRF response and envU. idU can be omitted from message
-KE1 if the information is available to the server in some other way;
-
-- idS, the server's identity, is not shown explicitly, it can be part of an info
-field (encrypted or not), part of envU, or can be known from other context
-(see {{SecIdentities}}); it is used crucially for key derivation (see below);
-
 - epkU, epkS are Diffie-Hellman ephemeral public keys chosen by user and
 server, respectively, which MUST be validated to be in the correct group
 (see {{validation}});
 
 - transcript2 includes the concatenation of the values
-credential_request, nonceU, info1*, idU*, epkU, credential_response,
+credential_request, nonceU, info1*, epkU, credential_response,
 nonceS, info2*, epkS, Einfo2*;
 
 - transcript3 includes the concatenation of all elements in transcript2
@@ -1095,6 +1087,13 @@ info = "HMQV keys" || I2OSP(len(nonceU), 2) || nonceU
                    || I2OSP(len(idS), 2) || idS
 ~~~
 
+Here, idU and idS are by default set to be equal to the idU and idS supplied as a
+`CredentialExtension` for the envelope; however, if no such extension were supplied,
+then these values are defaulted to pkU and pkS instead.
+
+Also, note that if pkU is not contained in the envelope, then it must be computed
+from skU by the client.
+
 The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as follows:
 
 ~~~
@@ -1141,6 +1140,8 @@ info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
                   || I2OSP(len(idS), 2) || idS
 ~~~
 
+idU and idS are set according to the same rules described in {#derive-hmqv}.
+
 The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
 three DH values computed by the client as follows:
 
@@ -1166,7 +1167,7 @@ in IKEv2.
 
 OPAQUE with SIGMA-I comprises:
 
-- KE1 = credential_request, nonceU, info1*, idU*, epkU
+- KE1 = credential_request, nonceU, info1*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*,
        Sign(skS; transcript2-), MAC(Km2; idS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; idU)}
@@ -1192,6 +1193,8 @@ info = "SIGMA-I keys" || I2OSP(len(nonceU), 2) || nonceU
                       || I2OSP(len(idU), 2) || idU
                       || I2OSP(len(idS), 2) || idS
 ~~~
+
+idU and idS are set according to the same rules described in {#derive-hmqv}.
 
 The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
 as `epkS^eskU` and by servers as `epkU^eskS`.
@@ -1354,6 +1357,26 @@ others to enter freely.
 Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
+
+## User and server identities
+
+The user identity (idU) and server identity (idS) are optional parameters
+which are left to the application to designate as monikers for the client
+and server. If the application layer does not supply values for these
+parameters, then they will be omitted from the creation of the envelope
+during the registration stage. Furthermore, they will be substituted with
+idU = pkU and idS = pkS during the authenticated key exchange stage.
+
+The advantage to supplying a custom idU and idS (instead of simply relying
+on a fallback to pkU and pkS) is that the client can then ensure that any
+mappings between idU and pkU (and idS and pkS) are protected by the
+authentication from the envelope. Then, the client can verify that the
+idU and idS contained in its envelope matches the idU and idS supplied by
+the server.
+
+However, if this extra layer of verification is unnecessary for the
+application, then simply leaving idU and idS unspecified (and using pkU and
+pkS instead) is acceptable.
 
 <!-- TODO(caw): bring this back after updating later -->
 
