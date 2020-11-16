@@ -368,55 +368,28 @@ We write `(kU, _) = KeyGen()` to denote use of this function for generating secr
 # Core Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
-In the first stage, a client registers its password with the server and stores its encrypted credentials on the server.
-In the second stage, a client obtains those credentials, unlocks them using the user's password and subsequently uses
+In the first stage, a client registers its password with the server and stores
+its encrypted credentials on the server. In the second stage, a client obtains
+those credentials, unlocks them using the user's password and subsequently uses
 them as input to an authenticated key exchange (AKE) protocol.
 
 Both registration and authenticated key exchange stages require running an OPRF protocol.
 The latter stage additionally requires running a mutually-authenticated
 key-exchange protocol (AKE) using credentials recovered after the OPRF protocol completes.
-(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement discussed in {{security-considerations}}.)
+(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement
+discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
 {{instantiations}} describes specific instantiations of OPAQUE using various AKE protocols,
 including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}} discusses integration with
 TLS 1.3 {{RFC8446}}.
 
-## Protocol messages {#protocol-messages}
+## Data types {#data-types}
 
-The OPAQUE protocol runs the OPRF protocol in two stages: registration and
-authenticated key exchange. A client and server exchange protocol messages in
-executing these stages. This section specifies the structure of these protocol
-messages using TLS notation (see {{RFC8446}}, Section 3).
-
-~~~
-enum {
-    registration_request(1),
-    registration_response(2),
-    registration_upload(3),
-    credential_request(4),
-    credential_response(5),
-    (255)
-} ProtocolMessageType;
-
-struct {
-    ProtocolMessageType msg_type;    /* protocol message type */
-    uint24 length;                   /* remaining bytes in message */
-    select (ProtocolMessage.msg_type) {
-        case registration_request: RegistrationRequest;
-        case registration_response: RegistrationResponse;
-        case registration_upload: RegistrationUpload;
-        case credential_request: CredentialRequest;
-        case credential_response: CredentialResponse;
-    };
-} ProtocolMessage;
-~~~
-
-OPAQUE makes use of an additional structure `Credentials` to store
-user (client) credentials. A `Credentials` structure consists of secret and
-cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
-the type of extension and carries the raw bytes. This specification includes
-extensions for OPAQUE, including:
+OPAQUE makes use of a structure `Credentials` to store user (client) credentials.
+A `Credentials` structure consists of secret and cleartext `CredentialExtension`
+values. Each `CredentialExtension` indicates the type of extension and carries
+the raw bytes. This specification includes extensions for OPAQUE, including:
 
 - skU: The encoded user private key for the AKE protocol.
 - pkU: The encoded user public key for the AKE protocol.
@@ -430,7 +403,8 @@ Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
 for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.
 
-The full `Credentials` encoding is as follows.
+The full `Credentials` encoding is as follows, described using TLS notation
+(see {{RFC8446}}, Section 3).
 
 ~~~
 enum {
