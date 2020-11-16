@@ -403,7 +403,8 @@ Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
 for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.
 
-The full `Credentials` encoding is as follows.
+The full `Credentials` encoding is as follows, described using TLS notation
+(see {{RFC8446}}, Section 3).
 
 ~~~
 enum {
