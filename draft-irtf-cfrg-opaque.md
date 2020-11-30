@@ -362,7 +362,7 @@ OPAQUE relies on the following protocols and primitives:
 Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. We also assume the
 existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
-generates an OPRF private key. OPAQUE only requires an OPRF private key.
+generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
 
@@ -580,7 +580,7 @@ Output:
 Steps:
 1. (r, M) = Blind(pwdU)
 2. Create RegistrationRequest request with M
-3. Create RequestMetadata metadata with Serialize(r)
+3. Create RequestMetadata metadata with SerializeScalar(r)
 4. Output (request, metadata)
 ~~~
 
@@ -730,7 +730,7 @@ of this integration.
 
 ~~~
 struct {
-    opaque id<1..2^16-1>; /* optional */
+    opaque id<1..2^16-1>;
     opaque data<1..2^16-1>;
 } CredentialRequest;
 ~~~
@@ -773,7 +773,7 @@ Output:
 Steps:
 1. (r, M) = Blind(pwdU)
 2. Create CredentialRequest request with M
-3. Create RequestMetadata metadata with Serialize(r)
+3. Create RequestMetadata metadata with SerializeScalar(r)
 4. Output (request, metadata)
 ~~~
 
@@ -859,7 +859,7 @@ correspond to idU and idS. Thus, it is essential for the parties to agree on suc
 identities, including an agreed bit representation of these identities as needed.
 
 Applications may have different policies about how and when identities are
-determined. A natural approach is to tie idU to the identity the user uses
+determined. A natural approach is to tie idU to the identity the server uses
 to fetch envU (hence determined during password registration) and to tie idS
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session.
