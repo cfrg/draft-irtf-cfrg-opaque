@@ -489,7 +489,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (idU, pwdU, skU, pkU)                 Server (skS, pkS)
+      Client (pwdU, skU, pkU)                 Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateRegistrationRequest(pwdU)
 
@@ -702,7 +702,7 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
- Client (idU, pwdU)                           Server (skS, pkS)
+       Client (pwdU)                           Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateCredentialRequest(pwdU)
 
@@ -789,6 +789,9 @@ Steps:
 ~~~
 CreateCredentialResponse(request)
 
+Parameters:
+- idU, the identity associated with the user
+
 Input:
 - request, a CredentialRequest structure
 
@@ -797,7 +800,7 @@ Output:
 - pkU, public key of the user
 
 Steps:
-1. (kU, envU, pkU) = LookupUserRecord(request.id)
+1. (kU, envU, pkU) = LookupUserRecord(idU)
 2. M = Deserialize(request.data)
 3. Z = Evaluate(kU, M)
 4. data = Z.encode()
