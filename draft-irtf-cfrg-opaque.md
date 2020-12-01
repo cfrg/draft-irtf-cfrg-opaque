@@ -730,7 +730,6 @@ of this integration.
 
 ~~~
 struct {
-    opaque id<1..2^16-1>;
     opaque data<1..2^16-1>;
 } CredentialRequest;
 ~~~
