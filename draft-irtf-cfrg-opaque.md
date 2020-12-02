@@ -490,7 +490,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
-      Client (pwdU, skU, pkU)                 Server (skS, pkS)
+      Client (pwdU, skU, pkU)                       Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateRegistrationRequest(pwdU)
 
@@ -697,14 +697,14 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-       Client (pwdU)                           Server (skS, pkS)
+       Client (pwdU)                       Server (skS, pkS, kU, envU, pkU)
   -----------------------------------------------------------------
    request, metadata = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
 
-                       response = CreateCredentialResponse(request)
+                response = CreateCredentialResponse(request, kU, envU, pkU)
 
                                    response
                               <-----------------
@@ -776,18 +776,16 @@ Steps:
 4. Output (request, metadata)
 ~~~
 
-#### CreateCredentialResponse(request)
+#### CreateCredentialResponse(request, kU, envU, pkU)
 
 ~~~
-CreateCredentialResponse(request)
-
-Parameters:
-- kU, OPRF key associated with idU
-- envU, Envelope associated with idU
-- pkU, Public key associated with idU
+CreateCredentialResponse(request, kU, envU, pkU)
 
 Input:
 - request, a CredentialRequest structure
+- kU, OPRF key associated with idU
+- envU, Envelope associated with idU
+- pkU, Public key associated with idU
 
 Output:
 - response, a CredentialResponse structure
