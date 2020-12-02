@@ -782,7 +782,9 @@ Steps:
 CreateCredentialResponse(request)
 
 Parameters:
-- idU, the identity associated with the user
+- kU, OPRF key associated with idU
+- envU, Envelope associated with idU
+- pkU, Public key associated with idU
 
 Input:
 - request, a CredentialRequest structure
@@ -792,10 +794,9 @@ Output:
 - pkU, public key of the user
 
 Steps:
-1. (kU, envU, pkU) = LookupUserRecord(idU)
-2. Z = Evaluate(kU, request.data)
-3. Create CredentialResponse response with (Z, envU)
-4. Output (response, pkU)
+1. Z = Evaluate(kU, request.data)
+2. Create CredentialResponse response with (Z, envU)
+3. Output (response, pkU)
 ~~~
 
 #### RecoverCredentials(pwdU, metadata, request, response)
