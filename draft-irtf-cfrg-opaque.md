@@ -704,7 +704,7 @@ This section describes the message flow, encoding, and helper functions used in 
                                    request
                               ----------------->
 
-         (response, pkU) = CreateCredentialResponse(request)
+                       response = CreateCredentialResponse(request)
 
                                    response
                               <-----------------
@@ -791,12 +791,11 @@ Input:
 
 Output:
 - response, a CredentialResponse structure
-- pkU, public key of the user
 
 Steps:
 1. Z = Evaluate(kU, request.data)
 2. Create CredentialResponse response with (Z, envU)
-3. Output (response, pkU)
+3. Output response
 ~~~
 
 #### RecoverCredentials(pwdU, metadata, request, response)
