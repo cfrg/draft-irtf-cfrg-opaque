@@ -490,7 +490,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (idU, pwdU, skU, pkU)                 Server (skS, pkS)
+      Client (pwdU, skU, pkU)                       Server (skS, pkS)
   -----------------------------------------------------------------
    request, metadata = CreateRegistrationRequest(pwdU)
 
@@ -697,14 +697,14 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
- Client (idU, pwdU)                           Server (skS, pkS)
+       Client (pwdU)                       Server (skS, pkS, kU, envU, pkU)
   -----------------------------------------------------------------
    request, metadata = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
 
-         (response, pkU) = CreateCredentialResponse(request)
+                response = CreateCredentialResponse(request, kU, envU, pkU)
 
                                    response
                               <-----------------
@@ -776,23 +776,24 @@ Steps:
 4. Output (request, metadata)
 ~~~
 
-#### CreateCredentialResponse(request)
+#### CreateCredentialResponse(request, kU, envU, pkU)
 
 ~~~
-CreateCredentialResponse(request)
+CreateCredentialResponse(request, kU, envU, pkU)
 
 Input:
 - request, a CredentialRequest structure
+- kU, OPRF key associated with idU
+- envU, Envelope associated with idU
+- pkU, Public key associated with idU
 
 Output:
 - response, a CredentialResponse structure
-- pkU, public key of the user
 
 Steps:
-1. (kU, envU, pkU) = LookupUserRecord(request.id)
-2. Z = Evaluate(kU, request.data)
-3. Create CredentialResponse response with (Z, envU)
-4. Output (response, pkU)
+1. Z = Evaluate(kU, request.data)
+2. Create CredentialResponse response with (Z, envU)
+3. Output response
 ~~~
 
 #### RecoverCredentials(pwdU, metadata, request, response)
