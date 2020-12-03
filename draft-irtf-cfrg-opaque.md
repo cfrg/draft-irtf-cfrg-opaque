@@ -307,7 +307,7 @@ operations, roles, and behaviors of OPAQUE:
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
-the public key. For example, (skU, pkU) refers to U's private and public key.
+  the public key. For example, (skU, pkU) refers to U's private and public key.
 - kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
   key.
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
@@ -337,10 +337,10 @@ OPAKE was taken).
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
-  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-    by some value `r`, producing `M`, and output (`r`, `M`).
+  - Blind(x): Convert input `x` into an Element of the OPRF group, randomize it
+    by some Scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input `M` using private key `k`, yielding output `Z`.
-  - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
+  - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
   - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
@@ -492,7 +492,7 @@ Once complete, the registration process proceeds as follows:
 ~~~
       Client (pwdU, skU, pkU)                       Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateRegistrationRequest(pwdU)
+ request, blind = CreateRegistrationRequest(pwdU)
 
                                    request
                               ----------------->
@@ -502,7 +502,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(pwdU, skU, metadata, request, response)
+ record = FinalizeRequest(pwdU, skU, blind, request, response)
 
                                     record
                               ------------------>
@@ -517,25 +517,16 @@ See {{validation}} for more details.
 
 ~~~
 struct {
-    opaque data<1..2^16-1>;
+    SerializedElement data;
 } RegistrationRequest;
 ~~~
 
 data
-: An encoded element in the OPRF group.
+: A serialized OPRF group element.
 
 ~~~
 struct {
-    opaque data_blind<1..2^16-1>;
-} RequestMetadata;
-~~~
-
-data_blind
-: An encoded OPRF scalar element.
-
-~~~
-struct {
-    opaque data<0..2^16-1>;
+    SerializedElement data;
     opaque pkS<0..2^16-1>;
     CredentialType secret_types<1..255>;
     CredentialType cleartext_types<0..255>;
@@ -543,7 +534,7 @@ struct {
 ~~~
 
 data
-: An encoded element in the OPRF group.
+: A serialized OPRF group element.
 
 pkS
 : An encoded public key that will be used for the online authenticated key exchange stage.
@@ -575,13 +566,12 @@ Input:
 
 Output:
 - request, a RegistrationRequest structure
-- metadata, a RequestMetadata structure
+- r, an OPRF Scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
 2. Create RegistrationRequest request with M
-3. Create RequestMetadata metadata with SerializeScalar(r)
-4. Output (request, metadata)
+3. Output (request, r)
 ~~~
 
 #### CreateRegistrationResponse
@@ -614,7 +604,7 @@ Steps:
 #### FinalizeRequest
 
 ~~~
-FinalizeRequest(pwdU, skU, metadata, request, response)
+FinalizeRequest(pwdU, skU, blind, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -623,7 +613,7 @@ Parameters:
 Input:
 - pwdU, an opaque byte string containing the user's password
 - skU, the user's private key
-- metadata, a RequestMetadata structure
+- blind, an OPRF Scalar value
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
 
@@ -632,7 +622,7 @@ Output:
 - export_key, an additional key
 
 Steps:
-1. N = Unblind(metadata.data_blind, response.data)
+1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE00")
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
 4. Create secret_credentials with CredentialExtensions matching that
@@ -699,7 +689,7 @@ This section describes the message flow, encoding, and helper functions used in 
 ~~~
        Client (pwdU)                       Server (skS, pkS, kU, envU, pkU)
   -----------------------------------------------------------------
-   request, metadata = CreateCredentialRequest(pwdU)
+   request, blind = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
@@ -709,7 +699,7 @@ This section describes the message flow, encoding, and helper functions used in 
                                    response
                               <-----------------
 
-  creds, export_key = RecoverCredentials(pwdU, metadata, request, response)
+  creds, export_key = RecoverCredentials(pwdU, blind, request, response)
 
                                (AKE with creds)
                               <================>
@@ -734,13 +724,8 @@ struct {
 } CredentialRequest;
 ~~~
 
-id
-: An opaque string carrying the client account information, if available. If absent,
-the server is assumed to have some way of ascertaining the client account information
-out of band.
-
 data
-: An encoded element in the OPRF group.
+: A serialized OPRF group element.
 
 ~~~
 struct {
@@ -750,7 +735,7 @@ struct {
 ~~~
 
 data
-: An encoded element in the OPRF group.
+: A serialized OPRF group element.
 
 envelope
 : An authenticated encoding of a Credentials structure.
@@ -767,13 +752,12 @@ Input:
 
 Output:
 - request, an CredentialRequest structure
-- metadata, a RequestMetadata structure
+- r, an OPRF Scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
 2. Create CredentialRequest request with M
-3. Create RequestMetadata metadata with SerializeScalar(r)
-4. Output (request, metadata)
+3. Output (request, r)
 ~~~
 
 #### CreateCredentialResponse(request, kU, envU, pkU)
@@ -796,10 +780,10 @@ Steps:
 3. Output response
 ~~~
 
-#### RecoverCredentials(pwdU, metadata, request, response)
+#### RecoverCredentials(pwdU, blind, request, response)
 
 ~~~
-RecoverCredentials(pwdU, metadata, request, response)
+RecoverCredentials(pwdU, blind, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -807,7 +791,7 @@ Parameters:
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- metadata, a RequestMetadata structure
+- blind, a RequestMetadata structure
 - request, a CredentialRequest structure
 - response, a CredentialResponse structure
 
@@ -816,7 +800,7 @@ Output:
 - export_key, an additional key
 
 Steps:
-1. N = Unblind(metadata.data_blind, response.data)
+1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE00")
 3. contents = response.envelope.contents
 4. nonce = contents.nonce
