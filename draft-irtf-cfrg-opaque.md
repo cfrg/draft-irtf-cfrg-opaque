@@ -344,7 +344,8 @@ OPAQUE relies on the following protocols and primitives:
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
   - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
-    `enc`. The size of `enc` is determined by the underlying OPRF group.
+    `enc`. The size of `enc` is determined by the underlying OPRF group. The type
+    of a serialized OPRF group element is called SerializedElement.
   - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
     or produce an error if `enc` is an invalid encoding. This is the inverse
     of Serialize, i.e., `x = Deserialize(Serialize(x))`.
@@ -791,7 +792,7 @@ Parameters:
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- blind, a RequestMetadata structure
+- blind, an OPRF Scalar value
 - request, a CredentialRequest structure
 - response, a CredentialResponse structure
 
