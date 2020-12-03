@@ -7,10 +7,10 @@ import hashlib
 
 try:
     from sagelib.opaque import default_opaque_configuration
+    from sagelib.opaque import deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, deserialize_credential_request, deserialize_credential_response
     from sagelib.opaque import encode_vector, decode_vector, random_bytes, _as_bytes
     from sagelib.opaque import serialize_credential_list, deserialize_credential_list
     from sagelib.opaque import serialize_extensions, deserialize_extensions
-    from sagelib.opaque import deserialize_message
     from sagelib.opaque import create_registration_request, create_registration_response, finalize_request, \
         create_credential_request, create_credential_response, recover_credentials
     from sagelib.opaque import CredentialExtension, deserialize_credential_extension, \
@@ -129,29 +129,29 @@ def test_registration_authentication_flow():
 
     # Run the registration flow to register credentials
     request, metadata = create_registration_request(config, pwdU)
-    serialized_request = request.serialize_message()
-    deserialized_request, _ = deserialize_message(config, serialized_request)
+    serialized_request = request.serialize()
+    deserialized_request = deserialize_registration_request(config, serialized_request)
     assert request == deserialized_request
 
     response, kU = create_registration_response(config, request, pkS, secret_list, cleartext_list)
-    serialized_response = response.serialize_message()
-    deserialized_response, _ = deserialize_message(config, serialized_response)
+    serialized_response = response.serialize()
+    deserialized_response = deserialize_registration_response(config, serialized_response)
     assert response == deserialized_response
 
     record, export_key = finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, kU)
-    serialized_record = record.serialize_message()
-    deserialized_record, _ = deserialize_message(config, serialized_record)
+    serialized_record = record.serialize()
+    deserialized_record = deserialize_registration_upload(config, serialized_record)
     assert record == deserialized_record
 
     # Run the authentication flow to recover credentials
     cred_request, cred_metadata = create_credential_request(config, pwdU)
-    serialized_request = cred_request.serialize_message()
-    deserialized_request, _ = deserialize_message(config, serialized_request)
+    serialized_request = cred_request.serialize()
+    deserialized_request = deserialize_credential_request(config, serialized_request)
     assert cred_request == deserialized_request
 
     cred_response, recovered_pkU = create_credential_response(config, cred_request, pkS, kU, record)
-    serialized_response = cred_response.serialize_message()
-    deserialized_response, _ = deserialize_message(config, serialized_response)
+    serialized_response = cred_response.serialize()
+    deserialized_response = deserialize_credential_response(config, serialized_response)
     assert cred_response == deserialized_response
 
     creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(config, pwdU, cred_metadata, cred_request, cred_response)
@@ -238,29 +238,29 @@ class Protocol(object):
 
             # Run the registration flow to register credentials
             request, reg_metadata = create_registration_request(config, pwdU)
-            serialized_reg_request = request.serialize_message()
-            deserialized_request, _ = deserialize_message(config, serialized_reg_request)
+            serialized_reg_request = request.serialize()
+            deserialized_request = deserialize_registration_request(config, serialized_reg_request)
             assert request == deserialized_request
 
             response, kU = create_registration_response(config, request, pkS, secret_list, cleartext_list)
-            serialized_reg_response = response.serialize_message()
-            deserialized_response, _ = deserialize_message(config, serialized_reg_response)
+            serialized_reg_response = response.serialize()
+            deserialized_response = deserialize_registration_response(config, serialized_reg_response)
             assert response == deserialized_response
 
             record, export_key = finalize_request(config, idU, pwdU, skU, pkU, reg_metadata, request, response, kU)
-            serialized_record = record.serialize_message()
-            deserialized_record, _ = deserialize_message(config, serialized_record)
+            serialized_record = record.serialize()
+            deserialized_record = deserialize_registration_upload(config, serialized_record)
             assert record == deserialized_record
 
             # Run the authentication flow to recover credentials
             cred_request, cred_metadata = create_credential_request(config, pwdU)
-            serialized_cred_request = cred_request.serialize_message()
-            deserialized_request, _ = deserialize_message(config, serialized_cred_request)
+            serialized_cred_request = cred_request.serialize()
+            deserialized_request = deserialize_credential_request(config, serialized_cred_request)
             assert cred_request == deserialized_request
 
             cred_response, recovered_pkU = create_credential_response(config, cred_request, pkS, kU, record)
-            serialized_cred_response = cred_response.serialize_message()
-            deserialized_response, _ = deserialize_message(config, serialized_cred_response)
+            serialized_cred_response = cred_response.serialize()
+            deserialized_response = deserialize_credential_response(config, serialized_cred_response)
             assert cred_response == deserialized_response
 
             creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(config, pwdU, cred_metadata, cred_request, cred_response)
@@ -284,11 +284,11 @@ class Protocol(object):
 
             # Protocol messages
             vector["RegistrationRequest"] = to_hex(serialized_reg_request)
-            vector["RegistrationRequestMetadata"] = to_hex(reg_metadata.serialize())
+            # vector["RegistrationRequestMetadata"] = to_hex(reg_metadata.serialize())
             vector["RegistrationResponse"] = to_hex(serialized_reg_response)
             vector["RegistrationUpload"] = to_hex(serialized_record)
             vector["CredentialRequest"] = to_hex(serialized_cred_request)
-            vector["CredentialRequestMetadata"] = to_hex(cred_metadata.serialize())
+            # vector["CredentialRequestMetadata"] = to_hex(cred_metadata.serialize())
             vector["CredentialResponse"] = to_hex(serialized_cred_response)
 
             # Intermediate computations

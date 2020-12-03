@@ -17,7 +17,7 @@ sagelib/%.py: %.sage
 setup:
 	cp h2c/poc/hash_to_field.py .
 	cp h2c/poc/*.sage .
-	cp voprf/poc/oprf.sage .
+	cp voprf/poc/*.sage .
 
 test: pyfiles
 	sage test_opaque.sage

@@ -9,8 +9,8 @@ import hashlib
 import struct
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation
-    from sagelib.oprf import ciphersuite_p256_hkdf_sha512_sswu_ro, Ciphersuite, GroupP256
+    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, KeyGen
+    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -96,20 +96,6 @@ def hkdf_expand_label(config, secret, label, context, length):
 def derive_secret(config, secret, label, transcript):
     transcript_hash = config.hash_alg(transcript).digest()
     return hkdf_expand_label(config, secret, label, transcript_hash, config.hash_alg().digest_size)
-
-# enum {
-#     registration_request(1),
-#     registration_response(2),
-#     registration_upload(3),
-#     credential_request(4),
-#     credential_response(5),
-#     (255)
-# } ProtocolMessageType;
-opaque_message_registration_request = 1
-opaque_message_registration_response = 2
-opaque_message_registration_upload = 3
-opaque_message_credential_request = 4
-opaque_message_credential_response = 5
 
 def encode_vector_len(data, L):
     return len(data).to_bytes(L, 'big') + data
@@ -271,39 +257,17 @@ class Credentials(object):
         cleartext_creds = serialize_extensions(self.cleartext_credentials)
         return secret_creds + cleartext_creds
 
-def deserialize_message(config, msg_data):
-    if len(msg_data) < 4:
-        raise Exception("Insufficient bytes")
-    msg_type = int.from_bytes(msg_data[0:1], "big")
-    msg_length = int.from_bytes(msg_data[1:4], "big")
-    if 4+msg_length < len(msg_data):
-        raise Exception("Insufficient bytes")
-
-    if msg_type == opaque_message_registration_request:
-        return deserialize_registration_request(config, msg_data[4:4+msg_length]), 4+msg_length
-    elif msg_type == opaque_message_registration_response:
-        return deserialize_registration_response(config, msg_data[4:4+msg_length]), 4+msg_length
-    elif msg_type == opaque_message_registration_upload:
-        return deserialize_registration_upload(config, msg_data[4:4+msg_length]), 4+msg_length
-    elif msg_type == opaque_message_credential_request:
-        return deserialize_credential_request(config, msg_data[4:4+msg_length]), 4+msg_length
-    elif msg_type == opaque_message_credential_response:
-        return deserialize_credential_response(config, msg_data[4:4+msg_length]), 4+msg_length
-    else:
-        raise Exception("Invalid message type:", msg_type)
-
 class ProtocolMessage(object):
-    def __init__(self, msg_type):
-        self.msg_type = msg_type
+    def __init__(self):
+        pass
 
-    def serialize_message(self):
-        body = self.serialize()
-        return int(self.msg_type).to_bytes(1, 'big') + len(body).to_bytes(3, 'big') + body
+    def serialize(self):
+        raise Exception("Not implemented")
 
     def __eq__(self, other):
         if isinstance(other, ProtocolMessage):
-            serialized = self.serialize_message()
-            other_serialized = other.serialize_message()
+            serialized = self.serialize()
+            other_serialized = other.serialize()
             return serialized == other_serialized
         return False
 
@@ -316,7 +280,7 @@ def deserialize_registration_request(config, msg_bytes):
 
 class RegistrationRequest(ProtocolMessage):
     def __init__(self, data):
-        ProtocolMessage.__init__(self, opaque_message_registration_request)
+        ProtocolMessage.__init__(self)
         self.data = data
 
     def serialize(self):
@@ -347,7 +311,7 @@ def deserialize_registration_response(config, msg_bytes):
 
 class RegistrationResponse(ProtocolMessage):
     def __init__(self, data, pkS, secret_list, cleartext_list):
-        ProtocolMessage.__init__(self, opaque_message_registration_response)
+        ProtocolMessage.__init__(self)
         self.data = data
         self.pkS = pkS
         self.secret_list = secret_list
@@ -374,7 +338,7 @@ def deserialize_registration_upload(config, msg_bytes):
 
 class RegistrationUpload(ProtocolMessage):
     def __init__(self, envU, pkU):
-        ProtocolMessage.__init__(self, opaque_message_registration_upload)
+        ProtocolMessage.__init__(self)
         self.envU = envU
         self.pkU = pkU
 
@@ -390,7 +354,7 @@ def deserialize_credential_request(config, msg_bytes):
 
 class CredentialRequest(ProtocolMessage):
     def __init__(self, data):
-        ProtocolMessage.__init__(self, opaque_message_credential_request)
+        ProtocolMessage.__init__(self)
         self.data = data
 
     def serialize(self):
@@ -413,26 +377,19 @@ def deserialize_credential_response(config, msg_bytes):
 
 class CredentialResponse(ProtocolMessage):
     def __init__(self, data, envU):
-        ProtocolMessage.__init__(self, opaque_message_credential_response)
+        ProtocolMessage.__init__(self)
         self.data = data
         self.envU = envU
 
     def serialize(self):
         return encode_vector(self.data) + self.envU.serialize()
 
-class RequestMetadata(object):
-    def __init__(self, data_blind):
-        self.data_blind = data_blind
-
-    def serialize(self):
-        return encode_vector(self.data_blind)
-
 '''
 ===================  OPAQUE registration flow ====================
 
  Client (idU, pwdU, skU, pkU)                 Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateRegistrationRequest(idU, pwdU)
+   request, blind = CreateRegistrationRequest(idU, pwdU)
 
                                    request
                               ----------------->
@@ -442,7 +399,7 @@ class RequestMetadata(object):
                                    response
                               <-----------------
 
- record = FinalizeRequest(idU, pwdU, skU, metadata, request, response)
+ record = FinalizeRequest(idU, pwdU, skU, blind, request, response)
 
                                     record
                               ------------------>
@@ -453,32 +410,23 @@ class RequestMetadata(object):
 def create_registration_request(config, pwdU):
     oprf_context = SetupBaseClient(config.oprf_suite)
 
-    r, M, _ = oprf_context.blind(pwdU)
-    data = oprf_context.suite.group.serialize(M)
-    blind = oprf_context.suite.group.serialize_scalar(r)
+    blind, blinded_element = oprf_context.blind(pwdU)
+    request = RegistrationRequest(blinded_element)
 
-    request = RegistrationRequest(data)
-    request_metadata = RequestMetadata(blind)
-
-    return request, request_metadata
+    return request, blind
 
 def create_registration_response(config, request, pkS, secret_list, cleartext_list):
-    oprf_context = SetupBaseServer(config.oprf_suite)
-    kU = oprf_context.skS
+    kU, pkU = KeyGen(config.oprf_suite)
+    oprf_context = SetupBaseServer(config.oprf_suite, kU)
 
-    M = oprf_context.suite.group.deserialize(request.data)
-    Z_eval = oprf_context.evaluate(M)
-    data = oprf_context.suite.group.serialize(Z_eval.evaluated_element)
-
+    data, _ = oprf_context.evaluate(request.data)
     response = RegistrationResponse(data, pkS, secret_list, cleartext_list)
 
     return response, kU
 
-def derive_secrets(config, pwdU, response, metadata, nonce, Npt):
+def derive_secrets(config, pwdU, response, blind, nonce, Npt):
     oprf_context = SetupBaseClient(config.oprf_suite)
-    Z = oprf_context.suite.group.deserialize(response.data)
-    r = oprf_context.suite.group.deserialize_scalar(metadata.data_blind)
-    N = oprf_context.unblind(Evaluation(Z, None), r, None) # TODO(caw): https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/68
+    N = oprf_context.unblind(blind, response.data, None, None) # TODO(caw): https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/68
     y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE00"))
     y_harden = config.harden(y, params=[100000])
     rwdU = hkdf_extract(config, _as_bytes("rwdU"), y_harden)
@@ -491,7 +439,7 @@ def derive_secrets(config, pwdU, response, metadata, nonce, Npt):
 
     return rwdU, pseudorandom_pad, auth_key, export_key
 
-def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, kU):
+def finalize_request(config, idU, pwdU, skU, pkU, blind, request, response, kU):
     secret_credentials = []
     for credential_type in response.secret_list:
         if credential_type == credential_skU:
@@ -511,7 +459,7 @@ def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, k
     auth_data = serialize_extensions(cleartext_credentials)
 
     nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(pt))
+    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, blind, nonce, len(pt))
     ct = xor(pt, pseudorandom_pad)
 
     contents = InnerEnvelope(nonce, ct, auth_data)
@@ -528,7 +476,7 @@ def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, k
 
  Client (idU, pwdU)                           Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateCredentialRequest(idU, pwdU)
+   request, blind = CreateCredentialRequest(idU, pwdU)
 
                                    request
                               ----------------->
@@ -538,7 +486,7 @@ def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, k
                                    response
                               <-----------------
 
-  creds, export_key = RecoverCredentials(pwdU, metadata, request, response)
+  creds, export_key = RecoverCredentials(pwdU, blind, request, response)
 
                                (AKE with creds)
                               <================>
@@ -546,37 +494,31 @@ def finalize_request(config, idU, pwdU, skU, pkU, metadata, request, response, k
 
 def create_credential_request(config, pwdU):
     oprf_context = SetupBaseClient(config.oprf_suite)
-    r, M, _ = oprf_context.blind(pwdU)
-    data = oprf_context.suite.group.serialize(M)
-    blind = oprf_context.suite.group.serialize_scalar(r)
+    blind, blinded_element = oprf_context.blind(pwdU)
 
-    request = CredentialRequest(data)
-    request_metadata = RequestMetadata(blind)
+    request = CredentialRequest(blinded_element)
 
-    return request, request_metadata
+    return request, blind
 
 def create_credential_response(config, request, pkS, kU, record):
     envU, pkU = record.envU, record.pkU
 
-    oprf_context = SetupBaseServer(config.oprf_suite)
-    oprf_context.skS = kU
+    oprf_context = SetupBaseServer(config.oprf_suite, kU)
 
-    M = oprf_context.suite.group.deserialize(request.data)
-    Z_eval = oprf_context.evaluate(M) # kU * M
-    data = oprf_context.suite.group.serialize(Z_eval.evaluated_element)
+    data, _ = oprf_context.evaluate(request.data)
 
     response = CredentialResponse(data, envU)
 
     return response, pkU
 
-def recover_credentials(config, pwdU, metadata, request, response):
+def recover_credentials(config, pwdU, blind, request, response):
     contents = response.envU.contents
     serialized_contents = contents.serialize()
     nonce = contents.nonce
     ct = contents.ct
     auth_data = contents.auth_data
 
-    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, metadata, nonce, len(ct))
+    rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(config, pwdU, response, blind, nonce, len(ct))
     expected_tag = hmac.digest(auth_key, serialized_contents, config.hash_alg)
 
     if expected_tag != response.envU.auth_tag:
@@ -595,8 +537,6 @@ class Configuration(object):
         self.hash_alg = hash_alg
         self.harden = harden
 
-default_oprf_ciphersuite = Ciphersuite("OPRF-P256-HKDF-SHA512-SSWU-RO", ciphersuite_p256_hkdf_sha512_sswu_ro, GroupP256(), hashlib.sha512)
-
 scrypt_harden = lambda y, params : hashlib.scrypt(y, "", b'salt', params[0], params[1], params[2])
 pbkdf_harden = lambda y, params : hashlib.pbkdf2_hmac('sha256', y, b'salt', params[0])
-default_opaque_configuration = Configuration(default_oprf_ciphersuite, hashlib.sha512, pbkdf_harden)
+default_opaque_configuration = Configuration(oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, pbkdf_harden)

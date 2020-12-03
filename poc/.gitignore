@@ -32,3 +32,5 @@ z_selection.sage
 z_values.sage
 oprf.sage
 test_oprf.sage
+groups.sage
+ristretto_decaf.sage
