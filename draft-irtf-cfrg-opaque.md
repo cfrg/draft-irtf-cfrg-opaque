@@ -163,6 +163,19 @@ online)"
     seriesinfo: IEEE European Symposium on Security and Privacy
     date: 2016
 
+  PartioningOracleAttacks:
+    title: Partitioning Oracle Attacks
+    target: https://eprint.iacr.org/2020/1491.pdf
+    author:
+      -
+        ins: J. Len
+        name: Julia Len
+      -
+        ins: P. Grubbs
+        name: Paul Grubbs
+      -
+        ins: T. Ristenpart
+        name: Thomas Ristenpart
 
   SIGMA:
     title: "SIGMA: The SIGn-and-MAc approach to authenticated Diffie-Hellman and its use in the IKE protocols"
@@ -844,7 +857,9 @@ credential-retrieval functionality that is separate from the contents of the Cre
 structure.
 
 The exporter_key MUST NOT be used in any way before the HMAC value in the
-envelope is validated.
+envelope is validated. As a result, there are no random-key robustness requirements
+imposed on the usage of this key. (See {{PartioningOracleAttacks}} for more information
+about this requirement.)
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
