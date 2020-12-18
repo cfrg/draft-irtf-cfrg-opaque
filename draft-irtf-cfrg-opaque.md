@@ -386,15 +386,12 @@ We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF 
 including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}} discusses integration with
 TLS 1.3 {{RFC8446}}.
 
-## Data types {#data-types}
+## Credential types and envelope construction {#data-types}
 
-OPAQUE makes use of a structure `Credentials` to store user (client) credentials.
-A `Credentials` structure consists of secret and cleartext `CredentialExtension`
-values. Each `CredentialExtension` indicates the type of extension and carries
-the raw bytes. This specification includes extensions for OPAQUE, including:
+OPAQUE makes use of a structure `Envelope` to store client credentials.
+The `Envelope` structure embeds the following types of credentials:
 
 - skU: The encoded user private key for the AKE protocol.
-- pkU: The encoded user public key for the AKE protocol.
 - pkS: The encoded server public key for the AKE protocol.
 - idU: The user identity. This is an application-specific value, e.g., an e-mail
   address or normal account name.
@@ -405,54 +402,51 @@ Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
 for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.
 
-The full `Credentials` encoding is as follows, described using TLS notation
-(see {{RFC8446}}, Section 3).
+These credentials are incorporated in the `SecretCredentials` and `CleartextCredentials` structs,
+depending on the mode set by the value of `EnvelopeMode`:
 
 ~~~
 enum {
-  skU(1),
-  pkU(2),
-  pkS(3),
-  idU(4),
-  idS(5),
+  base(1),
+  customIdentifier(2),
   (255)
-} CredentialType;
-
-struct {
-  CredentialType type;
-  opaque data<0..2^16-1>;
-} CredentialExtension;
-
-struct {
-  CredentialExtension secret_credentials<1..2^16-1>;
-  CredentialExtension cleartext_credentials<0..2^16-1>;
-} Credentials;
+} EnvelopeMode;
 ~~~
 
-secret_credentials
-: OPAQUE credentials which require secrecy and authentication.
-
-cleartext_credentials
-: OPAQUE credentials which require authentication but not secrecy.
-
-Applications MUST include `skU` in `secret_credentials` and `pkS` in either `cleartext_credentials`
-or `secret_credentials`. All other CredentialExtension values are optional. It is RECOMMENDED
-that applications include `pkS` and `idS` in `cleartext_credentials`, as this allows servers
-to not store redundant encryptions of these values for each user in case the server uses the
-same values for multiple users.
-
-Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
-which translate a list of `CredentialExtension` structures to and from a unique byte string
-encoding.
-
-OPAQUE uses an `Envelope` structure to encapsulate an encrypted `Credentials` structure.
-It is encoded as follows.
+The `base` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
 
 ~~~
 struct {
+  opaque skU<1..2^16-1>;
+} SecretCredentials;
+
+struct {
+  opaque pkS<1..2^16-1>;
+} CleartextCredentials;
+~~~
+
+The `customIdentifier` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
+
+~~~
+struct {
+  opaque skU<1..2^16-1>;
+} SecretCredentials;
+
+struct {
+  opaque pkS<1..2^16-1>;
+  opaque idU<0..2^16-1>;
+  opaque idS<0..2^16-1>;
+} CleartextCredentials;
+~~~
+
+These credentials are embedded into the following `Envelope` structure with
+encryption and authentication.
+
+~~~
+struct {
+  InnerEnvelopeMode mode;
   opaque nonce[32];
   opaque ct<1..2^16-1>;
-  opaque auth_data<0..2^16-1>;
 } InnerEnvelope;
 
 struct {
@@ -465,13 +459,16 @@ nonce
 : A unique 32-byte nonce used to protect this Envelope.
 
 ct
-: Encoding of encrypted and authenticated credential extensions list (`secret_credentials`).
-
-auth_data
-: Encoding of an authenticated credential extensions list (`cleartext_credentials`).
+: Encoding of encrypted and authenticated `SecretCredentials`.
 
 auth_tag
-: Authentication tag protecting the contents of the envelope.
+: Authentication tag protecting the contents of the envelope,
+covering `InnerEnvelope` and `CleartextCredentials`.
+
+The full procedure for constructing `Envelope` and `InnerEnvelope` from
+`SecretCredentials` and `CleartextCredentials` is described in {{finalize-request}}.
+
+The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
 ## Offline registration stage {#offline-phase}
 
@@ -529,8 +526,6 @@ data
 struct {
     SerializedElement data;
     opaque pkS<0..2^16-1>;
-    CredentialType secret_types<1..255>;
-    CredentialType cleartext_types<0..255>;
 } RegistrationResponse;
 ~~~
 
@@ -548,8 +543,7 @@ struct {
 ~~~
 
 envelope
-: An authenticated encoding of a Credentials structure with additional application-specific
-data.
+: The `Envelope` structure
 
 pkU
 : An encoded public key, matching the public key contained within the encrypted
@@ -580,12 +574,6 @@ Steps:
 ~~~
 CreateRegistrationResponse(request, pkS)
 
-Parameters:
-- secret_credentials_list, a list of CredentialType values clients should include
- in the secret_credentials list of their Credentials structure
-- cleartext_credentials_list, a list of CredentialType values clients should include
- in the cleartext_credentials list of their Credentials structure
-
 Input:
 - request, a RegistrationRequest structure
 - pkS, the server's public key
@@ -598,11 +586,11 @@ Steps:
 1. (kU, _) = KeyGen()
 2. Z = Evaluate(kU, request.data)
 3. Create RegistrationResponse response with
-     (Z, pkS, secret_credentials_list, cleartext_credentials_list)
+     (Z, pkS)
 4. Output (response, kU)
 ~~~
 
-#### FinalizeRequest
+#### FinalizeRequest {#finalize-request}
 
 ~~~
 FinalizeRequest(pwdU, skU, blind, request, response)
@@ -610,6 +598,7 @@ FinalizeRequest(pwdU, skU, blind, request, response)
 Parameters:
 - params, the MHF parameters established out of band
 - Nh, the output size of the Hash function
+- mode, the value of InnerEnvelopeMode
 
 Input:
 - pwdU, an opaque byte string containing the user's password
@@ -624,44 +613,30 @@ Output:
 
 Steps:
 1. N = Unblind(blind, response.data)
-2. y = Finalize(pwdU, N, "OPAQUE00")
+2. y = Finalize(pwdU, N, "OPAQUE01")
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-4. Create secret_credentials with CredentialExtensions matching that
-   contained in response.secret_credentials_list
-5. Create cleartext_credentials with CredentialExtensions matching that
-   contained in response.cleartext_credentials_list
-6. pt = SerializeExtensions(secret_credentials)
+4. Create secret_credentials with credentials matching those needed to
+   construct the `SecretCredentials` structure
+5. Create cleartext_credentials with credentials matching those needed to
+   construct the `CleartextCredentials` structure
+6. pt = Serialize(secret_credentials)
 7. nonce = random(32)
 8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
 9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
 11. ct = xor(pt, pseudorandom_pad)
-12. auth_data = SerializeExtensions(cleartext_credentials)
-13. Create InnerEnvelope contents with (nonce, ct, auth_data)
-14. t = HMAC(auth_key, contents)
+12. auth_data = Serialize(cleartext_credentials)
+13. Create InnerEnvelope contents with (mode, nonce, ct)
+14. t = HMAC(auth_key, concat(contents, auth_data))
 15. Create Envelope envU with (contents, t)
 16. Create RegistrationUpload upload with envelope value (envU, pkU)
 17. Output (upload, export_key)
 ~~~
 
-[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
+[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
-
-OPAQUE security requires authentication for all `CredentialExtension` values,
-and secrecy for `skU`. If an application additionally requires secrecy of `pkS`,
-this value SHOULD be included in the
-`Credentials.secret_credentials` list (step 5), and MUST NOT be included in the
-`Credentials.cleartext_credentials` list. Applications may optionally include
-`pkU`, `idU`, or `idS` in the `Credentials.cleartext_credentials` structure, or in
-`Credentials.secret_credentials` if secrecy of these values is desired.
-Servers MUST specify how clients encode extensions in the `Credentials` structure
-as part of this registration phase.
-
-The server identity `idS` comes from context. For example, if registering with
-a server within the context of a TLS connection, the identity might be the
-server domain name. See {{SecIdentities}}.
 
 See {{export-usage}} for details about the output export_key usage.
 
@@ -739,7 +714,7 @@ data
 : A serialized OPRF group element.
 
 envelope
-: An authenticated encoding of a Credentials structure.
+: The `Envelope` structure.
 
 ### Authenticated key exchange functions
 
@@ -797,12 +772,12 @@ Input:
 - response, a CredentialResponse structure
 
 Output:
-- C, a Credentials structure
+- secret_credentials, a `SecretCredentials` structure
 - export_key, an additional key
 
 Steps:
 1. N = Unblind(blind, response.data)
-2. y = Finalize(pwdU, N, "OPAQUE00")
+2. y = Finalize(pwdU, N, "OPAQUE01")
 3. contents = response.envelope.contents
 4. nonce = contents.nonce
 5. ct = contents.ct
@@ -810,22 +785,22 @@ Steps:
 7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
 8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-10. expected_tag = HMAC(auth_key, contents)
-11. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
-12. pt = xor(ct, pseudorandom_pad)
-13. secret_credentials = DeserializeExtensions(pt)
-14. cleartext_credentials = DeserializeExtensions(auth_data)
-15. Create Credentials creds with (secret_credentials, cleartext_credentials)
-16. Output creds, export_key
+10. Create cleartext_credentials with credentials matching those needed to
+    construct the `CleartextCredentials` structure
+11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_credentials)))
+12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
+13. pt = xor(ct, pseudorandom_pad)
+14. secret_credentials = Deserialize(pt)
+15. Output (secret_credentials, export_key)
 ~~~
 
-[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
+[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 ## Export Key {#export-usage}
 
-In addition to Credentials, OPAQUE outputs an export_key that may be used for additional
+OPAQUE outputs an export_key that may be used for additional
 application-specific purposes. For example, one might expand the use of OPAQUE with a
-credential-retrieval functionality that is separate from the contents of the Credentials
+credential-retrieval functionality that is separate from the contents of the `Envelope`
 structure.
 
 The exporter_key MUST NOT be used in any way before the HMAC value in the
@@ -1038,8 +1013,8 @@ info = "HMQV keys" || I2OSP(len(nonceU), 2) || nonceU
 ~~~
 
 Here, idU and idS are by default set to be equal to the idU and idS supplied as a
-`CredentialExtension` for the envelope; however, if no such extension were supplied,
-then these values are defaulted to pkU and pkS instead.
+credential for the envelope; however, if no such credential was supplied,
+then these values (indepedently) default to pkU and pkS instead.
 
 Also, note that if pkU is not contained in the envelope, then it must be computed
 from skU by the client.
@@ -1151,7 +1126,7 @@ as `epkS^eskU` and by servers as `epkU^eskS`.
 
 # Configurations {#configurations}
 
-An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE). The OPAQUE OPRF protocol is
+An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE, EnvelopeMode). The OPAQUE OPRF protocol is
 drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The following OPRF
 ciphersuites supports are supported:
 
@@ -1173,6 +1148,8 @@ login.
 The OPAQUE AKE protocols are those which are specified in {{instantiations}}.
 Future specifications (such as {{I-D.sullivan-tls-opaque}}) MAY introduce other
 AKE instantiations.
+
+The EnvelopeMode value is defined in {{data-types}}.
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
 
