@@ -857,7 +857,8 @@ credential-retrieval functionality that is separate from the contents of the Cre
 structure.
 
 The exporter_key MUST NOT be used in any way before the HMAC value in the
-envelope is validated.
+envelope is validated. See {{envelope-encryption}} for more details about this
+requirement.
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
@@ -1263,7 +1264,7 @@ et al. {{JKKX16}}. None of these papers considered security against
 pre-computation attacks or presented a proof of aPAKE security
 (not even in a weak model).
 
-## Envelope encryption
+## Envelope encryption {#envelope-encryption}
 
 The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption scheme
 used to produce envU to have a special property called random key-robustness
