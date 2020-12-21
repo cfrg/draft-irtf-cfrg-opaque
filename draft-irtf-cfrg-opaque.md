@@ -352,7 +352,8 @@ OPAQUE relies on the following protocols and primitives:
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
   - Blind(x): Convert input `x` into an Element of the OPRF group, randomize it
     by some Scalar `r`, producing `M`, and output (`r`, `M`).
-  - Evaluate(k, M): Evaluate input `M` using private key `k`, yielding output `Z`.
+  - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
+    output element `Z`.
   - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
@@ -1224,6 +1225,8 @@ compromise of the server, the attacker cannot impersonate the user to the
 server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
+
+## Related analysis
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
