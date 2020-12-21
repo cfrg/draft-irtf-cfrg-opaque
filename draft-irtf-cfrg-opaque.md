@@ -163,7 +163,7 @@ online)"
     seriesinfo: IEEE European Symposium on Security and Privacy
     date: 2016
 
-  PartioningOracleAttacks:
+  LGR20:
     title: Partitioning Oracle Attacks
     target: https://eprint.iacr.org/2020/1491.pdf
     author:
@@ -857,9 +857,7 @@ credential-retrieval functionality that is separate from the contents of the Cre
 structure.
 
 The exporter_key MUST NOT be used in any way before the HMAC value in the
-envelope is validated. As a result, there are no random-key robustness requirements
-imposed on the usage of this key. (See {{PartioningOracleAttacks}} for more information
-about this requirement.)
+envelope is validated.
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
@@ -1265,7 +1263,20 @@ et al. {{JKKX16}}. None of these papers considered security against
 pre-computation attacks or presented a proof of aPAKE security
 (not even in a weak model).
 
-## Configuration Choice
+## Envelope encryption
+
+The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption scheme
+used to produce envU to have a special property called random key-robustness
+(or key-committing). This specification enforces this property by utilizing
+encrypt-then-HMAC in the construction of envU. There is no option to use another
+authenticated-encryption scheme with this specification. (Deviating from the
+key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
+We remark that export_key for authentication or encryption requires no special
+properties from the authentication or encryption schemes as long as export_key
+is used only after the EnvU is validated, i.e., after the HMAC in RecoverCredentials
+passes verification.
+
+## Configuration choice
 
 Best practices regarding implementation of cryptographic schemes
 apply to OPAQUE. Particular care needs to be given to the
@@ -1275,7 +1286,7 @@ mapping. Drafts {{I-D.irtf-cfrg-hash-to-curve}} and
 {{I-D.irtf-cfrg-voprf}} have detailed instantiation and
 implementation guidance.
 
-## Static Diffie-Hellman Oracles
+## Static Diffie-Hellman oracles
 
 While one can expect the practical security of the OPRF function
 (namely, the hardness of computing the function without knowing the
@@ -1332,7 +1343,7 @@ Skipping the key exchange part is analogous to carefully checking a
 visitor's credential at the door and then leaving the door open for
 others to enter freely.
 
-## OPRF Hardening
+## OPRF hardening
 
 Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
