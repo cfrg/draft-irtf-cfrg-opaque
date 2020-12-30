@@ -670,7 +670,7 @@ This section describes the message flow, encoding, and helper functions used in 
                                    request
                               ----------------->
 
-                response = CreateCredentialResponse(request, kU, envU, pkU)
+                response = CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
                                    response
                               <-----------------
@@ -706,12 +706,16 @@ data
 ~~~
 struct {
     opaque data<1..2^16-1>;
+    opaque pkS<1..2^16-1>;
     Envelope envelope;
 } CredentialResponse;
 ~~~
 
 data
 : A serialized OPRF group element.
+
+pkS
+: An encoded public key that will be used for the online authenticated key exchange stage.
 
 envelope
 : The `Envelope` structure.
@@ -736,13 +740,14 @@ Steps:
 3. Output (request, r)
 ~~~
 
-#### CreateCredentialResponse(request, kU, envU, pkU)
+#### CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
 ~~~
-CreateCredentialResponse(request, kU, envU, pkU)
+CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
 Input:
 - request, a CredentialRequest structure
+- pkS, public key of the server
 - kU, OPRF key associated with idU
 - envU, Envelope associated with idU
 - pkU, Public key associated with idU
@@ -752,7 +757,7 @@ Output:
 
 Steps:
 1. Z = Evaluate(kU, request.data)
-2. Create CredentialResponse response with (Z, envU)
+2. Create CredentialResponse response with (Z, pkS, envU)
 3. Output response
 ~~~
 
