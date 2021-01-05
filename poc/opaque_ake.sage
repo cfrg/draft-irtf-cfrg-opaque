@@ -11,7 +11,7 @@ import struct
 from collections import namedtuple
 
 try:
-    from sagelib.opaque import encode_vector_len, derive_secret, hkdf_extract, hkdf_expand_label
+    from sagelib.opaque import encode_vector_len, derive_secret, hkdf_extract, hkdf_expand_label, I2OSP
     from sagelib import ristretto255
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
@@ -41,13 +41,14 @@ class KeyExchange(object):
         raise Exception("Not implemented")
 
 class KeyExchangeMessage(object):
-    def __init__(self, components):
+    def __init__(self, message_type, components):
+        self.message_type = message_type
         self.components = components
 
     def serialize(self):
         def concat(a, b):
             return a + b
-        T = reduce(concat, map(lambda c : c, self.components))
+        return I2OSP(self.message_type, 1) + reduce(concat, map(lambda c : c, self.components))
 
 TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
 
@@ -104,7 +105,7 @@ class TripleDH(KeyExchange):
         hasher.update(client_nonce)
         hasher.update(ristretto255.ENCODE(*epkU))
 
-        return (client_nonce, eskU, epkU, hasher), KeyExchangeMessage([l1, ke1])
+        return (client_nonce, eskU, epkU, hasher), KeyExchangeMessage(0x04, [l1, ke1])
 
     def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
         server_nonce = random_bytes(32)
@@ -130,7 +131,7 @@ class TripleDH(KeyExchange):
         mac = hmac.digest(km2, transcript_hash, hashlib.sha256)
         ke2 = TripleDHMessageRespond(server_nonce, ristretto255.ENCODE(*epkS), mac)
 
-        return (hasher, km3, session_key), KeyExchangeMessage([l2, ke2])
+        return (hasher, km3, session_key), KeyExchangeMessage(0x05, [l2, ke2])
 
     def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
         server_nonce = ke2.components[1].server_nonce
@@ -156,7 +157,7 @@ class TripleDH(KeyExchange):
         client_mac = hmac.digest(km3, transcript_hash, hashlib.sha256)
         ke3 = TripleDHMessageFinish(client_mac)
 
-        return session_key, KeyExchangeMessage([ke3])
+        return session_key, KeyExchangeMessage(0x06, [ke3])
 
     def finish(self, ke3, ke2_state):
         (hasher, km3, session_key) = ke2_state
