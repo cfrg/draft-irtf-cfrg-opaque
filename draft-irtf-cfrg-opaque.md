@@ -20,7 +20,7 @@ author:
  -
     ins: K. Lewi
     name: Kevin Lewi
-    organization: Facebook
+    organization: Novi Research
     email: lewi.kevin.k@gmail.com
  -
     ins: C. A. Wood
@@ -163,6 +163,19 @@ online)"
     seriesinfo: IEEE European Symposium on Security and Privacy
     date: 2016
 
+  LGR20:
+    title: Partitioning Oracle Attacks
+    target: https://eprint.iacr.org/2020/1491.pdf
+    author:
+      -
+        ins: J. Len
+        name: Julia Len
+      -
+        ins: P. Grubbs
+        name: Paul Grubbs
+      -
+        ins: T. Ristenpart
+        name: Thomas Ristenpart
 
   SIGMA:
     title: "SIGMA: The SIGn-and-MAc approach to authenticated Diffie-Hellman and its use in the IKE protocols"
@@ -307,7 +320,7 @@ operations, roles, and behaviors of OPAQUE:
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
-the public key. For example, (skU, pkU) refers to U's private and public key.
+  the public key. For example, (skU, pkU) refers to U's private and public key.
 - kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
   key.
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
@@ -337,20 +350,23 @@ OPAKE was taken).
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
-  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-    by some value `r`, producing `M`, and output (`r`, `M`).
-  - Evaluate(k, M): Evaluate input `M` using private key `k`, yielding output `Z`.
-  - Unblind(r, Z): Remove randomizer `r` from `Z`, yielding output `N`.
+  - Blind(x): Convert input `x` into an Element of the OPRF group, randomize it
+    by some Scalar `r`, producing `M`, and output (`r`, `M`).
+  - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
+    output element `Z`.
+  - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
   - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
-    `enc`. The size of `enc` is determined by the underlying OPRF group.
+    `enc`. The size of `enc` is determined by the underlying OPRF group. The type
+    of a serialized OPRF group element is called SerializedElement.
   - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
     or produce an error if `enc` is an invalid encoding. This is the inverse
     of Serialize, i.e., `x = Deserialize(Serialize(x))`.
 
 - Cryptographic hash function:
-  - Hash(m): Compute the cryptographic hash of input message "m".
+  - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
+    hash is determined by the chosen OPRF group.
   - Nh: The output size of the Hash function.
 
 - Memory Hard Function (MHF):
@@ -358,7 +374,9 @@ OPAQUE relies on the following protocols and primitives:
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
 
-We also assume the existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
+Note that we only need the base mode variant (as opposed to the verifiable mode
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. We also assume the
+existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
 generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
@@ -366,58 +384,28 @@ We write `(kU, _) = KeyGen()` to denote use of this function for generating secr
 # Core Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
-In the first stage, a client registers its password with the server and stores its encrypted credentials on the server.
-In the second stage, a client obtains those credentials, unlocks them using the user's password and subsequently uses
+In the first stage, a client registers its password with the server and stores
+its encrypted credentials on the server. In the second stage, a client obtains
+those credentials, unlocks them using the user's password and subsequently uses
 them as input to an authenticated key exchange (AKE) protocol.
 
 Both registration and authenticated key exchange stages require running an OPRF protocol.
 The latter stage additionally requires running a mutually-authenticated
 key-exchange protocol (AKE) using credentials recovered after the OPRF protocol completes.
-(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement discussed in {{security-considerations}}.)
+(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement
+discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
 {{instantiations}} describes specific instantiations of OPAQUE using various AKE protocols,
 including: HMQV, 3DH, and SIGMA-I. {{I-D.sullivan-tls-opaque}} discusses integration with
 TLS 1.3 {{RFC8446}}.
 
-## Protocol messages {#protocol-messages}
+## Credential types and envelope construction {#data-types}
 
-The OPAQUE protocol runs the OPRF protocol in two stages: registration and
-authenticated key exchange. A client and server exchange messages in executing
-these stages. The encoding of these messages is specific to each instantiation of
-OPAQUE. See {{instantiations}} for examples.
-
-~~~
-enum {
-    registration_request(1),
-    registration_response(2),
-    registration_upload(3),
-    credential_request(4),
-    credential_response(5),
-    (255)
-} ProtocolMessageType;
-
-struct {
-    ProtocolMessageType msg_type;    /* protocol message type */
-    uint24 length;                   /* remaining bytes in message */
-    select (ProtocolMessage.msg_type) {
-        case registration_request: RegistrationRequest;
-        case registration_response: RegistrationResponse;
-        case registration_upload: RegistrationUpload;
-        case credential_request: CredentialRequest;
-        case credential_response: CredentialResponse;
-    };
-} ProtocolMessage;
-~~~
-
-OPAQUE makes use of an additional structure `Credentials` to store
-user (client) credentials. A `Credentials` structure consists of secret and
-cleartext `CredentialExtension` values. Each `CredentialExtension` indicates
-the type of extension and carries the raw bytes. This specification includes
-extensions for OPAQUE, including:
+OPAQUE makes use of a structure `Envelope` to store client credentials.
+The `Envelope` structure embeds the following types of credentials:
 
 - skU: The encoded user private key for the AKE protocol.
-- pkU: The encoded user public key for the AKE protocol.
 - pkS: The encoded server public key for the AKE protocol.
 - idU: The user identity. This is an application-specific value, e.g., an e-mail
   address or normal account name.
@@ -428,53 +416,51 @@ Each public and private key value is an opaque byte string, specific to the AKE
 protocol in which OPAQUE is instantiated. For example, if used as raw public keys
 for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.
 
-The full `Credentials` encoding is as follows.
+These credentials are incorporated in the `SecretCredentials` and `CleartextCredentials` structs,
+depending on the mode set by the value of `EnvelopeMode`:
 
 ~~~
 enum {
-  skU(1),
-  pkU(2),
-  pkS(3),
-  idU(4),
-  idS(5),
+  base(1),
+  customIdentifier(2),
   (255)
-} CredentialType;
-
-struct {
-  CredentialType type;
-  CredentialData data<0..2^16-1>;
-} CredentialExtension;
-
-struct {
-  CredentialExtension secret_credentials<1..2^16-1>;
-  CredentialExtension cleartext_credentials<0..2^16-1>;
-} Credentials;
+} EnvelopeMode;
 ~~~
 
-secret_credentials
-: OPAQUE credentials which require secrecy and authentication.
-
-cleartext_credentials
-: OPAQUE credentials which require authentication but not secrecy.
-
-Applications MUST include `skU` in `secret_credentials` and `pkS` in either `cleartext_credentials`
-or `secret_credentials`. All other CredentialExtension values are optional. It is RECOMMENDED
-that applications include `pkS` and `idS` in `cleartext_credentials`, as this allows servers
-to not store redundant encryptions of these values for each user in case the server uses the
-same values for multiple users.
-
-Additionally, we assume helper functions `SerializeExtensions` and `DeserializeExtensions`
-which translate a list of `CredentialExtension` structures to and from a unique byte string
-encoding.
-
-OPAQUE uses an `Envelope` structure to encapsulate an encrypted `Credentials` structure.
-It is encoded as follows.
+The `base` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
 
 ~~~
 struct {
+  opaque skU<1..2^16-1>;
+} SecretCredentials;
+
+struct {
+  opaque pkS<1..2^16-1>;
+} CleartextCredentials;
+~~~
+
+The `customIdentifier` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
+
+~~~
+struct {
+  opaque skU<1..2^16-1>;
+} SecretCredentials;
+
+struct {
+  opaque pkS<1..2^16-1>;
+  opaque idU<0..2^16-1>;
+  opaque idS<0..2^16-1>;
+} CleartextCredentials;
+~~~
+
+These credentials are embedded into the following `Envelope` structure with
+encryption and authentication.
+
+~~~
+struct {
+  InnerEnvelopeMode mode;
   opaque nonce[32];
   opaque ct<1..2^16-1>;
-  opaque auth_data<0..2^16-1>;
 } InnerEnvelope;
 
 struct {
@@ -487,13 +473,16 @@ nonce
 : A unique 32-byte nonce used to protect this Envelope.
 
 ct
-: Encoding of encrypted and authenticated credential extensions list.
-
-auth_data
-: Encoding of an authenticated credential extensions list.
+: Encoding of encrypted and authenticated `SecretCredentials`.
 
 auth_tag
-: Authentication tag protecting the contents of the envelope.
+: Authentication tag protecting the contents of the envelope,
+covering `InnerEnvelope` and `CleartextCredentials`.
+
+The full procedure for constructing `Envelope` and `InnerEnvelope` from
+`SecretCredentials` and `CleartextCredentials` is described in {{finalize-request}}.
+
+The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
 ## Offline registration stage {#offline-phase}
 
@@ -513,9 +502,9 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (idU, pwdU, skU, pkU)                 Server (skS, pkS)
+      Client (pwdU, skU, pkU)                       Server (skS, pkS)
   -----------------------------------------------------------------
-   request, metadata = CreateRegistrationRequest(idU, pwdU)
+ request, blind = CreateRegistrationRequest(pwdU)
 
                                    request
                               ----------------->
@@ -525,7 +514,7 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(idU, pwdU, skU, pkU, metadata, request, response)
+ record = FinalizeRequest(pwdU, skU, blind, request, response)
 
                                     record
                               ------------------>
@@ -540,40 +529,22 @@ See {{validation}} for more details.
 
 ~~~
 struct {
-    opaque id<0..2^16-1>;
-    opaque data<1..2^16-1>;
+    SerializedElement data;
 } RegistrationRequest;
 ~~~
 
-id
-: An opaque string carrying the client account information, if available.
-
 data
-: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
-description of this encoding.
+: A serialized OPRF group element.
 
 ~~~
 struct {
-    opaque data_blind<1..2^16-1>;
-} RequestMetadata;
-~~~
-
-data_blind
-: An encoded OPRF scalar element. See {{I-D.irtf-cfrg-voprf}} for a
-description of this encoding.
-
-~~~
-struct {
-    opaque data<0..2^16-1>;
+    SerializedElement data;
     opaque pkS<0..2^16-1>;
-    CredentialType secret_types<1..255>;
-    CredentialType cleartext_types<0..255>;
 } RegistrationResponse;
 ~~~
 
 data
-: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
-description of this encoding.
+: A serialized OPRF group element.
 
 pkS
 : An encoded public key that will be used for the online authenticated key exchange stage.
@@ -586,8 +557,7 @@ struct {
 ~~~
 
 envelope
-: An authenticated encoding of a Credentials structure with additional application-specific
-data.
+: The `Envelope` structure
 
 pkU
 : An encoded public key, matching the public key contained within the encrypted
@@ -598,34 +568,25 @@ envelope.
 #### CreateRegistrationRequest
 
 ~~~
-CreateRegistrationRequest(idU, pwdU)
+CreateRegistrationRequest(pwdU)
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 
 Output:
 - request, a RegistrationRequest structure
-- metadata, a RequestMetadata structure
+- r, an OPRF Scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
-2. data = Serialize(M)
-3. Create RegistrationRequest request with (idU, data)
-4. Create RequestMetadata metadata with Serialize(r)
-5. Output (request, metadata)
+2. Create RegistrationRequest request with M
+3. Output (request, r)
 ~~~
 
 #### CreateRegistrationResponse
 
 ~~~
 CreateRegistrationResponse(request, pkS)
-
-Parameters:
-- secret_credentials_list, a list of CredentialType values clients should include
- in the secret_credentials list of their Credentials structure
-- cleartext_credentials_list, a list of CredentialType values clients should include
- in the cleartext_credentials list of their Credentials structure
 
 Input:
 - request, a RegistrationRequest structure
@@ -637,28 +598,26 @@ Output:
 
 Steps:
 1. (kU, _) = KeyGen()
-2. M = Deserialize(request.data)
-3. Z = Evaluate(kU, M)
-4. data = Serialize(Z)
-5. Create RegistrationResponse response with
-     (data, pkS, secret_credentials_list, cleartext_credentials_list)
-6. Output (response, kU)
+2. Z = Evaluate(kU, request.data)
+3. Create RegistrationResponse response with
+     (Z, pkS)
+4. Output (response, kU)
 ~~~
 
-#### FinalizeRequest
+#### FinalizeRequest {#finalize-request}
 
 ~~~
-FinalizeRequest(idU, pwdU, skU, pkU, metadata, request, response)
+FinalizeRequest(pwdU, skU, blind, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nh, the output size of the Hash function
+- mode, the value of InnerEnvelopeMode
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 - skU, the user's private key
-- pkU, the user's public key
-- metadata, a RequestMetadata structure
+- blind, an OPRF Scalar value
 - request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
 
@@ -667,49 +626,31 @@ Output:
 - export_key, an additional key
 
 Steps:
-1. Z = Deserialize(response.data)
-2. N = Unblind(metadata.data_blind, Z)
-3. y = Finalize(pwdU, N, "OPAQUE00")
-4. y_harden = Harden(y, params)
-5. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-6. Create secret_credentials with CredentialExtensions matching that
-   contained in response.secret_credentials_list
-7. Create cleartext_credentials with CredentialExtensions matching that
-   contained in response.cleartext_credentials_list
-8. pt = SerializeExtensions(secret_credentials)
-9. nonce = random(32)
-10. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
-11. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-12. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-13. ct = xor(pt, pseudorandom_pad)
-14. auth_data = SerializeExtensions(cleartext_credentials)
-15. Create InnerEnvelope contents with (nonce, ct, auth_data)
-17. t = HMAC(auth_key, contents)
-18. Create Envelope envU with (contents, t)
-19. Create RegistrationUpload upload with envelope value (envU, pkU)
-20. Output (upload, export_key)
+1. N = Unblind(blind, response.data)
+2. y = Finalize(pwdU, N, "OPAQUE01")
+3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+4. Create secret_credentials with credentials matching those needed to
+   construct the `SecretCredentials` structure
+5. Create cleartext_credentials with credentials matching those needed to
+   construct the `CleartextCredentials` structure
+6. pt = Serialize(secret_credentials)
+7. nonce = random(32)
+8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
+9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+11. ct = xor(pt, pseudorandom_pad)
+12. auth_data = Serialize(cleartext_credentials)
+13. Create InnerEnvelope contents with (mode, nonce, ct)
+14. t = HMAC(auth_key, concat(contents, auth_data))
+15. Create Envelope envU with (contents, t)
+16. Create RegistrationUpload upload with envelope value (envU, pkU)
+17. Output (upload, export_key)
 ~~~
 
-[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
-
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/58: Should the nonce size be a parameter?]]
+[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
-
-OPAQUE security requires authentication for all `CredentialExtension` values,
-and secrecy for `skU`. If an application additionally requires secrecy of `pkS`,
-this value SHOULD be included in the
-`Credentials.secret_credentials` list (step 5), and MUST NOT be included in the
-`Credentials.cleartext_credentials` list. Applications may optionally include
-`pkU`, `idU`, or `idS` in the `Credentials.cleartext_credentials` structure, or in
-`Credentials.secret_credentials` if secrecy of these values is desired.
-Servers MUST specify how clients encode extensions in the `Credentials` structure
-as part of this registration phase.
-
-The server identity `idS` comes from context. For example, if registering with
-a server within the context of a TLS connection, the identity might be the
-server domain name. See {{SecIdentities}}.
 
 See {{export-usage}} for details about the output export_key usage.
 
@@ -736,19 +677,19 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
- Client (idU, pwdU)                           Server (skS, pkS)
+       Client (pwdU)                       Server (skS, pkS, kU, envU, pkU)
   -----------------------------------------------------------------
-   request, metadata = CreateCredentialRequest(idU, pwdU)
+   request, blind = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
 
-         (response, pkU) = CreateCredentialResponse(request, pkS)
+                response = CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
                                    response
                               <-----------------
 
-  creds, export_key = RecoverCredentials(pwdU, metadata, request, response)
+  creds, export_key = RecoverCredentials(pwdU, blind, request, response)
 
                                (AKE with creds)
                               <================>
@@ -769,133 +710,121 @@ of this integration.
 
 ~~~
 struct {
-    opaque id<0..2^16-1>;
     opaque data<1..2^16-1>;
 } CredentialRequest;
 ~~~
 
-id
-: An opaque string carrying the client account information, if available. If absent,
-the server is assumed to have some way of ascertaining the client account information
-out of band.
-
 data
-: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
-description of this encoding.
+: A serialized OPRF group element.
 
 ~~~
 struct {
     opaque data<1..2^16-1>;
-    opaque envelope<1..2^16-1>;
-    opaque pkS<0..2^16-1>;
+    opaque pkS<1..2^16-1>;
+    Envelope envelope;
 } CredentialResponse;
 ~~~
 
 data
-: An encoded element in the OPRF group. See {{I-D.irtf-cfrg-voprf}} for a
-description of this encoding.
-
-envelope
-: An authenticated encoding of a Credentials structure.
+: A serialized OPRF group element.
 
 pkS
-: An encoded public key that will be used for the online authenticated key
-exchange stage. This field is optional.
+: An encoded public key that will be used for the online authenticated key exchange stage.
+
+envelope
+: The `Envelope` structure.
 
 ### Authenticated key exchange functions
 
-#### CreateCredentialRequest(idU, pwdU)
+#### CreateCredentialRequest(pwdU)
 
 ~~~
-CreateCredentialRequest(idU, pwdU)
+CreateCredentialRequest(pwdU)
 
 Input:
-- idU, an opaque byte string containing the user's identity
 - pwdU, an opaque byte string containing the user's password
 
 Output:
 - request, an CredentialRequest structure
-- metadata, a RequestMetadata structure
+- r, an OPRF Scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
-2. data = Serialize(M)
-3. Create CredentialRequest request with (idU, data)
-4. Create RequestMetadata metadata with Serialize(r)
-5. Output (request, metadata)
+2. Create CredentialRequest request with M
+3. Output (request, r)
 ~~~
 
-#### CreateCredentialResponse(request, pkS)
+#### CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
 ~~~
-CreateCredentialResponse(request, pkS)
+CreateCredentialResponse(request, pkS, kU, envU, pkU)
 
 Input:
-- request, an CredentialRequest structure
+- request, a CredentialRequest structure
 - pkS, public key of the server
+- kU, OPRF key associated with idU
+- envU, Envelope associated with idU
+- pkU, Public key associated with idU
 
 Output:
 - response, a CredentialResponse structure
-- pkU, public key of the user
 
 Steps:
-1. (kU, envU, pkU) = LookupUserRecord(request.id)
-2. M = Deserialize(request.data)
-3. Z = Evaluate(kU, M)
-4. data = Z.encode()
-5. Create CredentialResponse response with (data, envU, pkS)
-6. Output (response, pkU)
+1. Z = Evaluate(kU, request.data)
+2. Create CredentialResponse response with (Z, pkS, envU)
+3. Output response
 ~~~
 
-#### RecoverCredentials(pwdU, metadata, request, response)
+#### RecoverCredentials(pwdU, blind, request, response)
 
 ~~~
-RecoverCredentials(pwdU, metadata, request, response)
+RecoverCredentials(pwdU, blind, request, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- Nh, the output size of the Hash function
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- metadata, a RequestMetadata structure
-- request, a RegistrationRequest structure
-- response, a RegistrationResponse structure
+- blind, an OPRF Scalar value
+- request, a CredentialRequest structure
+- response, a CredentialResponse structure
 
 Output:
-- C, a Credentials structure
+- secret_credentials, a `SecretCredentials` structure
 - export_key, an additional key
 
 Steps:
-1. Z = Deserialize(response.data)
-2. N = Unblind(input.data_blind, Z)
-3. y = Finalize(pwdU, N, "OPAQUE00")
-4. contents = response.envelope.contents
-5. nonce = contents.nonce
-6. ct = contents.ct
-7. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
-9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-11. expected_tag = HMAC(auth_key, contents)
+1. N = Unblind(blind, response.data)
+2. y = Finalize(pwdU, N, "OPAQUE01")
+3. contents = response.envelope.contents
+4. nonce = contents.nonce
+5. ct = contents.ct
+6. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
+8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+10. Create cleartext_credentials with credentials matching those needed to
+    construct the `CleartextCredentials` structure
+11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_credentials)))
 12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
-14. secret_credentials = DeserializeExtensions(pt)
-15. cleartext_credentials = DeserializeExtensions(auth_data)
-16. Create Credentials creds with (secret_credentials, cleartext_credentials)
-17. Output creds, export_key
+14. secret_credentials = Deserialize(pt)
+15. Output (secret_credentials, export_key)
 ~~~
 
-[[RFC editor: please change "OPAQUE00" to the correct RFC identifier before publication.]]
+[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 ## Export Key {#export-usage}
 
-In addition to Credentials, OPAQUE outputs an export_key that may be used for additional
+OPAQUE outputs an export_key that may be used for additional
 application-specific purposes. For example, one might expand the use of OPAQUE with a
-credential-retrieval functionality that is separate from the contents of the Credentials
+credential-retrieval functionality that is separate from the contents of the `Envelope`
 structure.
 
 The exporter_key MUST NOT be used in any way before the HMAC value in the
-envelope is validated.
+envelope is validated. See {{envelope-encryption}} for more details about this
+requirement.
 
 ## AKE Execution and Party Identities {#SecIdentities}
 
@@ -1013,7 +942,7 @@ are performed in this group and represented here using multiplicative notation.
 
 OPAQUE with HMQV and OPAQUE with 3DH comprises:
 
-- KE1 = credential_request, nonceU, info1*, idU*, epkU
+- KE1 = credential_request, nonceU, info1*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*, MAC(Km2; transcript2),
 - KE3 = info3*, Einfo3*, MAC(Km3; transcript3)}
 
@@ -1038,20 +967,12 @@ hardening function, etc.);
 - Einfo2, Einfo3 denotes optional application-specific information sent
 encrypted under keys Ke2, Ke3 defined below;
 
-- idU is the user's identity used by the server to construct `credential_response`,
-which contains the server's OPRF response and envU. idU can be omitted from message
-KE1 if the information is available to the server in some other way;
-
-- idS, the server's identity, is not shown explicitly, it can be part of an info
-field (encrypted or not), part of envU, or can be known from other context
-(see {{SecIdentities}}); it is used crucially for key derivation (see below);
-
 - epkU, epkS are Diffie-Hellman ephemeral public keys chosen by user and
 server, respectively, which MUST be validated to be in the correct group
 (see {{validation}});
 
 - transcript2 includes the concatenation of the values
-credential_request, nonceU, info1*, idU*, epkU, credential_response,
+credential_request, nonceU, info1*, epkU, credential_response,
 nonceS, info2*, epkS, Einfo2*;
 
 - transcript3 includes the concatenation of all elements in transcript2
@@ -1090,10 +1011,10 @@ HMQV and 3DH use the following key schedule for computing Km2, Km3, Ke2, Ke3, an
 From `handshake_secret`, Km2, Km3, Ke2, and Ke3 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
-Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
-Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
-Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
+Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
+Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+Ke3 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
 ~~~
 
 `key_length` is the length of the key required for the AKE handshake encryption algorithm.
@@ -1110,6 +1031,13 @@ info = "HMQV keys" || I2OSP(len(nonceU), 2) || nonceU
                    || I2OSP(len(idU), 2) || idU
                    || I2OSP(len(idS), 2) || idS
 ~~~
+
+Here, idU and idS are by default set to be equal to the idU and idS supplied as a
+credential for the envelope; however, if no such credential was supplied,
+then these values (indepedently) default to pkU and pkS instead.
+
+Also, note that if pkU is not contained in the envelope, then it must be computed
+from skU by the client.
 
 The input parameter `IKM` is `Khmqv`, where `Khmqv` is computed by the client as follows:
 
@@ -1157,6 +1085,8 @@ info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
                   || I2OSP(len(idS), 2) || idS
 ~~~
 
+idU and idS are set according to the same rules described in {#derive-hmqv}.
+
 The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
 three DH values computed by the client as follows:
 
@@ -1182,7 +1112,7 @@ in IKEv2.
 
 OPAQUE with SIGMA-I comprises:
 
-- KE1 = credential_request, nonceU, info1*, idU*, epkU
+- KE1 = credential_request, nonceU, info1*, epkU
 - KE2 = credential_response, nonceS, info2*, epkS, Einfo2*,
        Sign(skS; transcript2-), MAC(Km2; idS),
 - KE3 = info3*, Einfo3*, Sign(skU; transcript3-), MAC(Km3; idU)}
@@ -1209,24 +1139,25 @@ info = "SIGMA-I keys" || I2OSP(len(nonceU), 2) || nonceU
                       || I2OSP(len(idS), 2) || idS
 ~~~
 
+idU and idS are set according to the same rules described in {#derive-hmqv}.
+
 The input parameter `IKM` is `Ksigma`, where `Ksigma` is computed by clients
 as `epkS^eskU` and by servers as `epkU^eskS`.
 
 # Configurations {#configurations}
 
-An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE). The OPAQUE OPRF protocol is
-drawn from {{I-D.irtf-cfrg-voprf}}. The following OPRF ciphersuites supports are supported:
+An OPAQUE configuration is a tuple (OPRF, Hash, MHF, AKE, EnvelopeMode). The OPAQUE OPRF protocol is
+drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The following OPRF
+ciphersuites supports are supported:
 
-- OPRF(curve25519, SHA-512)
-- OPRF(curve448, SHA-512)
-- OPRF(P-256, SHA-512)
+- OPRF(ristretto255, SHA-512)
+- OPRF(decaf448, SHA-512)
+- OPRF(P-256, SHA-256)
 - OPRF(P-384, SHA-512)
 - OPRF(P-521, SHA-512)
 
 The OPAQUE hash function is that which is associated with the OPRF variant.
-For the variants specified here, only SHA-512 is supported.
-
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/59: Consider SHA-256 for the Curve25519 OPRF suite -- SHA-512 is excessive]]
+For the variants specified here, only SHA-512 and SHA-256 are supported.
 
 The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
 and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
@@ -1237,6 +1168,8 @@ login.
 The OPAQUE AKE protocols are those which are specified in {{instantiations}}.
 Future specifications (such as {{I-D.sullivan-tls-opaque}}) MAY introduce other
 AKE instantiations.
+
+The EnvelopeMode value is defined in {{data-types}}.
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
 
@@ -1275,6 +1208,8 @@ server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
 
+## Related analysis
+
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
@@ -1299,7 +1234,20 @@ et al. {{JKKX16}}. None of these papers considered security against
 pre-computation attacks or presented a proof of aPAKE security
 (not even in a weak model).
 
-## Configuration Choice
+## Envelope encryption {#envelope-encryption}
+
+The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption scheme
+used to produce envU to have a special property called random key-robustness
+(or key-committing). This specification enforces this property by utilizing
+encrypt-then-HMAC in the construction of envU. There is no option to use another
+authenticated-encryption scheme with this specification. (Deviating from the
+key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
+We remark that export_key for authentication or encryption requires no special
+properties from the authentication or encryption schemes as long as export_key
+is used only after the EnvU is validated, i.e., after the HMAC in RecoverCredentials
+passes verification.
+
+## Configuration choice
 
 Best practices regarding implementation of cryptographic schemes
 apply to OPAQUE. Particular care needs to be given to the
@@ -1309,7 +1257,7 @@ mapping. Drafts {{I-D.irtf-cfrg-hash-to-curve}} and
 {{I-D.irtf-cfrg-voprf}} have detailed instantiation and
 implementation guidance.
 
-## Static Diffie-Hellman Oracles
+## Static Diffie-Hellman oracles
 
 While one can expect the practical security of the OPRF function
 (namely, the hardness of computing the function without knowing the
@@ -1366,11 +1314,31 @@ Skipping the key exchange part is analogous to carefully checking a
 visitor's credential at the door and then leaving the door open for
 others to enter freely.
 
-## OPRF Hardening
+## OPRF hardening
 
 Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
+
+## User and server identities
+
+The user identity (idU) and server identity (idS) are optional parameters
+which are left to the application to designate as monikers for the client
+and server. If the application layer does not supply values for these
+parameters, then they will be omitted from the creation of the envelope
+during the registration stage. Furthermore, they will be substituted with
+idU = pkU and idS = pkS during the authenticated key exchange stage.
+
+The advantage to supplying a custom idU and idS (instead of simply relying
+on a fallback to pkU and pkS) is that the client can then ensure that any
+mappings between idU and pkU (and idS and pkS) are protected by the
+authentication from the envelope. Then, the client can verify that the
+idU and idS contained in its envelope matches the idU and idS supplied by
+the server.
+
+However, if this extra layer of verification is unnecessary for the
+application, then simply leaving idU and idS unspecified (and using pkU and
+pkS instead) is acceptable.
 
 <!-- TODO(caw): bring this back after updating later -->
 
@@ -1471,24 +1439,6 @@ rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
 passwords.
-
-# Performance Considerations
-
-The computational cost of OPAQUE is determined by the cost of the OPRF,
-the cost of a regular Diffie-Hellman exchange, and the cost of
-authenticating such exchange. In an elliptic-curve implementation of
-the OPRF, the cost for the client is two exponentiations (one or two
-of which can be fixed base) and one hashing-into-curve operation
-{{I-D.irtf-cfrg-hash-to-curve}}; for the server, it is just one
-exponentiation. The cost of a Diffie-Hellman exchange is as usual two
-exponentiations per party (one of which is fixed-base). Finally, the
-cost of authentication per party depends on the specific AKE protocol:
-it is just 1/6 of an exponentiation with HMQV, two exponentiations for 3DH,
-and it is one signature generation and verification in the case of SIGMA and
-TLS 1.3.
-These instantiations preserve the number of messages in the underlying AKE
-protocol except in implementations such as {{I-D.sullivan-tls-opaque}} where
-an additional round trip is required to provide privacy to account information.
 
 # IANA Considerations
 
