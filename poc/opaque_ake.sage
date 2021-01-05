@@ -84,7 +84,6 @@ class TripleDH(KeyExchange):
         # Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
         # Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
         # Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
-        # TODO(caw): move these constant labels to actual constants
         Nh = self.config.hash_alg().digest_size
         Nk = 16
         empty_info = bytes([])

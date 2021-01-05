@@ -92,6 +92,9 @@ def test_core_protocol():
         config, serialized_response)
     assert response == deserialized_response
 
+
+
+
     secret_creds = SecretCredentials(skU)
     cleartext_creds = CleartextCredentials(response.pkS)
     creds = Credentials(secret_creds, cleartext_creds)
@@ -102,6 +105,10 @@ def test_core_protocol():
     deserialized_envU, envU_len = deserialize_envelope(config, serialized_envU)
     assert envU_len == len(serialized_envU)
     assert envU == deserialized_envU
+
+
+
+
 
     # Run the authentication flow to recover credentials
     cred_request, cred_metadata = create_credential_request(config, pwdU)
@@ -178,6 +185,8 @@ def test_3DH():
     client_session_key, ke3 = kex.generate_ke3(
         response.serialize(), ke2, ke1_state, pkS, skU, pkU)
     server_session_key = kex.finish(ke3, ke2_state)
+
+    assert client_session_key == server_session_key
 
 
 class Protocol(object):
