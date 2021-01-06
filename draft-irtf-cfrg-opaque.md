@@ -484,6 +484,15 @@ The full procedure for constructing `Envelope` and `InnerEnvelope` from
 
 The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
+Credential information corresponding to the configuration-specific mode,
+along with the user public key `pkU` and private key `skU`, are stored
+in a `Credentials` object with the following named fields:
+
+- `skU`, the user's private key
+- `pkU`, the user's public key corresponding to `skU`
+- `idU`, an optional user identity (present only in the `customIdentifier` mode)
+- `idS`, an optional server identity (present only in the `customIdentifier` mode)
+
 ## Offline registration stage {#offline-phase}
 
 Registration is executed between a user U (running on a client machine) and a
@@ -502,7 +511,7 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
-      Client (pwdU, skU, pkU)                       Server (skS, pkS)
+      Client (pwdU, creds)                       Server (skS, pkS)
   -----------------------------------------------------------------
  request, blind = CreateRegistrationRequest(pwdU)
 
@@ -514,12 +523,11 @@ Once complete, the registration process proceeds as follows:
                                    response
                               <-----------------
 
- record = FinalizeRequest(pwdU, skU, blind, request, response)
+ record, export_key = FinalizeRequest(pwdU, creds, blind, response)
 
-                                    record
+                                   record
                               ------------------>
 
-                                             StoreUserRecord(record)
 ~~~
 
 Both client and server MUST validate the other party's public key before use.
@@ -551,17 +559,16 @@ pkS
 
 ~~~
 struct {
-    Envelope envelope;
+    Envelope envU;
     opaque pkU<0..2^16-1>;
 } RegistrationUpload;
 ~~~
 
-envelope
-: The `Envelope` structure
+envU
+: The user's `Envelope` structure
 
 pkU
-: An encoded public key, matching the public key contained within the encrypted
-envelope.
+: An encoded public key, corresponding to the private key `skU`.
 
 ### Registration functions
 
@@ -607,44 +614,42 @@ Steps:
 #### FinalizeRequest {#finalize-request}
 
 ~~~
-FinalizeRequest(pwdU, skU, blind, request, response)
+FinalizeRequest(pwdU, creds, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- mode, the InnerEnvelope mode
 - Nh, the output size of the Hash function
-- mode, the value of InnerEnvelopeMode
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- skU, the user's private key
+- creds, a Credentials structure
 - blind, an OPRF Scalar value
-- request, a RegistrationRequest structure
 - response, a RegistrationResponse structure
 
 Output:
-- upload, a RegistrationUpload structure
+- envU, the user's Envelope structure
 - export_key, an additional key
 
 Steps:
 1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE01")
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-4. Create secret_credentials with credentials matching those needed to
-   construct the `SecretCredentials` structure
-5. Create cleartext_credentials with credentials matching those needed to
-   construct the `CleartextCredentials` structure
-6. pt = Serialize(secret_credentials)
+4. Create SecretCredentials secret_creds with creds.skU
+5. Create CleartextCredentials cleartext_creds with response.pkS
+   and custom identifiers creds.idU and creds.idS if mode is customIdentifer
+6. pt = Serialize(secret_creds)
 7. nonce = random(32)
 8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
 9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
 11. ct = xor(pt, pseudorandom_pad)
-12. auth_data = Serialize(cleartext_credentials)
+12. auth_data = Serialize(cleartext_creds)
 13. Create InnerEnvelope contents with (mode, nonce, ct)
-14. t = HMAC(auth_key, concat(contents, auth_data))
-15. Create Envelope envU with (contents, t)
-16. Create RegistrationUpload upload with envelope value (envU, pkU)
-17. Output (upload, export_key)
+14. auth_tag = HMAC(auth_key, concat(contents, auth_data))
+15. Create Envelope envU with (contents, auth_tag)
+16. Create RegistrationUpload record with (envU, creds.pkU)
+17. Output (record, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
@@ -654,13 +659,10 @@ is that which is associated with the OPAQUE configuration (see {{configurations}
 
 See {{export-usage}} for details about the output export_key usage.
 
-#### StoreUserRecord
-
-The StoreUserRecord function stores the tuple `(envU, pkS, skS, pkU, kU)`,
-where envU and pkU are obtained from the input RegistrationUpload message in
-a record associated with the user's account idU. If `skS` and `pkS` are used for
-multiple users, the server can store these values separately and omit them from
-the user's record.
+Upon completion of this function, the client MUST send `record` to the server.
+The server then stores the tuple `(envU, pkU, kU, pkS, skS)`, where `envU` and `pkU`
+are obtained from `record`. If `skS` and `pkS` are used for multiple users, the
+server can store these values separately and omit them from the user's record.
 
 ## Online authenticated key exchange stage {#online-phase}
 
@@ -677,21 +679,21 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-       Client (pwdU)                       Server (skS, pkS, kU, envU, pkU)
+       Client (pwdU)                    Server (skS, pkS, kU, envU)
   -----------------------------------------------------------------
    request, blind = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
 
-                response = CreateCredentialResponse(request, pkS, kU, envU, pkU)
+   response = CreateCredentialResponse(request, pkS, kU, envU)
 
                                    response
                               <-----------------
 
-  creds, export_key = RecoverCredentials(pwdU, blind, request, response)
+  skU, pkS, export_key = RecoverCredentials(pwdU, blind, response)
 
-                               (AKE with creds)
+                            (AKE with credentials)
                               <================>
 ~~~
 
@@ -702,7 +704,7 @@ the OPRF protocol.
 Note also that the authenticated key exchange stage can run the OPRF and AKE protocols
 concurrently with interleaved and combined messages (while preserving the internal ordering
 of messages in each protocol). In all cases, the client needs to obtain envU and
-rwdU (i.e., complete the OPRF protocol) before it can use its own private key
+rwdU, i.e., complete the OPRF protocol, before it can use its own private key
 skU and the server's public key pkS in the AKE. See {{instantiations}} for examples
 of this integration.
 
@@ -721,7 +723,7 @@ data
 struct {
     opaque data<1..2^16-1>;
     opaque pkS<1..2^16-1>;
-    Envelope envelope;
+    Envelope envU;
 } CredentialResponse;
 ~~~
 
@@ -729,14 +731,15 @@ data
 : A serialized OPRF group element.
 
 pkS
-: An encoded public key that will be used for the online authenticated key exchange stage.
+: An encoded public key that will be used for the online authenticated
+key exchange stage.
 
-envelope
-: The `Envelope` structure.
+envU
+: The user's `Envelope` structure.
 
 ### Authenticated key exchange functions
 
-#### CreateCredentialRequest(pwdU)
+#### CreateCredentialRequest
 
 ~~~
 CreateCredentialRequest(pwdU)
@@ -754,17 +757,16 @@ Steps:
 3. Output (request, r)
 ~~~
 
-#### CreateCredentialResponse(request, pkS, kU, envU, pkU)
+#### CreateCredentialResponse
 
 ~~~
-CreateCredentialResponse(request, pkS, kU, envU, pkU)
+CreateCredentialResponse(request, pkS, kU, envU)
 
 Input:
 - request, a CredentialRequest structure
 - pkS, public key of the server
 - kU, OPRF key associated with idU
 - envU, Envelope associated with idU
-- pkU, Public key associated with idU
 
 Output:
 - response, a CredentialResponse structure
@@ -775,10 +777,10 @@ Steps:
 3. Output response
 ~~~
 
-#### RecoverCredentials(pwdU, blind, request, response)
+#### RecoverCredentials
 
 ~~~
-RecoverCredentials(pwdU, blind, request, response)
+RecoverCredentials(pwdU, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -787,7 +789,6 @@ Parameters:
 Input:
 - pwdU, an opaque byte string containing the user's password
 - blind, an OPRF Scalar value
-- request, a CredentialRequest structure
 - response, a CredentialResponse structure
 
 Output:
@@ -797,20 +798,20 @@ Output:
 Steps:
 1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE01")
-3. contents = response.envelope.contents
+3. contents = response.envU.contents
 4. nonce = contents.nonce
 5. ct = contents.ct
 6. rwdU = HKDF-Extract("rwdU", Harden(y, params))
 7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
 8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-10. Create cleartext_credentials with credentials matching those needed to
-    construct the `CleartextCredentials` structure
-11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_credentials)))
-12. If !ct_equal(response.envelope.auth_tag, expected_tag), raise DecryptionError
+10. Create CleartextCredentials cleartext_creds with response.pkS
+    and custom identifiers creds.idU and creds.idS if mode is customIdentifer
+11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_creds)))
+12. If !ct_equal(response.envU.auth_tag, expected_tag), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
-14. secret_credentials = Deserialize(pt)
-15. Output (secret_credentials, export_key)
+14. secret_creds = Deserialize(pt)
+15. Output (secret_creds.skU, response.pkS, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
