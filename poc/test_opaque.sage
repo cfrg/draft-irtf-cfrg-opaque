@@ -92,12 +92,9 @@ def test_core_protocol():
         config, serialized_response)
     assert response == deserialized_response
 
-
-
-
     secret_creds = SecretCredentials(skU)
     cleartext_creds = CleartextCredentials(response.pkS)
-    creds = Credentials(secret_creds, cleartext_creds)
+    creds = Credentials(secret_creds, cleartext_creds, pkU)
 
     envU, export_key = finalize_request(
         config, creds, pwdU, metadata, response)
@@ -105,10 +102,6 @@ def test_core_protocol():
     deserialized_envU, envU_len = deserialize_envelope(config, serialized_envU)
     assert envU_len == len(serialized_envU)
     assert envU == deserialized_envU
-
-
-
-
 
     # Run the authentication flow to recover credentials
     cred_request, cred_metadata = create_credential_request(config, pwdU)
@@ -163,7 +156,7 @@ def test_3DH():
 
     secret_creds = SecretCredentials(skU_bytes)
     cleartext_creds = CleartextCredentials(pkS_bytes)
-    creds = Credentials(secret_creds, cleartext_creds)
+    creds = Credentials(secret_creds, cleartext_creds, pkU_bytes)
 
     # Run the registration flow to register credentials
     request, metadata = create_registration_request(config, pwdU)
@@ -215,7 +208,7 @@ class Protocol(object):
 
             secret_creds = SecretCredentials(skU)
             cleartext_creds = CleartextCredentials(pkS)
-            creds = Credentials(secret_creds, cleartext_creds)
+            creds = Credentials(secret_creds, cleartext_creds, pkU)
 
             # Run the registration flow to register credentials
             request, reg_metadata = create_registration_request(config, pwdU)

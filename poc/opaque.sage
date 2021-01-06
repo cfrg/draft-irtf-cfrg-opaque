@@ -179,10 +179,11 @@ class CustomCleartextCredentials(CleartextCredentials):
         return encode_vector(self.pkS) + encode_vector(self.idU) + encode_vector(self.idS)
 
 class Credentials(object):
-    def __init__(self, secret, cleartext):
+    def __init__(self, secret, cleartext, pkU):
         self.secret_credentials = secret
         self.cleartext_credentials = cleartext
         self.mode = cleartext.mode
+        self.pkU = pkU
     
 
 # struct {
@@ -420,6 +421,7 @@ def finalize_request(config, creds, pwdU, blind, response):
     auth_tag = hmac.digest(auth_key, serialized_contents, config.hash_alg)
 
     envU = Envelope(contents, auth_tag)
+    record = RegistrationUpload(envU, creds.pkU)
 
     return envU, export_key
 
@@ -458,7 +460,7 @@ def recover_credentials(config, cleartext_creds, pwdU, blind, response):
 
     pt = xor(ct, pseudorandom_pad)
     secret_credentials, _ = deserialize_secret_credentials(pt)
-    creds = Credentials(secret_credentials, cleartext_creds)
+    creds = Credentials(secret_credentials, cleartext_creds, None)
 
     return creds, export_key, rwdU, pseudorandom_pad, auth_key
 
