@@ -357,12 +357,6 @@ OPAQUE relies on the following protocols and primitives:
   - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
-  - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
-    `enc`. The size of `enc` is determined by the underlying OPRF group. The type
-    of a serialized OPRF group element is called SerializedElement.
-  - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
-    or produce an error if `enc` is an invalid encoding. This is the inverse
-    of Serialize, i.e., `x = Deserialize(Serialize(x))`.
 
 - Cryptographic hash function:
   - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
