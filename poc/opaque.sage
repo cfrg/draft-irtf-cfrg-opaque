@@ -179,11 +179,17 @@ class CustomCleartextCredentials(CleartextCredentials):
         return encode_vector(self.pkS) + encode_vector(self.idU) + encode_vector(self.idS)
 
 class Credentials(object):
-    def __init__(self, secret, cleartext, pkU):
-        self.secret_credentials = secret
-        self.cleartext_credentials = cleartext
-        self.mode = cleartext.mode
+    def __init__(self, skU, pkU):
+        self.mode = envelope_mode_base
+        self.skU = skU
         self.pkU = pkU
+
+class CustomCredentials(Credentials):
+    def __init__(self, skU, pkU, idU, idS):
+        Credentials.__init__(self, skU, pkU)
+        self.mode = envelope_mode_custom_identifier
+        self.idU = idU
+        self.idS = idS
     
 
 # struct {
@@ -347,6 +353,7 @@ class CredentialRequest(ProtocolMessage):
 
 # struct {
 #     opaque data<1..2^16-1>;
+#     opaque pkS<1..2^16-1>;
 #     Envelope envelope;
 # } CredentialResponse;
 
@@ -357,20 +364,25 @@ def deserialize_credential_response(config, msg_bytes):
     data, data_offset = decode_vector(msg_bytes[offset:])
     offset += data_offset
 
+    pkS, pkS_offset = decode_vector(msg_bytes[offset:])
+    offset += pkS_offset
+
     envU, envU_offset = deserialize_envelope(config, msg_bytes[offset:])
     offset += envU_offset
 
-    return CredentialResponse(data, envU)
+    return CredentialResponse(data, pkS, envU)
 
 
 class CredentialResponse(ProtocolMessage):
-    def __init__(self, data, envU):
+    def __init__(self, data, pkS, envU):
         ProtocolMessage.__init__(self)
         self.data = data
+        self.pkS = pkS
         self.envU = envU
 
     def serialize(self):
-        return encode_vector(self.data) + self.envU.serialize()
+        return encode_vector(self.data) + encode_vector(self.pkS) + self.envU.serialize()
+
 
 def create_registration_request(config, pwdU):
     oprf_context = SetupBaseClient(config.oprf_suite)
@@ -407,9 +419,15 @@ def derive_secrets(config, pwdU, response, blind, nonce, Npt):
 
     return rwdU, pseudorandom_pad, auth_key, export_key
 
+
 def finalize_request(config, creds, pwdU, blind, response):
-    pt = creds.secret_credentials.serialize()
-    auth_data = creds.cleartext_credentials.serialize()
+    secret_creds = SecretCredentials(creds.skU)
+    cleartext_creds = CleartextCredentials(response.pkS)
+    if creds.mode == envelope_mode_custom_identifier:
+        cleartext_creds = CustomCleartextCredentials(response.pkS, creds.idU, creds.idS)
+
+    pt = secret_creds.serialize()
+    auth_data = cleartext_creds.serialize()
 
     nonce = random_bytes(OPAQUE_NONCE_LENGTH)
     rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(
@@ -425,6 +443,7 @@ def finalize_request(config, creds, pwdU, blind, response):
 
     return envU, export_key
 
+
 def create_credential_request(config, pwdU):
     oprf_context = SetupBaseClient(config.oprf_suite)
     blind, blinded_element = oprf_context.blind(pwdU)
@@ -434,21 +453,23 @@ def create_credential_request(config, pwdU):
     return request, blind
 
 
-def create_credential_response(config, request, kU, envU):
+def create_credential_response(config, request, pkS, kU, envU):
     oprf_context = SetupBaseServer(config.oprf_suite, kU)
 
     data, _ = oprf_context.evaluate(request.data)
 
-    response = CredentialResponse(data, envU)
+    response = CredentialResponse(data, pkS, envU)
 
     return response
 
-def recover_credentials(config, cleartext_creds, pwdU, blind, response):
+
+def recover_credentials(config, pwdU, blind, response):
     contents = response.envU.contents
     serialized_contents = contents.serialize()
     nonce = contents.nonce
     ct = contents.ct
 
+    cleartext_creds = CleartextCredentials(response.pkS)
     auth_data = cleartext_creds.serialize()
 
     rwdU, pseudorandom_pad, auth_key, export_key = derive_secrets(
@@ -460,9 +481,8 @@ def recover_credentials(config, cleartext_creds, pwdU, blind, response):
 
     pt = xor(ct, pseudorandom_pad)
     secret_credentials, _ = deserialize_secret_credentials(pt)
-    creds = Credentials(secret_credentials, cleartext_creds, None)
 
-    return creds, export_key, rwdU, pseudorandom_pad, auth_key
+    return secret_credentials.skU, response.pkS, export_key, rwdU, pseudorandom_pad, auth_key
 
 
 class Configuration(object):

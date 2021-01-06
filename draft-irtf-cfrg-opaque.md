@@ -484,14 +484,14 @@ The full procedure for constructing `Envelope` and `InnerEnvelope` from
 
 The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
-The secret and cleartext credentials corresponding to the configuration-specific mode,
-along with the user public key `pkU` corresponding to `skU`, are stored in a generic
-`Credentials` object with the following named fields:
+Credential information corresponding to the configuration-specific mode,
+along with the user public key `pkU` and private key `skU`, are stored
+in a `Credentials` object with the following named fields:
 
-- `mode`, the InnerEnvelopeMode mode
-- `secret_credentials`, the `SecretCredentials` value
-- `cleartext_credentials`, the `CleartextCredentials` value
-- `pkU`, the public key corresponding to `secret_credentials.skU`.
+- `skU`, the user's private key
+- `pkU`, the user's public key corresponding to `skU`
+- `idU`, an optional user identity (present only in the `customIdentifier` mode)
+- `idS`, an optional server identity (present only in the `customIdentifier` mode)
 
 ## Offline registration stage {#offline-phase}
 
@@ -618,6 +618,7 @@ FinalizeRequest(pwdU, creds, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
+- mode, the InnerEnvelope mode
 - Nh, the output size of the Hash function
 
 Input:
@@ -634,18 +635,21 @@ Steps:
 1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE01")
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-4. pt = Serialize(creds.secret_credentials)
-5. nonce = random(32)
-6. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
-7. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-8. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-9. ct = xor(pt, pseudorandom_pad)
-10. auth_data = Serialize(creds.cleartext_credentials)
-11. Create InnerEnvelope contents with (creds.mode, nonce, ct)
-12. t = HMAC(auth_key, concat(contents, auth_data))
-13. Create Envelope envU with (contents, t)
-14. Create RegistrationUpload record with (envU, creds.pkU)
-15. Output (record, export_key)
+4. Create SecretCredentials secret_creds with creds.skU
+5. Create CleartextCredentials cleartext_creds with response.pkS
+   and custom identifiers creds.idU and creds.idS if mode is customIdentifer
+6. pt = Serialize(secret_creds)
+7. nonce = random(32)
+8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
+9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+11. ct = xor(pt, pseudorandom_pad)
+12. auth_data = Serialize(cleartext_creds)
+13. Create InnerEnvelope contents with (mode, nonce, ct)
+14. auth_tag = HMAC(auth_key, concat(contents, auth_data))
+15. Create Envelope envU with (contents, auth_tag)
+16. Create RegistrationUpload record with (envU, creds.pkU)
+17. Output (record, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
@@ -675,21 +679,21 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-       Client (pwdU)                       Server (skS, kU, envU)
+       Client (pwdU)                    Server (skS, pkS, kU, envU)
   -----------------------------------------------------------------
    request, blind = CreateCredentialRequest(pwdU)
 
                                    request
                               ----------------->
 
-   response = CreateCredentialResponse(request, kU, envU)
+   response = CreateCredentialResponse(request, pkS, kU, envU)
 
                                    response
                               <-----------------
 
-creds, export_key = RecoverCredentials(pwdU, blind, request, response)
+  skU, pkS, export_key = RecoverCredentials(pwdU, blind, response)
 
-                               (AKE with creds)
+                            (AKE with credentials)
                               <================>
 ~~~
 
@@ -718,6 +722,7 @@ data
 ~~~
 struct {
     opaque data<1..2^16-1>;
+    opaque pkS<1..2^16-1>;
     Envelope envU;
 } CredentialResponse;
 ~~~
@@ -725,12 +730,16 @@ struct {
 data
 : A serialized OPRF group element.
 
+pkS
+: An encoded public key that will be used for the online authenticated
+key exchange stage.
+
 envU
 : The user's `Envelope` structure.
 
 ### Authenticated key exchange functions
 
-#### CreateCredentialRequest(pwdU)
+#### CreateCredentialRequest
 
 ~~~
 CreateCredentialRequest(pwdU)
@@ -748,13 +757,14 @@ Steps:
 3. Output (request, r)
 ~~~
 
-#### CreateCredentialResponse(request, kU, envU)
+#### CreateCredentialResponse
 
 ~~~
-CreateCredentialResponse(request, kU, envU)
+CreateCredentialResponse(request, pkS, kU, envU)
 
 Input:
 - request, a CredentialRequest structure
+- pkS, public key of the server
 - kU, OPRF key associated with idU
 - envU, Envelope associated with idU
 
@@ -763,14 +773,14 @@ Output:
 
 Steps:
 1. Z = Evaluate(kU, request.data)
-2. Create CredentialResponse response with (Z, envU)
+2. Create CredentialResponse response with (Z, pkS, envU)
 3. Output response
 ~~~
 
-#### RecoverCredentials(pwdU, blind, request, response)
+#### RecoverCredentials
 
 ~~~
-RecoverCredentials(pwdU, cleartext_creds, blind, response)
+RecoverCredentials(pwdU, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -778,7 +788,6 @@ Parameters:
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- cleartext_creds, a `CleartextCredentials` structure
 - blind, an OPRF Scalar value
 - response, a CredentialResponse structure
 
@@ -796,13 +805,13 @@ Steps:
 7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
 8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_credentials)))
+10. Create CleartextCredentials cleartext_creds with response.pkS
+    and custom identifiers creds.idU and creds.idS if mode is customIdentifer
+11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_creds)))
 12. If !ct_equal(response.envU.auth_tag, expected_tag), raise DecryptionError
 13. pt = xor(ct, pseudorandom_pad)
 14. secret_creds = Deserialize(pt)
-15. Create Credentials creds with secret_credentials = secret_creds,
-    cleartext_credentials = cleartext_creds and mode = response.envU.contents.mode.
-15. Output (creds, export_key)
+15. Output (secret_creds.skU, response.pkS, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]

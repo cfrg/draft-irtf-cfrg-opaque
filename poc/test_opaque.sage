@@ -92,9 +92,7 @@ def test_core_protocol():
         config, serialized_response)
     assert response == deserialized_response
 
-    secret_creds = SecretCredentials(skU)
-    cleartext_creds = CleartextCredentials(response.pkS)
-    creds = Credentials(secret_creds, cleartext_creds, pkU)
+    creds = Credentials(skU, pkU)
 
     envU, export_key = finalize_request(
         config, creds, pwdU, metadata, response)
@@ -111,27 +109,27 @@ def test_core_protocol():
     assert cred_request == deserialized_request
 
     cred_response = create_credential_response(
-        config, cred_request, kU, envU)
+        config, cred_request, pkS, kU, envU)
     serialized_response = cred_response.serialize()
     deserialized_response = deserialize_credential_response(
         config, serialized_response)
     assert cred_response == deserialized_response
 
-    recovered_creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
-        config, cleartext_creds, pwdU, cred_metadata, cred_response)
+    recovered_skU, recovered_pkS, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
+        config, pwdU, cred_metadata, cred_response)
 
     # Check that recovered credentials match the registered credentials
     assert export_key == recovered_export_key
-    assert recovered_creds.secret_credentials.skU == skU
-    assert recovered_creds.cleartext_credentials.pkS == pkS
+    assert recovered_skU == skU
+    assert recovered_pkS == pkS
 
     # Run with different credentials and expect failure
     cred_request, cred_metadata = create_credential_request(config, badPwdU)
     cred_response = create_credential_response(
-        config, cred_request, kU, envU)
+        config, cred_request, pkS, kU, envU)
     try:
-        recovered_creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
-            config, cleartext_creds, badPwdU, cred_metadata, cred_response)
+        recovered_skU, recovered_pkS, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
+            config, badPwdU, cred_metadata, cred_response)
         assert False
     except:
         # We expect the MAC authentication tag to fail, so should get here
@@ -154,9 +152,7 @@ def test_3DH():
     # Create the OPRF context
     config = default_opaque_configuration
 
-    secret_creds = SecretCredentials(skU_bytes)
-    cleartext_creds = CleartextCredentials(pkS_bytes)
-    creds = Credentials(secret_creds, cleartext_creds, pkU_bytes)
+    creds = Credentials(skU_bytes, pkU_bytes)
 
     # Run the registration flow to register credentials
     request, metadata = create_registration_request(config, pwdU)
@@ -172,7 +168,7 @@ def test_3DH():
     ke1_state, ke1 = kex.generate_ke1(request.serialize())
 
     response = create_credential_response(
-        config, request, kU, envU)
+        config, request, pkS_bytes, kU, envU)
     ke2_state, ke2 = kex.generate_ke2(
         request.serialize(), response.serialize(), ke1, pkU, skS, pkS)
     client_session_key, ke3 = kex.generate_ke3(
@@ -206,9 +202,7 @@ class Protocol(object):
             pkU = x["pkU"]
             pkS = x["pkS"]
 
-            secret_creds = SecretCredentials(skU)
-            cleartext_creds = CleartextCredentials(pkS)
-            creds = Credentials(secret_creds, cleartext_creds, pkU)
+            creds = Credentials(skU, pkU)
 
             # Run the registration flow to register credentials
             request, reg_metadata = create_registration_request(config, pwdU)
@@ -238,21 +232,20 @@ class Protocol(object):
                 config, serialized_cred_request)
             assert cred_request == deserialized_request
 
-            cred_response, recovered_pkU = create_credential_response(
-                config, cred_request, kU, record)
+            cred_response = create_credential_response(
+                config, cred_request, pkS, kU, record)
             serialized_cred_response = cred_response.serialize()
             deserialized_response = deserialize_credential_response(
                 config, serialized_cred_response)
             assert cred_response == deserialized_response
 
-            creds, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
+            recovered_skU, recovered_pkS, recovered_export_key, rwdU, pseudorandom_pad, auth_key = recover_credentials(
                 config, pwdU, cred_metadata, cred_response)
 
             # Check that recovered credentials match the registered credentials
-            assert recovered_pkU == pkU
             assert export_key == recovered_export_key
-            assert creds.secret_credentials[0].data == skU
-            assert creds.cleartext_credentials[0].data == idU
+            assert recovered_skU == skU
+            assert recovered_pkU == pkU
 
             vector = {}
 
