@@ -469,6 +469,9 @@ struct {
 } Envelope;
 ~~~
 
+mode
+: The `EnvelopeMode` value. This MUST be one of `base` or `customIdentifier`.
+
 nonce
 : A unique 32-byte nonce used to protect this Envelope.
 
@@ -547,7 +550,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque pkS<0..2^16-1>;
+    opaque pkS<1..2^16-1>;
 } RegistrationResponse;
 ~~~
 
@@ -560,7 +563,7 @@ pkS
 ~~~
 struct {
     Envelope envU;
-    opaque pkU<0..2^16-1>;
+    opaque pkU<1..2^16-1>;
 } RegistrationUpload;
 ~~~
 
@@ -1170,7 +1173,8 @@ The OPAQUE AKE protocols are those which are specified in {{instantiations}}.
 Future specifications (such as {{I-D.sullivan-tls-opaque}}) MAY introduce other
 AKE instantiations.
 
-The EnvelopeMode value is defined in {{data-types}}.
+The EnvelopeMode value is defined in {{data-types}}. It MUST be one of `base`
+or `customIdentifier`.
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
 
@@ -1245,7 +1249,7 @@ authenticated-encryption scheme with this specification. (Deviating from the
 key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
 We remark that export_key for authentication or encryption requires no special
 properties from the authentication or encryption schemes as long as export_key
-is used only after the EnvU is validated, i.e., after the HMAC in RecoverCredentials
+is used only after the envU is validated, i.e., after the HMAC in RecoverCredentials
 passes verification.
 
 ## Configuration choice
