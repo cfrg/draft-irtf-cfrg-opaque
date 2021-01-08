@@ -357,12 +357,6 @@ OPAQUE relies on the following protocols and primitives:
   - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
-  - Serialize(x): Encode the OPRF group element x as a fixed-length byte string
-    `enc`. The size of `enc` is determined by the underlying OPRF group. The type
-    of a serialized OPRF group element is called SerializedElement.
-  - Deserialize(enc): Decode a byte string `enc` into an OPRF group element `x`,
-    or produce an error if `enc` is an invalid encoding. This is the inverse
-    of Serialize, i.e., `x = Deserialize(Serialize(x))`.
 
 - Cryptographic hash function:
   - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
@@ -460,7 +454,7 @@ encryption and authentication.
 struct {
   InnerEnvelopeMode mode;
   opaque nonce[32];
-  opaque ct<1..2^16-1>;
+  opaque encrypted_creds<1..2^16-1>;
 } InnerEnvelope;
 
 struct {
@@ -469,10 +463,13 @@ struct {
 } Envelope;
 ~~~
 
+mode
+: The `EnvelopeMode` value. This MUST be one of `base` or `customIdentifier`.
+
 nonce
 : A unique 32-byte nonce used to protect this Envelope.
 
-ct
+encrypted_creds
 : Encoding of encrypted and authenticated `SecretCredentials`.
 
 auth_tag
@@ -547,7 +544,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque pkS<0..2^16-1>;
+    opaque pkS<1..2^16-1>;
 } RegistrationResponse;
 ~~~
 
@@ -560,7 +557,7 @@ pkS
 ~~~
 struct {
     Envelope envU;
-    opaque pkU<0..2^16-1>;
+    opaque pkU<1..2^16-1>;
 } RegistrationUpload;
 ~~~
 
@@ -637,19 +634,17 @@ Steps:
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
 4. Create SecretCredentials secret_creds with creds.skU
 5. Create CleartextCredentials cleartext_creds with response.pkS
-   and custom identifiers creds.idU and creds.idS if mode is customIdentifer
-6. pt = Serialize(secret_creds)
-7. nonce = random(32)
-8. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
-9. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-10. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-11. ct = xor(pt, pseudorandom_pad)
-12. auth_data = Serialize(cleartext_creds)
-13. Create InnerEnvelope contents with (mode, nonce, ct)
-14. auth_tag = HMAC(auth_key, concat(contents, auth_data))
-15. Create Envelope envU with (contents, auth_tag)
-16. Create RegistrationUpload record with (envU, creds.pkU)
-17. Output (record, export_key)
+   and custom identifiers creds.idU and creds.idS if mode is customIdentifier
+6. nonce = random(32)
+7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(pt))
+8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
+11. Create InnerEnvelope contents with (mode, nonce, encrypted_creds)
+12. auth_tag = HMAC(auth_key, concat(contents, cleartext_creds))
+13. Create Envelope envU with (contents, auth_tag)
+14. Create RegistrationUpload record with (envU, creds.pkU)
+15. Output (record, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
@@ -800,18 +795,16 @@ Steps:
 2. y = Finalize(pwdU, N, "OPAQUE01")
 3. contents = response.envU.contents
 4. nonce = contents.nonce
-5. ct = contents.ct
-6. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(ct))
-8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
-10. Create CleartextCredentials cleartext_creds with response.pkS
-    and custom identifiers creds.idU and creds.idS if mode is customIdentifer
-11. expected_tag = HMAC(auth_key, concat(contents, Serialize(cleartext_creds)))
-12. If !ct_equal(response.envU.auth_tag, expected_tag), raise DecryptionError
-13. pt = xor(ct, pseudorandom_pad)
-14. secret_creds = Deserialize(pt)
-15. Output (secret_creds.skU, response.pkS, export_key)
+5. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+6. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(contents.encrypted_creds))
+7. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
+8. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+9. Create CleartextCredentials cleartext_creds with response.pkS
+   and custom identifiers creds.idU and creds.idS if mode is customIdentifier
+10. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
+11. If !ct_equal(response.envU.auth_tag, expected_tag), raise DecryptionError
+12. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
+13. Output (secret_creds.skU, response.pkS, export_key)
 ~~~
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
@@ -1170,7 +1163,8 @@ The OPAQUE AKE protocols are those which are specified in {{instantiations}}.
 Future specifications (such as {{I-D.sullivan-tls-opaque}}) MAY introduce other
 AKE instantiations.
 
-The EnvelopeMode value is defined in {{data-types}}.
+The EnvelopeMode value is defined in {{data-types}}. It MUST be one of `base`
+or `customIdentifier`.
 
 [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
 
@@ -1245,7 +1239,7 @@ authenticated-encryption scheme with this specification. (Deviating from the
 key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
 We remark that export_key for authentication or encryption requires no special
 properties from the authentication or encryption schemes as long as export_key
-is used only after the EnvU is validated, i.e., after the HMAC in RecoverCredentials
+is used only after the envU is validated, i.e., after the HMAC in RecoverCredentials
 passes verification.
 
 ## Configuration choice
