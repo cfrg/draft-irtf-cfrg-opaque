@@ -342,8 +342,8 @@ for "uniformly random"). Random choices can be replaced with fresh outputs from
 a cryptographically strong pseudorandom generator, according to the requirements
 in {{!RFC4086}}, or pseudorandom function.
 
-The name OPAQUE is a homonym of O-PAKE where O is for Oblivious (the name
-OPAKE was taken).
+The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
+OPAKE was taken.
 
 # Cryptographic Protocol and Algorithm Dependencies {#dependencies}
 
@@ -787,7 +787,7 @@ Input:
 - response, a CredentialResponse structure
 
 Output:
-- secret_credentials, a `SecretCredentials` structure
+- secret_credentials, a SecretCredentials structure
 - export_key, an additional key
 
 Steps:
@@ -1166,8 +1166,6 @@ AKE instantiations.
 The EnvelopeMode value is defined in {{data-types}}. It MUST be one of `base`
 or `customIdentifier`.
 
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/60: Should we have a registry for configurations?]]
-
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
@@ -1448,4 +1446,4 @@ Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
-Kevin Lewi, Payman Mohassel, Jason Resch, Greg Rubin, Nick Sullivan.
+Kevin Lewi, Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
