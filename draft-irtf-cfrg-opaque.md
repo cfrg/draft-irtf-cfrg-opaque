@@ -1369,22 +1369,22 @@ envU (for settings where storage and/or communication is expensive) -->
 
 User enumeration refers to attacks where the attacker tries to learn
 whether a given user identity is registered with a server. Preventing
-such attack requires the server to act with unknown user identities
+such attacks requires the server to act with unknown user identities
 in a way that is indistinguishable from its behavior with existing
 users. Here we suggest a way to implement such defense, namely, a way for
-simulating the values beta and envU for non-existing users.
-Note that if the same pair of user identity idU and value alpha is received
+simulating the values Z and envU for non-existing users.
+Note that if the same pair of user identity idU and value M is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
 the construction of envU to all the key material in envU, namely,
-cleartext_credentials will be empty.
+cleartext_creds will be empty.
 The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
-Upon receiving a pair of user identity idU and value alpha for a non-existing
+Upon receiving a pair of user identity idU and value M for a non-existing
 user idU, S computes kU=f(MK; idU) and kU'=f(MK'; idU) and responds with
-values beta=alpha^kU and envU, where the latter is computed as follows.
-rwdU is set to kU' and AEenv is set to the all-zero string (of the
+values Z=M^kU and envU, where the latter is computed as follows.
+rwdU is set to kU' and secret_creds is set to the all-zero string (of the
 length of a regular envU plaintext). Care needs to be taken to avoid side
 channel leakage (e.g., timing) from helping differentiate these
 operations from a regular server response.
@@ -1393,7 +1393,7 @@ protocol itself or the client side.
 
 There is one form of leakage that the above allows and whose prevention would
 require a change in OPAQUE.
-Note that an attacker that tests a idU (and same alpha) twice and receives
+Note that an attacker that tests an idU (and same M) twice and receives
 different responses can conclude that either the user registered with the
 service between these two activations or that the user was registered before
 but changed its password in between the activations (assuming the server
