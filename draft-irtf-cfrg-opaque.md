@@ -1392,7 +1392,7 @@ protocol itself or the client side.
 
 There is one form of leakage that the above allows and whose prevention would
 require a change in OPAQUE.
-<span class="x x-first x-last">An </span>attacker that <span class="x x-first x-last">attempts authentication with the</span> same <span class="x x-first x-last">CredentialRequest</span> twice and receives
+An attacker that attempts authentication with the same CredentialRequest twice and receives
 different responses can conclude that either the user registered with the
 service between these two activations or that the user was registered before
 but changed its password in between the activations (assuming the server
