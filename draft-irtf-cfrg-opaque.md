@@ -1372,7 +1372,7 @@ whether a given user identity is registered with a server. Preventing
 such attacks requires the server to act with unknown user identities
 in a way that is indistinguishable from its behavior with existing
 users. Here we suggest a way to implement such defense, namely, a way for
-simulating the values Z and envU for non-existing users.
+simulating a CredentialResponse for non-existing users.
 Note that if the same pair of user identity idU and value M is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
