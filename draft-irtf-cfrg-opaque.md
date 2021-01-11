@@ -1382,7 +1382,7 @@ The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
 Upon receiving a CredentialRequest for a non-existing
 user idU, S computes kU=f(MK; idU) and kU'=f(MK'; idU) and responds with
-values Z=M^kU and envU, where the latter is computed as follows.
+CredentialResponse carrying Z=M^kU and envU, where the latter is computed as follows.
 rwdU is set to kU' and secret_creds is set to the all-zero string (of the
 length of a regular envU plaintext). Care needs to be taken to avoid side
 channel leakage (e.g., timing) from helping differentiate these
