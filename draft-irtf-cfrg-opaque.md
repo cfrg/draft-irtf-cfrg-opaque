@@ -1377,7 +1377,7 @@ Note that if the same CredentialRequest is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
-the construction of envU to all the key material in envU, namely,
+the construction of envU to all the key material in envU.
 cleartext_creds will be empty.
 The server S will have two keys MK, MK' for a PRF f
 (this refers to a regular PRF such as HMAC or CMAC).
