@@ -493,8 +493,8 @@ in a `Credentials` object with the following named fields:
 ## Offline registration stage {#offline-phase}
 
 Registration is executed between a user U (running on a client machine) and a
-server S. It is assumed the server can identify the user and the client can
-authenticate the server during this registration phase. This is the only part
+server S. It is assumed S can identify U and the client can
+authenticate S during this registration phase. This is the only part
 in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, U has a key pair (skU, pkU) for an AKE protocol
