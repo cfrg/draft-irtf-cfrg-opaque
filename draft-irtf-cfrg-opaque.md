@@ -326,13 +326,13 @@ operations, roles, and behaviors of OPAQUE:
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
   described in {{?RFC8017}}. Note that these functions operate on byte strings in
   big-endian byte order.
-- concat(x0, ..., xN): Concatenation of byte strings.
+- concat(x0, ..., xN): Concatenate byte strings. For example,
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a random byte string of length `n` bytes.
-- `xor(a,b)`: XOR of byte strings; `xor(0xF0F0, 0x1234) = 0xE2C4`.
+- xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with two arguments of unequal
   length.
-- `ct_equal(a, b)`: Return `true` if `a` is equal to `b`, and false otherwise.
+- ct_equal(a, b): Return `true` if `a` is equal to `b`, and false otherwise.
   This function is constant-time in the length of `a` and `b`, which are assumed
   to be of equal length, irrespective of the values `a` or `b`.
 
