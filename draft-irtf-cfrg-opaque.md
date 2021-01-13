@@ -375,6 +375,10 @@ generates an OPRF private and public key. OPAQUE only requires an OPRF private k
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
 
+We use the types `SerializedElement` and `SerializedScalar` as defined in {{I-D.irtf-cfrg-voprf}},
+along with serialization functions `SerializeElement`, `DeserializeElement`, `SerializeScalar`, and
+`DeserializeScalar`.
+
 # Core Protocol {#protocol}
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
@@ -654,9 +658,19 @@ is that which is associated with the OPAQUE configuration (see {{configurations}
 See {{export-usage}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
-The server then stores the tuple `(envU, pkU, kU, pkS, skS)`, where `envU` and `pkU`
-are obtained from `record`. If `skS` and `pkS` are used for multiple users, the
-server can store these values separately and omit them from the user's record.
+
+#### Credential File {#credential-file}
+
+The server then constructs and stores the `CredentialFile` object, where `envU` and `pkU`
+are obtained from `record`, and `kU` is retained from the output of `CreateRegistrationResponse`.
+
+~~~
+struct {
+    SerializedScalar kU;
+    opaque pkU<1..2^16-1>;
+    Envelope envU;
+} CredentialFile;
+~~~
 
 ## Online authenticated key exchange stage {#online-phase}
 
@@ -755,20 +769,19 @@ Steps:
 #### CreateCredentialResponse
 
 ~~~
-CreateCredentialResponse(request, pkS, kU, envU)
+CreateCredentialResponse(request, pkS, credentialFile)
 
 Input:
 - request, a CredentialRequest structure
 - pkS, the public key of the server
-- kU, the OPRF key associated with idU
-- envU, the Envelope associated with idU
+- credentialFile, the server's output from registration (see {{credential-file}})
 
 Output:
 - response, a CredentialResponse structure
 
 Steps:
-1. Z = Evaluate(kU, request.data)
-2. Create CredentialResponse response with (Z, pkS, envU)
+1. Z = Evaluate(DeserializeScalar(credentialFile.kU), request.data)
+2. Create CredentialResponse response with (Z, pkS, credentialFile.envU)
 3. Output response
 ~~~
 
