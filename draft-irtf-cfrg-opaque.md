@@ -245,7 +245,7 @@ to TLS failures, including many forms of PKI attacks, certificate
 mishandling, termination outside the security perimeter, visibility
 to middle boxes, and more.
 
-Asymmetric (or augmented) Password Authenticated Key Exchange (aPAKE)
+Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without relying on PKI (except
 during user/password registration) and without disclosing passwords
@@ -267,7 +267,7 @@ Despite the existence of multiple designs for
 pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
-Either these protocols do not use salt at all or, if they do, they
+Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to user in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation. Furthermore,
 transmitting the salt may require additional protocol messages.
@@ -290,7 +290,7 @@ of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
-an Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
+an oblivious pseudorandom function (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
@@ -326,13 +326,13 @@ operations, roles, and behaviors of OPAQUE:
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
   described in {{?RFC8017}}. Note that these functions operate on byte strings in
   big-endian byte order.
-- concat(x0, ..., xN): Concatenation of byte strings.
+- concat(x0, ..., xN): Concatenate byte strings. For example,
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a random byte string of length `n` bytes.
-- `xor(a,b)`: XOR of byte strings; `xor(0xF0F0, 0x1234) = 0xE2C4`.
+- xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with two arguments of unequal
   length.
-- `ct_equal(a, b)`: Return `true` if `a` is equal to `b`, and false otherwise.
+- ct_equal(a, b): Return `true` if `a` is equal to `b`, and false otherwise.
   This function is constant-time in the length of `a` and `b`, which are assumed
   to be of equal length, irrespective of the values `a` or `b`.
 
@@ -350,11 +350,11 @@ OPAKE was taken.
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
-  - Blind(x): Convert input `x` into an Element of the OPRF group, randomize it
-    by some Scalar `r`, producing `M`, and output (`r`, `M`).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
-  - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
+  - Unblind(r, Z): Remove random scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
 
@@ -493,8 +493,8 @@ in a `Credentials` object with the following named fields:
 ## Offline registration stage {#offline-phase}
 
 Registration is executed between a user U (running on a client machine) and a
-server S. It is assumed the server can identify the user and the client can
-authenticate the server during this registration phase. This is the only part
+server S. It is assumed S can identify U and the client can
+authenticate S during this registration phase. This is the only part
 in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, U has a key pair (skU, pkU) for an AKE protocol
@@ -508,22 +508,22 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
-      Client (pwdU, creds)                       Server (skS, pkS)
-  -----------------------------------------------------------------
- request, blind = CreateRegistrationRequest(pwdU)
+  Client (pwdU, creds)                             Server (skS, pkS)
+  ------------------------------------------------------------------
+  request, blind = CreateRegistrationRequest(pwdU)
 
-                                   request
-                              ----------------->
+                               request
+                      ------------------------->
 
-            (response, kU) = CreateRegistrationResponse(request, pkS)
+             response, kU = CreateRegistrationResponse(request, pkS)
 
-                                   response
-                              <-----------------
+                               response
+                      <-------------------------
 
- record, export_key = FinalizeRequest(pwdU, creds, blind, response)
+  record, export_key = FinalizeRequest(pwdU, creds, blind, response)
 
-                                   record
-                              ------------------>
+                                record
+                      ------------------------->
 
 ~~~
 
@@ -562,7 +562,7 @@ struct {
 ~~~
 
 envU
-: The user's `Envelope` structure
+: The user's `Envelope` structure.
 
 pkU
 : An encoded public key, corresponding to the private key `skU`.
@@ -579,12 +579,12 @@ Input:
 
 Output:
 - request, a RegistrationRequest structure
-- r, an OPRF Scalar value
+- blind, an OPRF scalar value
 
 Steps:
-1. (r, M) = Blind(pwdU)
+1. (blind, M) = Blind(pwdU)
 2. Create RegistrationRequest request with M
-3. Output (request, r)
+3. Output (request, blind)
 ~~~
 
 #### CreateRegistrationResponse
@@ -598,13 +598,12 @@ Input:
 
 Output:
 - response, a RegistrationResponse structure
-- kU, Per-user OPRF key
+- kU, the per-user OPRF key
 
 Steps:
 1. (kU, _) = KeyGen()
 2. Z = Evaluate(kU, request.data)
-3. Create RegistrationResponse response with
-     (Z, pkS)
+3. Create RegistrationResponse response with (Z, pkS)
 4. Output (response, kU)
 ~~~
 
@@ -621,11 +620,11 @@ Parameters:
 Input:
 - pwdU, an opaque byte string containing the user's password
 - creds, a Credentials structure
-- blind, an OPRF Scalar value
+- blind, an OPRF scalar value
 - response, a RegistrationResponse structure
 
 Output:
-- envU, the user's Envelope structure
+- record, a RegistrationUpload structure
 - export_key, an additional key
 
 Steps:
@@ -674,22 +673,23 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-       Client (pwdU)                    Server (skS, pkS, kU, envU)
-  -----------------------------------------------------------------
-   request, blind = CreateCredentialRequest(pwdU)
+  Client (pwdU)                          Server (skS, pkS, kU, envU)
+  ------------------------------------------------------------------
+  request, blind = CreateCredentialRequest(pwdU)
 
-                                   request
-                              ----------------->
+                               request
+                      ------------------------->
 
-   response = CreateCredentialResponse(request, pkS, kU, envU)
+         response = CreateCredentialResponse(request, pkS, kU, envU)
 
-                                   response
-                              <-----------------
+                               response
+                      <-------------------------
 
   skU, pkS, export_key = RecoverCredentials(pwdU, blind, response)
 
-                            (AKE with credentials)
-                              <================>
+                        (AKE with credentials)
+                      <========================>
+
 ~~~
 
 The protocol messages below do not include the AKE protocol. Instead, OPAQUE
@@ -743,13 +743,13 @@ Input:
 - pwdU, an opaque byte string containing the user's password
 
 Output:
-- request, an CredentialRequest structure
-- r, an OPRF Scalar value
+- request, a CredentialRequest structure
+- blind, an OPRF scalar value
 
 Steps:
-1. (r, M) = Blind(pwdU)
+1. (blind, M) = Blind(pwdU)
 2. Create CredentialRequest request with M
-3. Output (request, r)
+3. Output (request, blind)
 ~~~
 
 #### CreateCredentialResponse
@@ -759,9 +759,9 @@ CreateCredentialResponse(request, pkS, kU, envU)
 
 Input:
 - request, a CredentialRequest structure
-- pkS, public key of the server
-- kU, OPRF key associated with idU
-- envU, Envelope associated with idU
+- pkS, the public key of the server
+- kU, the OPRF key associated with idU
+- envU, the Envelope associated with idU
 
 Output:
 - response, a CredentialResponse structure
@@ -783,11 +783,12 @@ Parameters:
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- blind, an OPRF Scalar value
+- blind, an OPRF scalar value
 - response, a CredentialResponse structure
 
 Output:
-- secret_credentials, a SecretCredentials structure
+- skU, the user's private key for the AKE protocol
+- pkS, the public key of the server
 - export_key, an additional key
 
 Steps:
@@ -1169,7 +1170,7 @@ or `customIdentifier`.
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
-functionalities: An Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol.
+functionalities: an OPRF and an AKE protocol.
 It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy - see below)
 into a secure aPAKE protocol. In OPAQUE, the user stores a secret private key at the
@@ -1378,8 +1379,8 @@ twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
 the construction of envU to all the key material in envU.
-The server S will have two keys MK, MK' for a PRF f
-(this refers to a regular PRF such as HMAC or CMAC).
+The server S will have two keys MK, MK' for a pseudorandom function f.
+f refers to a regular pseudorandom function such as HMAC or CMAC.
 Upon receiving a CredentialRequest for a non-existing
 user idU, S computes kU=f(MK; idU) and kU'=f(MK'; idU) and responds with
 CredentialResponse carrying Z=M^kU and envU, where the latter is computed as follows.
