@@ -508,22 +508,22 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
-      Client (pwdU, creds)                       Server (skS, pkS)
-  -----------------------------------------------------------------
- request, blind = CreateRegistrationRequest(pwdU)
+  Client (pwdU, creds)                             Server (skS, pkS)
+  ------------------------------------------------------------------
+  request, blind = CreateRegistrationRequest(pwdU)
 
-                                   request
-                              ----------------->
+                               request
+                      ------------------------->
 
-            (response, kU) = CreateRegistrationResponse(request, pkS)
+             response, kU = CreateRegistrationResponse(request, pkS)
 
-                                   response
-                              <-----------------
+                               response
+                      <-------------------------
 
- record, export_key = FinalizeRequest(pwdU, creds, blind, response)
+  record, export_key = FinalizeRequest(pwdU, creds, blind, response)
 
-                                   record
-                              ------------------>
+                                record
+                      ------------------------->
 
 ~~~
 
@@ -562,7 +562,7 @@ struct {
 ~~~
 
 envU
-: The user's `Envelope` structure
+: The user's `Envelope` structure.
 
 pkU
 : An encoded public key, corresponding to the private key `skU`.
@@ -579,12 +579,12 @@ Input:
 
 Output:
 - request, a RegistrationRequest structure
-- r, an OPRF scalar value
+- blind, an OPRF scalar value
 
 Steps:
-1. (r, M) = Blind(pwdU)
+1. (blind, M) = Blind(pwdU)
 2. Create RegistrationRequest request with M
-3. Output (request, r)
+3. Output (request, blind)
 ~~~
 
 #### CreateRegistrationResponse
@@ -598,13 +598,12 @@ Input:
 
 Output:
 - response, a RegistrationResponse structure
-- kU, Per-user OPRF key
+- kU, the per-user OPRF key
 
 Steps:
 1. (kU, _) = KeyGen()
 2. Z = Evaluate(kU, request.data)
-3. Create RegistrationResponse response with
-     (Z, pkS)
+3. Create RegistrationResponse response with (Z, pkS)
 4. Output (response, kU)
 ~~~
 
@@ -625,7 +624,7 @@ Input:
 - response, a RegistrationResponse structure
 
 Output:
-- envU, the user's Envelope structure
+- record, a RegistrationUpload structure
 - export_key, an additional key
 
 Steps:
@@ -674,22 +673,23 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-       Client (pwdU)                    Server (skS, pkS, kU, envU)
-  -----------------------------------------------------------------
-   request, blind = CreateCredentialRequest(pwdU)
+  Client (pwdU)                          Server (skS, pkS, kU, envU)
+  ------------------------------------------------------------------
+  request, blind = CreateCredentialRequest(pwdU)
 
-                                   request
-                              ----------------->
+                               request
+                      ------------------------->
 
-   response = CreateCredentialResponse(request, pkS, kU, envU)
+         response = CreateCredentialResponse(request, pkS, kU, envU)
 
-                                   response
-                              <-----------------
+                               response
+                      <-------------------------
 
   skU, pkS, export_key = RecoverCredentials(pwdU, blind, response)
 
-                            (AKE with credentials)
-                              <================>
+                        (AKE with credentials)
+                      <========================>
+
 ~~~
 
 The protocol messages below do not include the AKE protocol. Instead, OPAQUE
@@ -743,13 +743,13 @@ Input:
 - pwdU, an opaque byte string containing the user's password
 
 Output:
-- request, an CredentialRequest structure
-- r, an OPRF scalar value
+- request, a CredentialRequest structure
+- blind, an OPRF scalar value
 
 Steps:
-1. (r, M) = Blind(pwdU)
+1. (blind, M) = Blind(pwdU)
 2. Create CredentialRequest request with M
-3. Output (request, r)
+3. Output (request, blind)
 ~~~
 
 #### CreateCredentialResponse
@@ -759,9 +759,9 @@ CreateCredentialResponse(request, pkS, kU, envU)
 
 Input:
 - request, a CredentialRequest structure
-- pkS, public key of the server
-- kU, OPRF key associated with idU
-- envU, Envelope associated with idU
+- pkS, the public key of the server
+- kU, the OPRF key associated with idU
+- envU, the Envelope associated with idU
 
 Output:
 - response, a CredentialResponse structure
@@ -787,7 +787,8 @@ Input:
 - response, a CredentialResponse structure
 
 Output:
-- secret_credentials, a SecretCredentials structure
+- skU, the user's private key for the AKE protocol
+- pkS, the public key of the server
 - export_key, an additional key
 
 Steps:
