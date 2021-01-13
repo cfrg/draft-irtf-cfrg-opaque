@@ -350,11 +350,11 @@ OPAKE was taken.
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
-  - Blind(x): Convert input `x` into an Element of the OPRF group, randomize it
-    by some Scalar `r`, producing `M`, and output (`r`, `M`).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
-  - Unblind(r, Z): Remove random Scalar `r` from `Z`, yielding output `N`.
+  - Unblind(r, Z): Remove random scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
 
@@ -579,7 +579,7 @@ Input:
 
 Output:
 - request, a RegistrationRequest structure
-- r, an OPRF Scalar value
+- r, an OPRF scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
@@ -621,7 +621,7 @@ Parameters:
 Input:
 - pwdU, an opaque byte string containing the user's password
 - creds, a Credentials structure
-- blind, an OPRF Scalar value
+- blind, an OPRF scalar value
 - response, a RegistrationResponse structure
 
 Output:
@@ -744,7 +744,7 @@ Input:
 
 Output:
 - request, an CredentialRequest structure
-- r, an OPRF Scalar value
+- r, an OPRF scalar value
 
 Steps:
 1. (r, M) = Blind(pwdU)
@@ -783,7 +783,7 @@ Parameters:
 
 Input:
 - pwdU, an opaque byte string containing the user's password
-- blind, an OPRF Scalar value
+- blind, an OPRF scalar value
 - response, a CredentialResponse structure
 
 Output:
