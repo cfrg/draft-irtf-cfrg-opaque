@@ -245,7 +245,7 @@ to TLS failures, including many forms of PKI attacks, certificate
 mishandling, termination outside the security perimeter, visibility
 to middle boxes, and more.
 
-Asymmetric (or augmented) Password Authenticated Key Exchange (aPAKE)
+Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without relying on PKI (except
 during user/password registration) and without disclosing passwords
@@ -267,7 +267,7 @@ Despite the existence of multiple designs for
 pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
-Either these protocols do not use salt at all or, if they do, they
+Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to user in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation. Furthermore,
 transmitting the salt may require additional protocol messages.
@@ -290,7 +290,7 @@ of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
-an Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
+an oblivious pseudorandom function (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
@@ -1169,7 +1169,7 @@ or `customIdentifier`.
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
-functionalities: An Oblivious PRF (OPRF) and an authenticated key-exchange (AKE) protocol.
+functionalities: an OPRF and an AKE protocol.
 It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy - see below)
 into a secure aPAKE protocol. In OPAQUE, the user stores a secret private key at the
@@ -1378,8 +1378,8 @@ twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
 the construction of envU to all the key material in envU.
-The server S will have two keys MK, MK' for a PRF f
-(this refers to a regular PRF such as HMAC or CMAC).
+The server S will have two keys MK, MK' for a pseudorandom function f.
+f refers to a regular pseudorandom function such as HMAC or CMAC.
 Upon receiving a CredentialRequest for a non-existing
 user idU, S computes kU=f(MK; idU) and kU'=f(MK'; idU) and responds with
 CredentialResponse carrying Z=M^kU and envU, where the latter is computed as follows.
