@@ -357,6 +357,13 @@ OPAQUE relies on the following protocols and primitives:
   - Unblind(r, Z): Remove random scalar `r` from `Z`, yielding output `N`.
   - Finalize(x, N, info): Compute the OPRF output using input `x`, `N`, and domain
     separation tag `info`.
+  - SerializeScalar(s): Map a scalar `s` to a unique byte array `buf` of fixed
+    length.
+  - DeserializeScalar(buf): Map a byte array `buf` to a scalar `s`, or fail if
+    the input is not a valid byte representation of a scalar.
+  - SerializedElement: A serialized OPRF group element, a byte array of fixed
+    length.
+  - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.
 
 - Cryptographic hash function:
   - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
@@ -374,10 +381,6 @@ existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
 generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
 We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
 (and discarding the corresponding public key).
-
-We use the types `SerializedElement` and `SerializedScalar` as defined in {{I-D.irtf-cfrg-voprf}},
-along with serialization functions `SerializeElement`, `DeserializeElement`, `SerializeScalar`, and
-`DeserializeScalar`.
 
 # Core Protocol {#protocol}
 
@@ -560,16 +563,16 @@ pkS
 
 ~~~
 struct {
-    Envelope envU;
     opaque pkU<1..2^16-1>;
+    Envelope envU;
 } RegistrationUpload;
 ~~~
 
-envU
-: The user's `Envelope` structure.
-
 pkU
 : An encoded public key, corresponding to the private key `skU`.
+
+envU
+: The user's `Envelope` structure.
 
 ### Registration functions
 
@@ -663,6 +666,7 @@ Upon completion of this function, the client MUST send `record` to the server.
 
 The server then constructs and stores the `CredentialFile` object, where `envU` and `pkU`
 are obtained from `record`, and `kU` is retained from the output of `CreateRegistrationResponse`.
+`kU` is serialized using `SerializeScalar`.
 
 ~~~
 struct {
@@ -687,14 +691,14 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-  Client (pwdU)                          Server (skS, pkS, kU, envU)
+  Client (pwdU)                    Server (skS, pkS, credentialFile)
   ------------------------------------------------------------------
   request, blind = CreateCredentialRequest(pwdU)
 
                                request
                       ------------------------->
 
-         response = CreateCredentialResponse(request, pkS, kU, envU)
+   response = CreateCredentialResponse(request, pkS, credentialFile)
 
                                response
                       <-------------------------
@@ -721,7 +725,7 @@ of this integration.
 
 ~~~
 struct {
-    opaque data<1..2^16-1>;
+    SerializedElement data;
 } CredentialRequest;
 ~~~
 
@@ -730,7 +734,7 @@ data
 
 ~~~
 struct {
-    opaque data<1..2^16-1>;
+    SerializedElement data;
     opaque pkS<1..2^16-1>;
     Envelope envU;
 } CredentialResponse;
