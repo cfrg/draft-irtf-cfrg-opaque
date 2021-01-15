@@ -290,7 +290,7 @@ of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
-an oblivious pseudorandom function (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
+an oblivious pseudorandom function (OPRF) and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
@@ -299,7 +299,7 @@ and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
 easy to integrate with additional AKE protocols, e.g., IKEv2, and with future
 ones such as those based on post-quantum techniques.
 
-Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
+Currently, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}}, which is
 vulnerable to pre-computation attacks, lacks a proof of security, and is less efficient
 relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
 multiplication operations, and thus does not work over plain elliptic curves. OPAQUE
@@ -319,6 +319,7 @@ operations, roles, and behaviors of OPAQUE:
 
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
+- pwdU: An opaque byte string containing the user's password.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
   the public key. For example, (skU, pkU) refers to U's private and public key.
 - kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
@@ -352,6 +353,10 @@ OPAQUE relies on the following protocols and primitives:
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some scalar `r`, producing `M`, and output (`r`, `M`).
+  - KeyGen(): Generate an OPRF private and public key. OPAQUE only requires an
+    OPRF private key. We write `(kU, _) = KeyGen()` to denote use of this
+    function for generating secret key `kU` (and discarding the corresponding
+    public key).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Unblind(r, Z): Remove random scalar `r` from `Z`, yielding output `N`.
@@ -376,11 +381,7 @@ OPAQUE relies on the following protocols and primitives:
     This function also needs to satisfy collision resistance.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
-variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. We also assume the
-existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
-generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
-We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
-(and discarding the corresponding public key).
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 # Core Protocol {#protocol}
 
@@ -388,12 +389,12 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its encrypted credentials on the server. In the second stage, a client obtains
 those credentials, unlocks them using the user's password and subsequently uses
-them as input to an authenticated key exchange (AKE) protocol.
+them as input to an AKE protocol.
 
 Both registration and authenticated key exchange stages require running an OPRF protocol.
-The latter stage additionally requires running a mutually-authenticated
-key-exchange protocol (AKE) using credentials recovered after the OPRF protocol completes.
-(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement
+The latter stage additionally requires running a mutually authenticated
+key exchange protocol using credentials recovered after the OPRF protocol completes.
+(The key exchange protocol MUST satisfy forward secrecy and the KCI requirement
 discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
@@ -662,7 +663,7 @@ See {{export-usage}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
 
-#### Credential File {#credential-file}
+#### CredentialFile {#credential-file}
 
 The server then constructs and stores the `CredentialFile` object, where `envU` and `pkU`
 are obtained from `record`, and `kU` is retained from the output of `CreateRegistrationResponse`.
@@ -827,7 +828,7 @@ Steps:
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
-## Export Key {#export-usage}
+## Export key {#export-usage}
 
 OPAQUE outputs an export_key that may be used for additional
 application-specific purposes. For example, one might expand the use of OPAQUE with a
@@ -838,14 +839,14 @@ The exporter_key MUST NOT be used in any way before the HMAC value in the
 envelope is validated. See {{envelope-encryption}} for more details about this
 requirement.
 
-## AKE Execution and Party Identities {#SecIdentities}
+## AKE execution and party identities {#SecIdentities}
 
 The AKE protocol is run as part of the online authenticated key exchange
 flow described above. The AKE MUST authenticate the OPAQUE transcript, which
 consists of the encoded `request` and `response` messages exchanged during the
 OPRF computation and credential fetch flow.
 
-Also, authenticated key-exchange protocols generate keys that need to be uniquely
+Also, AKE protocols generate keys that need to be uniquely
 and verifiably bound to a pair of identities. In the case of OPAQUE, those identities
 correspond to idU and idS. Thus, it is essential for the parties to agree on such
 identities, including an agreed bit representation of these identities as needed.
@@ -904,7 +905,7 @@ are quantum safe. However, an instantiation where both AKE and data encryption a
 but the OPRF is not, would still ensure data security against future quantum attacks since breaking the OPRF
 does not retroactively affect the security of data transferred over a quantum-safe secure channel.
 
-## Key Schedule Utility Functions
+## Key schedule utility functions
 
 The key derivation procedures for HMQV, 3DH, and SIGMA-I instantiations
 all make use of the functions below, re-purposed from TLS 1.3 {{?RFC8446}}.
@@ -940,7 +941,7 @@ DH exchange. However, HMQV is encumbered by an IBM patent, hence we also
 present OPAQUE with 3DH which only differs in the key derivation function
 at the cost of two additional exponentiations (and less resilience to the compromise
 of ephemeral exponents). We note that 3DH serves as a basis for the
-key-exchange protocol of {{SIGNAL}}. Importantly, many other protocols
+key exchange protocol of {{SIGNAL}}. Importantly, many other protocols
 follow a similar format with differences
 mainly in the key derivation function. This includes the Noise family of
 protocols. Extensions also apply to KEM-based AKE protocols as in many
@@ -1225,7 +1226,7 @@ Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
-function and of the underlying key-exchange protocol. In turn, the
+function and of the underlying key exchange protocol. In turn, the
 security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
 in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
 
@@ -1313,7 +1314,7 @@ not the point at infinity. For X25519 and X448, validation is as described in
 {{?RFC7748}}. In particular, where applicable, endpoints MUST check whether
 the Diffie-Hellman shared secret is the all-zero value and abort if so.
 
-## User authentication versus Authenticated Key Exchange
+## User authentication versus authenticated key exchange
 
 OPAQUE provides PAKE (password-based authenticated key exchange)
 functionality in the client-server setting. While in the case of user
