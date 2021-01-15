@@ -319,6 +319,7 @@ operations, roles, and behaviors of OPAQUE:
 
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
+- pwdU: An opaque byte string containing the user's password.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
   the public key. For example, (skU, pkU) refers to U's private and public key.
 - kX: An OPRF private key used in role X. For example, kU refers to U's private OPRF
