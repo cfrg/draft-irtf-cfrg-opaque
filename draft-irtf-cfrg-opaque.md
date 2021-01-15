@@ -662,7 +662,7 @@ See {{export-usage}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
 
-#### Credential File {#credential-file}
+#### CredentialFile {#credential-file}
 
 The server then constructs and stores the `CredentialFile` object, where `envU` and `pkU`
 are obtained from `record`, and `kU` is retained from the output of `CreateRegistrationResponse`.
@@ -827,7 +827,7 @@ Steps:
 
 [[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
-## Export Key {#export-usage}
+## Export key {#export-usage}
 
 OPAQUE outputs an export_key that may be used for additional
 application-specific purposes. For example, one might expand the use of OPAQUE with a
@@ -838,7 +838,7 @@ The exporter_key MUST NOT be used in any way before the HMAC value in the
 envelope is validated. See {{envelope-encryption}} for more details about this
 requirement.
 
-## AKE Execution and Party Identities {#SecIdentities}
+## AKE execution and party identities {#SecIdentities}
 
 The AKE protocol is run as part of the online authenticated key exchange
 flow described above. The AKE MUST authenticate the OPAQUE transcript, which
@@ -904,7 +904,7 @@ are quantum safe. However, an instantiation where both AKE and data encryption a
 but the OPRF is not, would still ensure data security against future quantum attacks since breaking the OPRF
 does not retroactively affect the security of data transferred over a quantum-safe secure channel.
 
-## Key Schedule Utility Functions
+## Key schedule utility functions
 
 The key derivation procedures for HMQV, 3DH, and SIGMA-I instantiations
 all make use of the functions below, re-purposed from TLS 1.3 {{?RFC8446}}.
@@ -1313,7 +1313,7 @@ not the point at infinity. For X25519 and X448, validation is as described in
 {{?RFC7748}}. In particular, where applicable, endpoints MUST check whether
 the Diffie-Hellman shared secret is the all-zero value and abort if so.
 
-## User authentication versus Authenticated Key Exchange
+## User authentication versus authenticated key exchange
 
 OPAQUE provides PAKE (password-based authenticated key exchange)
 functionality in the client-server setting. While in the case of user
