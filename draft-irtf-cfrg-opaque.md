@@ -516,19 +516,19 @@ multiple users. These steps can happen offline, i.e., before the registration ph
 Once complete, the registration process proceeds as follows:
 
 ~~~
-  Client (pwdU, creds)                             Server (skS, pkS)
-  ------------------------------------------------------------------
-  request, blind = CreateRegistrationRequest(pwdU)
+ Client (pwdU, creds)                               Server (skS, pkS)
+ --------------------------------------------------------------------
+ (request, blind) = CreateRegistrationRequest(pwdU)
 
                                request
                       ------------------------->
 
-             response, kU = CreateRegistrationResponse(request, pkS)
+            (response, kU) = CreateRegistrationResponse(request, pkS)
 
                                response
                       <-------------------------
 
-  record, export_key = FinalizeRequest(pwdU, creds, blind, response)
+ (record, export_key) = FinalizeRequest(pwdU, creds, blind, response)
 
                                 record
                       ------------------------->
@@ -692,19 +692,19 @@ shared secret key.
 This section describes the message flow, encoding, and helper functions used in this stage.
 
 ~~~
-  Client (pwdU)                    Server (skS, pkS, credentialFile)
-  ------------------------------------------------------------------
-  request, blind = CreateCredentialRequest(pwdU)
+ Client (pwdU)                      Server (skS, pkS, credentialFile)
+ --------------------------------------------------------------------
+ (request, blind) = CreateCredentialRequest(pwdU)
 
                                request
                       ------------------------->
 
-   response = CreateCredentialResponse(request, pkS, credentialFile)
+    response = CreateCredentialResponse(request, pkS, credentialFile)
 
                                response
                       <-------------------------
 
-  skU, pkS, export_key = RecoverCredentials(pwdU, blind, response)
+ (skU, pkS, export_key) = RecoverCredentials(pwdU, blind, response)
 
                         (AKE with credentials)
                       <========================>
