@@ -263,7 +263,7 @@ passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
 Despite the existence of multiple designs for
-PKI-free aPAKE protocols, none of these protocols are secure against
+(PKI-free) aPAKE protocols, none of these protocols are secure against
 pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
