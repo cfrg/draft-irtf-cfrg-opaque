@@ -263,7 +263,7 @@ passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
 Despite the existence of multiple designs for
-(PKI-free) aPAKE protocols, none of these protocols are secure against
+PKI-free aPAKE protocols, none of these protocols are secure against
 pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
@@ -290,7 +290,7 @@ of servers (such a distributed solution requires no change or awareness
 on the client side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
-an oblivious pseudorandom function (OPRF) and an authenticated key-exchange (AKE) protocol. It can be seen
+an oblivious pseudorandom function (OPRF) and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
@@ -299,7 +299,7 @@ and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
 easy to integrate with additional AKE protocols, e.g., IKEv2, and with future
 ones such as those based on post-quantum techniques.
 
-Currently, the most widely deployed (PKI-free) aPAKE is SRP {{?RFC2945}}, which is
+Currently, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}}, which is
 vulnerable to pre-computation attacks, lacks a proof of security, and is less efficient
 relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
 multiplication operations, and thus does not work over plain elliptic curves. OPAQUE
@@ -388,12 +388,12 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its encrypted credentials on the server. In the second stage, a client obtains
 those credentials, unlocks them using the user's password and subsequently uses
-them as input to an authenticated key exchange (AKE) protocol.
+them as input to an AKE protocol.
 
 Both registration and authenticated key exchange stages require running an OPRF protocol.
-The latter stage additionally requires running a mutually-authenticated
-key-exchange protocol (AKE) using credentials recovered after the OPRF protocol completes.
-(The key-exchange protocol MUST satisfy forward secrecy and the KCI requirement
+The latter stage additionally requires running a mutually authenticated
+key exchange protocol using credentials recovered after the OPRF protocol completes.
+(The key exchange protocol MUST satisfy forward secrecy and the KCI requirement
 discussed in {{security-considerations}}.)
 
 We first define the core OPAQUE protocol based on a generic OPRF, hash, and MHF function.
@@ -845,7 +845,7 @@ flow described above. The AKE MUST authenticate the OPAQUE transcript, which
 consists of the encoded `request` and `response` messages exchanged during the
 OPRF computation and credential fetch flow.
 
-Also, authenticated key-exchange protocols generate keys that need to be uniquely
+Also, AKE protocols generate keys that need to be uniquely
 and verifiably bound to a pair of identities. In the case of OPAQUE, those identities
 correspond to idU and idS. Thus, it is essential for the parties to agree on such
 identities, including an agreed bit representation of these identities as needed.
@@ -940,7 +940,7 @@ DH exchange. However, HMQV is encumbered by an IBM patent, hence we also
 present OPAQUE with 3DH which only differs in the key derivation function
 at the cost of two additional exponentiations (and less resilience to the compromise
 of ephemeral exponents). We note that 3DH serves as a basis for the
-key-exchange protocol of {{SIGNAL}}. Importantly, many other protocols
+key exchange protocol of {{SIGNAL}}. Importantly, many other protocols
 follow a similar format with differences
 mainly in the key derivation function. This includes the Noise family of
 protocols. Extensions also apply to KEM-based AKE protocols as in many
@@ -1225,7 +1225,7 @@ Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
-function and of the underlying key-exchange protocol. In turn, the
+function and of the underlying key exchange protocol. In turn, the
 security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
 in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
 
