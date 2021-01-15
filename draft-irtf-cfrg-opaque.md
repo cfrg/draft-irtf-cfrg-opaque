@@ -353,6 +353,10 @@ OPAQUE relies on the following protocols and primitives:
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}):
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some scalar `r`, producing `M`, and output (`r`, `M`).
+  - KeyGen(): Generate an OPRF private and public key. OPAQUE only requires an
+    OPRF private key. We write `(kU, _) = KeyGen()` to denote use of this
+    function for generating secret key `kU` (and discarding the corresponding
+    public key).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Unblind(r, Z): Remove random scalar `r` from `Z`, yielding output `N`.
@@ -377,11 +381,7 @@ OPAQUE relies on the following protocols and primitives:
     This function also needs to satisfy collision resistance.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
-variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. We also assume the
-existence of a function `KeyGen` from {{I-D.irtf-cfrg-voprf}}, which
-generates an OPRF private and public key. OPAQUE only requires an OPRF private key.
-We write `(kU, _) = KeyGen()` to denote use of this function for generating secret key `kU`
-(and discarding the corresponding public key).
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 # Core Protocol {#protocol}
 
