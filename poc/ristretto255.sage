@@ -93,7 +93,6 @@ def _edw_mul(k, P):
 def random_scalar():
     import os
     l = 2^252 + 27742317777372353535851937790883648493
-    # l = 7237005577332262213973186563042994240857116359379907606001950938285454250989
     b = int.from_bytes(os.urandom(64), 'little')
     return b % l
 
