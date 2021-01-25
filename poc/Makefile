@@ -20,11 +20,13 @@ setup:
 	cp voprf/poc/*.sage .
 
 test: pyfiles
+	sage test_opaque_messages.sage
 	sage test_opaque.sage
+	sage test_opaque_ake.sage
 
 vectors: pyfiles
 	@mkdir -p vectors
-	sage test_opaque.sage
+	sage test_opaque_ake.sage
 
 .PHONY: clean
 clean:

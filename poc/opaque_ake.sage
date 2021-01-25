@@ -11,7 +11,9 @@ import struct
 from collections import namedtuple
 
 try:
-    from sagelib.opaque import encode_vector_len, derive_secret, hkdf_extract, hkdf_expand_label, I2OSP
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len
+    from sagelib.opaque import OPAQUECore
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response
     from sagelib import ristretto255
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
@@ -23,9 +25,6 @@ if sys.version_info[0] == 3:
 else:
     _as_bytes = lambda x: x
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
-
-def random_bytes(n):
-    return os.urandom(n)
 
 class KeyExchange(object):
     def __init__(self):
@@ -40,24 +39,14 @@ class KeyExchange(object):
     def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
         raise Exception("Not implemented")
 
-class KeyExchangeMessage(object):
-    def __init__(self, message_type, components):
-        self.message_type = message_type
-        self.components = components
-
-    def serialize(self):
-        def concat(a, b):
-            return a + b
-        return I2OSP(self.message_type, 1) + reduce(concat, map(lambda c : c, self.components))
-
 TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
 
-class TripleDH(KeyExchange):
+class OPAQUE3DH(KeyExchange):
     def __init__(self, config):
-        KeyExchange.__init__(self)
         self.config = config
+        self.core = OPAQUECore(config)
 
-    def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, pkU, pkS):
+    def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, idU, pkU, idS, pkS):
         dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
         dh2 = ristretto255._edw_mul(dh_components.sk2, dh_components.pk2)
         dh3 = ristretto255._edw_mul(dh_components.sk3, dh_components.pk3)
@@ -71,146 +60,233 @@ class TripleDH(KeyExchange):
         #           || I2OSP(len(nonceS), 2) || nonceS
         #           || I2OSP(len(idU), 2) || idU
         #           || I2OSP(len(idS), 2) || idS
-        empty_vector = encode_vector_len(bytes([]), 2)
-        info = _as_bytes("3DH keys") + encode_vector_len(client_nonce, 2) + encode_vector_len(server_nonce, 2) \
-            + empty_vector + empty_vector # idU and idS are empty
+        info = _as_bytes("3DH keys") \
+            + encode_vector_len(client_nonce, 2) + encode_vector_len(server_nonce, 2) \
+            + encode_vector_len(idU, 2) + encode_vector_len(idS, 2)
 
-        output_size = self.config.hash_alg().digest_size
         prk = hkdf_extract(self.config, bytes([]), ikm)
         handshake_secret = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
-        session_key = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
+        session_key = derive_secret(self.config, prk, _as_bytes("session secret"), info)
 
         # Km2 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
         # Km3 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
         # Ke2 = HKDF-Expand-Label(handshake_secret, "client enc", "", key_length)
         # Ke3 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
         Nh = self.config.hash_alg().digest_size
-        Nk = 16
         empty_info = bytes([])
-        km2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("client mac"), empty_info, Nh)
-        km3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, Nh)
-        ke2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, Nk)
-        ke3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, Nk)
+        km2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, Nh)
+        km3 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("client mac"), empty_info, Nh)
+        ke2 = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server enc"), empty_info, Nh)
 
-        return km2, km3, ke2, ke3, session_key
+        # TODO(caw): rename these keys to client_mac_key, server_mac_key, and handshake_encryption_key
 
-    def generate_ke1(self, l1):
-        client_nonce = random_bytes(32)
+        return km2, km3, ke2, session_key, handshake_secret
+
+    def generate_ke1(self, pwdU, info1, idU, skU, pkU, idS, pkS):
+        cred_request, cred_metadata = self.core.create_credential_request(pwdU)
+        serialized_request = cred_request.serialize()
+
+        nonceU = random_bytes(32)
         (eskU, epkU) = ristretto255.keygen()
-        ke1 = TripleDHMessageInit(client_nonce, ristretto255.ENCODE(*epkU))
+        ke1 = TripleDHMessageInit(nonceU, info1, ristretto255.ENCODE(*epkU))
 
-        hasher = hashlib.sha256()
-        hasher.update(l1)
-        hasher.update(client_nonce)
+        # transcript1 includes the concatenation of the values:
+        # cred_request, nonceU, info1, epkU
+        hasher = hashlib.sha512()
+        hasher.update(serialized_request)
+        hasher.update(nonceU)
+        hasher.update(encode_vector(info1))
         hasher.update(ristretto255.ENCODE(*epkU))
 
-        return (client_nonce, eskU, epkU, hasher), KeyExchangeMessage(0x04, [l1, ke1])
+        # TODO(caw): this isn't the best way to handle base vs custom credential mode
+        self.cred_request = cred_request
+        self.cred_metadata = cred_metadata
+        self.idU = idU
+        self.idS = idS
+        self.pwdU = pwdU
+        self.pkS = pkS
+        self.eskU = eskU
+        self.epkU = epkU
+        self.nonceU = nonceU
+        self.cred_metadata = cred_metadata
+        self.hasher = hasher
+        self.pkU = pkU
 
-    def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
-        server_nonce = random_bytes(32)
+        return serialized_request + ke1.serialize()
+
+    def generate_ke2(self, msg, kU, envU, info2, idS, skS, pkS, idU, pkU):
+        cred_request, offset = deserialize_credential_request(self.config, msg)
+        serialized_request = cred_request.serialize()
+        ke1 = deserialize_tripleDH_init(self.config, msg[offset:])
+
+        pkS_bytes = ristretto255.ENCODE(*pkS)
+        cred_response = self.core.create_credential_response(cred_request, pkS_bytes, kU, envU)
+        serialized_response = cred_response.serialize()
+
+        nonceS = random_bytes(32)
         (eskS, epkS) = ristretto255.keygen()
-        client_nonce = ke1.components[1].client_nonce
-        epkU = ristretto255.DECODE(ke1.components[1].epkU)
+        nonceU = ke1.nonceU
+        info1 = ke1.info1
+        epkU = ristretto255.DECODE(ke1.epkU)
 
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
         dh_components = TripleDHComponents(epkU, eskS, epkU, skS, pkU, eskS)
-        km2, km3, _, _, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, pkU, pkS)
+        km2, km3, ke2, session_key, handshake_secret = self.derive_3dh_keys(dh_components, nonceU, nonceS, idU, pkU, idS, pkS)
+
+        # Encrypt e_info2
+        pad = hkdf_expand(self.config, ke2, _as_bytes("encryption pad"), len(info2))
+        e_info2 = xor(pad, info2)
 
         # transcript2 includes the concatenation of the values:
-        # credential_request, nonceU, info1, idU, epkU, credential_response, nonceS, info2, epkS, Einfo2;¶
-        hasher = hashlib.sha256()
-        hasher.update(l1)
-        hasher.update(client_nonce)
+        # credential_request, nonceU, info1, epkU, credential_response, nonceS, epkS, Einfo2;
+        hasher = hashlib.sha512()
+        hasher.update(serialized_request)
+        hasher.update(nonceU)
+        hasher.update(encode_vector(info1))
         hasher.update(ristretto255.ENCODE(*epkU))
-        hasher.update(l2)
-        hasher.update(server_nonce)
+        hasher.update(serialized_response)
+        hasher.update(nonceS)
         hasher.update(ristretto255.ENCODE(*epkS))
+        hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
-        mac = hmac.digest(km2, transcript_hash, hashlib.sha256)
-        ke2 = TripleDHMessageRespond(server_nonce, ristretto255.ENCODE(*epkS), mac)
+        mac = hmac.digest(km2, transcript_hash, hashlib.sha512)
+        ke2 = TripleDHMessageRespond(nonceS, ristretto255.ENCODE(*epkS), e_info2, mac)
 
-        return (hasher, km3, session_key), KeyExchangeMessage(0x05, [l2, ke2])
+        self.nonceS = nonceS
+        self.hasher = hasher
+        self.eskS = eskS
+        self.epkS = epkS
+        self.km2 = km2
+        self.ke2 = ke2
+        self.km3 = km3
+        self.session_key = session_key
+        self.handshake_secret = handshake_secret
 
-    def generate_ke3(self, l2, ke2, ke1_state, pkS, skU, pkU):
-        server_nonce = ke2.components[1].server_nonce
-        epkS = ristretto255.DECODE(ke2.components[1].epkS)
-        (client_nonce, eskU, epkU, hasher) = ke1_state
+        return serialized_response + ke2.serialize()
+
+    def generate_ke3(self, msg):
+        cred_response, offset = deserialize_credential_response(self.config, msg)
+        serialized_response = cred_response.serialize()
+        ke2 = deserialize_tripleDH_respond(self.config, msg[offset:])
+
+        skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response)
+        skU = OS2IP_le(skU_bytes)
+        pkS = ristretto255.DECODE(pkS_bytes)
+        
+        idU = self.idU
+        idS = self.idS
+        pkU = self.pkU
+        pkS = self.pkS
+        eskU = self.eskU
+        nonceU = self.nonceU
+        nonceS = ke2.nonceS
+        epkS = ristretto255.DECODE(ke2.epkS)
+        e_info2 = ke2.e_info2
+        mac = ke2.mac
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
         dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
-        km2, km3, _, _, session_key = self.derive_3dh_keys(dh_components, client_nonce, server_nonce, pkU, pkS)
+        km2, km3, ke2, session_key, handshake_secret = self.derive_3dh_keys(dh_components, nonceU, nonceS, idU, pkU, idS, pkS)
 
-        hasher.update(l2)
-        hasher.update(server_nonce)
+        hasher = self.hasher
+        hasher.update(serialized_response)
+        hasher.update(nonceS)
         hasher.update(ristretto255.ENCODE(*epkS))
+        hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
-        server_mac = hmac.digest(km2, transcript_hash, hashlib.sha256)
-        assert server_mac == ke2.components[1].mac
+        server_mac = hmac.digest(km2, transcript_hash, hashlib.sha512)
+        assert server_mac == mac
 
-        # transcript3 includes the concatenation of all elements in transcript2 followed by info3, Einfo3
-        # TODO(caw): include info3 and Einfo3
+        # TODO(caw): decrypt e_info2 and pass it to the application
+
+        self.session_key = session_key
+        self.km2 = km2
+        self.ke2 = ke2
+        self.km3 = km3
+        self.handshake_secret = handshake_secret
+
+        # transcript3 == transcript2
         transcript_hash = hasher.digest()
 
-        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha256)
+        # TODO(caw): use the hash function from the core config
+        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha512)
         ke3 = TripleDHMessageFinish(client_mac)
 
-        return session_key, KeyExchangeMessage(0x06, [ke3])
+        return ke3.serialize()
 
-    def finish(self, ke3, ke2_state):
-        (hasher, km3, session_key) = ke2_state
+    def finish(self, msg):
+        ke3 = deserialize_tripleDH_finish(self.config, msg)
+        
+        km3 = self.km3
+        transcript_hash = self.hasher.digest()
 
-        # transcript3 includes the concatenation of all elements in transcript2 followed by info3, Einfo3
-        # TODO(caw): include info3 and Einfo3
-        transcript_hash = hasher.digest()
+        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha512)
+        assert client_mac == ke3.mac
 
-        client_mac = hmac.digest(km3, transcript_hash, hashlib.sha256)
-        assert client_mac == ke3.components[0].mac
-
-        return session_key
+        return self.session_key
 
 # struct {
-#      opaque client_nonce[32];
+#      opaque nonceU[32];
+#      opaque info<0..2^16-1>;
 #      opaque epkU[LK];
 #  } KE1M;
-def deserialize_tripleDH_init(data):
-    pass
+def deserialize_tripleDH_init(config, data):
+    nonceU = data[0:32]
+    info, offset = decode_vector(data[32:])
+    epkU_bytes = data[32+offset:]
+    length = config.oprf_suite.group.element_byte_length()
+    if len(epkU_bytes) != length:
+        raise Exception("Invalid epkU length")
+    return TripleDHMessageInit(nonceU, info, epkU_bytes)
 
 class TripleDHMessageInit(object):
-    def __init__(self, client_nonce, epkU):
-        self.client_nonce = client_nonce
+    def __init__(self, nonceU, info1, epkU):
+        self.nonceU = nonceU
+        self.info1 = info1
         self.epkU = epkU
 
     def serialize(self):
-        pass
+        return self.nonceU + encode_vector(self.info1) + self.epkU
 
 # struct {
-#      opaque server_nonce[32];
+#      opaque nonceS[32];
 #      opaque epkS[LK];
+#      opaque e_info2<0..2^16-1>;
 #      opaque mac[LH];
 #  } KE2M;
-def deserialize_tripleDH_respond(data):
-    pass
+def deserialize_tripleDH_respond(config, data):
+    length = config.oprf_suite.group.element_byte_length()
+    nonceS = data[0:32]
+    epkS = data[32:32+length]
+    e_info2, offset = decode_vector(data[32+length:])
+    mac = data[32+length+offset:]
+    if len(mac) != config.hash_alg().digest_size:
+        raise Exception("Invalid MAC length")
+    return TripleDHMessageRespond(nonceS, epkS, e_info2, mac)
 
 class TripleDHMessageRespond(object):
-    def __init__(self, server_nonce, epkS, mac):
-        self.server_nonce = server_nonce
+    def __init__(self, nonceS, epkS, e_info2, mac):
+        self.nonceS = nonceS
         self.epkS = epkS
+        self.e_info2 = e_info2
         self.mac = mac
 
     def serialize(self):
-        pass
+        return self.nonceS + self.epkS + encode_vector(self.e_info2) + self.mac
 
 # struct {
 #      opaque mac[LH];
 #  } KE3M;
-def deserialize_tripleDH_finish(data):
-    pass
+def deserialize_tripleDH_finish(config, data):
+    if len(data) != config.hash_alg().digest_size:
+        raise Exception("Invalid MAC length")
+    return TripleDHMessageFinish(data)
 
 class TripleDHMessageFinish(object):
     def __init__(self, mac):
         self.mac = mac
 
     def serialize(self):
-        pass
+        return self.mac
