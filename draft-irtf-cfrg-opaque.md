@@ -426,10 +426,12 @@ Once complete, the registration process proceeds as follows:
                       ------------------------->
 ~~~
 
+{{registration-functions}} describes details of the functions referenced above.
+
 Both client and server MUST validate the other party's public key before use.
 See {{validation}} for more details.
 
-Upon completion, the S stores U's credentials for later use. See {{credential-file}}
+Upon completion, S stores U's credentials for later use. See {{credential-file}}
 for a recommended storage format.
 
 ## Credential Storage {#credential-storage}
@@ -566,7 +568,7 @@ pkU
 envU
 : The user's `Envelope` structure.
 
-## Registration Functions
+## Registration Functions {#registration-functions}
 
 ### CreateRegistrationRequest
 
@@ -632,13 +634,16 @@ Steps:
 3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
 4. Create SecretCredentials secret_creds with creds.skU
 5. Create CleartextCredentials cleartext_creds with response.pkS
-   and custom identifiers creds.idU and creds.idS if mode is customIdentifier
+   and custom identifiers creds.idU and creds.idS if mode is
+   customIdentifier
 6. nonce = random(32)
-7. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(secret_creds))
+7. pseudorandom_pad =
+     HKDF-Expand(rwdU, concat(nonce, "Pad"), len(secret_creds))
 8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
 10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
-11. Create InnerEnvelope inner_env with (mode, nonce, encrypted_creds)
+11. Create InnerEnvelope inner_env
+      with (mode, nonce, encrypted_creds)
 12. auth_tag = HMAC(auth_key, concat(inner_env, cleartext_creds))
 13. Create Envelope envU with (inner_env, auth_tag)
 14. Create RegistrationUpload record with (envU, creds.pkU)
@@ -675,7 +680,7 @@ key exchange stage of the OPAQUE protocol. This stage is composed of a concurren
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
 client and server credentials established during registration; see {{offline-phase}}.
 The type of keys MUST be suitable for the key exchange protocol. For example, if
-the key exchange protocol is 3DH, as described in {{SecHmqv}}, then the private and
+the key exchange protocol is 3DH, as described in {{opaque-3dh}}, then the private and
 public keys must be Diffie-Hellman keys. At the end, the client proves the user's
 knowledge of the password, and both client and server agree on a mutually authenticated
 shared secret key.
@@ -683,8 +688,8 @@ shared secret key.
 OPAQUE produces two outputs: a session secret and an export key. The export key may be used
 for additional application-specific purposes. For example, one might expand the use of OPAQUE
 with a credential-retrieval functionality that is separate from the contents of the `Envelope`
-structure. The exporter_key MUST NOT be used in any way before the HMAC value in the envelope
-is validated. See {{envelope-encryption}} for more details about this requirement.
+structure. The output `export_key` MUST NOT be used in any way before the HMAC value in the
+envelope is validated. See {{envelope-encryption}} for more details about this requirement.
 
 ## Credential Retrieval
 
@@ -768,14 +773,16 @@ CreateCredentialResponse(request, pkS, credentialFile)
 Input:
 - request, a CredentialRequest structure
 - pkS, the public key of the server
-- credentialFile, the server's output from registration (see {{credential-file}})
+- credentialFile, the server's output from registration
+  (see {{credential-file}})
 
 Output:
 - response, a CredentialResponse structure
 
 Steps:
 1. Z = Evaluate(DeserializeScalar(credentialFile.kU), request.data)
-2. Create CredentialResponse response with (Z, pkS, credentialFile.envU)
+2. Create CredentialResponse response
+    with (Z, pkS, credentialFile.envU)
 3. Output response
 ~~~
 
@@ -804,13 +811,17 @@ Steps:
 3. contents = response.envU.contents
 4. nonce = contents.nonce
 5. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-6. pseudorandom_pad = HKDF-Expand(rwdU, concat(nonce, "Pad"), len(contents.encrypted_creds))
+6. pseudorandom_pad =
+    HKDF-Expand(rwdU, concat(nonce, "Pad"),
+                len(contents.encrypted_creds))
 7. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
 8. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
 9. Create CleartextCredentials cleartext_creds with response.pkS
-   and custom identifiers creds.idU and creds.idS if mode is customIdentifier
+   and custom identifiers creds.idU and creds.idS if mode is
+   customIdentifier
 10. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
-11. If !ct_equal(response.envU.auth_tag, expected_tag), raise DecryptionError
+11. If !ct_equal(response.envU.auth_tag, expected_tag),
+    raise DecryptionError
 12. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
 13. Output (secret_creds.skU, response.pkS, export_key)
 ~~~
@@ -870,7 +881,7 @@ HKDF uses Hash as its underlying hash function, which is the same as that
 which is indicated by the OPAQUE instantiation. Note that the Label parameter
 is not a NULL-terminated string.
 
-### OPAQUE-3DH Instantiation {#SecHmqv}
+### OPAQUE-3DH Instantiation {#opaque-3dh}
 
 OPAQUE-3DH is implemented using a suitable prime order group. All operations in the key
 derivation steps in {{derive-3dh}} are performed in this group and represented
@@ -885,7 +896,7 @@ The three messages for OPAQUE-3DH are described below.
 struct {
   CredentialRequest request;
   uint8 nonceU[32];
-  opaque info<0..2^16-1>;
+  opaque client_info<0..2^16-1>;
   uint8 epkU[Npk];
 } KE1;
 ~~~
@@ -896,7 +907,7 @@ request
 nonceU
 : A fresh 32-byte randomly generated nonce.
 
-info
+client_info
 : Optional application-specific information to exchange during the protocol.
 
 epkU
@@ -908,7 +919,7 @@ struct {
   CredentialResponse response;
   uint8 nonceS[32];
   uint8 epkS[Npk];
-  opaque einfo<0..2^16-1>;
+  opaque enc_server_info<0..2^16-1>;
   uint8 mac[Nh];
 } KE2;
 ~~~
@@ -923,7 +934,7 @@ epkS
 : Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
 prime order group.
 
-einfo
+enc_server_info
 : Optional application-specific information to exchange during the protocol encrypted
 under key Ke2, defined below.
 
@@ -948,22 +959,24 @@ OPAQUE-3DH also outputs `session_key`. The schedule for computing this key mater
 is below.
 
 ~~~
-  HKDF-Extract(salt=0, IKM)
-      |
-      +--> Derive-Secret(., "handshake secret", info) = handshake_secret
-      |
-      +--> Derive-Secret(., "session secret", info) = session_key
+HKDF-Extract(salt=0, IKM)
+    |
+    +-> Derive-Secret(., "handshake secret", info) = handshake_secret
+    |
+    +-> Derive-Secret(., "session secret", info) = session_key
 ~~~
 
 From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
-Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
-Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", key_length)
+Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", 32)
 ~~~
 
-`key_length` is the length of the key required for the AKE handshake encryption algorithm.
+<!-- This constant is not great, but that's what we get when we don't use an AEAD -->
+
+Nh is the output length of the underlying hash function.
 
 The HKDF input parameter `info` is computed as follows:
 
@@ -1000,14 +1013,14 @@ excluding KE2.mac.
 - KE3.mac: mac_key is Km3 and transcript is the concatenation of KE1 and KE2,
 including KE2.mac.
 
-The server applicaton info is encrypted using a technique similar to that used
-for secret credential encryption. Specifically, a one-time-pad is derived from
-Ke2 and then used as input to XOR with the plaintext. In pseudocode, this is
-done as follows:
+The server applicaton info, an opaque byte string `server_info`, is encrypted
+using a technique similar to that used for secret credential encryption.
+Specifically, a one-time-pad is derived from Ke2 and then used as input to XOR
+with the plaintext. In pseudocode, this is done as follows:
 
 ~~~
-info_pad = HKDF-Expand(Ke2, "encryption pad", len(info2))
-einfo = xor(info_pad, info2)
+info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
+enc_server_info = xor(info_pad, server_info)
 ~~~
 
 ### Alternate AKE instantiations
