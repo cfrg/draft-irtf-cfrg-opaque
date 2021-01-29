@@ -843,10 +843,12 @@ by client and server, respectively, and KE3 provides explicit client authenticat
 full forward security (without it, forward secrecy is only achieved against eavesdroppers
 which is insufficient for OPAQUE security).
 
-Key derivation and other details of the protocol are specified by the
-AKE scheme. We note that by the results in {{OPAQUE}}, KE2 and KE3 must
-authenticate credential_request and credential_response, respectively,
-for binding between the underlying OPRF protocol messages and the KE session.
+The output of the authentication phase is a session secret `session_key` and export
+key `export_key`. Applications can use `session_key` to derive additional keying material
+as needed. Key derivation and other details of the protocol are specified by the AKE scheme.
+We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate credential_request
+and credential_response, respectively, for binding between the underlying OPRF protocol
+messages and the KE session.
 
 The rest of this section is outlined as follows:
 
@@ -883,10 +885,10 @@ is not a NULL-terminated string.
 
 ### OPAQUE-3DH Instantiation {#opaque-3dh}
 
-OPAQUE-3DH is implemented using a suitable prime order group. All operations in the key
-derivation steps in {{derive-3dh}} are performed in this group and represented
-here using multiplicative notation. The output of OPAQUE-3DH is a session secret
-`session_key` and export key `export_key`.
+OPAQUE-3DH is implemented using a suitable prime order group. All operations in
+the key derivation steps in {{derive-3dh}} are performed in this group and
+represented here using multiplicative notation. The output of OPAQUE-3DH is a
+session secret `session_key` and export key `export_key`.
 
 #### OPAQUE-3DH Messages
 
@@ -1032,12 +1034,10 @@ left to future documents.
 
 OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
 flow above and security properties (KCI resistance and forward secrecy) outlined
-in {{security-considerations}}. This document does not specify such an instantiation.
-Note that such an instantiation is not quantum safe unless the OPRF and data encryption schemes
-are quantum safe. However, an instantiation where both AKE and data encryption are quantum safe,
-but the OPRF is not, would still ensure data security against future quantum attacks since
-breaking the OPRF does not retroactively affect the security of data transferred over a
-quantum-safe secure channel.
+in {{security-considerations}}. Note that such an instantiation is not quantum safe unless
+the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
+but the OPRF is not, would still ensure the confidentiality of application data encrypted
+under session_key (or a key derived from it) with a quantum-safe encryption function.
 
 # Configurations {#configurations}
 
