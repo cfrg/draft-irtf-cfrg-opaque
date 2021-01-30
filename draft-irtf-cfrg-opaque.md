@@ -123,7 +123,7 @@ key exchange resilient to server compromise"
   I-D.irtf-cfrg-voprf:
   I-D.sullivan-tls-opaque:
 
-  keyagreement: DOI.10.6028/NIST.SP.800-56Ar3
+  keyagreement: NIST.NIST.SP.800-56Ar3
 
   OPAQUE:
     title: "OPAQUE: An Asymmetric PAKE Protocol Secure Against Pre-Computation
