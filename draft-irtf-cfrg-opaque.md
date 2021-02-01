@@ -631,16 +631,16 @@ Output:
 Steps:
 1. N = Unblind(blind, response.data)
 2. y = Finalize(pwdU, N, "OPAQUE01")
-3. rwdU = HKDF-Extract("rwdU", Harden(y, params))
-4. Create SecretCredentials secret_creds with creds.skU
-5. Create CleartextCredentials cleartext_creds with response.pkS
+3. nonce = random(32)
+4. rwdU = HKDF-Extract(nonce, Harden(y, params))
+5. Create SecretCredentials secret_creds with creds.skU
+6. Create CleartextCredentials cleartext_creds with response.pkS
    and custom identifiers creds.idU and creds.idS if mode is
    customIdentifier
-6. nonce = random(32)
 7. pseudorandom_pad =
-     HKDF-Expand(rwdU, concat(nonce, "Pad"), len(secret_creds))
-8. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-9. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+     HKDF-Expand(rwdU, "Pad", len(secret_creds))
+8. auth_key = HKDF-Expand(rwdU, "AuthKey", Nh)
+9. export_key = HKDF-Expand(rwdU, "ExportKey", Nh)
 10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
 11. Create InnerEnvelope inner_env
       with (mode, nonce, encrypted_creds)
@@ -810,12 +810,11 @@ Steps:
 2. y = Finalize(pwdU, N, "OPAQUE01")
 3. contents = response.envU.contents
 4. nonce = contents.nonce
-5. rwdU = HKDF-Extract("rwdU", Harden(y, params))
+5. rwdU = HKDF-Extract(nonce, Harden(y, params))
 6. pseudorandom_pad =
-    HKDF-Expand(rwdU, concat(nonce, "Pad"),
-                len(contents.encrypted_creds))
-7. auth_key = HKDF-Expand(rwdU, concat(nonce, "AuthKey"), Nh)
-8. export_key = HKDF-Expand(rwdU, concat(nonce, "ExportKey"), Nh)
+    HKDF-Expand(rwdU, "Pad", len(contents.encrypted_creds))
+7. auth_key = HKDF-Expand(rwdU, "AuthKey", Nh)
+8. export_key = HKDF-Expand(rwdU, "ExportKey", Nh)
 9. Create CleartextCredentials cleartext_creds with response.pkS
    and custom identifiers creds.idU and creds.idS if mode is
    customIdentifier

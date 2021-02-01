@@ -28,13 +28,13 @@ class OPAQUECore(object):
         N = oprf_context.unblind(blind, response.data, None, None)
         y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE01"))
         y_harden = self.config.harden(y)
-        rwdU = hkdf_extract(self.config, _as_bytes("rwdU"), y_harden)
+        rwdU = hkdf_extract(self.config, nonce, y_harden)
 
         Nh = self.config.hash_alg().digest_size
 
-        pseudorandom_pad = hkdf_expand(self.config, rwdU, nonce + _as_bytes("Pad"), Npt)
-        auth_key = hkdf_expand(self.config, rwdU, nonce + _as_bytes("AuthKey"), Nh)
-        export_key = hkdf_expand(self.config, rwdU, nonce + _as_bytes("ExportKey"), Nh)
+        pseudorandom_pad = hkdf_expand(self.config, rwdU, _as_bytes("Pad"), Npt)
+        auth_key = hkdf_expand(self.config, rwdU, _as_bytes("AuthKey"), Nh)
+        export_key = hkdf_expand(self.config, rwdU, _as_bytes("ExportKey"), Nh)
 
         return rwdU, pseudorandom_pad, auth_key, export_key
 
