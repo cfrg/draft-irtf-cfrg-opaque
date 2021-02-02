@@ -16,35 +16,29 @@ input_keys = [
     "client_identity",
     "server_identity",
     "password",
+    "envelope_nonce",
     "client_private_key",
     "client_public_key",
     "server_private_key",
     "server_public_key",
     "client_info",
     "server_info",
-]
-
-intermediate_keys = [
-    "auth_key",
-    "blind_registration",
-    "registration_request",
-    "registration_response",
-    "registration_upload",
-    "prk",
-    "pseudorandom_pad",
-    "oprf_key",
-    "envelope",
-    "envelope_nonce",
+    "server_nonce",
+    "client_nonce",
     "server_keyshare",
     "client_keyshare",
     "server_private_keyshare",
     "client_private_keyshare",
+    "blind_registration",
     "blind_login",
-    "KE1",
-    "KE2",
-    "KE3",
-    "server_nonce",
-    "client_nonce",
+    "oprf_key",
+]
+
+intermediate_keys = [
+    "auth_key",
+    "prk",
+    "pseudorandom_pad",
+    "envelope",
     "handshake_secret",
     "handshake_encrypt_key",
     "server_mac_key",
@@ -52,6 +46,12 @@ intermediate_keys = [
 ]
 
 output_keys = [
+    "registration_request",
+    "registration_response",
+    "registration_upload",
+    "KE1",
+    "KE2",
+    "KE3",
     "export_key",
     "session_key",
 ]
@@ -99,20 +99,19 @@ def print_vector_outputs(vector):
                 wrap_print(key + ":", vector["outputs"][key])
 
 def format_vector(vector, i):
-    print("\n### Example" + str(i))
-    print("\n#### Configuration\n")
+    print("\n### Configuration\n")
     print("~~~")
     print_vector_config(vector)
     print("~~~")
-    print("\n#### Input Values\n")
+    print("\n### Input Values\n")
     print("~~~")
     print_vector_inputs(vector)
     print("~~~")
-    print("\n#### Intermediate Values\n")
+    print("\n### Intermediate Values\n")
     print("~~~")
     print_vector_intermediates(vector)
     print("~~~")
-    print("\n#### Output Values\n")
+    print("\n### Output Values\n")
     print("~~~")
     print_vector_outputs(vector)
     print("~~~")
@@ -121,5 +120,5 @@ def format_vector(vector, i):
 with open(sys.argv[1], "r") as fh:
     vectors = json.loads(fh.read())
     for i, vector in enumerate(vectors):
-        print("## " + format_vector_name(vector) + " Test Vectors")
+        print("## " + format_vector_name(vector) + " Test Vector " + str(i+1))
         format_vector(vector, i)
