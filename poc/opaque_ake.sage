@@ -53,8 +53,8 @@ class OPAQUE3DH(KeyExchange):
         return {
             "Name": "3DH",
             "Group": self.config.oprf_suite.group.name,
-            "Mode": to_hex(I2OSP(self.config.mode, 1)),
-            "Oprf": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
+            "EnvelopeMode": to_hex(I2OSP(self.config.mode, 1)),
+            "OPRF": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
             "Hash": self.config.hash().name.upper(),
             "SlowHash": self.config.slow_hash.name,
         }

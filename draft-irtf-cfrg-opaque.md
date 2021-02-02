@@ -955,9 +955,9 @@ Km3, defined below.
 
 #### OPAQUE-3DH Key Schedule {#derive-3dh}
 
-OPAQUE-3DH requires MAC keys Km2 and Km3 and encryption key Ke2. Additionally,
-OPAQUE-3DH also outputs `session_key`. The schedule for computing this key material
-is below.
+OPAQUE-3DH requires MAC keys `server_mac_key` and `client_mac_key` and
+encryption key `handshake_encrypt_key`. Additionally, OPAQUE-3DH also
+outputs `session_key`. The schedule for computing this key material is below.
 
 ~~~
 HKDF-Extract(salt=0, IKM)
@@ -970,12 +970,13 @@ HKDF-Extract(salt=0, IKM)
 From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
-Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
-Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", 32)
+server_mac_key =
+  HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+client_mac_key =
+  HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+handshake_encrypt_key =
+  HKDF-Expand-Label(handshake_secret, "handshake enc", "", Nh)
 ~~~
-
-<!-- This constant is not great, but that's what we get when we don't use an AEAD -->
 
 Nh is the output length of the underlying hash function.
 
@@ -1350,3 +1351,201 @@ aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+
+# Test Vectors
+
+This section contains test vectors for the OPAQUE-3DH specification. Each test
+vector specifies the configuration information, protocol inputs, intermeidate
+values computed during registration and authentication, and protocol outputs.
+All values are encoded in hexadecimal strings. The configuration information
+includes the (OPRF, Hash, MHF, EnvelopeMode) tuple, along with the group
+to which the AKE authentication keys correspond.
+
+## OPAQUE-3DH Test Vectors
+
+### Example0
+
+#### Configuration
+
+~~~
+Group: ristretto255
+EnvelopeMode: 00
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+~~~
+
+#### Input Values
+
+~~~
+skU: f56324b58f2a297f0817808d6c4265c906d2cd1bda6a509054de016cc01bfb0e
+pkS: 2eeea0cd9f15af232f94f2981cb653183613b16d10b3cd99e1a93cd26a10551b
+skS: b5d3406930dfe077b921d4ee646419d2e44ad37cd5445ae6709b45abcea8fe05
+pkU: 48764a414784304e869d72d2016ee777c0af0d40c18b5ce2f5b8ef3d94d46f7e
+idU: 48764a414784304e869d72d2016ee777c0af0d40c18b5ce2f5b8ef3d94d46f7e
+idS: 2eeea0cd9f15af232f94f2981cb653183613b16d10b3cd99e1a93cd26a10551b
+password: 436f7272656374486f72736542617474657279537461706c65
+~~~
+
+#### Intermediate Values
+
+~~~
+envU: 00e9c2d7e7ca7a9271c9ba1f76398b09c002b6e599e0db5751f1e5790c62a21
+7470022992a7fd9fb92d21ee9c2f9233898e466ff41a216eeecca6a28b84cd1129671
+15c58081c0d29204ff12dd39b3caf5720cadb9156f6e209e2ea05784cf4a142a52a7a
+95efe7b688fd0a6e044b4a8e76ead8a14a106cb2facc0d4f73edba9c78060bbe9
+envelope_nonce: e9c2d7e7ca7a9271c9ba1f76398b09c002b6e599e0db5751f1e57
+90c62a21747
+registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
+44418164c4d49003e
+eskS: 810f6f0c6af4fa8fa73223de63ab31f2d7817b28709b6997bba85080e5e7120
+4
+eskU: b4b0588d5eaae9816d21e5969e7cb4b4ea523dc6023cd0e97cf8361f84bc2a0
+e
+epkU: 4c477753ff00490fd1e44aaff80c17b9dec99f44ff27a3d2203a9f891cd7627
+5
+handshake_encrypt_key: 89364f009d43b3a902a0bfb6a881bb6bad66acb086640a
+8486bfdf5a4f60845e685f891216ca30b0721b4c55f7a4d3ed5b1ab6e5539e14ef5fb
+8e5feb5a47019
+epkS: e67219c832a57c2b304ae1ce4cb4ac9b0df9bfbb973b5d87ce5d0e6f92cf250
+8
+registration_upload: 002048764a414784304e869d72d2016ee777c0af0d40c18b
+5ce2f5b8ef3d94d46f7e00e9c2d7e7ca7a9271c9ba1f76398b09c002b6e599e0db575
+1f1e5790c62a217470022992a7fd9fb92d21ee9c2f9233898e466ff41a216eeecca6a
+28b84cd112967115c58081c0d29204ff12dd39b3caf5720cadb9156f6e209e2ea0578
+4cf4a142a52a7a95efe7b688fd0a6e044b4a8e76ead8a14a106cb2facc0d4f73edba9
+c78060bbe9
+rwdU: e4c31ea7f3c104500a695ae7107f9e971b0e029e5d3c9ac03f73d1ef3d076c7
+a7e09fecd140db8286cfd459b17196d52672bfaaed9087d52574d316736441d85
+registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
+30cdba66ccb379e57200202eeea0cd9f15af232f94f2981cb653183613b16d10b3cd9
+9e1a93cd26a10551b
+client_mac_key: 88f7b18cb4df5b278506bd177eebc7db6f89ce250f1278fe7eef1
+3ae9d3ba400d7b295dfddf5a4cda9213bddc28fc2d474048985aecd8fea58d0f45184
+c7de7b
+pseudorandom_pad: 990a8abadf275d34c0bdf134b81588249a88a4c423f71000782
+8180f13fab10e3e8e
+kU: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be037e50b
+blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
+f5e46e512cf8e03
+nonceS: d0f8eddf8f54d4672755e220671e5aa354f672bca9620ba0eb0e705eee27f
+0b4
+nonceU: 9b737f956bb72a6c23b004542b342771e578e3f381a15ee55eaf2e27d8270
+04a
+blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
+e3263503
+auth_key: 3c5f9be666211ac6e7cc6f01b59c7aaedb27c388a1cb6bc08e65967dc3b
+d9517a209336fd8e1817c1ec8299bbb9b34fec29cfab9d24e1ae7a5a050c27d72e676
+server_mac_key: 3239ec03365743d4485b7622f74175d6f6a779d644fd036ad1488
+7299cef5c737a84f5265a317572aa17eafa2e2e040d2df523398798b6fe8f978864d7
+e96cf9
+handshake_secret: 9e6a08d974e5aacd467e52833d26e52bdc945adbedabd27ea39
+21b75fba46d055acd1b3bafad8aafde89de93814a879dfa5197327457e46c1aa0f16e
+ca973e7b
+~~~
+
+#### Output Values
+
+~~~
+session_key: f381cd5bfc9596f97f4e1b9e37b165c703fee8551575bb164081cfb0
+6dd262e815714446bccff3286528b89e00418acdcc4322f593c4cb974638dd3dc2f47
+533
+export_key: c53808fc583cacee48c192cf5ee0ffd3438ddca1686a4083c81b60a9f
+71a20fe12a35c81a11dc4a8190008b11827b09d72feb0d61ea35c2a731911ba5b5a28
+56
+~~~
+
+## OPAQUE-3DH Test Vectors
+
+### Example1
+
+#### Configuration
+
+~~~
+Group: ristretto255
+EnvelopeMode: 01
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+~~~
+
+#### Input Values
+
+~~~
+skU: f56324b58f2a297f0817808d6c4265c906d2cd1bda6a509054de016cc01bfb0e
+pkS: 2eeea0cd9f15af232f94f2981cb653183613b16d10b3cd99e1a93cd26a10551b
+skS: b5d3406930dfe077b921d4ee646419d2e44ad37cd5445ae6709b45abcea8fe05
+pkU: 48764a414784304e869d72d2016ee777c0af0d40c18b5ce2f5b8ef3d94d46f7e
+idU: 48764a414784304e869d72d2016ee777c0af0d40c18b5ce2f5b8ef3d94d46f7e
+idS: 2eeea0cd9f15af232f94f2981cb653183613b16d10b3cd99e1a93cd26a10551b
+password: 436f7272656374486f72736542617474657279537461706c65
+~~~
+
+#### Intermediate Values
+
+~~~
+envU: 0162c469c4667b873542f2c4d02f04d03404a9926d2a55f6404a7f39867299e
+0230022a0dc75ce1a0eadfa38c0a2bcd63ddefd33e4865b2cbda892dd8661a0978fc1
+f69eadbd2c0b480c7a7944927c2a4ca9df52566fe2ddd7336c4792e164bb8eace1b2c
+297346e50f258bc2bb89dbfeb2e7f7c122d90e040de3019dfbc6e9e5481ef12d0
+envelope_nonce: 62c469c4667b873542f2c4d02f04d03404a9926d2a55f6404a7f3
+9867299e023
+registration_request: c8d2e9ba503bf3f8821226653314427edb1ec8a3ecc94a5
+dfbbe33d59d07b645
+eskS: 58ff086664522f9cdb35ce701328bc4e1b9b373715e79ca08e9a8a764e0e990
+c
+eskU: 93d18a1d733ad9ac49332131f339956aa8289724c69609f5add55a42ec131f0
+4
+epkU: 12ebab684c2461fb83a0c11735a347f35948d798293a1c4d49a9674cae6fa02
+8
+handshake_encrypt_key: 11e28a82586044f99aab7c8481b151f967fdf96178062a
+ea21ad86cd0b81f048b081d387245c19cb3c837220175a6504b5a192d371ff54e30e6
+ce631a92fd523
+epkS: 0a47dbdbe9cd36c8c853716a1167acd9eb3338ff3650e19e51575977babff67
+e
+registration_upload: 002048764a414784304e869d72d2016ee777c0af0d40c18b
+5ce2f5b8ef3d94d46f7e0162c469c4667b873542f2c4d02f04d03404a9926d2a55f64
+04a7f39867299e0230022a0dc75ce1a0eadfa38c0a2bcd63ddefd33e4865b2cbda892
+dd8661a0978fc1f69eadbd2c0b480c7a7944927c2a4ca9df52566fe2ddd7336c4792e
+164bb8eace1b2c297346e50f258bc2bb89dbfeb2e7f7c122d90e040de3019dfbc6e9e
+5481ef12d0
+rwdU: 8815a865c85948ca950ffad2c10e7cc491dacc1dd44d77b75666a94cf858d6a
+e94da3993ac83b48846a2132a9b1595bbd4a0b63c0b3b191e8aa0602c6c0a1b56
+registration_response: 088ac01ebf5700f0c96bc2988509343cb7e2dd6f0df820
+d0fb807faa11a26f5600202eeea0cd9f15af232f94f2981cb653183613b16d10b3cd9
+9e1a93cd26a10551b
+client_mac_key: 292a693f76a0e75fb7ea134d10d2ba41282f55dd3f4ec3efc2eff
+a63564f0ce3090fa37f4dd949cc7de26a7718dce4454d477504a2876b78179ee1a131
+31cbfc
+pseudorandom_pad: a0fc80ad3ebb22d011bfaaab56b0b2bf562d8089e1a672f88d1
+6357e96e301ed65a3
+kU: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b0e707
+blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
+cec831b8c681a09
+nonceS: c7c2267c51cd0753122e20cdcabd3a432e6c4c87d72fa2f7a0eb19f2bb670
+35c
+nonceU: fcd7e17f207b6a56f2eda8219bef3c3cca519ae9ac9c3ec767a025547afd2
+541
+blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
+4171ea02
+auth_key: 1ec78c3a6acb45826333c6821266ed33cd3bbb823e5012bee32086b2e6b
+1feeb49eef885db9066f575d1cea3b84fcf730529439559746b7d19b61182c8bbef1b
+server_mac_key: 3d9d98bce7a956540f1e11e4ff078aaf7312710139766b72ab9f1
+d8279c115501a2bb4abe97c8c47df68d3ecbb6a2df070295de0013585fbb025d3119f
+ba291e
+handshake_secret: f3c10823f243700c933f35a3cd82307a30248dba8dd1ae3ee78
+b87207f42360b5a6cd901110ef56c6007f2c3363a0459f6e26b9d6cd774e4d7a10ac0
+c5939d37
+~~~
+
+#### Output Values
+
+~~~
+session_key: ff999f46b13675cc851e95c31dda209cbefea96105cd52358a9ea576
+02e5689d6004b54f3d58e3b5316422951d76fb2f4d65f0f5eda3be807230925effc27
+070
+export_key: c8a93ee1b0db4dfb9c36784211797ce004ea94c514a1536411fc17319
+68c64e6dc4f1032f61e5db53991fb94c4ff44e6e9f1442124b6e00be896301b57d0f5
+60
+~~~
+

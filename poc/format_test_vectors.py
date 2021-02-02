@@ -8,8 +8,8 @@ config_keys = [
     "OPRF",
     "Hash",
     "SlowHash",
-    "Mode",
-    "AKE",
+    "EnvelopeMode",
+    "Group",
 ]
 
 input_keys = [
@@ -65,7 +65,7 @@ def to_hex(octet_string):
     return ''.join(format(x, '02x') for x in octet_string)
 
 def wrap_print(arg, *args):
-    line_length = 70
+    line_length = 69
     string = arg + " " + " ".join(args)
     for hunk in (string[0+i:line_length+i] for i in range(0, len(string), line_length)):
         if hunk and len(hunk.strip()) > 0:
@@ -74,35 +74,52 @@ def wrap_print(arg, *args):
 def format_vector_name(vector):
     return "OPAQUE-" + vector["config"]["Name"]
 
-def format_vector_inputs(vector):
+def print_vector_config(vector):
+    for config_key in vector["config"]:
+        for key in config_keys:
+            if key == config_key:
+                wrap_print(key + ":", vector["config"][key])
+
+def print_vector_inputs(vector):
     for input_key in vector["inputs"]:
         for key in input_keys:
             if key == input_key:
                 wrap_print(key + ":", vector["inputs"][key])
 
-def format_vector_intermediates(vector):
+def print_vector_intermediates(vector):
     for int_key in vector["intermediates"]:
         for key in intermediate_keys:
             if key == int_key:
                 wrap_print(key + ":", vector["intermediates"][key])
 
-def format_vector_outputs(vector):
+def print_vector_outputs(vector):
     for output_key in vector["outputs"]:
         for key in output_keys:
             if key == output_key:
                 wrap_print(key + ":", vector["outputs"][key])
 
-def format_vector(vector):
-    print("## " + format_vector_name(vector))
-    print("\n### Input Values\n")
-    format_vector_inputs(vector)
-    print("\n### Intermediate Values\n")
-    format_vector_intermediates(vector)
-    print("\n### Output Values\n")
-    format_vector_outputs(vector)
+def format_vector(vector, i):
+    print("\n### Example" + str(i))
+    print("\n#### Configuration\n")
+    print("~~~")
+    print_vector_config(vector)
+    print("~~~")
+    print("\n#### Input Values\n")
+    print("~~~")
+    print_vector_inputs(vector)
+    print("~~~")
+    print("\n#### Intermediate Values\n")
+    print("~~~")
+    print_vector_intermediates(vector)
+    print("~~~")
+    print("\n#### Output Values\n")
+    print("~~~")
+    print_vector_outputs(vector)
+    print("~~~")
     print("")
 
 with open(sys.argv[1], "r") as fh:
     vectors = json.loads(fh.read())
-    for vector in vectors:
-        format_vector(vector)
+    for i, vector in enumerate(vectors):
+        print("## " + format_vector_name(vector) + " Test Vectors")
+        format_vector(vector, i)
