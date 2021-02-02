@@ -18,6 +18,14 @@ else:
     def _strxor(str1, str2): return ''.join(chr(ord(s1) ^ ord(s2))
                                             for (s1, s2) in zip(str1, str2))
 
+def to_hex(octet_string):
+    if isinstance(octet_string, str):
+        return "".join("{:02x}".format(ord(c)) for c in octet_string)
+    if isinstance(octet_string, bytes):
+        return "" + "".join("{:02x}".format(c) for c in octet_string)
+    assert isinstance(octet_string, bytearray)
+    return ''.join(format(x, '02x') for x in octet_string)
+
 def random_bytes(n):
     return os.urandom(n)
 
@@ -29,19 +37,19 @@ def xor(a, b):
     return bytes(c)
 
 def hkdf_extract(config, salt, ikm):
-    return hmac.digest(salt, ikm, config.hash_alg)
+    return hmac.digest(salt, ikm, config.hash)
 
 def hkdf_expand(config, prk, info, L):
     # https://tools.ietf.org/html/rfc5869
     # N = ceil(L/HashLen)
     # T = T(1) | T(2) | T(3) | ... | T(N)
     # OKM = first L octets of T
-    hash_length = config.hash_alg().digest_size
+    hash_length = config.hash().digest_size
     N = ceil(L / hash_length)
     Ts = [bytes(bytearray([]))]
     for i in range(N):
         Ts.append(hmac.digest(
-            prk, Ts[i] + info + int(i+1).to_bytes(1, 'big'), config.hash_alg))
+            prk, Ts[i] + info + int(i+1).to_bytes(1, 'big'), config.hash))
 
     def concat(a, b):
         return a + b
@@ -69,14 +77,13 @@ def hkdf_expand_label(config, secret, label, context, length):
     def build_label(length, label, context):
         return I2OSP(length, 2) + encode_vector_len(_as_bytes("OPAQUE ") + label, 1) + encode_vector_len(context, 1)
     hkdf_label = build_label(length, label, context)
-    print(to_hex(hkdf_label))
     return hkdf_expand(config, secret, hkdf_label, length)
 
 # Derive-Secret(Secret, Label, Transcript) =
 #     HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
 def derive_secret(config, secret, label, transcript):
-    transcript_hash = config.hash_alg(transcript).digest()
-    return hkdf_expand_label(config, secret, label, transcript_hash, config.hash_alg().digest_size)
+    transcript_hash = config.hash(transcript).digest()
+    return hkdf_expand_label(config, secret, label, transcript_hash, config.hash().digest_size)
 
 # defined in RFC 3447, section 4.1
 def I2OSP(val, length):

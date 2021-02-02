@@ -6,27 +6,19 @@ import json
 import hashlib
 
 try:
-    from sagelib.opaque import default_opaque_configuration, OPAQUECore 
+    from sagelib.opaque import default_opaque_configuration_base, default_opaque_configuration_custom, OPAQUECore 
     from sagelib.opaque_common import encode_vector, decode_vector, random_bytes, _as_bytes
     from sagelib.opaque_messages import InnerEnvelope, deserialize_inner_envelope, envelope_mode_base, envelope_mode_custom_identifier, \
         Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
             deserialize_credential_request, deserialize_credential_response
     from sagelib.opaque_messages import Credentials, SecretCredentials, CleartextCredentials, CustomCleartextCredentials
     from sagelib import ristretto255
-    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len
+    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
     from sagelib.opaque_ake import OPAQUE3DH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
-def to_hex(octet_string):
-    if isinstance(octet_string, str):
-        return "".join("{:02x}".format(ord(c)) for c in octet_string)
-    if isinstance(octet_string, bytes):
-        return "" + "".join("{:02x}".format(c) for c in octet_string)
-    assert isinstance(octet_string, bytearray)
-    return ''.join(format(x, '02x') for x in octet_string)
-
-def test_3dh():
+def test_3DH():
     idU = _as_bytes("alice")
     idS = _as_bytes("bob")
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
@@ -43,74 +35,86 @@ def test_3dh():
     idU = pkU_bytes
     idS = pkS_bytes
 
-    config = default_opaque_configuration
-    creds = Credentials(skU_bytes, pkU_bytes)
-    core = OPAQUECore(config)
+    vectors = []
+    for config in [default_opaque_configuration_base, default_opaque_configuration_custom]:
+        creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
+        core = OPAQUECore(config)
 
-    reg_request, metadata = core.create_registration_request(pwdU)
-    reg_response, kU = core.create_registration_response(reg_request, pkS_bytes)
-    record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
+        reg_request, metadata = core.create_registration_request(pwdU)
+        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes)
+        record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
 
-    client_kex = OPAQUE3DH(config)
-    server_kex = OPAQUE3DH(config)
+        client_kex = OPAQUE3DH(config)
+        server_kex = OPAQUE3DH(config)
 
-    ke1 = client_kex.generate_ke1(pwdU, info1, idU, skU, pkU, idS, pkS)
-    ke2 = server_kex.generate_ke2(ke1, kU, record.envU, info2, idS, skS, pkS, idU, pkU)
-    ke3 = client_kex.generate_ke3(ke2)
-    server_session_key = server_kex.finish(ke3)
+        ke1 = client_kex.generate_ke1(pwdU, info1, idU, skU, pkU, idS, pkS)
+        ke2 = server_kex.generate_ke2(ke1, kU, record.envU, info2, idS, skS, pkS, idU, pkU)
+        ke3 = client_kex.generate_ke3(ke2)
+        server_session_key = server_kex.finish(ke3)
 
-    assert server_session_key == client_kex.session_key
+        assert server_session_key == client_kex.session_key
 
-    vector = {}
+        inputs = {}
+        intermediates = {}
+        outputs = {}
 
-    # Protocol inputs
-    vector["client_identifier"] = to_hex(idU)
-    vector["server_identifier"] = to_hex(idS)
-    vector["password"] = to_hex(pwdU)
-    vector["client_s_sk"] = to_hex(skU_bytes)
-    vector["client_s_pk"] = to_hex(pkU_bytes)
-    vector["server_s_sk"] = to_hex(skS_bytes)
-    vector["server_s_pk"] = to_hex(pkS_bytes)
+        # Protocol inputs
+        inputs["idU"] = to_hex(idU)
+        inputs["idS"] = to_hex(idS)
+        inputs["password"] = to_hex(pwdU)
+        inputs["skU"] = to_hex(skU_bytes)
+        inputs["pkU"] = to_hex(pkU_bytes)
+        inputs["skS"] = to_hex(skS_bytes)
+        inputs["pkS"] = to_hex(pkS_bytes)
 
-    # Protocol messages
-    vector["registration_request"] = to_hex(reg_request.serialize())
-    vector["blinding_factor_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
-    vector["registration_response"] = to_hex(reg_response.serialize())
-    vector["registration_upload"] = to_hex(record.serialize())
-    vector["blinding_factor_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
-    vector["credential_request"] = to_hex(ke1)
-    vector["credential_response"] = to_hex(ke2)
-    vector["credential_finalization"] = to_hex(ke3)
+        # Protocol messages
+        intermediates["registration_request"] = to_hex(reg_request.serialize())
+        intermediates["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
+        intermediates["registration_response"] = to_hex(reg_response.serialize())
+        intermediates["registration_upload"] = to_hex(record.serialize())
+        intermediates["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
+        intermediates["login_ke1"] = to_hex(ke1)
+        intermediates["login_ke2"] = to_hex(ke2)
+        intermediates["login_ke3"] = to_hex(ke3)
 
-    vector["info1"] = to_hex(info1)
-    vector["info2"] = to_hex(info2)
-    vector["client_nonce"] = to_hex(client_kex.nonceU)
-    vector["server_nonce"] = to_hex(server_kex.nonceS)
-    vector["client_e_sk"] = to_hex(I2OSP_le(client_kex.eskU, 32))
-    vector["client_e_pk"] = to_hex(ristretto255.ENCODE(*client_kex.epkU))
-    vector["server_e_sk"] = to_hex(I2OSP_le(server_kex.eskS, 32))
-    vector["server_e_pk"] = to_hex(ristretto255.ENCODE(*server_kex.epkS))
-    vector["shared_secret"] = to_hex(server_session_key)
+        intermediates["info1"] = to_hex(info1)
+        intermediates["info2"] = to_hex(info2)
+        intermediates["nonceU"] = to_hex(client_kex.nonceU)
+        intermediates["nonceS"] = to_hex(server_kex.nonceS)
+        intermediates["eskU"] = to_hex(I2OSP_le(client_kex.eskU, 32))
+        intermediates["epkU"] = to_hex(ristretto255.ENCODE(*client_kex.epkU))
+        intermediates["eskS"] = to_hex(I2OSP_le(server_kex.eskS, 32))
+        intermediates["epkS"] = to_hex(ristretto255.ENCODE(*server_kex.epkS))
 
-    # Intermediate computations
-    vector["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
-    vector["envelope_nonce"] = to_hex(core.envelope_nonce)
-    vector["envU"] = to_hex(record.envU.serialize())
-    vector["rwdU"] = to_hex(core.registration_rwdU)
-    vector["pseudorandom_pad"] = to_hex(core.pseudorandom_pad)
-    vector["auth_key"] = to_hex(core.auth_key)
-    vector["km2"] = to_hex(client_kex.km2)
-    vector["km3"] = to_hex(client_kex.km3)
-    vector["ke2"] = to_hex(client_kex.ke2)
-    vector["handshake_secret"] = to_hex(client_kex.handshake_secret)
+        # Intermediate computations
+        intermediates["kU"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
+        intermediates["envelope_nonce"] = to_hex(core.envelope_nonce)
+        intermediates["envU"] = to_hex(record.envU.serialize())
+        intermediates["rwdU"] = to_hex(core.registration_rwdU)
+        intermediates["pseudorandom_pad"] = to_hex(core.pseudorandom_pad)
+        intermediates["auth_key"] = to_hex(core.auth_key)
+        intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)
+        intermediates["client_mac_key"] = to_hex(client_kex.client_mac_key)
+        intermediates["handshake_encrypt_key"] = to_hex(client_kex.handshake_encrypt_key)
+        intermediates["handshake_secret"] = to_hex(client_kex.handshake_secret)
 
-    # Protocol outputs
-    vector["export_key"] = to_hex(export_key)
+        # Protocol outputs
+        outputs["session_key"] = to_hex(server_session_key)
+        outputs["export_key"] = to_hex(export_key)
 
-    print(json.dumps(vector, sort_keys=True, indent=2))
+        vector = {}
+        vector["config"] = client_kex.json()
+        vector["inputs"] = inputs
+        vector["intermediates"] = intermediates
+        vector["outputs"] = outputs
+        vectors.append(vector)
+
+    return json.dumps(vectors, sort_keys=True, indent=2)
 
 def main(path="vectors"):
-    test_3dh()
+    formatted_vectors = test_3DH()
+    with open(os.path.join(path, "vectors.json"), "w") as fh:
+        fh.write(formatted_vectors)
 
 if __name__ == "__main__":
     main()

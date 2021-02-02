@@ -70,15 +70,9 @@ class CustomCleartextCredentials(CleartextCredentials):
         return encode_vector(self.pkS) + encode_vector(self.idU) + encode_vector(self.idS)
 
 class Credentials(object):
-    def __init__(self, skU, pkU):
-        self.mode = envelope_mode_base
+    def __init__(self, skU, pkU, idU = None, idS = None):
         self.skU = skU
         self.pkU = pkU
-
-class CustomCredentials(Credentials):
-    def __init__(self, skU, pkU, idU, idS):
-        Credentials.__init__(self, skU, pkU)
-        self.mode = envelope_mode_custom_identifier
         self.idU = idU
         self.idS = idS
 
@@ -111,7 +105,7 @@ class InnerEnvelope(object):
 # } Envelope;
 def deserialize_envelope(config, data):
     contents, offset = deserialize_inner_envelope(data)
-    Nh = config.hash_alg().digest_size
+    Nh = config.hash().digest_size
     if offset + Nh > len(data):
         raise Exception("Insufficient bytes")
     auth_tag = data[offset:offset+Nh]
