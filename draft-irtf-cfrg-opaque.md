@@ -234,7 +234,7 @@ instantiations in different authenticated key exchange protocols.
 
 Password authentication is the prevalent form of authentication in
 the web and in many other applications. In the most common
-implementation, a user authenticates to a server by sending its user
+implementation, a client authenticates to a server by sending its client
 ID and password to the server over a TLS connection. This makes
 the password vulnerable to server mishandling, including accidentally
 logging the password or storing it in cleartext in a database. Server
@@ -248,14 +248,14 @@ to middle boxes, and more.
 Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without relying on PKI (except
-during user/password registration) and without disclosing passwords
+during client/password registration) and without disclosing passwords
 to servers or other entities other than the client machine. A secure
 aPAKE should provide the best possible security for a password
 protocol. Namely, it should only be open to inevitable attacks, such as
-online impersonation attempts with guessed user passwords and offline
+online impersonation attempts with guessed client passwords and offline
 dictionary attacks upon the compromise of a server and leakage of its
 password file. In the latter case, the attacker learns a mapping of
-a user's password under a one-way function and uses such a mapping to
+a client's password under a one-way function and uses such a mapping to
 validate potential guesses for the password. Crucially important is
 for the password protocol to use an unpredictable one-way mapping.
 Otherwise, the attacker can pre-compute a deterministic list of mapped
@@ -268,7 +268,7 @@ pre-computation attacks. In particular, none of these protocols can
 use the standard technique against pre-computation that combines
 _secret_ random values ("salt") into the one-way password mappings.
 Either these protocols do not use a salt at all or, if they do, they
-transmit the salt from server to user in the clear, hence losing the
+transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation. Furthermore,
 transmitting the salt may require additional protocol messages.
 
@@ -283,7 +283,7 @@ the difficulty of offline dictionary attacks via iterated hashing
 or other hardening schemes, and offloading these operations to the
 client (that also helps against online guessing attacks); extensibility of
 the protocol to support storage and
-retrieval of user's secrets solely based on a password; and being
+retrieval of client's secrets solely based on a password; and being
 amenable to a multi-server distributed implementation where offline
 dictionary attacks are not possible without breaking into a threshold
 of servers (such a distributed solution requires no change or awareness
@@ -302,7 +302,7 @@ ones such as those based on post-quantum techniques.
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its encrypted credentials on the server. In the second stage, a client obtains
-those credentials, recovers them using the user's password, and subsequently uses
+those credentials, recovers them using the client's password, and subsequently uses
 them as input to an AKE protocol.
 
 Currently, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}}, which is
@@ -323,13 +323,13 @@ This draft complies with the requirements for PAKE protocols set forth in
 The following terms are used throughout this document to describe the
 operations, roles, and behaviors of OPAQUE:
 
-- Client (U): Entity which has knowledge of a password and wishes to authenticate.
+- Client (C): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
-- password: An opaque byte string containing the user's password.
+- password: An opaque byte string containing the client's password.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
-  the public key. For example, (client_private_key, client_public_key) refers to U's private and public key.
+  the public key. For example, (client_private_key, client_public_key) refers to C's private and public key.
 - kX: An OPRF private key used for role X. For example, as described in
-  {{create-reg-response}}, oprf_key refers to the private OPRF key for user U known
+  {{create-reg-response}}, oprf_key refers to the private OPRF key for client C known
   only to the server.
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
   described in {{?RFC8017}}. Note that these functions operate on byte strings in
@@ -392,19 +392,19 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 # Offline Registration {#offline-phase}
 
-Registration is executed between a user U (running on a client machine) and a
-server S. It is assumed S can identify U and the client can
+Registration is executed between a client C and a
+server S. It is assumed S can identify C and the client can
 authenticate S during this registration phase. This is the only part
 in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
-and helper functions. Moreover, U has a key pair (client_private_key, client_public_key) for an AKE protocol
+and helper functions. Moreover, C has a key pair (client_private_key, client_public_key) for an AKE protocol
 which is suitable for use with OPAQUE; See {{online-phase}}. (client_private_key, client_public_key) may be
 randomly generated for the account or provided by the calling client.
 Clients MUST NOT use the same key pair (client_private_key, client_public_key) for two different accounts.
 
-To begin, U chooses password password, and S chooses its own pair of private-public
+To begin, C chooses password password, and S chooses its own pair of private-public
 keys server_private_key and server_public_key for use with the AKE. S can use
-the same pair of keys with multiple users. These steps can happen offline, i.e.,
+the same pair of keys with multiple clients. These steps can happen offline, i.e.,
 before the registration phase. Once complete, the registration process proceeds as follows:
 
 ~~~
@@ -431,7 +431,7 @@ before the registration phase. Once complete, the registration process proceeds 
 Both client and server MUST validate the other party's public key before use.
 See {{validation}} for more details.
 
-Upon completion, S stores U's credentials for later use. See {{credential-file}}
+Upon completion, S stores C's credentials for later use. See {{credential-file}}
 for a recommended storage format.
 
 ## Credential Storage {#credential-storage}
@@ -439,9 +439,9 @@ for a recommended storage format.
 OPAQUE makes use of a structure `Envelope` to store client credentials.
 The `Envelope` structure embeds the following types of credentials:
 
-- client_private_key: The encoded user private key for the AKE protocol.
+- client_private_key: The encoded client private key for the AKE protocol.
 - server_public_key: The encoded server public key for the AKE protocol.
-- client_identity: The user identity. This is an application-specific value, e.g., an e-mail
+- client_identity: The client identity. This is an application-specific value, e.g., an e-mail
   address or normal account name.
 - server_identity: The server identity. This is typically a domain name, e.g., example.com.
   See {{identities}} for information about this identity.
@@ -523,12 +523,12 @@ Note that only `SecretCredentials` are stored in the `Envelope` (in encrypted fo
 The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
 Credential information corresponding to the configuration-specific mode,
-along with the user public key `client_public_key` and private key `client_private_key`,
+along with the client public key `client_public_key` and private key `client_private_key`,
 are stored in a `Credentials` object with the following named fields:
 
-- `client_private_key`, the user's private key
-- `client_public_key`, the user's public key corresponding to `client_private_key`
-- `client_identity`, an optional user identity (present only in the `custom_identifier` mode)
+- `client_private_key`, the client's private key
+- `client_public_key`, the client's public key corresponding to `client_private_key`
+- `client_identity`, an optional client identity (present only in the `custom_identifier` mode)
 - `server_identity`, an optional server identity (present only in the `custom_identifier` mode)
 
 ## Registration Messages
@@ -566,7 +566,7 @@ client_public_key
 : An encoded public key, corresponding to the private key `client_private_key`.
 
 envelope
-: The user's `Envelope` structure.
+: The client's `Envelope` structure.
 
 ## Registration Functions {#registration-functions}
 
@@ -576,7 +576,7 @@ envelope
 CreateRegistrationRequest(password)
 
 Input:
-- password, an opaque byte string containing the user's password
+- password, an opaque byte string containing the client's password
 
 Output:
 - request, a RegistrationRequest structure
@@ -599,7 +599,7 @@ Input:
 
 Output:
 - response, a RegistrationResponse structure
-- oprf_key, the per-user OPRF key known only to the server
+- oprf_key, the per-client OPRF key known only to the server
 
 Steps:
 1. (oprf_key, _) = KeyGen()
@@ -619,7 +619,7 @@ Parameters:
 - Nh, the output size of the Hash function
 
 Input:
-- password, an opaque byte string containing the user's password
+- password, an opaque byte string containing the client's password
 - creds, a Credentials structure
 - blind, an OPRF scalar value
 - response, a RegistrationResponse structure
@@ -673,13 +673,13 @@ struct {
 
 # Online Authenticated Key Exchange {#online-phase}
 
-After registration, the user (through a client machine) and server run the authenticated
+After registration, the client and server run the authenticated
 key exchange stage of the OPAQUE protocol. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
 client and server credentials established during registration; see {{offline-phase}}.
 The type of keys MUST be suitable for the key exchange protocol. For example, if
 the key exchange protocol is 3DH, as described in {{opaque-3dh}}, then the private and
-public keys must be Diffie-Hellman keys. At the end, the client proves the user's
+public keys must be Diffie-Hellman keys. At the end, the client proves its
 knowledge of the password, and both client and server agree on a mutually authenticated
 shared secret key.
 
@@ -741,7 +741,7 @@ server_public_key
 key exchange stage.
 
 envelope
-: The user's `Envelope` structure.
+: The client's `Envelope` structure.
 
 ### Credential Retrieval Functions
 
@@ -751,7 +751,7 @@ envelope
 CreateCredentialRequest(password)
 
 Input:
-- password, an opaque byte string containing the user's password
+- password, an opaque byte string containing the client's password
 
 Output:
 - request, a CredentialRequest structure
@@ -794,12 +794,12 @@ Parameters:
 - Nh, the output size of the Hash function
 
 Input:
-- password, an opaque byte string containing the user's password
+- password, an opaque byte string containing the client's password
 - blind, an OPRF scalar value
 - response, a CredentialResponse structure
 
 Output:
-- client_private_key, the user's private key for the AKE protocol
+- client_private_key, the client's private key for the AKE protocol
 - server_public_key, the public key of the server
 - export_key, an additional key
 
@@ -1069,7 +1069,7 @@ OPAQUE is defined and proven as the composition of two
 functionalities: an OPRF and an AKE protocol.
 It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy - see below)
-into a secure aPAKE protocol. In OPAQUE, the user stores a secret private key at the
+into a secure aPAKE protocol. In OPAQUE, the client stores a secret private key at the
 server during password registration and retrieves this key each time
 it needs to authenticate to the server. The OPRF security properties
 ensure that only the correct password can unlock the private key
@@ -1081,7 +1081,7 @@ importance as the use of OPAQUE with TLS constitutes a major security
 improvement relative to the standard password-over-TLS practice.
 At the same time, the combination with TLS builds OPAQUE as a fully functional
 secure communications protocol and can help provide privacy to
-account information sent by the user to the server prior to authentication.
+account information sent by the client to the server prior to authentication.
 
 The KCI property required from AKE protocols for use with OPAQUE
 states that knowledge of a party's private key does not allow an attacker
@@ -1093,7 +1093,7 @@ authenticated protocols (e.g., HMQV) but not all of them. We also note that
 key exchange protocols based on shared keys do not satisfy the KCI
 requirement, hence they are not considered in the OPAQUE setting.
 We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
-compromise of the server, the attacker cannot impersonate the user to the
+compromise of the server, the attacker cannot impersonate the client to the
 server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
@@ -1139,7 +1139,7 @@ registration or online authenticated key exchange session. server_identity and c
 be part of envelope or be tied to the parties' public keys. In principle, it is possible
 that identities change across different sessions as long as there is a policy that
 can establish if the identity is acceptable or not to the peer. However, we note
-that the public keys of both the server and the user must always be those defined
+that the public keys of both the server and the client must always be those defined
 at time of password registration.
 
 ## Envelope Encryption {#envelope-encryption}
@@ -1189,7 +1189,7 @@ requires an infeasible number of calls and/or results in insignificant
 security loss (\*). Moreover, in the OPAQUE application, these
 attacks are completely impractical as the number of calls to the function
 translates to an equal number of failed authentication attempts by a
-_single_ user. For example, one would need a billion impersonation attempts
+_single_ client. For example, one would need a billion impersonation attempts
 to reduce security by 15 bits and a trillion to reduce it by 20 bits - and
 most curves will not even allow for such attacks in the first place
 (note that this theoretical loss of security is with respect to computing
@@ -1225,9 +1225,9 @@ Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
 
-## User and Server Identities
+## Client and Server Identities
 
-The user identity (client_identity) and server identity (server_identity) are optional parameters
+The client identity (client_identity) and server identity (server_identity) are optional parameters
 which are left to the application to designate as monikers for the client
 and server. If the application layer does not supply values for these
 parameters, then they will be omitted from the creation of the envelope
@@ -1267,33 +1267,33 @@ Mention advantage of avoidable equivocable encryption? Still needs equivocable
 authentication, but that one gets by modeling HMAC as programmable RO - check.
 -->
 
-<!-- To further minimize storage space, the server can derive per-user OPRF keys
+<!-- To further minimize storage space, the server can derive per-client OPRF keys
 oprf_key from a single global secret key, and it can use the same pair
-(server_private_key,server_public_key) for all users. In this case, the per-user OPAQUE storage
+(server_private_key,server_public_key) for all clients. In this case, the per-client OPAQUE storage
 consists of client_public_key and HMAC(Khmac; server_public_key), a total of 64-byte overhead with a
-256-bit curve and hash. envelope communicated to the user is of the same length,
+256-bit curve and hash. envelope communicated to the client is of the same length,
 consisting of server_public_key and HMAC(Khmac; server_public_key). -->
 
 <!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
 envelope (for settings where storage and/or communication is expensive) -->
 
-## User Enumeration {#SecEnumeration}
+## Client Enumeration {#SecEnumeration}
 
-User enumeration refers to attacks where the attacker tries to learn
-whether a given user identity is registered with a server. Preventing
-such attacks requires the server to act with unknown user identities
+Client enumeration refers to attacks where the attacker tries to learn
+whether a given client identity is registered with a server. Preventing
+such attacks requires the server to act with unknown client identities
 in a way that is indistinguishable from its behavior with existing
-users. Here we suggest a way to implement such defense, namely, a way for
-simulating a CredentialResponse for non-existing users.
+clients. Here we suggest a way to implement such defense, namely, a way for
+simulating a CredentialResponse for non-existing clients.
 Note that if the same CredentialRequest is received
 twice by the server, the response needs to be the same in both cases (since
-this would be the case for real users).
+this would be the case for real clients).
 For protection against this attack, one would apply the encryption function in
 the construction of envelope to all the key material in envelope.
 The server S will have two keys MK, MK' for a pseudorandom function f.
 f refers to a regular pseudorandom function such as HMAC or CMAC.
 Upon receiving a CredentialRequest for a non-existing
-user client_identity, S computes oprf_key=f(MK; client_identity) and oprf_key'=f(MK'; client_identity) and responds with
+client client_identity, S computes oprf_key=f(MK; client_identity) and oprf_key'=f(MK'; client_identity) and responds with
 CredentialResponse carrying Z=M^oprf_key and envelope, where the latter is computed as follows.
 prk is set to oprf_key' and secret_creds is set to the all-zero string (of the
 length of a regular envelope plaintext). Care needs to be taken to avoid side
@@ -1305,21 +1305,21 @@ protocol itself or the client side.
 There is one form of leakage that the above allows and whose prevention would
 require a change in OPAQUE.
 An attacker that attempts authentication with the same CredentialRequest twice and receives
-different responses can conclude that either the user registered with the
-service between these two activations or that the user was registered before
+different responses can conclude that either the client registered with the
+service between these two activations or that the client was registered before
 but changed its password in between the activations (assuming the server
 changes oprf_key at the time of a password change). In any case, this
-indicates that client_identity is a registered user at the time of the second activation.
+indicates that client_identity is a registered client at the time of the second activation.
 To conceal this information, S can implement the derivation of oprf_key
-as oprf_key=f(MK; client_identity) also for registered users. Hiding changes in envelope, however,
+as oprf_key=f(MK; client_identity) also for registered clients. Hiding changes in envelope, however,
 requires a change in the protocol. Instead of sending envelope as is,
-S would send an encryption of envelope under a key that the user derives from the
+S would send an encryption of envelope under a key that the client derives from the
 OPRF result (similarly to prk) and that S stores during password
-registration. During the authenticated key exchange stage, the user will derive
+registration. During the authenticated key exchange stage, the client will derive
 this key from the OPRF result, will use it to decrypt envelope, and continue with the
 regular protocol. If S uses a randomized encryption, the encrypted envelope will look
 each time as a fresh random string, hence S can simulate the encrypted envelope also
-for non-existing users.
+for non-existing clients.
 
 Note that the first case above does not change the protocol so its
 implementation is a server's decision (the client side is not changed).
@@ -1333,12 +1333,12 @@ itself.
 In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibility
 of pre-computation attacks. No extra salt value is needed. Also, clients never
 disclose their password to the server, even during registration. Note that a corrupted
-server can run an exhaustive offline dictionary attack to validate guesses for the user's
+server can run an exhaustive offline dictionary attack to validate guesses for the client's
 password; this is inevitable in any aPAKE protocol. (OPAQUE enables a defense against such
 offline dictionary attacks by distributing the server so that an offline attack is only
 possible if all - or a minimal number of - servers are compromised {{OPAQUE}}.)
 
-Some applications may require learning the user's password for enforcing password
+Some applications may require learning the client's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
