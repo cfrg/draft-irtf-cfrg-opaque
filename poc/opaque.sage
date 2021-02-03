@@ -26,12 +26,11 @@ class OPAQUECore(object):
     def derive_secrets(self, pwdU, response, blind, nonce, Npt):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
         N = oprf_context.unblind(blind, response.data, None, None)
-        y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE01"))
-        y_harden = self.config.harden(y)
+        y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE"))
+        y_harden = self.config.slow_hash.hash(y)
         rwdU = hkdf_extract(self.config, nonce, y_harden)
 
-        Nh = self.config.hash_alg().digest_size
-
+        Nh = self.config.hash().digest_size
         pseudorandom_pad = hkdf_expand(self.config, rwdU, _as_bytes("Pad"), Npt)
         auth_key = hkdf_expand(self.config, rwdU, _as_bytes("AuthKey"), Nh)
         export_key = hkdf_expand(self.config, rwdU, _as_bytes("ExportKey"), Nh)
@@ -54,7 +53,7 @@ class OPAQUECore(object):
     def finalize_request(self, creds, pwdU, blind, response):
         secret_creds = SecretCredentials(creds.skU)
         cleartext_creds = CleartextCredentials(response.pkS)
-        if creds.mode == envelope_mode_custom_identifier:
+        if self.config.mode == envelope_mode_custom_identifier:
             cleartext_creds = CustomCleartextCredentials(response.pkS, creds.idU, creds.idS)
 
         pt = secret_creds.serialize()
@@ -64,9 +63,9 @@ class OPAQUECore(object):
         rwdU, pseudorandom_pad, auth_key, export_key = self.derive_secrets(pwdU, response, blind, nonce, len(pt))
         ct = xor(pt, pseudorandom_pad)
 
-        contents = InnerEnvelope(creds.mode, nonce, ct)
+        contents = InnerEnvelope(self.config.mode, nonce, ct)
         serialized_contents = contents.serialize()
-        auth_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash_alg)
+        auth_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash)
 
         envU = Envelope(contents, auth_tag)
         record = RegistrationUpload(envU, creds.pkU)
@@ -84,25 +83,25 @@ class OPAQUECore(object):
         request = CredentialRequest(blinded_element)
         return request, blind
 
-
     def create_credential_response(self, request, pkS, kU, envU):
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
         data, _, _ = oprf_context.evaluate(request.data)
         response = CredentialResponse(data, pkS, envU)
         return response
 
-    def recover_credentials(self, pwdU, blind, response):
+    def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
         contents = response.envU.contents
         serialized_contents = contents.serialize()
         nonce = contents.nonce
         ct = contents.ct
 
-        # TODO(caw): handle custom credentials here
         cleartext_creds = CleartextCredentials(response.pkS)
+        if contents.mode == envelope_mode_custom_identifier:
+            cleartext_creds = CustomCleartextCredentials(response.pkS, idU, idS)
         auth_data = cleartext_creds.serialize()
 
         rwdU, pseudorandom_pad, auth_key, export_key = self.derive_secrets(pwdU, response, blind, nonce, len(ct))
-        expected_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash_alg)
+        expected_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash)
 
         if expected_tag != response.envU.auth_tag:
             raise Exception("Invalid tag")
@@ -117,10 +116,16 @@ class OPAQUECore(object):
         return secret_credentials.skU, response.pkS, export_key
 
 class Configuration(object):
-    def __init__(self, oprf_suite, hash_alg, harden):
+    def __init__(self, mode, oprf_suite, hash, slow_hash):
+        self.mode = mode
         self.oprf_suite = oprf_suite
-        self.hash_alg = hash_alg
-        self.harden = harden
+        self.hash = hash
+        self.slow_hash = slow_hash
+
+class SlowHash(object):
+    def __init__(self, name, harden):
+        self.name = name
+        self.hash = harden
 
 def scrypt_harden(pwd):
     return scrypt(pwd, b'', 32768, 8, 1, 64)
@@ -128,5 +133,8 @@ def scrypt_harden(pwd):
 def identity_harden(pwd):
     return pwd
 
-default_opaque_configuration = Configuration(
-    oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, identity_harden)
+default_opaque_configuration_base = Configuration(
+    envelope_mode_base, oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, SlowHash("Identity", identity_harden))
+
+default_opaque_configuration_custom = Configuration(
+    envelope_mode_custom_identifier, oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, SlowHash("Identity", identity_harden))

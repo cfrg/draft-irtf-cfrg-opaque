@@ -325,11 +325,11 @@ operations, roles, and behaviors of OPAQUE:
 
 - Client (U): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
-- pwdU: An opaque byte string containing the user's password.
+- password: An opaque byte string containing the user's password.
 - (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
-  the public key. For example, (skU, pkU) refers to U's private and public key.
+  the public key. For example, (client_private_key, client_public_key) refers to U's private and public key.
 - kX: An OPRF private key used for role X. For example, as described in
-  {{create-reg-response}}, kU refers to the private OPRF key for user U known
+  {{create-reg-response}}, oprf_key refers to the private OPRF key for user U known
   only to the server.
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
   described in {{?RFC8017}}. Note that these functions operate on byte strings in
@@ -361,8 +361,8 @@ OPAQUE relies on the following protocols and primitives:
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some scalar `r`, producing `M`, and output (`r`, `M`).
   - KeyGen(): Generate an OPRF private and public key. OPAQUE only requires an
-    OPRF private key. We write `(kU, _) = KeyGen()` to denote use of this
-    function for generating secret key `kU` (and discarding the corresponding
+    OPRF private key. We write `(oprf_key, _) = KeyGen()` to denote use of this
+    function for generating secret key `oprf_key` (and discarding the corresponding
     public key).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
@@ -397,30 +397,30 @@ server S. It is assumed S can identify U and the client can
 authenticate S during this registration phase. This is the only part
 in OPAQUE that requires an authenticated channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
-and helper functions. Moreover, U has a key pair (skU, pkU) for an AKE protocol
-which is suitable for use with OPAQUE; See {{online-phase}}. (skU, pkU) may be
+and helper functions. Moreover, U has a key pair (client_private_key, client_public_key) for an AKE protocol
+which is suitable for use with OPAQUE; See {{online-phase}}. (client_private_key, client_public_key) may be
 randomly generated for the account or provided by the calling client.
-Clients MUST NOT use the same key pair (skU, pkU) for two different accounts.
+Clients MUST NOT use the same key pair (client_private_key, client_public_key) for two different accounts.
 
-To begin, U chooses password pwdU, and S chooses its own pair of private-public
-keys skS and pkS for use with the AKE. S can use the same pair of keys with
-multiple users. These steps can happen offline, i.e., before the registration phase.
-Once complete, the registration process proceeds as follows:
+To begin, U chooses password password, and S chooses its own pair of private-public
+keys server_private_key and server_public_key for use with the AKE. S can use
+the same pair of keys with multiple users. These steps can happen offline, i.e.,
+before the registration phase. Once complete, the registration process proceeds as follows:
 
 ~~~
- Client (pwdU, creds)                               Server (skS, pkS)
+ Client (password, creds)            Server (server_private_key, server_public_key)
  --------------------------------------------------------------------
- (request, blind) = CreateRegistrationRequest(pwdU)
+ (request, blind) = CreateRegistrationRequest(password)
 
                                request
                       ------------------------->
 
-            (response, kU) = CreateRegistrationResponse(request, pkS)
+            (response, oprf_key) = CreateRegistrationResponse(request, server_public_key)
 
                                response
                       <-------------------------
 
- (record, export_key) = FinalizeRequest(pwdU, creds, blind, response)
+ (record, export_key) = FinalizeRequest(password, creds, blind, response)
 
                                 record
                       ------------------------->
@@ -439,11 +439,11 @@ for a recommended storage format.
 OPAQUE makes use of a structure `Envelope` to store client credentials.
 The `Envelope` structure embeds the following types of credentials:
 
-- skU: The encoded user private key for the AKE protocol.
-- pkS: The encoded server public key for the AKE protocol.
-- idU: The user identity. This is an application-specific value, e.g., an e-mail
+- client_private_key: The encoded user private key for the AKE protocol.
+- server_public_key: The encoded server public key for the AKE protocol.
+- client_identity: The user identity. This is an application-specific value, e.g., an e-mail
   address or normal account name.
-- idS: The server identity. This is typically a domain name, e.g., example.com.
+- server_identity: The server identity. This is typically a domain name, e.g., example.com.
   See {{identities}} for information about this identity.
 
 Each public and private key value is an opaque byte string, specific to the AKE
@@ -456,7 +456,7 @@ depending on the mode set by the value of `EnvelopeMode`:
 ~~~
 enum {
   base(1),
-  customIdentifier(2),
+  custom_identifier(2),
   (255)
 } EnvelopeMode;
 ~~~
@@ -465,25 +465,25 @@ The `base` mode defines `SecretCredentials` and `CleartextCredentials` as follow
 
 ~~~
 struct {
-  opaque skU<1..2^16-1>;
+  opaque client_private_key<1..2^16-1>;
 } SecretCredentials;
 
 struct {
-  opaque pkS<1..2^16-1>;
+  opaque server_public_key<1..2^16-1>;
 } CleartextCredentials;
 ~~~
 
-The `customIdentifier` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
+The `custom_identifier` mode defines `SecretCredentials` and `CleartextCredentials` as follows:
 
 ~~~
 struct {
-  opaque skU<1..2^16-1>;
+  opaque client_private_key<1..2^16-1>;
 } SecretCredentials;
 
 struct {
-  opaque pkS<1..2^16-1>;
-  opaque idU<0..2^16-1>;
-  opaque idS<0..2^16-1>;
+  opaque server_public_key<1..2^16-1>;
+  opaque client_identity<0..2^16-1>;
+  opaque server_identity<0..2^16-1>;
 } CleartextCredentials;
 ~~~
 
@@ -504,7 +504,7 @@ struct {
 ~~~
 
 mode
-: The `EnvelopeMode` value. This MUST be one of `base` or `customIdentifier`.
+: The `EnvelopeMode` value. This MUST be one of `base` or `custom_identifier`.
 
 nonce
 : A unique 32-byte nonce used to protect this Envelope.
@@ -523,13 +523,13 @@ Note that only `SecretCredentials` are stored in the `Envelope` (in encrypted fo
 The `EnvelopeMode` value is specified as part of the configuration (see {{configurations}}).
 
 Credential information corresponding to the configuration-specific mode,
-along with the user public key `pkU` and private key `skU`, are stored
-in a `Credentials` object with the following named fields:
+along with the user public key `client_public_key` and private key `client_private_key`,
+are stored in a `Credentials` object with the following named fields:
 
-- `skU`, the user's private key
-- `pkU`, the user's public key corresponding to `skU`
-- `idU`, an optional user identity (present only in the `customIdentifier` mode)
-- `idS`, an optional server identity (present only in the `customIdentifier` mode)
+- `client_private_key`, the user's private key
+- `client_public_key`, the user's public key corresponding to `client_private_key`
+- `client_identity`, an optional user identity (present only in the `custom_identifier` mode)
+- `server_identity`, an optional server identity (present only in the `custom_identifier` mode)
 
 ## Registration Messages
 
@@ -545,27 +545,27 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque pkS<1..2^16-1>;
+    opaque server_public_key<1..2^16-1>;
 } RegistrationResponse;
 ~~~
 
 data
 : A serialized OPRF group element.
 
-pkS
+server_public_key
 : An encoded public key that will be used for the online authenticated key exchange stage.
 
 ~~~
 struct {
-    opaque pkU<1..2^16-1>;
-    Envelope envU;
+    opaque client_public_key<1..2^16-1>;
+    Envelope envelope;
 } RegistrationUpload;
 ~~~
 
-pkU
-: An encoded public key, corresponding to the private key `skU`.
+client_public_key
+: An encoded public key, corresponding to the private key `client_private_key`.
 
-envU
+envelope
 : The user's `Envelope` structure.
 
 ## Registration Functions {#registration-functions}
@@ -573,17 +573,17 @@ envU
 ### CreateRegistrationRequest
 
 ~~~
-CreateRegistrationRequest(pwdU)
+CreateRegistrationRequest(password)
 
 Input:
-- pwdU, an opaque byte string containing the user's password
+- password, an opaque byte string containing the user's password
 
 Output:
 - request, a RegistrationRequest structure
 - blind, an OPRF scalar value
 
 Steps:
-1. (blind, M) = Blind(pwdU)
+1. (blind, M) = Blind(password)
 2. Create RegistrationRequest request with M
 3. Output (request, blind)
 ~~~
@@ -591,27 +591,27 @@ Steps:
 ### CreateRegistrationResponse {#create-reg-response}
 
 ~~~
-CreateRegistrationResponse(request, pkS)
+CreateRegistrationResponse(request, server_public_key)
 
 Input:
 - request, a RegistrationRequest structure
-- pkS, the server's public key
+- server_public_key, the server's public key
 
 Output:
 - response, a RegistrationResponse structure
-- kU, the per-user OPRF key known only to the server
+- oprf_key, the per-user OPRF key known only to the server
 
 Steps:
-1. (kU, _) = KeyGen()
-2. Z = Evaluate(kU, request.data)
-3. Create RegistrationResponse response with (Z, pkS)
-4. Output (response, kU)
+1. (oprf_key, _) = KeyGen()
+2. Z = Evaluate(oprf_key, request.data)
+3. Create RegistrationResponse response with (Z, server_public_key)
+4. Output (response, oprf_key)
 ~~~
 
 ### FinalizeRequest {#finalize-request}
 
 ~~~
-FinalizeRequest(pwdU, creds, blind, response)
+FinalizeRequest(password, creds, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
@@ -619,7 +619,7 @@ Parameters:
 - Nh, the output size of the Hash function
 
 Input:
-- pwdU, an opaque byte string containing the user's password
+- password, an opaque byte string containing the user's password
 - creds, a Credentials structure
 - blind, an OPRF scalar value
 - response, a RegistrationResponse structure
@@ -630,27 +630,25 @@ Output:
 
 Steps:
 1. N = Unblind(blind, response.data)
-2. y = Finalize(pwdU, N, "OPAQUE01")
-3. nonce = random(32)
-4. rwdU = HKDF-Extract(nonce, Harden(y, params))
-5. Create SecretCredentials secret_creds with creds.skU
-6. Create CleartextCredentials cleartext_creds with response.pkS
-   and custom identifiers creds.idU and creds.idS if mode is
-   customIdentifier
+2. y = Finalize(password, N, "OPAQUE")
+3. envelope_nonce = random(32)
+4. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+5. Create SecretCredentials secret_creds with creds.client_private_key
+6. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if
+   mode is custom_identifier
 7. pseudorandom_pad =
-     HKDF-Expand(rwdU, "Pad", len(secret_creds))
-8. auth_key = HKDF-Expand(rwdU, "AuthKey", Nh)
-9. export_key = HKDF-Expand(rwdU, "ExportKey", Nh)
+     HKDF-Expand(prk, "Pad", len(secret_creds))
+8. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+9. export_key = HKDF-Expand(prk, "ExportKey", Nh)
 10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
 11. Create InnerEnvelope inner_env
-      with (mode, nonce, encrypted_creds)
+      with (mode, envelope_nonce, encrypted_creds)
 12. auth_tag = HMAC(auth_key, concat(inner_env, cleartext_creds))
-13. Create Envelope envU with (inner_env, auth_tag)
-14. Create RegistrationUpload record with (envU, creds.pkU)
+13. Create Envelope envelope with (inner_env, auth_tag)
+14. Create RegistrationUpload record with (envelope, creds.client_public_key)
 15. Output (record, export_key)
 ~~~
-
-[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
 is that which is associated with the OPAQUE configuration (see {{configurations}}).
@@ -659,18 +657,18 @@ See {{online-phase}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
 
-### CredentialFile {#credential-file}
+### Credential File {#credential-file}
 
-The server then constructs and stores the `CredentialFile` object, where `envU` and `pkU`
-are obtained from `record`, and `kU` is retained from the output of `CreateRegistrationResponse`.
-`kU` is serialized using `SerializeScalar`.
+The server then constructs and stores the `credential_file` object, where `envelope` and `client_public_key`
+are obtained from `record`, and `oprf_key` is retained from the output of `CreateRegistrationResponse`.
+`oprf_key` is serialized using `SerializeScalar`.
 
 ~~~
 struct {
-    SerializedScalar kU;
-    opaque pkU<1..2^16-1>;
-    Envelope envU;
-} CredentialFile;
+    SerializedScalar oprf_key;
+    opaque client_public_key<1..2^16-1>;
+    Envelope envelope;
+} credential_file;
 ~~~
 
 # Online Authenticated Key Exchange {#online-phase}
@@ -698,19 +696,20 @@ credentials from the server-stored envelope. This process is similar to the offl
 registration stage, as shown below.
 
 ~~~
- Client (pwdU)                      Server (skS, pkS, credentialFile)
+ Client (password)             Server (server_private_key, server_public_key, credential_file)
  --------------------------------------------------------------------
- (request, blind) = CreateCredentialRequest(pwdU)
+ (request, blind) = CreateCredentialRequest(password)
 
                                request
                       ------------------------->
 
-    response = CreateCredentialResponse(request, pkS, credentialFile)
+    response = CreateCredentialResponse(request, server_public_key, credential_file)
 
                                response
                       <-------------------------
 
- (skU, pkS, export_key) = RecoverCredentials(pwdU, blind, response)
+ (client_private_key, server_public_key, export_key) =
+     RecoverCredentials(password, blind, response)
 ~~~
 
 The rest of this section describes these credential retrieval functions in
@@ -730,19 +729,19 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque pkS<1..2^16-1>;
-    Envelope envU;
+    opaque server_public_key<1..2^16-1>;
+    Envelope envelope;
 } CredentialResponse;
 ~~~
 
 data
 : A serialized OPRF group element.
 
-pkS
+server_public_key
 : An encoded public key that will be used for the online authenticated
 key exchange stage.
 
-envU
+envelope
 : The user's `Envelope` structure.
 
 ### Credential Retrieval Functions
@@ -750,17 +749,17 @@ envU
 #### CreateCredentialRequest {#create-credential-request}
 
 ~~~
-CreateCredentialRequest(pwdU)
+CreateCredentialRequest(password)
 
 Input:
-- pwdU, an opaque byte string containing the user's password
+- password, an opaque byte string containing the user's password
 
 Output:
 - request, a CredentialRequest structure
 - blind, an OPRF scalar value
 
 Steps:
-1. (blind, M) = Blind(pwdU)
+1. (blind, M) = Blind(password)
 2. Create CredentialRequest request with M
 3. Output (request, blind)
 ~~~
@@ -768,64 +767,62 @@ Steps:
 #### CreateCredentialResponse {#create-credential-response}
 
 ~~~
-CreateCredentialResponse(request, pkS, credentialFile)
+CreateCredentialResponse(request, server_public_key, credential_file)
 
 Input:
 - request, a CredentialRequest structure
-- pkS, the public key of the server
-- credentialFile, the server's output from registration
+- server_public_key, the public key of the server
+- credential_file, the server's output from registration
   (see {{credential-file}})
 
 Output:
 - response, a CredentialResponse structure
 
 Steps:
-1. Z = Evaluate(DeserializeScalar(credentialFile.kU), request.data)
+1. Z = Evaluate(DeserializeScalar(credential_file.oprf_key), request.data)
 2. Create CredentialResponse response
-    with (Z, pkS, credentialFile.envU)
+    with (Z, server_public_key, credential_file.envelope)
 3. Output response
 ~~~
 
 #### RecoverCredentials {#recover-credentials}
 
 ~~~
-RecoverCredentials(pwdU, blind, response)
+RecoverCredentials(password, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
 - Nh, the output size of the Hash function
 
 Input:
-- pwdU, an opaque byte string containing the user's password
+- password, an opaque byte string containing the user's password
 - blind, an OPRF scalar value
 - response, a CredentialResponse structure
 
 Output:
-- skU, the user's private key for the AKE protocol
-- pkS, the public key of the server
+- client_private_key, the user's private key for the AKE protocol
+- server_public_key, the public key of the server
 - export_key, an additional key
 
 Steps:
 1. N = Unblind(blind, response.data)
-2. y = Finalize(pwdU, N, "OPAQUE01")
-3. contents = response.envU.contents
-4. nonce = contents.nonce
-5. rwdU = HKDF-Extract(nonce, Harden(y, params))
+2. y = Finalize(password, N, "OPAQUE")
+3. contents = response.envelope.contents
+4. envelope_nonce = contents.nonce
+5. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
 6. pseudorandom_pad =
-    HKDF-Expand(rwdU, "Pad", len(contents.encrypted_creds))
-7. auth_key = HKDF-Expand(rwdU, "AuthKey", Nh)
-8. export_key = HKDF-Expand(rwdU, "ExportKey", Nh)
-9. Create CleartextCredentials cleartext_creds with response.pkS
-   and custom identifiers creds.idU and creds.idS if mode is
-   customIdentifier
+    HKDF-Expand(prk, "Pad", len(contents.encrypted_creds))
+7. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+8. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+9. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if mode is
+   custom_identifier
 10. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
-11. If !ct_equal(response.envU.auth_tag, expected_tag),
+11. If !ct_equal(response.envelope.auth_tag, expected_tag),
     raise DecryptionError
 12. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
-13. Output (secret_creds.skU, response.pkS, export_key)
+13. Output (secret_creds.client_private_key, response.server_public_key, export_key)
 ~~~
-
-[[RFC editor: please change "OPAQUE01" to the correct RFC identifier before publication.]]
 
 ## AKE Instantiations {#instantiations}
 
@@ -896,30 +893,30 @@ The three messages for OPAQUE-3DH are described below.
 ~~~
 struct {
   CredentialRequest request;
-  uint8 nonceU[32];
+  uint8 client_nonce[32];
   opaque client_info<0..2^16-1>;
-  uint8 epkU[Npk];
+  uint8 client_keyshare[Npk];
 } KE1;
 ~~~
 
 request
 : A `CredentialRequest` generated according to {{create-credential-request}}.
 
-nonceU
+client_nonce
 : A fresh 32-byte randomly generated nonce.
 
 client_info
 : Optional application-specific information to exchange during the protocol.
 
-epkU
+client_keyshare
 : Client ephemeral key share of fixed size Npk, where Npk depends on the corresponding
 prime order group.
 
 ~~~
 struct {
   CredentialResponse response;
-  uint8 nonceS[32];
-  uint8 epkS[Npk];
+  uint8 server_nonce[32];
+  uint8 server_keyshare[Npk];
   opaque enc_server_info<0..2^16-1>;
   uint8 mac[Nh];
 } KE2;
@@ -928,10 +925,10 @@ struct {
 response
 : A `CredentialResponse` generated according to {{create-credential-response}}.
 
-nonceS
+server_nonce
 : A fresh 32-byte randomly generated nonce.
 
-epkS
+server_keyshare
 : Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
 prime order group.
 
@@ -955,9 +952,9 @@ Km3, defined below.
 
 #### OPAQUE-3DH Key Schedule {#derive-3dh}
 
-OPAQUE-3DH requires MAC keys Km2 and Km3 and encryption key Ke2. Additionally,
-OPAQUE-3DH also outputs `session_key`. The schedule for computing this key material
-is below.
+OPAQUE-3DH requires MAC keys `server_mac_key` and `client_mac_key` and
+encryption key `handshake_encrypt_key`. Additionally, OPAQUE-3DH also
+outputs `session_key`. The schedule for computing this key material is below.
 
 ~~~
 HKDF-Extract(salt=0, IKM)
@@ -970,37 +967,40 @@ HKDF-Extract(salt=0, IKM)
 From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
 
 ~~~
-Km2 = HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
-Km3 = HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
-Ke2 = HKDF-Expand-Label(handshake_secret, "server enc", "", 32)
+server_mac_key =
+  HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+client_mac_key =
+  HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+handshake_encrypt_key =
+  HKDF-Expand-Label(handshake_secret, "handshake enc", "", Nh)
 ~~~
-
-<!-- This constant is not great, but that's what we get when we don't use an AEAD -->
 
 Nh is the output length of the underlying hash function.
 
 The HKDF input parameter `info` is computed as follows:
 
 ~~~
-info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
-                  || I2OSP(len(nonceS), 2) || nonceS
-                  || I2OSP(len(idU), 2) || idU
-                  || I2OSP(len(idS), 2) || idS
+info = "3DH keys" || I2OSP(len(client_nonce), 2) || client_nonce
+                  || I2OSP(len(server_nonce), 2) || server_nonce
+                  || I2OSP(len(client_identity), 2) || client_identity
+                  || I2OSP(len(server_identity), 2) || server_identity
 ~~~
 
-See {{identities}} for more information about identities idU and idS.
+See {{identities}} for more information about identities client_identity and server_identity.
 
-The input parameter `IKM` is `K3dh`, where `K3dh` is the concatenation of
-three DH values computed by the client as follows:
-
-~~~
-K3dh = epkS^eskU || pkS^eskU || epkS^skU
-~~~
-
-Likewise, `K3dh` is computed by the server as follows:
+Let `epkS` and `eskS` be `server_keyshare` and the corresponding secret key,
+and `epkU` and `eskU` be `client_keyshare` and the corresponding secret key.
+The input parameter `IKM` the concatenation of three DH values computed by
+the client as follows:
 
 ~~~
-K3dh = epkU^eskS || epkU^skS || pkU^eskS
+IKM = epkS^eskU || pkS^eskU || epkS^skU
+~~~
+
+Likewise, `IKM` is computed by the server as follows:
+
+~~~
+IKM = epkU^eskS || epkU^skS || pkU^eskS
 ~~~
 
 #### OPAQUE-3DH Encryption and Key Confirmation {#hmqv-core}
@@ -1062,7 +1062,7 @@ In the latter case, the server communicates these parameters to the client durin
 login.
 
 The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one of `base`
-or `customIdentifier`.
+or `custom_identifier`.
 
 # Security Considerations {#security-considerations}
 
@@ -1128,16 +1128,16 @@ pre-computation attacks or presented a proof of aPAKE security
 ### Identities {#identities}
 
 AKE protocols generate keys that need to be uniquely and verifiably bound to a pair
-of identities. In the case of OPAQUE, those identities correspond to idU and idS.
+of identities. In the case of OPAQUE, those identities correspond to client_identity and server_identity.
 Thus, it is essential for the parties to agree on such identities, including an
 agreed bit representation of these identities as needed.
 
 Applications may have different policies about how and when identities are
-determined. A natural approach is to tie idU to the identity the server uses
-to fetch envU (hence determined during password registration) and to tie idS
+determined. A natural approach is to tie client_identity to the identity the server uses
+to fetch envelope (hence determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
-registration or online authenticated key exchange session. idS and idU can also
-be part of envU or be tied to the parties' public keys. In principle, it is possible
+registration or online authenticated key exchange session. server_identity and client_identity can also
+be part of envelope or be tied to the parties' public keys. In principle, it is possible
 that identities change across different sessions as long as there is a policy that
 can establish if the identity is acceptable or not to the peer. However, we note
 that the public keys of both the server and the user must always be those defined
@@ -1146,14 +1146,14 @@ at time of password registration.
 ## Envelope Encryption {#envelope-encryption}
 
 The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption scheme
-used to produce envU to have a special property called random key-robustness
+used to produce envelope to have a special property called random key-robustness
 (or key-committing). This specification enforces this property by utilizing
-encrypt-then-HMAC in the construction of envU. There is no option to use another
+encrypt-then-HMAC in the construction of envelope. There is no option to use another
 authenticated-encryption scheme with this specification. (Deviating from the
 key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
 We remark that export_key for authentication or encryption requires no special
 properties from the authentication or encryption schemes as long as export_key
-is used only after the envU is validated, i.e., after the HMAC in RecoverCredentials
+is used only after the envelope is validated, i.e., after the HMAC in RecoverCredentials
 passes verification.
 
 ## Configuration Choice
@@ -1219,36 +1219,36 @@ SHOULD select parameters that balance cost and complexity.
 
 ## User and Server Identities
 
-The user identity (idU) and server identity (idS) are optional parameters
+The user identity (client_identity) and server identity (server_identity) are optional parameters
 which are left to the application to designate as monikers for the client
 and server. If the application layer does not supply values for these
 parameters, then they will be omitted from the creation of the envelope
 during the registration stage. Furthermore, they will be substituted with
-idU = pkU and idS = pkS during the authenticated key exchange stage.
+client_identity = client_public_key and server_identity = server_public_key during the authenticated key exchange stage.
 
-The advantage to supplying a custom idU and idS (instead of simply relying
-on a fallback to pkU and pkS) is that the client can then ensure that any
-mappings between idU and pkU (and idS and pkS) are protected by the
+The advantage to supplying a custom client_identity and server_identity (instead of simply relying
+on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
+mappings between client_identity and client_public_key (and server_identity and server_public_key) are protected by the
 authentication from the envelope. Then, the client can verify that the
-idU and idS contained in its envelope matches the idU and idS supplied by
+client_identity and server_identity contained in its envelope matches the client_identity and server_identity supplied by
 the server.
 
 However, if this extra layer of verification is unnecessary for the
-application, then simply leaving idU and idS unspecified (and using pkU and
-pkS instead) is acceptable.
+application, then simply leaving client_identity and server_identity unspecified (and using client_public_key and
+server_public_key instead) is acceptable.
 
 <!-- TODO(caw): bring this back after updating later -->
 
 <!-- ## Envelope considerations
 
-It is possible to dispense with encryption in the construction of envU to
-obtain a shorter envU (resulting in less storage at the server and less
-communication from server to client). The idea is to derive skU from rwdU.
-However, for cases where skU is not a random string of a given length, we
-define a more general procedure. Namely, what is derived from rwdU is a random
+It is possible to dispense with encryption in the construction of envelope to
+obtain a shorter envelope (resulting in less storage at the server and less
+communication from server to client). The idea is to derive client_private_key from prk.
+However, for cases where client_private_key is not a random string of a given length, we
+define a more general procedure. Namely, what is derived from prk is a random
 seed used as an input to a key generation procedure that generates the pair
-(skU, pkU). In this case, secret_credentials is empty and cleartext_credentials
-contains pkS. The random key generation seed is defined as
+(client_private_key, client_public_key). In this case, secret_credentials is empty and cleartext_credentials
+contains server_public_key. The random key generation seed is defined as
 HKDF-Expand(KdKey; info="KG seed", L)
 where L is the required seed length. We note that in this encryption-less
 scheme, the authentication still needs to be random-key robust which HMAC
@@ -1260,14 +1260,14 @@ authentication, but that one gets by modeling HMAC as programmable RO - check.
 -->
 
 <!-- To further minimize storage space, the server can derive per-user OPRF keys
-kU from a single global secret key, and it can use the same pair
-(skS,pkS) for all users. In this case, the per-user OPAQUE storage
-consists of pkU and HMAC(Khmac; pkS), a total of 64-byte overhead with a
-256-bit curve and hash. envU communicated to the user is of the same length,
-consisting of pkS and HMAC(Khmac; pkS). -->
+oprf_key from a single global secret key, and it can use the same pair
+(server_private_key,server_public_key) for all users. In this case, the per-user OPAQUE storage
+consists of client_public_key and HMAC(Khmac; server_public_key), a total of 64-byte overhead with a
+256-bit curve and hash. envelope communicated to the user is of the same length,
+consisting of server_public_key and HMAC(Khmac; server_public_key). -->
 
 <!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
-envU (for settings where storage and/or communication is expensive) -->
+envelope (for settings where storage and/or communication is expensive) -->
 
 ## User Enumeration {#SecEnumeration}
 
@@ -1281,14 +1281,14 @@ Note that if the same CredentialRequest is received
 twice by the server, the response needs to be the same in both cases (since
 this would be the case for real users).
 For protection against this attack, one would apply the encryption function in
-the construction of envU to all the key material in envU.
+the construction of envelope to all the key material in envelope.
 The server S will have two keys MK, MK' for a pseudorandom function f.
 f refers to a regular pseudorandom function such as HMAC or CMAC.
 Upon receiving a CredentialRequest for a non-existing
-user idU, S computes kU=f(MK; idU) and kU'=f(MK'; idU) and responds with
-CredentialResponse carrying Z=M^kU and envU, where the latter is computed as follows.
-rwdU is set to kU' and secret_creds is set to the all-zero string (of the
-length of a regular envU plaintext). Care needs to be taken to avoid side
+user client_identity, S computes oprf_key=f(MK; client_identity) and oprf_key'=f(MK'; client_identity) and responds with
+CredentialResponse carrying Z=M^oprf_key and envelope, where the latter is computed as follows.
+prk is set to oprf_key' and secret_creds is set to the all-zero string (of the
+length of a regular envelope plaintext). Care needs to be taken to avoid side
 channel leakage (e.g., timing) from helping differentiate these
 operations from a regular server response.
 The above requires changes to the server-side implementation but not to the
@@ -1300,17 +1300,17 @@ An attacker that attempts authentication with the same CredentialRequest twice a
 different responses can conclude that either the user registered with the
 service between these two activations or that the user was registered before
 but changed its password in between the activations (assuming the server
-changes kU at the time of a password change). In any case, this
-indicates that idU is a registered user at the time of the second activation.
-To conceal this information, S can implement the derivation of kU
-as kU=f(MK; idU) also for registered users. Hiding changes in envU, however,
-requires a change in the protocol. Instead of sending envU as is,
-S would send an encryption of envU under a key that the user derives from the
-OPRF result (similarly to rwdU) and that S stores during password
+changes oprf_key at the time of a password change). In any case, this
+indicates that client_identity is a registered user at the time of the second activation.
+To conceal this information, S can implement the derivation of oprf_key
+as oprf_key=f(MK; client_identity) also for registered users. Hiding changes in envelope, however,
+requires a change in the protocol. Instead of sending envelope as is,
+S would send an encryption of envelope under a key that the user derives from the
+OPRF result (similarly to prk) and that S stores during password
 registration. During the authenticated key exchange stage, the user will derive
-this key from the OPRF result, will use it to decrypt envU, and continue with the
-regular protocol. If S uses a randomized encryption, the encrypted envU will look
-each time as a fresh random string, hence S can simulate the encrypted envU also
+this key from the OPRF result, will use it to decrypt envelope, and continue with the
+regular protocol. If S uses a randomized encryption, the encrypted envelope will look
+each time as a fresh random string, hence S can simulate the encrypted envelope also
 for non-existing users.
 
 Note that the first case above does not change the protocol so its
@@ -1348,5 +1348,247 @@ The OPAQUE protocol and its analysis is joint work of the author with Stas
 Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
-to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
+to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+
+# Test Vectors
+
+This section contains test vectors for the OPAQUE-3DH specification. Each test
+vector specifies the configuration information, protocol inputs, intermeidate
+values computed during registration and authentication, and protocol outputs.
+All values are encoded in hexadecimal strings. The configuration information
+includes the (OPRF, Hash, MHF, EnvelopeMode) tuple, along with the group
+to which the AKE authentication keys correspond.
+
+## OPAQUE-3DH Test Vector 1
+
+### Configuration
+
+~~~
+Group: ristretto255
+EnvelopeMode: 00
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+~~~
+
+### Input Values
+
+~~~
+server_nonce: 534a8d6ca099313c73f909ecadd9973644203036913b162134def00
+fdf8b8a18
+oprf_key: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be03
+7e50b
+password: 436f7272656374486f72736542617474657279537461706c65
+blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
+e3263503
+server_private_keyshare: bfd25bddcd9190db01fdc127247eb2461d78281233d8
+77b4564a00404cb79700
+client_nonce: 1a7c15f8ca50bb7a8d654035ad59488a33758b80fc1cc1fa7cc4d92
+50c00f567
+server_info: 6772656574696e677320616c696365
+client_info: 68656c6c6f20626f62
+client_private_keyshare: 1d6078acf052615f1e3206b9aa9aed95cb0f04daa534
+0ccb52534871f1158f09
+envelope_nonce: ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e093562844
+1ed18bbe818
+server_keyshare: dcc991d13fa137302cc1adce95e6f9087f503d88e12d90200682
+2e6da438ec22
+blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
+f5e46e512cf8e03
+client_public_key: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a
+4b81b3bb7e060d
+client_private_key: 31aca12a23a2a03db43c91fafe6d32589e2d8f09d8004d605
+0ec275317cc7f08
+client_keyshare: 408c2a2025080d6507b6250f3dc1ac420c37134bf14d7b1be542
+c4d8cfd64a52
+server_public_key: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856
+974424a8561115
+server_private_key: ccde5849510d7175da028ccccba666e446b9418cf7ba9383b
+9530c75474bcb04
+~~~
+
+### Intermediate Values
+
+~~~
+auth_key: c0ee18ecc5ae7012bcf641a28c2d21ebc198492f1d75ed7ee7cc60b6c5f
+c2a6e5f0ad974fc8f0f48dacfcac765d2b626fce0728f3abbee16d522fe2fa108270c
+server_mac_key: 18685231e1442f5547af5f9c965fc6a951428a963f26ef99cea69
+53873296df81b71e89c05d9bd4abf6863a1e3215f3fe4a202e33f7164c90d250d00a8
+dd4a91
+envelope: 00ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e0935628441ed1
+8bbe81800228f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14035630294f
+b8c42ae21c6d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d168b810d7b08
+787319d837367607662e9d545c5e5abecc469e544903a570e2efdb168bbb8603d11c8
+prk: ec754de047f914e9adf78a82925d70f90478c0e74ea4124de5ba92e8bd935691
+641b6a6ad00ad7d101d232c11fdbe1a578d4795bc62e73fb7e42d6ef234bf2e1
+client_mac_key: 1b73e32b32aad3e94a8bfd664532c9cf8c3385d8ec62badd59873
+270e02f854436b68ade26d0efa0c6b4b41e4970d950d6e7a5ca292427952730105bba
+f89896
+pseudorandom_pad: 8f796a0957e5783ef936764c5a26e52b87282940364827144e3
+660c568ebd3e69d14
+handshake_encrypt_key: 26eea148eeaad14bba63d6d30cac46ddb1d37971f6fe1d
+dfc80955271f4d242c0db5824d5df69b3a6f619753733a26640d20e35b8589c6b7448
+df7d902155ed4
+handshake_secret: 46c0c3d90c38b9cf3a0c3f19248adef96365e059a4a0034b4b2
+d36efda24174620e0894bcb0916dcaa79cdb1a7f475e9b809c0f4a072c8bf4b6b4735
+87838641
+~~~
+
+### Output Values
+
+~~~
+registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
+30cdba66ccb379e572002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14
+856974424a8561115
+export_key: 39a81bd85c701bcb4396d7d6fad5a67712aff40a4a7d806094f84dbbb
+56bf371d8b9b522abba314dc5203cf387c4be187128e3270b151023221c9fc86fff11
+4a
+registration_upload: 0020fcca4fd8732b9887f566bbdcdb738c884f5390b360f4
+3b5b3a4b81b3bb7e060d00ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e093
+5628441ed18bbe81800228f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14
+035630294fb8c42ae21c6d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d16
+8b810d7b08787319d837367607662e9d545c5e5abecc469e544903a570e2efdb168bb
+b8603d11c8
+registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
+44418164c4d49003e
+session_key: f27806d4c588eac72b3da00dba21a2852cf3a91d5164d9ac4dcfa896
+a3cbbb2836785a33ba9d5fb193068347b0ed20bcde94a4482e4456d9c5666eb6191de
+a47
+KE3: bf680d0471ffd1885f050b51c3e57b59e4b3ec31c49dd893644028f30e4bca44
+6cf2f047abd75f739bffccac0af3fe24b8255d3391c4899608df9539f97b5c91
+KE2: e83812f06568d57b8cdfdcc90fe91454e21bd25dd2a1c32dd1599a2e4a4b6c35
+002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856974424a85611150
+0ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e0935628441ed18bbe8180022
+8f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14035630294fb8c42ae21c6
+d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d168b810d7b08787319d8373
+67607662e9d545c5e5abecc469e544903a570e2efdb168bbb8603d11c8534a8d6ca09
+9313c73f909ecadd9973644203036913b162134def00fdf8b8a18dcc991d13fa13730
+2cc1adce95e6f9087f503d88e12d902006822e6da438ec22000f1e4413f30f38967bd
+8c1f3a65da5f825ec34bf0c56f7c50117388593922db7bf53b1f451f6623df88c355a
+a7fb7f9464e00c14683bbab1386ee43e59952a44b73af76d7659a81b219270f2543de
+fc1
+KE1: b68e0e356f8490fa9c3bed952e16cc02db21eda686b3c484f3d9d912caa41f76
+1a7c15f8ca50bb7a8d654035ad59488a33758b80fc1cc1fa7cc4d9250c00f56700096
+8656c6c6f20626f62408c2a2025080d6507b6250f3dc1ac420c37134bf14d7b1be542
+c4d8cfd64a52
+~~~
+
+## OPAQUE-3DH Test Vector 2
+
+### Configuration
+
+~~~
+Group: ristretto255
+EnvelopeMode: 01
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+~~~
+
+### Input Values
+
+~~~
+server_nonce: be1b6a9ee06b76c648efd2e57300cae3418a2137ee3abcfa018431e
+e50876be4
+oprf_key: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b
+0e707
+password: 436f7272656374486f72736542617474657279537461706c65
+blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
+4171ea02
+server_private_keyshare: 79450906dc147d9b73edf5c98f7d1970ebcc825c474c
+ecddc671f3290038c205
+client_nonce: 79a442d9fbebbd244e27fd10ea255dcec9f43e9b2c6a33575eb3377
+5b081d77e
+server_info: 6772656574696e677320616c696365
+server_identity: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf1485697
+4424a8561115
+client_info: 68656c6c6f20626f62
+client_private_keyshare: 46124f54f47fec6b66c53e4154475d27a0e046c5d1c8
+54b2f3680defdff14a0e
+envelope_nonce: f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd
+6c46d705cf2
+server_public_key: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856
+974424a8561115
+client_identity: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a4b
+81b3bb7e060d
+blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
+cec831b8c681a09
+client_public_key: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a
+4b81b3bb7e060d
+client_private_key: 31aca12a23a2a03db43c91fafe6d32589e2d8f09d8004d605
+0ec275317cc7f08
+client_keyshare: 5a7396b6e6e0dbb1690ba3b69061ba864fda0c2c078520f01804
+ef15c0b25d56
+server_keyshare: ea25f0b5ed03ec29b5eaacf21dde7d4c1fcb4e34ddb2d7c6e4a7
+1b6d10e3d870
+server_private_key: ccde5849510d7175da028ccccba666e446b9418cf7ba9383b
+9530c75474bcb04
+~~~
+
+### Intermediate Values
+
+~~~
+auth_key: 3f5312f1c60350f5c46ab368434035f5740eef83a6d5cbc7ed3720fb78a
+c32a5ea9fc734296efc9167350492903c449d85ac774b05f37efcc3ea0bcd9c600f55
+server_mac_key: 341d064d83d7415f28f9528771f10d768891ac552409d44ee7324
+8eed0ed4b58f48ac7406fe8c7fce9cb13029bc30d4e2bc48711fe5932b499a55cb7c1
+85ce1b
+envelope: 01f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd6c46
+d705cf20022ceffb2fded3ff3dfd323ef4411cc213014316463bdd6692907cd4caffd
+885530d0d9ceb917641b2550623727461b647b81b1e81ae67fcb0f57ad93175306ff3
+26b1ec66433a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bcb06f093fa9
+prk: 8923bf6277c4593732d3cdfaa559f531acd20e5cbec5bc180ddf6795d7a4d7ab
+a39404eed4f94adcf25c84d6e8764fb9bb943db894ac9655fed08b68097de0f9
+client_mac_key: 37ffae79ea8bd0b83884ca45e65ce63d4a4210a39d8c158e8772b
+31fa96a9e174b6badeb15454a14ac46ce4f758a1c9fe1748b7b598c7cb6c7431dbac4
+448b45
+pseudorandom_pad: cedf83514c15d07d731e5b788036df5d2669fa4e32dfb1294aa
+d1c43dadb42fcafd1
+handshake_encrypt_key: 7eec22c81178c6f91176961bc78ccb8a9459f9a54c565b
+f44ab8d2445074bd994672f02e8d7a9974722acfca87a56ffbed3d4092d4ef5e8941c
+5b117227e07d9
+handshake_secret: cc5ce99088b2459ed11e6664e479c19d285878dc0961c47e741
+221029f9ca3df00b2cd35b643a263a872e49de7f6bb95d68cb5793d36087b1d6a0b3c
+7565f3c8
+~~~
+
+### Output Values
+
+~~~
+registration_response: 088ac01ebf5700f0c96bc2988509343cb7e2dd6f0df820
+d0fb807faa11a26f56002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14
+856974424a8561115
+export_key: 38b7c0fc66819d9cd51e0e0051d87e159c2be9829f3e2c2ad42560b12
+b7b7950588be9bf8db36bfd9fe26ff55a57e42a5345ee1fa9734f78c8e4e427ede4ee
+9e
+registration_upload: 0020fcca4fd8732b9887f566bbdcdb738c884f5390b360f4
+3b5b3a4b81b3bb7e060d01f627cf8e027b5fca94ba970dc06866b79d5914abb165268
+35bbbd6c46d705cf20022ceffb2fded3ff3dfd323ef4411cc213014316463bdd66929
+07cd4caffd885530d0d9ceb917641b2550623727461b647b81b1e81ae67fcb0f57ad9
+3175306ff326b1ec66433a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bc
+b06f093fa9
+registration_request: c8d2e9ba503bf3f8821226653314427edb1ec8a3ecc94a5
+dfbbe33d59d07b645
+session_key: db9fa3c0bec6ce623b1b124b843c5b8a8d79f93247396eed72e8c06a
+dba2d5389692f988d65e3adb0d59ed477e37fab31633daa514780522ada541eb354d7
+d49
+KE3: 3e2538f0a28344ba9db33e55270e1db37fedde130e13b088bad31239e3bbf358
+7922f8039e205e842f2a012f8db39cb66994b9970363d24f128b882b2b696724
+KE2: 5079b16709b195b3b63257b419efb752bd0603170160fa72b828ce9ff9209c0c
+002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856974424a85611150
+1f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd6c46d705cf20022
+ceffb2fded3ff3dfd323ef4411cc213014316463bdd6692907cd4caffd885530d0d9c
+eb917641b2550623727461b647b81b1e81ae67fcb0f57ad93175306ff326b1ec66433
+a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bcb06f093fa9be1b6a9ee06
+b76c648efd2e57300cae3418a2137ee3abcfa018431ee50876be4ea25f0b5ed03ec29
+b5eaacf21dde7d4c1fcb4e34ddb2d7c6e4a71b6d10e3d870000f853360d8962c60208
+1c1a7f11e0ab10b045d752511f9254a95e390e72b9c60f073c85bf789649883a1c712
+6b1150e6db4607ac5491833b25f91211ab4e7fc292912562f1397c15e6e91a4972b00
+052
+KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
+79a442d9fbebbd244e27fd10ea255dcec9f43e9b2c6a33575eb33775b081d77e00096
+8656c6c6f20626f625a7396b6e6e0dbb1690ba3b69061ba864fda0c2c078520f01804
+ef15c0b25d56
+~~~
+

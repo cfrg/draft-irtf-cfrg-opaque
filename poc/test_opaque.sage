@@ -6,7 +6,7 @@ import json
 import hashlib
 
 try:
-    from sagelib.opaque import default_opaque_configuration, OPAQUECore
+    from sagelib.opaque import default_opaque_configuration_base, OPAQUECore
     from sagelib.opaque_common import encode_vector, decode_vector, random_bytes, _as_bytes
     from sagelib.opaque_messages import deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, deserialize_credential_request, deserialize_credential_response
     from sagelib.opaque_messages import InnerEnvelope, deserialize_inner_envelope, envelope_mode_base, envelope_mode_custom_identifier, \
@@ -24,7 +24,7 @@ def test_registration_and_authentication():
     pkU = _as_bytes("pkU")
     pkS = _as_bytes("pkS")
 
-    config = default_opaque_configuration    
+    config = default_opaque_configuration_base    
     core = OPAQUECore(config)
     creds = Credentials(skU, pkU)
 

@@ -6,7 +6,7 @@ import json
 import hashlib
 
 try:
-    from sagelib.opaque import default_opaque_configuration, OPAQUECore
+    from sagelib.opaque import default_opaque_configuration_base, OPAQUECore
     from sagelib.opaque_messages import deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, deserialize_credential_request, deserialize_credential_response
     from sagelib.opaque_messages import InnerEnvelope, deserialize_inner_envelope, envelope_mode_base, envelope_mode_custom_identifier, \
         Envelope, deserialize_envelope
@@ -41,11 +41,11 @@ def test_inner_envelope_serialization():
 def test_envelope_serialization():
     inner_envelope = create_inner_envelope()
     auth_tag = random_bytes(
-        default_opaque_configuration.hash_alg().digest_size)
+        default_opaque_configuration_base.hash().digest_size)
     envelope = Envelope(inner_envelope, auth_tag)
     serialized_envelope = envelope.serialize()
     recovered_envelope, offset = deserialize_envelope(
-        default_opaque_configuration, serialized_envelope)
+        default_opaque_configuration_base, serialized_envelope)
 
     assert offset == len(serialized_envelope)
     assert recovered_envelope.contents.nonce == envelope.contents.nonce
@@ -57,7 +57,7 @@ def test_core_protocol_serialization():
     pkU = _as_bytes("pkU")
     pkS = _as_bytes("pkS")
 
-    config = default_opaque_configuration   
+    config = default_opaque_configuration_base   
     core = OPAQUECore(config)
     creds = Credentials(skU, pkU)
 
