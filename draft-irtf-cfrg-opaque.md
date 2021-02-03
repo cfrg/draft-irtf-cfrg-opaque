@@ -465,11 +465,11 @@ The `base` mode defines `SecretCredentials` and `CleartextCredentials` as follow
 
 ~~~
 struct {
-  opaque client_private_key<1..2^16-1>;
+  opaque client_private_key<1..255>;
 } SecretCredentials;
 
 struct {
-  opaque server_public_key<1..2^16-1>;
+  opaque server_public_key<1..255>;
 } CleartextCredentials;
 ~~~
 
@@ -477,11 +477,11 @@ The `custom_identifier` mode defines `SecretCredentials` and `CleartextCredentia
 
 ~~~
 struct {
-  opaque client_private_key<1..2^16-1>;
+  opaque client_private_key<1..255>;
 } SecretCredentials;
 
 struct {
-  opaque server_public_key<1..2^16-1>;
+  opaque server_public_key<1..255>;
   opaque client_identity<0..2^16-1>;
   opaque server_identity<0..2^16-1>;
 } CleartextCredentials;
@@ -494,7 +494,7 @@ encryption and authentication.
 struct {
   EnvelopeMode mode;
   opaque nonce[32];
-  opaque encrypted_creds<1..2^16-1>;
+  opaque encrypted_creds<1..255>;
 } InnerEnvelope;
 
 struct {
@@ -545,7 +545,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque server_public_key<1..2^16-1>;
+    opaque server_public_key<1..255>;
 } RegistrationResponse;
 ~~~
 
@@ -557,7 +557,7 @@ server_public_key
 
 ~~~
 struct {
-    opaque client_public_key<1..2^16-1>;
+    opaque client_public_key<1..255>;
     Envelope envelope;
 } RegistrationUpload;
 ~~~
@@ -666,7 +666,7 @@ are obtained from `record`, and `oprf_key` is retained from the output of `Creat
 ~~~
 struct {
     SerializedScalar oprf_key;
-    opaque client_public_key<1..2^16-1>;
+    opaque client_public_key<1..255>;
     Envelope envelope;
 } credential_file;
 ~~~
@@ -728,7 +728,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque server_public_key<1..2^16-1>;
+    opaque server_public_key<1..255>;
     Envelope envelope;
 } CredentialResponse;
 ~~~
