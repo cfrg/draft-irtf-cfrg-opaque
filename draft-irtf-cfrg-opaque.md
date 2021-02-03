@@ -684,9 +684,8 @@ knowledge of the password, and both client and server agree on a mutually authen
 shared secret key.
 
 OPAQUE produces two outputs: a session secret and an export key. The export key may be used
-for additional application-specific purposes. For example, one might expand the use of OPAQUE
-with a credential-retrieval functionality that is separate from the contents of the `Envelope`
-structure. The output `export_key` MUST NOT be used in any way before the HMAC value in the
+for additional application-specific purposes, as outlined in {{export-key-usage}}.
+The output `export_key` MUST NOT be used in any way before the HMAC value in the
 envelope is validated. See {{envelope-encryption}} for more details about this requirement.
 
 ## Credential Retrieval
@@ -1156,6 +1155,15 @@ properties from the authentication or encryption schemes as long as export_key
 is used only after the envelope is validated, i.e., after the HMAC in RecoverCredentials
 passes verification.
 
+## Export Key Usage {#export-key-usage}
+
+The export key can be used (separately from the OPAQUE protocol) to provide
+confidentiality and integrity to other data which only the client should be
+able to process. For instance, if the server is expected to maintain any
+client-side secrets which require a password to access, then this export key
+can be used to encrypt these secrets so that they remain hidden from the
+server.
+
 ## Configuration Choice
 
 Best practices regarding implementation of cryptographic schemes
@@ -1591,4 +1599,3 @@ KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
 8656c6c6f20626f625a7396b6e6e0dbb1690ba3b69061ba864fda0c2c078520f01804
 ef15c0b25d56
 ~~~
-
