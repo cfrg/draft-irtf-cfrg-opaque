@@ -59,8 +59,9 @@ def test_3DH():
         outputs = {}
 
         # Protocol inputs
-        inputs["client_identity"] = to_hex(idU)
-        inputs["server_identity"] = to_hex(idS)
+        if config.mode == envelope_mode_custom_identifier:
+            inputs["client_identity"] = to_hex(idU)
+            inputs["server_identity"] = to_hex(idS)
         inputs["password"] = to_hex(pwdU)
         inputs["client_private_key"] = to_hex(skU_bytes)
         inputs["client_public_key"] = to_hex(pkU_bytes)

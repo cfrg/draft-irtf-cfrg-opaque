@@ -26,7 +26,7 @@ class OPAQUECore(object):
     def derive_secrets(self, pwdU, response, blind, nonce, Npt):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
         N = oprf_context.unblind(blind, response.data, None, None)
-        y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE01"))
+        y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE"))
         y_harden = self.config.slow_hash.hash(y)
         rwdU = hkdf_extract(self.config, nonce, y_harden)
 
