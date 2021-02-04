@@ -25,6 +25,14 @@ else:
     def _strxor(str1, str2): return ''.join(chr(ord(s1) ^ ord(s2))
                                             for (s1, s2) in zip(str1, str2))
 
+# enum {
+#   base(1),
+#   custom_identifier(2),
+#   (255)
+# } EnvelopeMode;
+envelope_mode_base = 0x01
+envelope_mode_custom_identifier = 0x02
+
 # struct {
 #    opaque skU<1..2^16-1>; 
 # } SecretCredentials;
@@ -37,9 +45,6 @@ else:
 #   SecretCredentials secret_credentials;
 #   CleartextCredentials cleartext_credentials;
 # } Credentials;
-
-envelope_mode_base = 0x00
-envelope_mode_custom_identifier = 0x01
 
 def deserialize_secret_credentials(data):
     skU, offset = decode_vector(data)
