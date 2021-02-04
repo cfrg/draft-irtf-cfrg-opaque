@@ -38,8 +38,8 @@ else:
 #   CleartextCredentials cleartext_credentials;
 # } Credentials;
 
-envelope_mode_base = 0x00
-envelope_mode_custom_identifier = 0x01
+envelope_mode_base = 0x01
+envelope_mode_custom_identifier = 0x02
 
 def deserialize_secret_credentials(data):
     skU, offset = decode_vector(data)
