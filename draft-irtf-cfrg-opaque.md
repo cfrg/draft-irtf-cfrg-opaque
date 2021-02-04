@@ -1023,20 +1023,6 @@ info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
 enc_server_info = xor(info_pad, server_info)
 ~~~
 
-### Alternate AKE instantiations
-
-It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
-HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
-rather than static DH keys for authentication. Specification of these instantiations is
-left to future documents.
-
-OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
-flow above and security properties (KCI resistance and forward secrecy) outlined
-in {{security-considerations}}. Note that such an instantiation is not quantum safe unless
-the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
-but the OPRF is not, would still ensure the confidentiality of application data encrypted
-under session_key (or a key derived from it) with a quantum-safe encryption function.
-
 # Configurations {#configurations}
 
 An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode). The OPAQUE OPRF
@@ -1358,6 +1344,82 @@ aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+
+# Alternate AKE instantiations
+
+It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
+HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
+rather than static DH keys for authentication. Specification of these instantiations is
+left to future documents. A sketch of how these instantiations might change is included
+below for posterity.
+
+OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
+flow above and security properties (KCI resistance and forward secrecy) outlined
+in {{security-considerations}}. Note that such an instantiation is not quantum safe unless
+the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
+but the OPRF is not, would still ensure the confidentiality of application data encrypted
+under session_key (or a key derived from it) with a quantum-safe encryption function.
+
+## HMQV Instantiation Sketch
+
+An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
+schedule {{HMQV}}. First, the key schedule `info` value would use a different constant prefix
+-- "HMQV keys" instead of "3DH keys" -- as shown below.
+
+~~~
+info = "HMQV keys" || I2OSP(len(client_nonce), 2) || client_nonce
+                   || I2OSP(len(server_nonce), 2) || server_nonce
+                   || I2OSP(len(client_identity), 2) || client_identity
+                   || I2OSP(len(server_identity), 2) || server_identity
+~~~
+
+Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
+group of prime order p with bit length L, clients would compute `IKM` as follows:
+
+~~~
+u' = (eskU + u \* skU) mod p
+IKM = (epkS \* pkS^s)^u'
+~~~
+
+Likewise, servers would compute `IKM` as follows:
+
+~~~
+s' = (eskS + s \* skS) mod p
+IKM = (epkU \* pkU^u)^s'
+~~~
+
+In both cases, `u` would be computed as follows:
+
+~~~
+hashInput = I2OSP(len(epkU), 2) || epkU ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("client"), 2) || "client"
+u = Hash(hashInput) mod L
+~~~
+
+Likewise, `s` would be computed as follows:
+
+~~~
+hashInput = I2OSP(len(epkS), 2) || epkS ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("server"), 2) || "server"
+s = Hash(hashInput) mod L
+~~~
+
+Hash is the same hash function used in the main OPAQUE protocol for key derivation.
+Its output length (in bits) must be at least L.
+
+## SIGMA-I Instantiation Sketch
+
+A SIGMA-I instantiation differs more drastically from OPAQUE-3DH, since authentication
+uses digital signatures in lieu of Diffie Hellman. In particular, both KE2 and KE3
+would carry a digital signature, computed using the server and client private keys
+established during registration, respectively, as well as a MAC, where the MAC is
+computed as in OPAQUE-3DH.
+
+The key schedule would also change. Specifically, the key schedule `info` value would
+use a different constant prefix -- "SIGMA-I keys" instead of "3DH keys" -- and the `IKM`
+computation would use only the ephemeral key shares exchanged between client and server.
 
 # Test Vectors
 
