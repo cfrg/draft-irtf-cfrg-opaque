@@ -293,11 +293,12 @@ OPAQUE is defined and proven as the composition of two functionalities:
 an oblivious pseudorandom function (OPRF) and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
-OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
-on a variety of AKE protocols, including HMQV {{HMQV}}, 3DH {{SIGNAL}}
-and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
-easy to integrate with additional AKE protocols, e.g., IKEv2, and with future
-ones such as those based on post-quantum techniques.
+OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
+based on 3DH {{SIGNAL}}. Other instantiations are possible, as discussed in
+{{alternate-akes}}, but their details are out of scope for this document.
+In general, the modularity of OPAQUE's design makes it easy to integrate with
+additional AKE protocols, e.g., IKEv2, and with future ones such as those
+based on post-quantum techniques.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
@@ -845,16 +846,14 @@ We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate credent
 and credential_response, respectively, for binding between the underlying OPRF protocol
 messages and the KE session.
 
-The rest of this section is outlined as follows:
-
-- Key schedule utility functions
-- 3DH instantiation, including wire format messages
-- Outlines of other AKE instantiations, including HMQV and SIGMA-I
+The rest of this section includes key schedule utility functions used by OPAQUE-3DH,
+and then provides a detailed specification for OPAQUE-3DH, including its wire format
+messages.
 
 ### Key Schedule Utility Functions
 
-The key derivation procedures for HMQV, 3DH, and SIGMA-I instantiations
-all make use of the functions below, re-purposed from TLS 1.3 {{?RFC8446}}.
+The key derivation procedures for OPAQUE-3DH makes use of the functions below, re-purposed
+from TLS 1.3 {{?RFC8446}}.
 
 ~~~
 HKDF-Expand-Label(Secret, Label, Context, Length) =
@@ -1002,7 +1001,7 @@ Likewise, `IKM` is computed by the server as follows:
 IKM = epkU^eskS || epkU^skS || pkU^eskS
 ~~~
 
-#### OPAQUE-3DH Encryption and Key Confirmation {#hmqv-core}
+#### OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
 respectively. These values are computed as HMAC(mac_key, transcript), where
@@ -1027,7 +1026,7 @@ enc_server_info = xor(info_pad, server_info)
 
 An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode). The OPAQUE OPRF
 protocol is drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The
-following OPRF ciphersuites supports are supported:
+following OPRF ciphersuites are supported:
 
 - OPRF(ristretto255, SHA-512)
 - OPRF(decaf448, SHA-512)
@@ -1037,17 +1036,15 @@ following OPRF ciphersuites supports are supported:
 
 Future configurations may specify different OPRF constructions.
 
-The OPAQUE hash function is that which is associated with the OPRF variant.
-For the variants specified here, only SHA-512 and SHA-256 are supported.
+The OPAQUE hash function is that which is associated with the OPRF ciphersuite.
+For the ciphersuites specified here, only SHA-512 and SHA-256 are supported.
 
 The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
-and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
-values or set at the time of password registration and stored at the server.
-In the latter case, the server communicates these parameters to the client during
-login.
+and PBKDF2 {{?RFC2898}} with fixed parameter choices.
 
-The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one of `base`
-or `custom_identifier`.
+The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one
+of `base` or `custom_identifier`. Future specifications may specify alternate
+EnvelopeMode values and their corresponding Envelope structure.
 
 # Security Considerations {#security-considerations}
 
@@ -1075,7 +1072,7 @@ to impersonate others to that party. This is an important security
 property achieved by most public-key based AKE protocols, including
 protocols that use signatures or public key encryption for
 authentication. It is also a property of many implicitly
-authenticated protocols (e.g., HMQV) but not all of them. We also note that
+authenticated protocols, e.g., HMQV, but not all of them. We also note that
 key exchange protocols based on shared keys do not satisfy the KCI
 requirement, hence they are not considered in the OPAQUE setting.
 We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
@@ -1345,7 +1342,7 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
-# Alternate AKE instantiations
+# Alternate AKE instantiations {#alternate-akes}
 
 It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
 HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
