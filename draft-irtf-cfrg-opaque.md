@@ -1342,7 +1342,7 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
-# Alternate AKE instantiations {#alternate-akes}
+# Alternate AKE Instantiations {#alternate-akes}
 
 It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
 HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
