@@ -1107,7 +1107,7 @@ et al. {{JKKX16}}. None of these papers considered security against
 pre-computation attacks or presented a proof of aPAKE security
 (not even in a weak model).
 
-### Identities {#identities}
+## Identities {#identities}
 
 AKE protocols generate keys that need to be uniquely and verifiably bound to a pair
 of identities. In the case of OPAQUE, those identities correspond to client_identity and server_identity.
@@ -1124,6 +1124,25 @@ that identities change across different sessions as long as there is a policy th
 can establish if the identity is acceptable or not to the peer. However, we note
 that the public keys of both the server and the client must always be those defined
 at time of password registration.
+
+The client identity (client_identity) and server identity (server_identity) are
+optional parameters which are left to the application to designate as monikers for the client
+and server. If the application layer does not supply values for these
+parameters, then they will be omitted from the creation of the envelope
+during the registration stage. Furthermore, they will be substituted with
+client_identity = client_public_key and server_identity = server_public_key during
+the authenticated key exchange stage.
+
+The advantage to supplying a custom client_identity and server_identity (instead of simply relying
+on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
+mappings between client_identity and client_public_key (and server_identity and server_public_key)
+are protected by the authentication from the envelope. Then, the client can verify that the
+client_identity and server_identity contained in its envelope matches the client_identity
+and server_identity supplied by the server.
+
+However, if this extra layer of verification is unnecessary for the application, then simply
+leaving client_identity and server_identity unspecified (and using client_public_key and
+server_public_key instead) is acceptable.
 
 ## Envelope Encryption {#envelope-encryption}
 
@@ -1147,22 +1166,12 @@ client-side secrets which require a password to access, then this export key
 can be used to encrypt these secrets so that they remain hidden from the
 server.
 
-## Configuration Choice
-
-Best practices regarding implementation of cryptographic schemes
-apply to OPAQUE. Particular care needs to be given to the
-implementation of the OPRF regarding testing group membership and
-avoiding timing and other side channel leakage in the hash-to-curve
-mapping. Drafts {{I-D.irtf-cfrg-hash-to-curve}} and
-{{I-D.irtf-cfrg-voprf}} have detailed instantiation and
-implementation guidance.
-
 ## Static Diffie-Hellman Oracles
 
 While one can expect the practical security of the OPRF function
 (namely, the hardness of computing the function without knowing the
 key) to be in the order of computing discrete logarithms or solving
-Diffie-Hellman, Brown and Gallant [BG04] and Cheon {{Cheon06}} show an
+Diffie-Hellman, Brown and Gallant {{BG04}} and Cheon {{Cheon06}} show an
 attack that slightly improves on generic attacks. For the case that
 q-1 or q+1, where q is the order of the group G, has a t-bit divisor,
 they show an attack that calls the OPRF on 2^t chosen inputs and
@@ -1198,35 +1207,13 @@ is as specified in Section 5.6.2.3.4 of {{keyagreement}}. This includes
 checking that the coordinates are in the correct range, that the point
 is on the curve, and that the point is not the point at infinity.
 Additionally, validation MUST ensure the Diffie-Hellman shared secret is
-not the point at infinity. For X25519 and X448, validation is as described in
-{{?RFC7748}}. In particular, where applicable, endpoints MUST check whether
-the Diffie-Hellman shared secret is the all-zero value and abort if so.
+not the point at infinity.
 
 ## OPRF Hardening
 
 Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
-
-## Client and Server Identities
-
-The client identity (client_identity) and server identity (server_identity) are optional parameters
-which are left to the application to designate as monikers for the client
-and server. If the application layer does not supply values for these
-parameters, then they will be omitted from the creation of the envelope
-during the registration stage. Furthermore, they will be substituted with
-client_identity = client_public_key and server_identity = server_public_key during the authenticated key exchange stage.
-
-The advantage to supplying a custom client_identity and server_identity (instead of simply relying
-on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
-mappings between client_identity and client_public_key (and server_identity and server_public_key) are protected by the
-authentication from the envelope. Then, the client can verify that the
-client_identity and server_identity contained in its envelope matches the client_identity and server_identity supplied by
-the server.
-
-However, if this extra layer of verification is unnecessary for the
-application, then simply leaving client_identity and server_identity unspecified (and using client_public_key and
-server_public_key instead) is acceptable.
 
 <!-- TODO(caw): bring this back after updating later -->
 
