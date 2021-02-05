@@ -293,11 +293,12 @@ OPAQUE is defined and proven as the composition of two functionalities:
 an oblivious pseudorandom function (OPRF) and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
-OPRF and AKE protocols.) This document specifies OPAQUE instantiations based
-on a variety of AKE protocols, including HMQV {{HMQV}}, 3DH {{SIGNAL}}
-and SIGMA {{SIGMA}}. In general, the modularity of OPAQUE's design makes it
-easy to integrate with additional AKE protocols, e.g., IKEv2, and with future
-ones such as those based on post-quantum techniques.
+OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
+based on 3DH {{SIGNAL}}. Other instantiations are possible, as discussed in
+{{alternate-akes}}, but their details are out of scope for this document.
+In general, the modularity of OPAQUE's design makes it easy to integrate with
+additional AKE protocols, e.g., IKEv2, and with future ones such as those
+based on post-quantum techniques.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
@@ -845,16 +846,14 @@ We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate credent
 and credential_response, respectively, for binding between the underlying OPRF protocol
 messages and the KE session.
 
-The rest of this section is outlined as follows:
-
-- Key schedule utility functions
-- 3DH instantiation, including wire format messages
-- Outlines of other AKE instantiations, including HMQV and SIGMA-I
+The rest of this section includes key schedule utility functions used by OPAQUE-3DH,
+and then provides a detailed specification for OPAQUE-3DH, including its wire format
+messages.
 
 ### Key Schedule Utility Functions
 
-The key derivation procedures for HMQV, 3DH, and SIGMA-I instantiations
-all make use of the functions below, re-purposed from TLS 1.3 {{?RFC8446}}.
+The key derivation procedures for OPAQUE-3DH makes use of the functions below, re-purposed
+from TLS 1.3 {{?RFC8446}}.
 
 ~~~
 HKDF-Expand-Label(Secret, Label, Context, Length) =
@@ -1002,7 +1001,7 @@ Likewise, `IKM` is computed by the server as follows:
 IKM = epkU^eskS || epkU^skS || pkU^eskS
 ~~~
 
-#### OPAQUE-3DH Encryption and Key Confirmation {#hmqv-core}
+#### OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
 respectively. These values are computed as HMAC(mac_key, transcript), where
@@ -1023,25 +1022,11 @@ info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
 enc_server_info = xor(info_pad, server_info)
 ~~~
 
-### Alternate AKE instantiations
-
-It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
-HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
-rather than static DH keys for authentication. Specification of these instantiations is
-left to future documents.
-
-OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
-flow above and security properties (KCI resistance and forward secrecy) outlined
-in {{security-considerations}}. Note that such an instantiation is not quantum safe unless
-the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
-but the OPRF is not, would still ensure the confidentiality of application data encrypted
-under session_key (or a key derived from it) with a quantum-safe encryption function.
-
 # Configurations {#configurations}
 
 An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode). The OPAQUE OPRF
 protocol is drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The
-following OPRF ciphersuites supports are supported:
+following OPRF ciphersuites are supported:
 
 - OPRF(ristretto255, SHA-512)
 - OPRF(decaf448, SHA-512)
@@ -1051,17 +1036,15 @@ following OPRF ciphersuites supports are supported:
 
 Future configurations may specify different OPRF constructions.
 
-The OPAQUE hash function is that which is associated with the OPRF variant.
-For the variants specified here, only SHA-512 and SHA-256 are supported.
+The OPAQUE hash function is that which is associated with the OPRF ciphersuite.
+For the ciphersuites specified here, only SHA-512 and SHA-256 are supported.
 
 The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
-and PBKDF2 {{?RFC2898}} with suitable parameter choices. These may be constant
-values or set at the time of password registration and stored at the server.
-In the latter case, the server communicates these parameters to the client during
-login.
+and PBKDF2 {{?RFC2898}} with fixed parameter choices.
 
-The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one of `base`
-or `custom_identifier`.
+The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one
+of `base` or `custom_identifier`. Future specifications may specify alternate
+EnvelopeMode values and their corresponding Envelope structure.
 
 # Security Considerations {#security-considerations}
 
@@ -1089,7 +1072,7 @@ to impersonate others to that party. This is an important security
 property achieved by most public-key based AKE protocols, including
 protocols that use signatures or public key encryption for
 authentication. It is also a property of many implicitly
-authenticated protocols (e.g., HMQV) but not all of them. We also note that
+authenticated protocols, e.g., HMQV, but not all of them. We also note that
 key exchange protocols based on shared keys do not satisfy the KCI
 requirement, hence they are not considered in the OPAQUE setting.
 We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
@@ -1359,6 +1342,82 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
+# Alternate AKE Instantiations {#alternate-akes}
+
+It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
+HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
+rather than static DH keys for authentication. Specification of these instantiations is
+left to future documents. A sketch of how these instantiations might change is included
+below for posterity.
+
+OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
+flow above and security properties (KCI resistance and forward secrecy) outlined
+in {{security-considerations}}. Note that such an instantiation is not quantum safe unless
+the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
+but the OPRF is not, would still ensure the confidentiality of application data encrypted
+under session_key (or a key derived from it) with a quantum-safe encryption function.
+
+## HMQV Instantiation Sketch
+
+An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
+schedule {{HMQV}}. First, the key schedule `info` value would use a different constant prefix
+-- "HMQV keys" instead of "3DH keys" -- as shown below.
+
+~~~
+info = "HMQV keys" || I2OSP(len(client_nonce), 2) || client_nonce
+                   || I2OSP(len(server_nonce), 2) || server_nonce
+                   || I2OSP(len(client_identity), 2) || client_identity
+                   || I2OSP(len(server_identity), 2) || server_identity
+~~~
+
+Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
+group of prime order p with bit length L, clients would compute `IKM` as follows:
+
+~~~
+u' = (eskU + u \* skU) mod p
+IKM = (epkS \* pkS^s)^u'
+~~~
+
+Likewise, servers would compute `IKM` as follows:
+
+~~~
+s' = (eskS + s \* skS) mod p
+IKM = (epkU \* pkU^u)^s'
+~~~
+
+In both cases, `u` would be computed as follows:
+
+~~~
+hashInput = I2OSP(len(epkU), 2) || epkU ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("client"), 2) || "client"
+u = Hash(hashInput) mod L
+~~~
+
+Likewise, `s` would be computed as follows:
+
+~~~
+hashInput = I2OSP(len(epkS), 2) || epkS ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("server"), 2) || "server"
+s = Hash(hashInput) mod L
+~~~
+
+Hash is the same hash function used in the main OPAQUE protocol for key derivation.
+Its output length (in bits) must be at least L.
+
+## SIGMA-I Instantiation Sketch
+
+A SIGMA-I instantiation differs more drastically from OPAQUE-3DH, since authentication
+uses digital signatures in lieu of Diffie Hellman. In particular, both KE2 and KE3
+would carry a digital signature, computed using the server and client private keys
+established during registration, respectively, as well as a MAC, where the MAC is
+computed as in OPAQUE-3DH.
+
+The key schedule would also change. Specifically, the key schedule `info` value would
+use a different constant prefix -- "SIGMA-I keys" instead of "3DH keys" -- and the `IKM`
+computation would use only the ephemeral key shares exchanged between client and server.
+
 # Test Vectors
 
 This section contains test vectors for the OPAQUE-3DH specification. Each test
@@ -1374,120 +1433,6 @@ to which the AKE authentication keys correspond.
 
 ~~~
 Group: ristretto255
-EnvelopeMode: 00
-OPRF: 0001
-SlowHash: Identity
-Hash: SHA512
-~~~
-
-### Input Values
-
-~~~
-server_nonce: 534a8d6ca099313c73f909ecadd9973644203036913b162134def00
-fdf8b8a18
-oprf_key: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be03
-7e50b
-password: 436f7272656374486f72736542617474657279537461706c65
-blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
-e3263503
-server_private_keyshare: bfd25bddcd9190db01fdc127247eb2461d78281233d8
-77b4564a00404cb79700
-client_nonce: 1a7c15f8ca50bb7a8d654035ad59488a33758b80fc1cc1fa7cc4d92
-50c00f567
-server_info: 6772656574696e677320616c696365
-client_info: 68656c6c6f20626f62
-client_private_keyshare: 1d6078acf052615f1e3206b9aa9aed95cb0f04daa534
-0ccb52534871f1158f09
-envelope_nonce: ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e093562844
-1ed18bbe818
-server_keyshare: dcc991d13fa137302cc1adce95e6f9087f503d88e12d90200682
-2e6da438ec22
-blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
-f5e46e512cf8e03
-client_public_key: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a
-4b81b3bb7e060d
-client_private_key: 31aca12a23a2a03db43c91fafe6d32589e2d8f09d8004d605
-0ec275317cc7f08
-client_keyshare: 408c2a2025080d6507b6250f3dc1ac420c37134bf14d7b1be542
-c4d8cfd64a52
-server_public_key: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856
-974424a8561115
-server_private_key: ccde5849510d7175da028ccccba666e446b9418cf7ba9383b
-9530c75474bcb04
-~~~
-
-### Intermediate Values
-
-~~~
-auth_key: c0ee18ecc5ae7012bcf641a28c2d21ebc198492f1d75ed7ee7cc60b6c5f
-c2a6e5f0ad974fc8f0f48dacfcac765d2b626fce0728f3abbee16d522fe2fa108270c
-server_mac_key: 18685231e1442f5547af5f9c965fc6a951428a963f26ef99cea69
-53873296df81b71e89c05d9bd4abf6863a1e3215f3fe4a202e33f7164c90d250d00a8
-dd4a91
-envelope: 00ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e0935628441ed1
-8bbe81800228f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14035630294f
-b8c42ae21c6d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d168b810d7b08
-787319d837367607662e9d545c5e5abecc469e544903a570e2efdb168bbb8603d11c8
-prk: ec754de047f914e9adf78a82925d70f90478c0e74ea4124de5ba92e8bd935691
-641b6a6ad00ad7d101d232c11fdbe1a578d4795bc62e73fb7e42d6ef234bf2e1
-client_mac_key: 1b73e32b32aad3e94a8bfd664532c9cf8c3385d8ec62badd59873
-270e02f854436b68ade26d0efa0c6b4b41e4970d950d6e7a5ca292427952730105bba
-f89896
-pseudorandom_pad: 8f796a0957e5783ef936764c5a26e52b87282940364827144e3
-660c568ebd3e69d14
-handshake_encrypt_key: 26eea148eeaad14bba63d6d30cac46ddb1d37971f6fe1d
-dfc80955271f4d242c0db5824d5df69b3a6f619753733a26640d20e35b8589c6b7448
-df7d902155ed4
-handshake_secret: 46c0c3d90c38b9cf3a0c3f19248adef96365e059a4a0034b4b2
-d36efda24174620e0894bcb0916dcaa79cdb1a7f475e9b809c0f4a072c8bf4b6b4735
-87838641
-~~~
-
-### Output Values
-
-~~~
-registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
-30cdba66ccb379e572002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14
-856974424a8561115
-export_key: 39a81bd85c701bcb4396d7d6fad5a67712aff40a4a7d806094f84dbbb
-56bf371d8b9b522abba314dc5203cf387c4be187128e3270b151023221c9fc86fff11
-4a
-registration_upload: 0020fcca4fd8732b9887f566bbdcdb738c884f5390b360f4
-3b5b3a4b81b3bb7e060d00ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e093
-5628441ed18bbe81800228f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14
-035630294fb8c42ae21c6d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d16
-8b810d7b08787319d837367607662e9d545c5e5abecc469e544903a570e2efdb168bb
-b8603d11c8
-registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
-44418164c4d49003e
-session_key: f27806d4c588eac72b3da00dba21a2852cf3a91d5164d9ac4dcfa896
-a3cbbb2836785a33ba9d5fb193068347b0ed20bcde94a4482e4456d9c5666eb6191de
-a47
-KE3: bf680d0471ffd1885f050b51c3e57b59e4b3ec31c49dd893644028f30e4bca44
-6cf2f047abd75f739bffccac0af3fe24b8255d3391c4899608df9539f97b5c91
-KE2: e83812f06568d57b8cdfdcc90fe91454e21bd25dd2a1c32dd1599a2e4a4b6c35
-002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856974424a85611150
-0ff05735be871d25c4fa25f2a65e26386fad3eda2ba1e0935628441ed18bbe8180022
-8f595ba5f6cf5b9c590bc270cbdc1b46b570b76db941ff14035630294fb8c42ae21c6
-d965b5ee07b9a86687941dc9594b3f0c92317b367fd19d168b810d7b08787319d8373
-67607662e9d545c5e5abecc469e544903a570e2efdb168bbb8603d11c8534a8d6ca09
-9313c73f909ecadd9973644203036913b162134def00fdf8b8a18dcc991d13fa13730
-2cc1adce95e6f9087f503d88e12d902006822e6da438ec22000f1e4413f30f38967bd
-8c1f3a65da5f825ec34bf0c56f7c50117388593922db7bf53b1f451f6623df88c355a
-a7fb7f9464e00c14683bbab1386ee43e59952a44b73af76d7659a81b219270f2543de
-fc1
-KE1: b68e0e356f8490fa9c3bed952e16cc02db21eda686b3c484f3d9d912caa41f76
-1a7c15f8ca50bb7a8d654035ad59488a33758b80fc1cc1fa7cc4d9250c00f56700096
-8656c6c6f20626f62408c2a2025080d6507b6250f3dc1ac420c37134bf14d7b1be542
-c4d8cfd64a52
-~~~
-
-## OPAQUE-3DH Test Vector 2
-
-### Configuration
-
-~~~
-Group: ristretto255
 EnvelopeMode: 01
 OPRF: 0001
 SlowHash: Identity
@@ -1497,105 +1442,220 @@ Hash: SHA512
 ### Input Values
 
 ~~~
-server_nonce: be1b6a9ee06b76c648efd2e57300cae3418a2137ee3abcfa018431e
-e50876be4
-oprf_key: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b
-0e707
+server_nonce: a4997137a8fa0d4baf7052a499bf877057f9404e03c889d641a0d7c
+807b6a518
+oprf_key: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be03
+7e50b
 password: 436f7272656374486f72736542617474657279537461706c65
-blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
-4171ea02
-server_private_keyshare: 79450906dc147d9b73edf5c98f7d1970ebcc825c474c
-ecddc671f3290038c205
-client_nonce: 79a442d9fbebbd244e27fd10ea255dcec9f43e9b2c6a33575eb3377
-5b081d77e
+blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
+e3263503
+server_private_keyshare: 31587dff30b8001d9d43584decc22e358fa7f9d6e606
+29fb1223081c3bae7103
+client_nonce: 75a1ad27ab77578bc08b44c4318f09b31d53145c9ba3b42abf0ea08
+a781277a6
 server_info: 6772656574696e677320616c696365
-server_identity: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf1485697
-4424a8561115
 client_info: 68656c6c6f20626f62
-client_private_keyshare: 46124f54f47fec6b66c53e4154475d27a0e046c5d1c8
-54b2f3680defdff14a0e
-envelope_nonce: f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd
-6c46d705cf2
-server_public_key: 76ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856
-974424a8561115
-client_identity: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a4b
-81b3bb7e060d
-blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
-cec831b8c681a09
-client_public_key: fcca4fd8732b9887f566bbdcdb738c884f5390b360f43b5b3a
-4b81b3bb7e060d
-client_private_key: 31aca12a23a2a03db43c91fafe6d32589e2d8f09d8004d605
-0ec275317cc7f08
-client_keyshare: 5a7396b6e6e0dbb1690ba3b69061ba864fda0c2c078520f01804
-ef15c0b25d56
-server_keyshare: ea25f0b5ed03ec29b5eaacf21dde7d4c1fcb4e34ddb2d7c6e4a7
-1b6d10e3d870
-server_private_key: ccde5849510d7175da028ccccba666e446b9418cf7ba9383b
-9530c75474bcb04
+client_private_keyshare: fbbf4ad24119f08a35bf999f8ae0c779ed7b3e266bf3
+3f793f6bf9ebf4578005
+envelope_nonce: 6c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e037
+585783444c0
+server_keyshare: 82be40ef93bf7c6edd43d4ed9f52fa19827649b819de39c52a22
+43e985b75d62
+blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
+f5e46e512cf8e03
+client_public_key: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3ef
+caba4f1c4ae861
+client_private_key: f0f56cfb488649fe28691dd9aa5dc9ff4c0e6028075baa3c5
+615398a2cb12304
+client_keyshare: 484e47e31b3132f4ee512e41805a1690891111a7b885bc526198
+22c14cabf360
+server_public_key: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdc
+eeeb935924a903
+server_private_key: d63d709e3a739a128929a9f289ff263fdcbc457f2f47f7c43
+ccafbbfee72290c
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 3f5312f1c60350f5c46ab368434035f5740eef83a6d5cbc7ed3720fb78a
-c32a5ea9fc734296efc9167350492903c449d85ac774b05f37efcc3ea0bcd9c600f55
-server_mac_key: 341d064d83d7415f28f9528771f10d768891ac552409d44ee7324
-8eed0ed4b58f48ac7406fe8c7fce9cb13029bc30d4e2bc48711fe5932b499a55cb7c1
-85ce1b
-envelope: 01f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd6c46
-d705cf20022ceffb2fded3ff3dfd323ef4411cc213014316463bdd6692907cd4caffd
-885530d0d9ceb917641b2550623727461b647b81b1e81ae67fcb0f57ad93175306ff3
-26b1ec66433a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bcb06f093fa9
-prk: 8923bf6277c4593732d3cdfaa559f531acd20e5cbec5bc180ddf6795d7a4d7ab
-a39404eed4f94adcf25c84d6e8764fb9bb943db894ac9655fed08b68097de0f9
-client_mac_key: 37ffae79ea8bd0b83884ca45e65ce63d4a4210a39d8c158e8772b
-31fa96a9e174b6badeb15454a14ac46ce4f758a1c9fe1748b7b598c7cb6c7431dbac4
-448b45
-pseudorandom_pad: cedf83514c15d07d731e5b788036df5d2669fa4e32dfb1294aa
-d1c43dadb42fcafd1
-handshake_encrypt_key: 7eec22c81178c6f91176961bc78ccb8a9459f9a54c565b
-f44ab8d2445074bd994672f02e8d7a9974722acfca87a56ffbed3d4092d4ef5e8941c
-5b117227e07d9
-handshake_secret: cc5ce99088b2459ed11e6664e479c19d285878dc0961c47e741
-221029f9ca3df00b2cd35b643a263a872e49de7f6bb95d68cb5793d36087b1d6a0b3c
-7565f3c8
+auth_key: 22198da4ad73b1d35cd8bb875e64ce1a9fc2edeb073d760e114d1d7a2f8
+6d47411caf1787907e2ff96cd3190b14d101101d74cff234259d9f19a18f2cfe29d0b
+server_mac_key: 9de28e2f7107afe266570934c033dd6a403fb2b09a9f1a1357a81
+9fb072d25e6651626638d77bd7f0adf4b2b715d0a0bee2ac531fd0f7da699aba6e9ed
+717466
+envelope: 016c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e0375857
+83444c00022e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92c73838c043
+fc316deeb83deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23775aa54633
+ed75665cd88f451e044cac1b282d890269476d1ac18ff9a4c0cb832e1143ffa7d447a
+prk: 732303f65e76c39f30876aec31af1f5bcd8861626c922baa2e842209c7d5bf2e
+024912db2d6cac00b1260c437d34ec588a664a55fc7a0a40251915d2b15d8ec9
+client_mac_key: 1536168d48218d08dcbed3438e897d98eff566894240d8d136be0
+4ba46b2c788883fd165ce7614c52a6a9c926bf55d249e6c29bc4a23d5a1775ad294a7
+858922
+pseudorandom_pad: e99274b5cd27d14aeeaf16e7aa8d7e7a03071d58229c5dc96d0
+46ed57a761ddccdbc
+handshake_encrypt_key: c646def7a8ca75282ac1a0ad15630834cba2772837d7a3
+a26d00b36923e55b3f5d065679c715e4c799654f261c865f1a55bc94cabc29a6e2e72
+296dfc494a984
+handshake_secret: cc887e128c28064106d4101ac3de633e9096e170f2c4a9913d3
+50f306274b1665a5b251f761672c12db4c403a615c22cee96adb3539fa62662a17f2e
+18cd5fed
+~~~
+
+### Output Values
+
+~~~
+registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
+30cdba66ccb379e57200205442a6f57333a332b4c6f07308f6fa846bde3ed27425820
+cdceeeb935924a903
+export_key: 6ca2c344763e5bc9e3d2bbfe3d982b826b709da597e28e85f9594ec54
+2a20c697d55de277ccce1d1af7c48ab7fea1467ac1e3a99c71dcf6326a909d280bd2f
+6f
+registration_upload: 0020b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9a
+a2c3efcaba4f1c4ae861016c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc5
+56e037585783444c00022e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92
+c73838c043fc316deeb83deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23
+775aa54633ed75665cd88f451e044cac1b282d890269476d1ac18ff9a4c0cb832e114
+3ffa7d447a
+registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
+44418164c4d49003e
+session_key: ee9f1ef224d498858f6c9b3a121016a38bad7816055c452b1c7edf3d
+d439c42a4cc78cbd672e985a20910df14f8f1af4ce5793303ffe6954ff5f1a264e3fd
+515
+KE3: e771daf28bc5e8068dead67c3db19f9ad03ee919e52f6c7a6e79cf1085bd7448
+1e76512c77f37762578eb2faff8fe98e4185ca2d01957216c556d33a6fba3028
+KE2: e83812f06568d57b8cdfdcc90fe91454e21bd25dd2a1c32dd1599a2e4a4b6c35
+00205442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdceeeb935924a9030
+16c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e037585783444c00022
+e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92c73838c043fc316deeb83
+deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23775aa54633ed75665cd88
+f451e044cac1b282d890269476d1ac18ff9a4c0cb832e1143ffa7d447aa4997137a8f
+a0d4baf7052a499bf877057f9404e03c889d641a0d7c807b6a51882be40ef93bf7c6e
+dd43d4ed9f52fa19827649b819de39c52a2243e985b75d62000f13aed85ae30aee2f8
+9ac5e1c5dd53609b890267ef2d765bb56000bc704c2ba4e4256107befee6655cdb084
+64e6c75d8b251642e0d721b3fce38f245568b50e7f6c98825d54cc1a26d6eafadcc1d
+344
+KE1: b68e0e356f8490fa9c3bed952e16cc02db21eda686b3c484f3d9d912caa41f76
+75a1ad27ab77578bc08b44c4318f09b31d53145c9ba3b42abf0ea08a781277a600096
+8656c6c6f20626f62484e47e31b3132f4ee512e41805a1690891111a7b885bc526198
+22c14cabf360
+~~~
+
+## OPAQUE-3DH Test Vector 2
+
+### Configuration
+
+~~~
+Group: ristretto255
+EnvelopeMode: 02
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+~~~
+
+### Input Values
+
+~~~
+server_nonce: 0f3a6da8b667bc7a383c987586bee749c5f2787691baca68757e78b
+6128b0a0f
+oprf_key: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b
+0e707
+password: 436f7272656374486f72736542617474657279537461706c65
+blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
+4171ea02
+server_private_keyshare: 70c944dcb7f4dddde168ecb48dd9488c62b6fc7e9bb4
+2a16d291afca9dd25b07
+client_nonce: 480917b09c6720680b4a7a0ba9f54b69d870f640a4a7994b47ad07d
+1a95c984f
+server_info: 6772656574696e677320616c696365
+server_identity: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdcee
+eb935924a903
+client_info: 68656c6c6f20626f62
+client_private_keyshare: a4ba6cb7e16ab76eccdb4c0b9261eedd426d7863f00b
+fc4a0e09476d3121e70c
+envelope_nonce: e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7dee
+b8cfb42d13f
+server_public_key: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdc
+eeeb935924a903
+client_identity: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3efca
+ba4f1c4ae861
+blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
+cec831b8c681a09
+client_public_key: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3ef
+caba4f1c4ae861
+client_private_key: f0f56cfb488649fe28691dd9aa5dc9ff4c0e6028075baa3c5
+615398a2cb12304
+client_keyshare: 4ae7d50bb80cc8f5034d36c1c27edc30caca0983677a941bc0ac
+e5e10b18300a
+server_keyshare: a2e9e0809b270a1d5c8208f3498a3188538265e6a9e6b274cb38
+c4c5d9b1792d
+server_private_key: d63d709e3a739a128929a9f289ff263fdcbc457f2f47f7c43
+ccafbbfee72290c
+~~~
+
+### Intermediate Values
+
+~~~
+auth_key: 4c7c0ae950ad7e9c518266f953d4a01bd2232695f92fb028aa6c124996e
+31a205f621305fd4997edf8a5fce04a51252ba8430227c134b81d7093a58e01c70752
+server_mac_key: 974bde939ef1d30ba29f9ec2addcaff1eeb105a1f534e04113f9f
+0b5c3b9a0797e3fa5f7006e63dfb2b0ce74d002bd1161767c361507bfb1fa0fed5063
+1cdcb7
+envelope: 02e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7deeb8cf
+b42d13f00227ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26ecd566d7688
+095f9478a721e5a592be9dd3bda76ed97421819aca4a30752813223d33bc7ea443be9
+76754605116278c7fffda4de142674ed154f540bd3285080637eb4b929e1378336b11
+prk: e3bb74ca5f88a95571578e921489e1b6119b438e4efce6e955ae9b6453f24aa4
+e3a34fa22bc5f470cfc134ca0784a9cd7df64be46ff3b325fc19f4009979bf2e
+client_mac_key: 1c55ecba64d98dc2db8f45faa72b8fdd63cad8677b8665cc575cf
+8ad36ef38ec63c9dfc5552007573215983f55d8f5cfa1651da8417e3f27094dde5254
+7f5b89
+pseudorandom_pad: 7ef495b828a97c896f381824d3371ba012eb63c3f19bb535676
+a3b63b18373255ba3
+handshake_encrypt_key: 0852fb826109073be6e7c065b6e2d1f872c16f9977c177
+cd2f945b26bb933fe6252f226f40483f7aa52f545f801d1e4430f30f80fd42070494e
+a77fdcecd6595
+handshake_secret: bfd3bfbe451520880975d0e568cbd3b5155b23c02de504fccb9
+dd5a8195266cd94d49d040530b3d6b0a585d542eb24da708a2b6f6dc34dee4652d0c1
+c62c4e59
 ~~~
 
 ### Output Values
 
 ~~~
 registration_response: 088ac01ebf5700f0c96bc2988509343cb7e2dd6f0df820
-d0fb807faa11a26f56002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14
-856974424a8561115
-export_key: 38b7c0fc66819d9cd51e0e0051d87e159c2be9829f3e2c2ad42560b12
-b7b7950588be9bf8db36bfd9fe26ff55a57e42a5345ee1fa9734f78c8e4e427ede4ee
-9e
-registration_upload: 0020fcca4fd8732b9887f566bbdcdb738c884f5390b360f4
-3b5b3a4b81b3bb7e060d01f627cf8e027b5fca94ba970dc06866b79d5914abb165268
-35bbbd6c46d705cf20022ceffb2fded3ff3dfd323ef4411cc213014316463bdd66929
-07cd4caffd885530d0d9ceb917641b2550623727461b647b81b1e81ae67fcb0f57ad9
-3175306ff326b1ec66433a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bc
-b06f093fa9
+d0fb807faa11a26f5600205442a6f57333a332b4c6f07308f6fa846bde3ed27425820
+cdceeeb935924a903
+export_key: 0effa605dc47ba4fe565c423b782b8b6697b26ee2ede7059b0e17510d
+f8b11554ce053409671480a56ffbe77b91edc95205c213caeaf9dcb0841790ff834a0
+09
+registration_upload: 0020b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9a
+a2c3efcaba4f1c4ae86102e38fb444afe3df13ae05e6876d10eca7661196375518eb6
+6d7deeb8cfb42d13f00227ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26e
+cd566d7688095f9478a721e5a592be9dd3bda76ed97421819aca4a30752813223d33b
+c7ea443be976754605116278c7fffda4de142674ed154f540bd3285080637eb4b929e
+1378336b11
 registration_request: c8d2e9ba503bf3f8821226653314427edb1ec8a3ecc94a5
 dfbbe33d59d07b645
-session_key: db9fa3c0bec6ce623b1b124b843c5b8a8d79f93247396eed72e8c06a
-dba2d5389692f988d65e3adb0d59ed477e37fab31633daa514780522ada541eb354d7
-d49
-KE3: 3e2538f0a28344ba9db33e55270e1db37fedde130e13b088bad31239e3bbf358
-7922f8039e205e842f2a012f8db39cb66994b9970363d24f128b882b2b696724
+session_key: 8dc21ff264f2774de95955d35544ba314e92d07f4a3b32c89ead5e70
+c83ac4c0221deadd34ed11d43fc4d3651aec612d696c63979c96bf1ddd1ee44da5d0c
+d68
+KE3: c178e45ed9b314653685cdbf5f7730e3e40f8652ceb9b10f47d1c784fdd75dd1
+07c4ae3f7683de5a692359178c8f13f41a043fc1dcfc14b1fb7cb411514efc6c
 KE2: 5079b16709b195b3b63257b419efb752bd0603170160fa72b828ce9ff9209c0c
-002076ba3df8660de4e37dd3ac120bb3f8c9a4d95931b54cf14856974424a85611150
-1f627cf8e027b5fca94ba970dc06866b79d5914abb16526835bbbd6c46d705cf20022
-ceffb2fded3ff3dfd323ef4411cc213014316463bdd6692907cd4caffd885530d0d9c
-eb917641b2550623727461b647b81b1e81ae67fcb0f57ad93175306ff326b1ec66433
-a67ed4da46f1cb54c80c24cf805f3df77a2b81c7f5fda0bcb06f093fa9be1b6a9ee06
-b76c648efd2e57300cae3418a2137ee3abcfa018431ee50876be4ea25f0b5ed03ec29
-b5eaacf21dde7d4c1fcb4e34ddb2d7c6e4a71b6d10e3d870000f853360d8962c60208
-1c1a7f11e0ab10b045d752511f9254a95e390e72b9c60f073c85bf789649883a1c712
-6b1150e6db4607ac5491833b25f91211ab4e7fc292912562f1397c15e6e91a4972b00
-052
+00205442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdceeeb935924a9030
+2e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7deeb8cfb42d13f0022
+7ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26ecd566d7688095f9478a72
+1e5a592be9dd3bda76ed97421819aca4a30752813223d33bc7ea443be976754605116
+278c7fffda4de142674ed154f540bd3285080637eb4b929e1378336b110f3a6da8b66
+7bc7a383c987586bee749c5f2787691baca68757e78b6128b0a0fa2e9e0809b270a1d
+5c8208f3498a3188538265e6a9e6b274cb38c4c5d9b1792d000f5a1a0b34573bf728b
+14f53485f3bf62fd91154dc9ca01b21945b2204f96adc87bd80e8283ecf3522b6d893
+7527f2e9b9782a94fedab0fa304590d1d4f03d72fb1664fca1523a3be95f6c3a97d0a
+2ed
 KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
-79a442d9fbebbd244e27fd10ea255dcec9f43e9b2c6a33575eb33775b081d77e00096
-8656c6c6f20626f625a7396b6e6e0dbb1690ba3b69061ba864fda0c2c078520f01804
-ef15c0b25d56
+480917b09c6720680b4a7a0ba9f54b69d870f640a4a7994b47ad07d1a95c984f00096
+8656c6c6f20626f624ae7d50bb80cc8f5034d36c1c27edc30caca0983677a941bc0ac
+e5e10b18300a
 ~~~
+
