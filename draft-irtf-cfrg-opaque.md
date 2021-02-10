@@ -327,17 +327,16 @@ operations, roles, and behaviors of OPAQUE:
 - Client (C): Entity which has knowledge of a password and wishes to authenticate.
 - Server (S): Entity which authenticates clients using passwords.
 - password: An opaque byte string containing the client's password.
-- (skX, pkX): An AKE key pair used in role X; skX is the private key and pkX is
-  the public key. For example, (client_private_key, client_public_key) refers to C's private and public key.
-- kX: An OPRF private key used for role X. For example, as described in
-  {{create-reg-response}}, oprf_key refers to the private OPRF key for client C known
-  only to the server.
+- (client/server_private_key, client/server_public_key): An AKE key pair used by
+  either the client and server, denoting either the private or public key. For example,
+  (client_private_key, client_public_key) refers to C's private and public key.
+- oprf_key: An OPRF private key known only to the server.
 - I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
-  described in {{?RFC8017}}. Note that these functions operate on byte strings in
+  described in Section 4 of {{?RFC8017}}. Note that these functions operate on byte strings in
   big-endian byte order.
 - concat(x0, ..., xN): Concatenate byte strings. For example,
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
-- random(n): Generate a random byte string of length `n` bytes.
+- random(n): Generate a cryptographically secure pseudorandom byte string of length `n` bytes.
 - xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with two arguments of unequal
   length.
@@ -376,7 +375,10 @@ OPAQUE relies on the following protocols and primitives:
     the input is not a valid byte representation of a scalar.
   - SerializedElement: A serialized OPRF group element, a byte array of fixed
     length.
-  - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.
+  - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.\
+
+Note that we only need the base mode variant (as opposed to the verifiable mode
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 - Cryptographic hash function:
   - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
@@ -388,8 +390,6 @@ OPAQUE relies on the following protocols and primitives:
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
 
-Note that we only need the base mode variant (as opposed to the verifiable mode
-variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 # Offline Registration {#offline-phase}
 
@@ -525,7 +525,7 @@ The `EnvelopeMode` value is specified as part of the configuration (see {{config
 
 Credential information corresponding to the configuration-specific mode,
 along with the client public key `client_public_key` and private key `client_private_key`,
-are stored in a `Credentials` object with the following named fields:
+are recommended to be stored in a `Credentials` object with the following named fields:
 
 - `client_private_key`, the client's private key
 - `client_public_key`, the client's public key corresponding to `client_private_key`
@@ -554,7 +554,7 @@ data
 : A serialized OPRF group element.
 
 server_public_key
-: An encoded public key that will be used for the online authenticated key exchange stage.
+: The server's encoded public key that will be used for the online authenticated key exchange stage.
 
 ~~~
 struct {
@@ -564,7 +564,7 @@ struct {
 ~~~
 
 client_public_key
-: An encoded public key, corresponding to the private key `client_private_key`.
+: The client's encoded public key, corresponding to the private key `client_private_key`.
 
 envelope
 : The client's `Envelope` structure.
@@ -662,7 +662,8 @@ Upon completion of this function, the client MUST send `record` to the server.
 
 The server then constructs and stores the `credential_file` object, where `envelope` and `client_public_key`
 are obtained from `record`, and `oprf_key` is retained from the output of `CreateRegistrationResponse`.
-`oprf_key` is serialized using `SerializeScalar`.
+`oprf_key` is serialized using `SerializeScalar`. The below structure represents an example of how
+these values might be conveniently stored together.
 
 ~~~
 struct {
@@ -738,7 +739,7 @@ data
 : A serialized OPRF group element.
 
 server_public_key
-: An encoded public key that will be used for the online authenticated
+: The server's encoded public key that will be used for the online authenticated
 key exchange stage.
 
 envelope
@@ -1326,7 +1327,7 @@ The OPAQUE protocol and its analysis is joint work of the author with Stas
 Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
-to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik oprf_keyivinen,
+to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
 # Alternate AKE Instantiations {#alternate-akes}
@@ -1645,4 +1646,3 @@ KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
 8656c6c6f20626f624ae7d50bb80cc8f5034d36c1c27edc30caca0983677a941bc0ac
 e5e10b18300a
 ~~~
-
