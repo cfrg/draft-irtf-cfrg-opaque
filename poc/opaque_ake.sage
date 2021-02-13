@@ -102,11 +102,7 @@ class OPAQUE3DH(KeyExchange):
 
         # transcript1 includes the concatenation of the values:
         # cred_request, nonceU, info1, epkU
-        hasher = hashlib.sha512()
-        hasher.update(serialized_request)
-        hasher.update(nonceU)
-        hasher.update(encode_vector(info1))
-        hasher.update(ristretto255.ENCODE(*epkU))
+        transcript1 = serialized_request + nonceU + encode_vector(info1) + ristretto255.ENCODE(*epkU)
 
         self.cred_request = cred_request
         self.cred_metadata = cred_metadata
@@ -118,7 +114,7 @@ class OPAQUE3DH(KeyExchange):
         self.epkU = epkU
         self.nonceU = nonceU
         self.cred_metadata = cred_metadata
-        self.hasher = hasher
+        self.transcript1 = transcript1
         self.pkU = pkU
 
         return serialized_request + ke1.serialize()
@@ -148,32 +144,25 @@ class OPAQUE3DH(KeyExchange):
 
         # transcript2 includes the concatenation of the values:
         # credential_request, nonceU, info1, epkU, credential_response, nonceS, epkS, Einfo2;
-        hasher = hashlib.sha512()
-        hasher.update(serialized_request)
-        hasher.update(nonceU)
-        hasher.update(encode_vector(info1))
-        hasher.update(ristretto255.ENCODE(*epkU))
-        hasher.update(serialized_response)
-        hasher.update(nonceS)
-        hasher.update(ristretto255.ENCODE(*epkS))
-        hasher.update(encode_vector(e_info2))
-        transcript_hash = hasher.digest()
+        transcript2 = serialized_request + nonceU + encode_vector(info1) + ke1.epkU + serialized_response + nonceS + ristretto255.ENCODE(*epkS) + encode_vector(e_info2)
+        server_mac = hmac.digest(server_mac_key, transcript2, hashlib.sha512)
+        ke2 = TripleDHMessageRespond(nonceS, ristretto255.ENCODE(*epkS), e_info2, server_mac)
 
-        mac = hmac.digest(server_mac_key, transcript_hash, hashlib.sha512)
-        handshake_encrypt_key = TripleDHMessageRespond(nonceS, ristretto255.ENCODE(*epkS), e_info2, mac)
+        # transcript3 is transcript2 + server_mac
+        transcript3 = transcript2 + server_mac
 
         self.nonceS = nonceS
-        self.hasher = hasher
+        self.transcript3 = transcript3
         self.eskS = eskS
         self.epkS = epkS
         self.server_mac_key = server_mac_key
         self.handshake_encrypt_key = handshake_encrypt_key
         self.client_mac_key = client_mac_key
         self.session_key = session_key
-        self.server_mac = mac
+        self.server_mac = server_mac
         self.handshake_secret = handshake_secret
 
-        return serialized_response + handshake_encrypt_key.serialize()
+        return serialized_response + ke2.serialize()
 
     def generate_ke3(self, msg):
         cred_response, offset = deserialize_credential_response(self.config, msg)
@@ -183,7 +172,7 @@ class OPAQUE3DH(KeyExchange):
         skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, self.idU, self.idS)
         skU = OS2IP_le(skU_bytes)
         pkS = ristretto255.DECODE(pkS_bytes)
-        
+
         idU = self.idU
         idS = self.idS
         pkU = self.pkU
@@ -199,15 +188,13 @@ class OPAQUE3DH(KeyExchange):
         dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
         server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, nonceU, nonceS, idU, pkU, idS, pkS)
 
-        hasher = self.hasher
-        hasher.update(serialized_response)
-        hasher.update(nonceS)
-        hasher.update(ristretto255.ENCODE(*epkS))
-        hasher.update(encode_vector(e_info2))
-        transcript_hash = hasher.digest()
-
-        server_mac = hmac.digest(server_mac_key, transcript_hash, hashlib.sha512)
+        # transcript2 = transcript, plus ke2 components
+        transcript2 = self.transcript1 + serialized_response + nonceS + ristretto255.ENCODE(*epkS) + encode_vector(e_info2)
+        server_mac = hmac.digest(server_mac_key, transcript2, hashlib.sha512)
         assert server_mac == mac
+
+        # transcript3 = transcript2, plus server_mac
+        transcript3 = transcript2 + server_mac
 
         # TODO(caw): decrypt e_info2 and pass it to the application
 
@@ -217,23 +204,15 @@ class OPAQUE3DH(KeyExchange):
         self.client_mac_key = client_mac_key
         self.handshake_secret = handshake_secret
 
-        # transcript3 == transcript2, plus server_mac
-        hasher.update(server_mac)
-        transcript_hash = hasher.digest()
-
-        client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
+        client_mac = hmac.digest(client_mac_key, transcript3, self.config.hash)
         ke3 = TripleDHMessageFinish(client_mac)
 
         return ke3.serialize()
 
     def finish(self, msg):
         ke3 = deserialize_tripleDH_finish(self.config, msg)
-        
         client_mac_key = self.client_mac_key
-        self.hasher.update(self.server_mac)
-        transcript_hash = self.hasher.digest()
-
-        client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
+        client_mac = hmac.digest(client_mac_key, self.transcript3, self.config.hash)
         assert client_mac == ke3.mac
 
         return self.session_key
