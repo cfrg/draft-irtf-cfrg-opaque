@@ -59,7 +59,7 @@ class OPAQUE3DH(KeyExchange):
             "SlowHash": self.config.slow_hash.name,
         }
 
-    def derive_3dh_keys(self, dh_components, client_nonce, server_nonce, idU, pkU, idS, pkS):
+    def derive_3dh_keys(self, dh_components, info):
         dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
         dh2 = ristretto255._edw_mul(dh_components.sk2, dh_components.pk2)
         dh3 = ristretto255._edw_mul(dh_components.sk3, dh_components.pk3)
@@ -68,14 +68,6 @@ class OPAQUE3DH(KeyExchange):
         dh2_encoded = ristretto255.ENCODE(*dh2)
         dh3_encoded = ristretto255.ENCODE(*dh3)
         ikm = dh1_encoded + dh2_encoded + dh3_encoded
-
-        # info = "3DH keys" || I2OSP(len(nonceU), 2) || nonceU
-        #           || I2OSP(len(nonceS), 2) || nonceS
-        #           || I2OSP(len(idU), 2) || idU
-        #           || I2OSP(len(idS), 2) || idS
-        info = _as_bytes("3DH keys") \
-            + encode_vector_len(client_nonce, 2) + encode_vector_len(server_nonce, 2) \
-            + encode_vector_len(idU, 2) + encode_vector_len(idS, 2)
 
         prk = hkdf_extract(self.config, bytes([]), ikm)
         handshake_secret = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
@@ -103,6 +95,8 @@ class OPAQUE3DH(KeyExchange):
         # transcript1 includes the concatenation of the values:
         # cred_request, nonceU, info1, epkU
         hasher = hashlib.sha512()
+        hasher.update(_as_bytes("3DH"))
+        hasher.update(encode_vector_len(idU, 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
         hasher.update(encode_vector(info1))
@@ -138,24 +132,26 @@ class OPAQUE3DH(KeyExchange):
         info1 = ke1.info1
         epkU = ristretto255.DECODE(ke1.epkU)
 
+        hasher = hashlib.sha512()
+        hasher.update(_as_bytes("3DH"))
+        hasher.update(encode_vector_len(idU, 2))
+        hasher.update(serialized_request)
+        hasher.update(nonceU)
+        hasher.update(encode_vector(info1))
+        hasher.update(ristretto255.ENCODE(*epkU))
+        hasher.update(encode_vector_len(idS, 2))
+        hasher.update(serialized_response)
+        hasher.update(nonceS)
+        hasher.update(ristretto255.ENCODE(*epkS))
+
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
         dh_components = TripleDHComponents(epkU, eskS, epkU, skS, pkU, eskS)
-        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, nonceU, nonceS, idU, pkU, idS, pkS)
+        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
 
         # Encrypt e_info2
         pad = hkdf_expand(self.config, handshake_encrypt_key, _as_bytes("encryption pad"), len(info2))
         e_info2 = xor(pad, info2)
 
-        # transcript2 includes the concatenation of the values:
-        # credential_request, nonceU, info1, epkU, credential_response, nonceS, epkS, Einfo2;
-        hasher = hashlib.sha512()
-        hasher.update(serialized_request)
-        hasher.update(nonceU)
-        hasher.update(encode_vector(info1))
-        hasher.update(ristretto255.ENCODE(*epkU))
-        hasher.update(serialized_response)
-        hasher.update(nonceS)
-        hasher.update(ristretto255.ENCODE(*epkS))
         hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
@@ -195,14 +191,16 @@ class OPAQUE3DH(KeyExchange):
         e_info2 = handshake_encrypt_key.e_info2
         mac = handshake_encrypt_key.mac
 
-        # K3dh = epkS^eskU || pkS^eskU || epkS^skU
-        dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
-        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, nonceU, nonceS, idU, pkU, idS, pkS)
-
         hasher = self.hasher
+        hasher.update(encode_vector_len(idS, 2))
         hasher.update(serialized_response)
         hasher.update(nonceS)
         hasher.update(ristretto255.ENCODE(*epkS))
+
+        # K3dh = epkS^eskU || pkS^eskU || epkS^skU
+        dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
+        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
+
         hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
