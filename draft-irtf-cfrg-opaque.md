@@ -958,9 +958,9 @@ outputs `session_key`. The schedule for computing this key material is below.
 ~~~
 HKDF-Extract(salt=0, IKM)
     |
-    +-> Derive-Secret(., "handshake secret", info) = handshake_secret
+    +-> Derive-Secret(., "handshake secret", Hash(info)) = handshake_secret
     |
-    +-> Derive-Secret(., "session secret", info) = session_key
+    +-> Derive-Secret(., "session secret", Hash(info)) = session_key
 ~~~
 
 From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
@@ -979,8 +979,8 @@ Nh is the output length of the underlying hash function.
 The Derive-Secret parameter `info` is computed as:
 
 ~~~
-info = Hash("3DH" || client_preamble || client_transcript ||
-                     server_preamble || server_transcript),
+info = "3DH" || client_preamble || client_transcript ||
+                server_preamble || server_transcript)
 ~~~
 
 where `client_preamble` and `server_preamble` are computed as:
@@ -1014,13 +1014,13 @@ IKM = epkU^eskS || epkU^skS || pkU^eskS
 #### OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
-respectively. These values are computed as HMAC(mac_key, info || transcript),
+respectively. These values are computed as HMAC(mac_key, Hash(info || transcript)),
 where mac_key, info, and transcript are as follows:
 
 - KE2.mac: mac_key is Km2, info is as defined in {{derive-3dh}}, and transcript
-concatenation of KE1 and KE2, excluding KE2.mac.
+is KE2.enc_server_info.
 - KE3.mac: mac_key is Km3, info is as defined in {{derive-3dh}}, and transcript
-is the hash of the concatenation of KE1 and KE2, including KE2.mac.
+is the concatenation of KE2.enc_server_info and KE2.mac.
 
 The server applicaton info, an opaque byte string `server_info`, is encrypted
 using a technique similar to that used for secret credential encryption.
