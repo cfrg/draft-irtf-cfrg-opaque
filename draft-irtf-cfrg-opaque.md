@@ -870,8 +870,8 @@ struct {
    opaque context<0..255> = Context;
 } HkdfLabel;
 
-Derive-Secret(Secret, Label, Transcript) =
-    HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
+Derive-Secret(Secret, Label, Transcript-Hash) =
+    HKDF-Expand-Label(Secret, Label, Transcript-Hash, Nh)
 ~~~
 
 HKDF uses Hash as its underlying hash function, which is the same as that
@@ -976,16 +976,25 @@ handshake_encrypt_key =
 
 Nh is the output length of the underlying hash function.
 
-The HKDF input parameter `info` is computed as follows:
+The Derive-Secret parameter `info` is computed as:
 
 ~~~
-info = "3DH keys" || I2OSP(len(client_nonce), 2) || client_nonce
-                  || I2OSP(len(server_nonce), 2) || server_nonce
-                  || I2OSP(len(client_identity), 2) || client_identity
-                  || I2OSP(len(server_identity), 2) || server_identity
+info = Hash("3DH" || client_preamble || client_transcript ||
+                     server_preamble || server_transcript),
 ~~~
 
-See {{identities}} for more information about identities client_identity and server_identity.
+where `client_preamble` and `server_preamble` are computed as:
+
+~~~
+client_preamble = I2OSP(len(client_identity), 2) || client_identity
+server_preamble = I2OSP(len(server_identity), 2) || server_identity
+~~~
+
+`client_transcript` KE1 and `server_transcript` is KE2 excluding KE2.enc_server_info
+and KE2.mac.
+
+See {{identities}} for more information about identities client_identity and
+server_identity.
 
 Let `epkS` and `eskS` be `server_keyshare` and the corresponding secret key,
 and `epkU` and `eskU` be `client_keyshare` and the corresponding secret key.
@@ -1005,13 +1014,13 @@ IKM = epkU^eskS || epkU^skS || pkU^eskS
 #### OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
-respectively. These values are computed as HMAC(mac_key, transcript), where
-mac_key and transcript are as follows:
+respectively. These values are computed as HMAC(mac_key, info || transcript),
+where mac_key, info, and transcript are as follows:
 
-- KE2.mac: mac_key is Km2 and transcript is the concatenation of KE1 and KE2,
-excluding KE2.mac.
-- KE3.mac: mac_key is Km3 and transcript is the concatenation of KE1 and KE2,
-including KE2.mac.
+- KE2.mac: mac_key is Km2, info is as defined in {{derive-3dh}}, and transcript
+concatenation of KE1 and KE2, excluding KE2.mac.
+- KE3.mac: mac_key is Km3, info is as defined in {{derive-3dh}}, and transcript
+is the hash of the concatenation of KE1 and KE2, including KE2.mac.
 
 The server applicaton info, an opaque byte string `server_info`, is encrypted
 using a technique similar to that used for secret credential encryption.
@@ -1348,14 +1357,12 @@ under session_key (or a key derived from it) with a quantum-safe encryption func
 ## HMQV Instantiation Sketch
 
 An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
-schedule {{HMQV}}. First, the key schedule `info` value would use a different constant prefix
--- "HMQV keys" instead of "3DH keys" -- as shown below.
+schedule {{HMQV}}. First, the key schedule `preamble` value would use a different constant prefix
+-- "HMQV" instead of "3DH" -- as shown below.
 
 ~~~
-info = "HMQV keys" || I2OSP(len(client_nonce), 2) || client_nonce
-                   || I2OSP(len(server_nonce), 2) || server_nonce
-                   || I2OSP(len(client_identity), 2) || client_identity
-                   || I2OSP(len(server_identity), 2) || server_identity
+preamble = "HMQV" || I2OSP(len(client_identity), 2) || client_identity
+                  || I2OSP(len(server_identity), 2) || server_identity
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
@@ -1402,9 +1409,9 @@ would carry a digital signature, computed using the server and client private ke
 established during registration, respectively, as well as a MAC, where the MAC is
 computed as in OPAQUE-3DH.
 
-The key schedule would also change. Specifically, the key schedule `info` value would
-use a different constant prefix -- "SIGMA-I keys" instead of "3DH keys" -- and the `IKM`
-computation would use only the ephemeral key shares exchanged between client and server.
+The key schedule would also change. Specifically, the key schedule `preamble` value would
+use a different constant prefix -- "SIGMA-I" instead of "3DH" -- and the `IKM` computation
+would use only the ephemeral key shares exchanged between client and server.
 
 # Test Vectors
 
