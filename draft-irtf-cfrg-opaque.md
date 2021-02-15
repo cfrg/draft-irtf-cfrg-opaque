@@ -1169,32 +1169,15 @@ server.
 
 ## Static Diffie-Hellman Oracles
 
-While one can expect the practical security of the OPRF function
-(namely, the hardness of computing the function without knowing the
-key) to be in the order of computing discrete logarithms or solving
-Diffie-Hellman, Brown and Gallant {{BG04}} and Cheon {{Cheon06}} show an
-attack that slightly improves on generic attacks. For the case that
-q-1 or q+1, where q is the order of the group G, has a t-bit divisor,
-they show an attack that calls the OPRF on 2^t chosen inputs and
-reduces security by t/2 bits, i.e., it can find the OPRF key in time
-2^{q/2-t/2} and 2^{q/2-t/2} memory. For typical curves, the attack
-requires an infeasible number of calls and/or results in insignificant
-security loss (\*). Moreover, in the OPAQUE application, these
-attacks are completely impractical as the number of calls to the function
-translates to an equal number of failed authentication attempts by a
-_single_ client. For example, one would need a billion impersonation attempts
-to reduce security by 15 bits and a trillion to reduce it by 20 bits - and
-most curves will not even allow for such attacks in the first place
-(note that this theoretical loss of security is with respect to computing
-discrete logarithms, not in reducing the password strength).
-
-(\*) Some examples (courtesy of Dan Brown): For P-384, 2^90 calls reduce
-security from 192 to 147 bits; for NIST P-256 the options are 6-bit
-reduction with 2153 OPRF calls, about 14 bit reduction with 187 million
-calls and 20 bits with a trillion calls. For Curve25519, attacks are
-completely infeasible (require over 2^100 calls) but its twist form allows
-an attack with 25759 calls that reduces security by 7 bits and one with
-117223 calls that reduces security by 8.4 bits.
+While one can expect the practical security of the OPRF function (namely,
+the hardness of computing the function without knowing the key) to be in the
+order of computing discrete logarithms or solving Diffie-Hellman, Brown and
+Gallant {{BG04}} and Cheon {{Cheon06}} show an attack that slightly improves
+on generic attacks. For typical curves, the attack requires an infeasible
+number of calls to the OPRF or results in insignificant security loss;
+see {{I-D.irtf-cfrg-voprf}} for more information. For OPAQUE, these attacks
+are particularly impractical as they translate into an infeasible number of
+failed authentication attempts directed at individual users.
 
 ## Input Validation {#validation}
 
