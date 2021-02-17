@@ -81,8 +81,7 @@ def hkdf_expand_label(config, secret, label, context, length):
 
 # Derive-Secret(Secret, Label, Transcript) =
 #     HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
-def derive_secret(config, secret, label, transcript):
-    transcript_hash = config.hash(transcript).digest()
+def derive_secret(config, secret, label, transcript_hash):
     return hkdf_expand_label(config, secret, label, transcript_hash, config.hash().digest_size)
 
 # defined in RFC 3447, section 4.1
