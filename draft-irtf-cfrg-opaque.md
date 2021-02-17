@@ -385,6 +385,10 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
     hash is determined by the chosen OPRF group.
   - Nh: The output size of the Hash function.
 
+- Authenticated Key Exchange (AKE, {{instantiations}}):
+  - Npk: The size of the public keys used for the key exchange protocol
+  - Nsk: The size of the private keys used for the key exchange protocol
+
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
@@ -466,11 +470,11 @@ The `base` mode defines `SecretCredentials` and `CleartextCredentials` as follow
 
 ~~~
 struct {
-  opaque client_private_key<1..2^16-1>;
+  opaque client_private_key[Nsk];
 } SecretCredentials;
 
 struct {
-  opaque server_public_key<1..2^16-1>;
+  opaque server_public_key[Npk];
 } CleartextCredentials;
 ~~~
 
@@ -478,11 +482,11 @@ The `custom_identifier` mode defines `SecretCredentials` and `CleartextCredentia
 
 ~~~
 struct {
-  opaque client_private_key<1..2^16-1>;
+  opaque client_private_key[Nsk];
 } SecretCredentials;
 
 struct {
-  opaque server_public_key<1..2^16-1>;
+  opaque server_public_key[Npk];
   opaque client_identity<0..2^16-1>;
   opaque server_identity<0..2^16-1>;
 } CleartextCredentials;
@@ -495,7 +499,7 @@ encryption and authentication.
 struct {
   EnvelopeMode mode;
   opaque nonce[32];
-  opaque encrypted_creds<1..2^16-1>;
+  opaque encrypted_creds[Nsk];
 } InnerEnvelope;
 
 struct {
@@ -546,7 +550,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque server_public_key<1..2^16-1>;
+    opaque server_public_key[Npk];
 } RegistrationResponse;
 ~~~
 
@@ -558,7 +562,7 @@ server_public_key
 
 ~~~
 struct {
-    opaque client_public_key<1..2^16-1>;
+    opaque client_public_key[Npk];
     Envelope envelope;
 } RegistrationUpload;
 ~~~
@@ -668,7 +672,7 @@ these values might be conveniently stored together.
 ~~~
 struct {
     SerializedScalar oprf_key;
-    opaque client_public_key<1..2^16-1>;
+    opaque client_public_key[Npk];
     Envelope envelope;
 } credential_file;
 ~~~
@@ -730,7 +734,7 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque server_public_key<1..2^16-1>;
+    opaque server_public_key[Npk];
     Envelope envelope;
 } CredentialResponse;
 ~~~
@@ -847,6 +851,10 @@ We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate credent
 and credential_response, respectively, for binding between the underlying OPRF protocol
 messages and the KE session.
 
+We use the parameters Npk and Nsk to denote the size of the public and private keys used
+in the AKE instantation. Npk and Nsk must adhere to the output size limitations of the
+HKDF Expand function from {{RFC5869}}, which means that Npk, Nsk <= 255 * Nh.
+
 The rest of this section includes key schedule utility functions used by OPAQUE-3DH,
 and then provides a detailed specification for OPAQUE-3DH, including its wire format
 messages.
@@ -884,6 +892,9 @@ OPAQUE-3DH is implemented using a suitable prime order group. All operations in
 the key derivation steps in {{derive-3dh}} are performed in this group and
 represented here using multiplicative notation. The output of OPAQUE-3DH is a
 session secret `session_key` and export key `export_key`.
+
+The parameters Npk and Nsk are set to be equal to the size of a scalar in the
+associated prime order group.
 
 #### OPAQUE-3DH Messages
 
@@ -1322,7 +1333,12 @@ It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and 
 HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
 rather than static DH keys for authentication. Specification of these instantiations is
 left to future documents. A sketch of how these instantiations might change is included
-below for posterity.
+in the next subsection for posterity.
+
+The AKE private key size (Nsk) is limited to the output size of the HKDF Expand function
+from {{RFC5869}}.  Future specifications which have keys exceeding this size should
+specify a mechanism by which private keys and their corresponding public keys can be
+deterministically derived from a fixed-length seed.
 
 OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
 flow above and security properties (KCI resistance and forward secrecy) outlined
@@ -1412,6 +1428,9 @@ EnvelopeMode: 01
 OPRF: 0001
 SlowHash: Identity
 Hash: SHA512
+Nh: 64
+Npk: 32
+Nsk: 32
 ~~~
 
 ### Input Values
@@ -1526,6 +1545,9 @@ EnvelopeMode: 02
 OPRF: 0001
 SlowHash: Identity
 Hash: SHA512
+Nh: 64
+Npk: 32
+Nsk: 32
 ~~~
 
 ### Input Values
