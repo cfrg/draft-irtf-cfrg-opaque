@@ -913,9 +913,11 @@ prime order group.
 
 ~~~
 struct {
-  CredentialResponse response;
-  uint8 server_nonce[32];
-  uint8 server_keyshare[Npk];
+  struct {
+    CredentialResponse response;
+    uint8 server_nonce[32];
+    uint8 server_keyshare[Npk];
+  } inner_ke2;
   opaque enc_server_info<0..2^16-1>;
   uint8 mac[Nh];
 } KE2;
@@ -958,9 +960,9 @@ outputs `session_key`. The schedule for computing this key material is below.
 ~~~
 HKDF-Extract(salt=0, IKM)
     |
-    +-> Derive-Secret(., "handshake secret", Hash(info)) = handshake_secret
+    +-> Derive-Secret(., "handshake secret", Hash(preamble)) = handshake_secret
     |
-    +-> Derive-Secret(., "session secret", Hash(info)) = session_key
+    +-> Derive-Secret(., "session secret", Hash(preamble)) = session_key
 ~~~
 
 From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
@@ -976,22 +978,15 @@ handshake_encrypt_key =
 
 Nh is the output length of the underlying hash function.
 
-The Derive-Secret parameter `info` is computed as:
+The Derive-Secret parameter `preamble` is computed as:
 
 ~~~
-info = "3DH" || client_preamble || client_transcript ||
-                server_preamble || server_transcript)
+preamble = concat("3DH",
+                  I2OSP(len(client_identity), 2), client_identity,
+                  KE1,
+                  I2OSP(len(server_identity), 2), server_identity,
+                  KE2.inner_ke2)
 ~~~
-
-where `client_preamble` and `server_preamble` are computed as:
-
-~~~
-client_preamble = I2OSP(len(client_identity), 2) || client_identity
-server_preamble = I2OSP(len(server_identity), 2) || server_identity
-~~~
-
-`client_transcript` KE1 and `server_transcript` is KE2 excluding KE2.enc_server_info
-and KE2.mac.
 
 See {{identities}} for more information about identities client_identity and
 server_identity.
@@ -1002,25 +997,24 @@ The input parameter `IKM` the concatenation of three DH values computed by
 the client as follows:
 
 ~~~
-IKM = epkS^eskU || pkS^eskU || epkS^skU
+IKM = concat(epkS^eskU, pkS^eskU, epkS^skU)
 ~~~
 
 Likewise, `IKM` is computed by the server as follows:
 
 ~~~
-IKM = epkU^eskS || epkU^skS || pkU^eskS
+IKM = concat(epkU^eskS, epkU^skS, pkU^eskS)
 ~~~
 
 #### OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
-respectively. These values are computed as HMAC(mac_key, Hash(info || transcript)),
-where mac_key, info, and transcript are as follows:
+respectively. These values are computed as follows:
 
-- KE2.mac: mac_key is Km2, info is as defined in {{derive-3dh}}, and transcript
-is KE2.enc_server_info.
-- KE3.mac: mac_key is Km3, info is as defined in {{derive-3dh}}, and transcript
-is the concatenation of KE2.enc_server_info and KE2.mac.
+- KE2.mac = HMAC(Km2, Hash(concat(preamble, KE2.enc_server_info)), where
+  preamble is as defined in {{derive-3dh}}.
+- KE3.mac = HMAC(Km3, Hash(concat(preamble, KE2.enc_server_info, KE2.mac)),
+  where preamble is as defined in {{derive-3dh}}.
 
 The server applicaton info, an opaque byte string `server_info`, is encrypted
 using a technique similar to that used for secret credential encryption.
@@ -1361,8 +1355,11 @@ schedule {{HMQV}}. First, the key schedule `preamble` value would use a differen
 -- "HMQV" instead of "3DH" -- as shown below.
 
 ~~~
-preamble = "HMQV" || I2OSP(len(client_identity), 2) || client_identity
-                  || I2OSP(len(server_identity), 2) || server_identity
+preamble = concat("HMQV",
+                  I2OSP(len(client_identity), 2), client_identity,
+                  KE1,
+                  I2OSP(len(server_identity), 2), server_identity,
+                  KE2.inner_ke2)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
@@ -1383,18 +1380,18 @@ IKM = (epkU \* pkU^u)^s'
 In both cases, `u` would be computed as follows:
 
 ~~~
-hashInput = I2OSP(len(epkU), 2) || epkU ||
-            I2OSP(len(info), 2) || info ||
-            I2OSP(len("client"), 2) || "client"
+hashInput = concat(I2OSP(len(epkU), 2), epkU,
+                   I2OSP(len(info), 2), info,
+                   I2OSP(len("client"), 2), "client")
 u = Hash(hashInput) mod L
 ~~~
 
 Likewise, `s` would be computed as follows:
 
 ~~~
-hashInput = I2OSP(len(epkS), 2) || epkS ||
-            I2OSP(len(info), 2) || info ||
-            I2OSP(len("server"), 2) || "server"
+hashInput = concat(I2OSP(len(epkS), 2), epkS,
+                   I2OSP(len(info), 2), info,
+                   I2OSP(len("server"), 2), "server")
 s = Hash(hashInput) mod L
 ~~~
 
