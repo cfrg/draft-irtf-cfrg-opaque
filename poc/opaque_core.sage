@@ -11,7 +11,6 @@ from hash import scrypt
 
 try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, KeyGen
-    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, CustomCleartextCredentials, Envelope, InnerEnvelope, envelope_mode_base, envelope_mode_custom_identifier, deserialize_secret_credentials
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes
 except ImportError as e:
@@ -115,13 +114,6 @@ class OPAQUECore(object):
 
         return secret_credentials.skU, response.pkS, export_key
 
-class Configuration(object):
-    def __init__(self, mode, oprf_suite, hash, slow_hash):
-        self.mode = mode
-        self.oprf_suite = oprf_suite
-        self.hash = hash
-        self.slow_hash = slow_hash
-
 class SlowHash(object):
     def __init__(self, name, harden):
         self.name = name
@@ -133,8 +125,3 @@ def scrypt_harden(pwd):
 def identity_harden(pwd):
     return pwd
 
-default_opaque_configuration_base = Configuration(
-    envelope_mode_base, oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, SlowHash("Identity", identity_harden))
-
-default_opaque_configuration_custom = Configuration(
-    envelope_mode_custom_identifier, oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, SlowHash("Identity", identity_harden))

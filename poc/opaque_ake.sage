@@ -11,10 +11,9 @@ import struct
 from collections import namedtuple
 
 try:
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
-    from sagelib.opaque import OPAQUECore
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
+    from sagelib.opaque_core import OPAQUECore
     from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, envelope_mode_base, envelope_mode_custom_identifier
-    from sagelib import ristretto255
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -25,6 +24,16 @@ if sys.version_info[0] == 3:
 else:
     _as_bytes = lambda x: x
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
+
+class Configuration(object):
+    def __init__(self, mode, oprf_suite, hash, slow_hash, group):
+        self.mode = mode
+        self.oprf_suite = oprf_suite
+        self.hash = hash
+        self.slow_hash = slow_hash
+        self.group = group
+        self.Npk = group.element_byte_length()
+        self.Nsk = group.scalar_byte_length()
 
 class KeyExchange(object):
     def __init__(self):
@@ -52,21 +61,24 @@ class OPAQUE3DH(KeyExchange):
     def json(self):
         return {
             "Name": "3DH",
-            "Group": self.config.oprf_suite.group.name,
+            "Group": self.config.group.name,
             "EnvelopeMode": to_hex(I2OSP(self.config.mode, 1)),
             "OPRF": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
             "Hash": self.config.hash().name.upper(),
             "SlowHash": self.config.slow_hash.name,
+            "Nh": str(self.config.hash().digest_size),
+            "Npk": str(self.config.group.element_byte_length()),
+            "Nsk": str(self.config.group.scalar_byte_length()),
         }
 
     def derive_3dh_keys(self, dh_components, info):
-        dh1 = ristretto255._edw_mul(dh_components.sk1, dh_components.pk1)
-        dh2 = ristretto255._edw_mul(dh_components.sk2, dh_components.pk2)
-        dh3 = ristretto255._edw_mul(dh_components.sk3, dh_components.pk3)
+        dh1 = dh_components.sk1 * dh_components.pk1
+        dh2 = dh_components.sk2 * dh_components.pk2
+        dh3 = dh_components.sk3 * dh_components.pk3
 
-        dh1_encoded = ristretto255.ENCODE(*dh1)
-        dh2_encoded = ristretto255.ENCODE(*dh2)
-        dh3_encoded = ristretto255.ENCODE(*dh3)
+        dh1_encoded = self.config.group.serialize(dh1)
+        dh2_encoded = self.config.group.serialize(dh2)
+        dh3_encoded = self.config.group.serialize(dh3)
         ikm = dh1_encoded + dh2_encoded + dh3_encoded
 
         prk = hkdf_extract(self.config, bytes([]), ikm)
@@ -89,18 +101,18 @@ class OPAQUE3DH(KeyExchange):
         serialized_request = cred_request.serialize()
 
         nonceU = random_bytes(32)
-        (eskU, epkU) = ristretto255.keygen()
-        ke1 = TripleDHMessageInit(nonceU, info1, ristretto255.ENCODE(*epkU))
+        (eskU, epkU) = self.config.group.key_gen()
+        ke1 = TripleDHMessageInit(nonceU, info1, self.config.group.serialize(epkU))
 
         # transcript1 includes the concatenation of the values:
         # cred_request, nonceU, info1, epkU
-        hasher = hashlib.sha512()
+        hasher = self.config.hash()
         hasher.update(_as_bytes("3DH"))
         hasher.update(encode_vector_len(idU, 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
         hasher.update(encode_vector(info1))
-        hasher.update(ristretto255.ENCODE(*epkU))
+        hasher.update(self.config.group.serialize(epkU))
 
         self.cred_request = cred_request
         self.cred_metadata = cred_metadata
@@ -122,27 +134,27 @@ class OPAQUE3DH(KeyExchange):
         serialized_request = cred_request.serialize()
         ke1 = deserialize_tripleDH_init(self.config, msg[offset:])
 
-        pkS_bytes = ristretto255.ENCODE(*pkS)
+        pkS_bytes = self.config.group.serialize(pkS)
         cred_response = self.core.create_credential_response(cred_request, pkS_bytes, kU, envU)
         serialized_response = cred_response.serialize()
 
         nonceS = random_bytes(32)
-        (eskS, epkS) = ristretto255.keygen()
+        (eskS, epkS) = self.config.group.key_gen()
         nonceU = ke1.nonceU
         info1 = ke1.info1
-        epkU = ristretto255.DECODE(ke1.epkU)
+        epkU = self.config.group.deserialize(ke1.epkU)
 
-        hasher = hashlib.sha512()
+        hasher = self.config.hash()
         hasher.update(_as_bytes("3DH"))
         hasher.update(encode_vector_len(idU, 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
         hasher.update(encode_vector(info1))
-        hasher.update(ristretto255.ENCODE(*epkU))
+        hasher.update(self.config.group.serialize(epkU))
         hasher.update(encode_vector_len(idS, 2))
         hasher.update(serialized_response)
         hasher.update(nonceS)
-        hasher.update(ristretto255.ENCODE(*epkS))
+        hasher.update(self.config.group.serialize(epkS))
 
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
         dh_components = TripleDHComponents(epkU, eskS, epkU, skS, pkU, eskS)
@@ -155,8 +167,8 @@ class OPAQUE3DH(KeyExchange):
         hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
-        mac = hmac.digest(server_mac_key, transcript_hash, hashlib.sha512)
-        handshake_encrypt_key = TripleDHMessageRespond(nonceS, ristretto255.ENCODE(*epkS), e_info2, mac)
+        mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
+        handshake_encrypt_key = TripleDHMessageRespond(nonceS, self.config.group.serialize(epkS), e_info2, mac)
 
         self.nonceS = nonceS
         self.hasher = hasher
@@ -177,8 +189,10 @@ class OPAQUE3DH(KeyExchange):
         handshake_encrypt_key = deserialize_tripleDH_respond(self.config, msg[offset:])
 
         skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, self.idU, self.idS)
-        skU = OS2IP_le(skU_bytes)
-        pkS = ristretto255.DECODE(pkS_bytes)
+        skU = OS2IP(skU_bytes)
+        if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
+            skU = OS2IP_le(skU_bytes)
+        pkS = self.config.group.deserialize(pkS_bytes)
         
         idU = self.idU
         idS = self.idS
@@ -187,7 +201,7 @@ class OPAQUE3DH(KeyExchange):
         eskU = self.eskU
         nonceU = self.nonceU
         nonceS = handshake_encrypt_key.nonceS
-        epkS = ristretto255.DECODE(handshake_encrypt_key.epkS)
+        epkS = self.config.group.deserialize(handshake_encrypt_key.epkS)
         e_info2 = handshake_encrypt_key.e_info2
         mac = handshake_encrypt_key.mac
 
@@ -195,7 +209,7 @@ class OPAQUE3DH(KeyExchange):
         hasher.update(encode_vector_len(idS, 2))
         hasher.update(serialized_response)
         hasher.update(nonceS)
-        hasher.update(ristretto255.ENCODE(*epkS))
+        hasher.update(self.config.group.serialize(epkS))
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
         dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
@@ -204,7 +218,7 @@ class OPAQUE3DH(KeyExchange):
         hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
-        server_mac = hmac.digest(server_mac_key, transcript_hash, hashlib.sha512)
+        server_mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
         assert server_mac == mac
 
         # TODO(caw): decrypt e_info2 and pass it to the application
@@ -247,7 +261,7 @@ def deserialize_tripleDH_init(config, data):
     epkU_bytes = data[32+offset:]
     length = config.oprf_suite.group.element_byte_length()
     if len(epkU_bytes) != length:
-        raise Exception("Invalid epkU length")
+        raise Exception("Invalid epkU length: %d %d" % (len(epkU_bytes), length))
     return TripleDHMessageInit(nonceU, info, epkU_bytes)
 
 class TripleDHMessageInit(object):
@@ -272,7 +286,7 @@ def deserialize_tripleDH_respond(config, data):
     e_info2, offset = decode_vector(data[32+length:])
     mac = data[32+length+offset:]
     if len(mac) != config.hash().digest_size:
-        raise Exception("Invalid MAC length")
+        raise Exception("Invalid MAC length: %d %d" % (len(mac), config.hash().digest_size))
     return TripleDHMessageRespond(nonceS, epkS, e_info2, mac)
 
 class TripleDHMessageRespond(object):
@@ -290,7 +304,7 @@ class TripleDHMessageRespond(object):
 #  } KE3M;
 def deserialize_tripleDH_finish(config, data):
     if len(data) != config.hash().digest_size:
-        raise Exception("Invalid MAC length")
+        raise Exception("Invalid MAC length: %d %d" % (len(data), config.hash().digest_size))
     return TripleDHMessageFinish(data)
 
 class TripleDHMessageFinish(object):

@@ -10,6 +10,9 @@ config_keys = [
     "SlowHash",
     "EnvelopeMode",
     "Group",
+    "Nh",
+    "Npk",
+    "Nsk",
 ]
 
 input_keys = [
@@ -75,26 +78,26 @@ def format_vector_name(vector):
     return "OPAQUE-" + vector["config"]["Name"]
 
 def print_vector_config(vector):
-    for config_key in vector["config"]:
-        for key in config_keys:
+    for key in config_keys:
+        for config_key in vector["config"]:
             if key == config_key:
                 wrap_print(key + ":", vector["config"][key])
 
 def print_vector_inputs(vector):
-    for input_key in vector["inputs"]:
-        for key in input_keys:
+    for key in input_keys:
+        for input_key in vector["inputs"]:
             if key == input_key:
                 wrap_print(key + ":", vector["inputs"][key])
 
 def print_vector_intermediates(vector):
-    for int_key in vector["intermediates"]:
-        for key in intermediate_keys:
+    for key in intermediate_keys:
+        for int_key in vector["intermediates"]:
             if key == int_key:
                 wrap_print(key + ":", vector["intermediates"][key])
 
 def print_vector_outputs(vector):
-    for output_key in vector["outputs"]:
-        for key in output_keys:
+    for key in output_keys:
+        for output_key in vector["outputs"]:
             if key == output_key:
                 wrap_print(key + ":", vector["outputs"][key])
 
