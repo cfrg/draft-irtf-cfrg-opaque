@@ -34,11 +34,11 @@ envelope_mode_base = 0x01
 envelope_mode_custom_identifier = 0x02
 
 # struct {
-#    opaque skU<1..2^16-1>; 
+#    opaque client_private_key[Nsk];
 # } SecretCredentials;
 # 
 # struct {
-#    opaque pkS<1..2^16-1>;
+#    opaque server_public_key[Npk];
 # } CleartextCredentials;
 #
 # struct {
@@ -47,15 +47,14 @@ envelope_mode_custom_identifier = 0x02
 # } Credentials;
 
 def deserialize_secret_credentials(data):
-    skU, offset = decode_vector(data)
-    return SecretCredentials(skU), offset
+    return SecretCredentials(data), len(data)
 
 class SecretCredentials(object):
     def __init__(self, skU):
         self.skU = skU
 
     def serialize(self):
-        return encode_vector(self.skU)
+        return self.skU
 
 class CleartextCredentials(object):
     def __init__(self, pkS, mode = envelope_mode_base):
@@ -63,7 +62,7 @@ class CleartextCredentials(object):
         self.mode = mode
 
     def serialize(self):
-        return encode_vector(self.pkS)
+        return self.pkS
 
 class CustomCleartextCredentials(CleartextCredentials):
     def __init__(self, pkS, idU, idS):
@@ -72,7 +71,7 @@ class CustomCleartextCredentials(CleartextCredentials):
         self.idS = idS
 
     def serialize(self):
-        return encode_vector(self.pkS) + encode_vector(self.idU) + encode_vector(self.idS)
+        return self.pkS + encode_vector(self.idU) + encode_vector(self.idS)
 
 class Credentials(object):
     def __init__(self, skU, pkU, idU = None, idS = None):
@@ -164,12 +163,14 @@ class RegistrationRequest(ProtocolMessage):
 
 # struct {
 #     SerializedElement data;
-#     opaque pkS<1..2^16-1>;
+#     opaque pkS[Npk];
 # } RegistrationResponse;
 def deserialize_registration_response(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
     data = msg_bytes[0:length]
-    pkS, _ = decode_vector(msg_bytes[length:])
+    pkS = msg_bytes[length:]
+    if len(pkS) != config.Npk:
+        raise Exception("Invalid message: %d %d" % (len(pkS), config.Npk))
 
     return RegistrationResponse(data, pkS)
 
@@ -180,19 +181,20 @@ class RegistrationResponse(ProtocolMessage):
         self.pkS = pkS
 
     def serialize(self):
-        return self.data + encode_vector(self.pkS)
+        return self.data + self.pkS
 
 # struct {
-#     opaque pkU<1..2^16-1>;
+#     opaque pkU[Npk];
 #     Envelope envU;
 # } RegistrationUpload;
 def deserialize_registration_upload(config, msg_bytes):
     offset = 0
 
-    pkU, pkU_offset = decode_vector(msg_bytes[offset:])
-    offset += pkU_offset
+    if len(msg_bytes) < config.Npk:
+        raise Exception("Invalid message")
+    pkU = msg_bytes[offset:config.Npk]
 
-    envU, _ = deserialize_envelope(config, msg_bytes[offset:])
+    envU, _ = deserialize_envelope(config, msg_bytes[config.Npk:])
 
     return RegistrationUpload(envU, pkU)
 
@@ -203,7 +205,7 @@ class RegistrationUpload(ProtocolMessage):
         self.pkU = pkU
 
     def serialize(self):
-        return encode_vector(self.pkU) + self.envU.serialize()
+        return self.pkU + self.envU.serialize()
 
 # struct {
 #     SerializedElement data;
@@ -224,15 +226,15 @@ class CredentialRequest(ProtocolMessage):
 
 # struct {
 #     SerializedElement data;
-#     opaque pkS<1..2^16-1>;
+#     opaque pkS[Npk];
 #     Envelope envelope;
 # } CredentialResponse;
 def deserialize_credential_response(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
     data = msg_bytes[0:length]
 
-    pkS, pkS_length = decode_vector(msg_bytes[length:])
-    offset = length + pkS_length
+    pkS = msg_bytes[length:length+config.Npk]
+    offset = length + config.Npk
 
     envU, length = deserialize_envelope(config, msg_bytes[offset:])
     offset = offset + length
@@ -247,4 +249,4 @@ class CredentialResponse(ProtocolMessage):
         self.envU = envU
 
     def serialize(self):
-        return self.data + encode_vector(self.pkS) + self.envU.serialize()
+        return self.data + self.pkS + self.envU.serialize()
