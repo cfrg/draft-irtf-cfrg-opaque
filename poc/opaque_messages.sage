@@ -9,9 +9,7 @@ import hashlib
 import struct
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, KeyGen
-    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len
+    from sagelib.opaque_common import I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
