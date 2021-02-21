@@ -10,7 +10,7 @@ import struct
 from hash import scrypt
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, KeyGen
+    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, GenerateKeyPair
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, CustomCleartextCredentials, Envelope, InnerEnvelope, envelope_mode_base, envelope_mode_custom_identifier, deserialize_secret_credentials
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes
 except ImportError as e:
@@ -24,8 +24,7 @@ class OPAQUECore(object):
 
     def derive_secrets(self, pwdU, response, blind, nonce, Npt):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
-        N = oprf_context.unblind(blind, response.data, None, None)
-        y = oprf_context.finalize(pwdU, N, _as_bytes("OPAQUE"))
+        y = oprf_context.finalize(pwdU, blind, response.data, None, None)
         y_harden = self.config.slow_hash.hash(y)
         rwdU = hkdf_extract(self.config, nonce, y_harden)
 
@@ -43,7 +42,7 @@ class OPAQUECore(object):
         return request, blind
 
     def create_registration_response(self, request, pkS):
-        kU, _ = KeyGen(self.config.oprf_suite)
+        kU, _ = GenerateKeyPair(self.config.oprf_suite)
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
         data, _, _ = oprf_context.evaluate(request.data)
         response = RegistrationResponse(data, pkS)

@@ -35,13 +35,14 @@ def test_vector_serialization():
 
 def create_inner_envelope():
     nonce = random_bytes(32)
-    ct = _as_bytes("ct")
+    config = default_opaque_configuration
+    ct = os.urandom(config.Nsk)
     return InnerEnvelope(envelope_mode_base, nonce, ct)
 
 def test_inner_envelope_serialization():
     inner_envelope = create_inner_envelope()
     serialized_inner = inner_envelope.serialize()
-    recovered_inner, offset = deserialize_inner_envelope(serialized_inner)
+    recovered_inner, offset = deserialize_inner_envelope(default_opaque_configuration, serialized_inner)
 
     assert offset == len(serialized_inner)
     assert recovered_inner.mode == inner_envelope.mode

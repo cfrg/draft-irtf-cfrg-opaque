@@ -9,9 +9,7 @@ import hashlib
 import struct
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, KeyGen
-    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len
+    from sagelib.opaque_common import I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -83,15 +81,17 @@ class Credentials(object):
 # struct {
 #   InnerEnvelopeMode mode;
 #   opaque nonce[32];
-#   opaque ct<1..2^16-1>;
+#   opaque ct[Nsk];
 # } InnerEnvelope;
-def deserialize_inner_envelope(data):
+def deserialize_inner_envelope(config, data):
     if len(data) < 35:
         raise Exception("Insufficient bytes")
     mode = OS2IP(data[0:1])
     nonce = data[1:33]
-    ct, ct_offset = decode_vector(data[33:])
-    return InnerEnvelope(mode, nonce, ct), 33+ct_offset
+    if len(data) < 33+config.Nsk:
+        raise Exception("Invalid inner envelope encoding")
+    ct = data[33:33+config.Nsk]
+    return InnerEnvelope(mode, nonce, ct), 33+len(ct)
 
 class InnerEnvelope(object):
     def __init__(self, mode, nonce, ct):
@@ -101,14 +101,14 @@ class InnerEnvelope(object):
         self.ct = ct
 
     def serialize(self):
-        return I2OSP(self.mode, 1) + self.nonce + encode_vector(self.ct)
+        return I2OSP(self.mode, 1) + self.nonce + self.ct
 
 # struct {
 #   InnerEnvelope contents;
 #   opaque auth_tag[Nh];
 # } Envelope;
 def deserialize_envelope(config, data):
-    contents, offset = deserialize_inner_envelope(data)
+    contents, offset = deserialize_inner_envelope(config, data)
     Nh = config.hash().digest_size
     if offset + Nh > len(data):
         raise Exception("Insufficient bytes")
