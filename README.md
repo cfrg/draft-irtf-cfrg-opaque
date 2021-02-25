@@ -18,6 +18,14 @@ This requires that you have the necessary software installed.  See
 [the instructions](https://github.com/martinthomson/i-d-template/blob/master/doc/SETUP.md).
 
 
+## Implementations
+
+| Implementation                                                                     | Language | Dependencies  |
+| ---------------------------------------------------------------------------------- | :------- | :------------ |
+| [**Reference**](https://github.com/cfrg/draft-irtf-cfrg-opaque/tree/master/poc)    | Sage     | Sage          |
+| [opaque-ke](https://github.com/novifinancial/opaque-ke)                            | Rust     | N/A           |
+| [opaque](https://github.com/bytemare/opaque/)                                      | Go       | N/A           |
+
 ## Contributing
 
 See the
