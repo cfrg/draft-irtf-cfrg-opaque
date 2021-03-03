@@ -388,8 +388,8 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
     fixed-length digest of size `Nh` bytes.
   - Nh: The output size of the `Hash()` function in bytes.
 
-- Slow Hash Function:
-  - SlowHash(msg, params): Repeatedly apply a memory-hard function with parameters
+- Memory Hard Function (MHF):
+  - Harden(msg, params): Repeatedly apply a memory-hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
 
@@ -620,7 +620,7 @@ Steps:
 FinalizeRequest(password, creds, blind, response)
 
 Parameters:
-- params, the SlowHash parameters established out of band
+- params, the MHF parameters established out of band
 - mode, the InnerEnvelope mode
 - Nl, the output size of the Extract function
 
@@ -637,7 +637,7 @@ Output:
 Steps:
 1. y = Finalize(password, blind, response.data)
 2. envelope_nonce = random(32)
-3. prk = Extract(envelope_nonce, SlowHash(y, params))
+3. prk = Extract(envelope_nonce, Harden(y, params))
 4. Create SecretCredentials secret_creds with creds.client_private_key
 5. Create CleartextCredentials cleartext_creds with response.server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if
@@ -794,7 +794,7 @@ Steps:
 RecoverCredentials(password, blind, response)
 
 Parameters:
-- params, the SlowHash parameters established out of band
+- params, the MHF parameters established out of band
 - Nl, the output size of the Extract function
 
 Input:
@@ -811,7 +811,7 @@ Steps:
 1. y = Finalize(password, blind, response.data)
 2. contents = response.envelope.contents
 3. envelope_nonce = contents.nonce
-4. prk = Extract(envelope_nonce, SlowHash(y, params))
+4. prk = Extract(envelope_nonce, Harden(y, params))
 5. pseudorandom_pad =
     Expand(prk, "Pad", len(contents.encrypted_creds))
 6. auth_key = Expand(prk, "AuthKey", Nl)
@@ -1033,11 +1033,11 @@ enc_server_info = xor(info_pad, server_info)
 
 # Configurations {#configurations}
 
-An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, SlowHash, Group).
+An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, MHF, Group).
 The OPRF protocol is drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}.
 The KDF functions in this document use HKDF {{!RFC5869}}. The MAC functions in
 this document use HMAC {{!RFC2104}}. The Hash functions in this specification
-include SHA-256 and SHA-512. The SlowHash functions use Scrypt {{?RFC7914}}
+include SHA-256 and SHA-512. The MHF functions use Scrypt {{?RFC7914}}
 with parameters N = 32768, r = 8, p = 1, and output key length 64. The Group mode
 identifies the group used in the OPAQUE-3DH AKE, and matches that of the OPRF.
 
