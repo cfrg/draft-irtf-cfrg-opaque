@@ -1033,23 +1033,28 @@ enc_server_info = xor(info_pad, server_info)
 
 # Configurations {#configurations}
 
-An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, MHF, Group).
-The OPRF protocol is drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}.
-The KDF functions in this document use HKDF {{!RFC5869}}. The MAC functions in
-this document use HMAC {{!RFC2104}}. The Hash functions in this specification
-include SHA-256 and SHA-512. The MHF functions use Scrypt {{?RFC7914}}
-with parameters N = 32768, r = 8, p = 1, and output key length 64. The Group mode
-identifies the group used in the OPAQUE-3DH AKE, and matches that of the OPRF.
+An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, EnvelopeMode, Group)
+such that the following conditions are met:
 
-The following configurations are defined in this specification:
+- The OPRF protocol uses the "base mode" variant of {{I-D.irtf-cfrg-voprf}} and implements
+  the interface in {{dependencies}}. Examples include OPRF(ristretto255, SHA-512) and
+  OPRF(P-256, SHA-256).
+- The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
+  Examples include HKDF {{!RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
+  and SHA-256 and SHA-512 for the Hash functions.
+- The MHF has fixed parameters, chosen by the application, and implements the
+  interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
+  scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
+- EnvelopeMode value is as defined in {{credential-storage}}, and is one of
+  `base` or `custom_identifier`.
+- The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
+  match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
+  then Group SHOULD be ristretto255.
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, Scrypt(32768,8,1), ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, Scrypt(32768,8,1), P-256
+Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-Each of these configurations supports the `base` and `custom_identifer` modes.
-The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one
-of `base` or `custom_identifier`. Future specifications may specify alternate
-EnvelopeMode values and their corresponding Envelope structure.
+- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following consideration. The size of AKE public and private keys -- `Npk`
