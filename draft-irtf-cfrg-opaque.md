@@ -350,23 +350,18 @@ OPAKE was taken.
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}, version -06):
-  - GenerateKeyPair(): Generate an OPRF private and public key. OPAQUE only requires
-    an OPRF private key. We write `(oprf_key, _) = GenerateKeyPair()` to denote use
-    of this function for generating secret key `oprf_key` (and discarding the
-    corresponding public key).
   - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
     by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
     random scalar `r`, and evaluation output `Z`, yielding output `y`.
-  - SerializeScalar(s): Map a scalar `s` to a unique byte array `buf` of fixed
-    length.
-  - DeserializeScalar(buf): Map a byte array `buf` to a scalar `s`, or fail if
-    the input is not a valid byte representation of a scalar.
+  - DeriveKeyPair(seed): Derive a private and public key pair deterministically
+    from a seed.
   - SerializedElement: A serialized OPRF group element, a byte array of fixed
     length.
   - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.
+  - Nok: The size of an OPRF private key
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
@@ -403,26 +398,32 @@ used in the AKE.
 Registration is executed between a client C and a
 server S. It is assumed S can identify C and the client can
 authenticate S during this registration phase. This is the only part
-in OPAQUE that requires an authenticated channel, either physical, out-of-band,
+in OPAQUE that requires an authenticated and confidential channel, either physical, out-of-band,
 PKI-based, etc. This section describes the registration flow, message encoding,
 and helper functions. Moreover, C has a key pair (client_private_key, client_public_key) for an AKE protocol
 which is suitable for use with OPAQUE; See {{online-phase}}. The private-public keys (client_private_key, client_public_key) may be randomly generated (using a cryptographically secure pseudorandom number generator) for the account or provided by the calling client.
 Clients MUST NOT use the same key pair (client_private_key, client_public_key) for two different accounts.
 
-To begin, C chooses its password, and S chooses its own pair of private-public
-AKE keys (server_private_key, server_public_key) for use with the AKE. S can use
-the same pair of keys with multiple clients. These steps can happen offline, i.e.,
-before the registration phase. Once complete, the registration process proceeds as follows:
+## Setup Phase {#setup-phase}
+
+In a setup phase, C chooses its password, and S chooses its own pair of private-public
+AKE keys (server_private_key, server_public_key) for use with the AKE, along with a Nh-byte oprf_seed. S can use
+the same pair of keys with multiple clients, and can opt to use multiple seeds (so long as they are
+kept consistent for each client). These steps can happen offline, i.e., before the registration phase.
+
+Once complete, the registration process proceeds as follows.
+
+## Credential Registration
 
 ~~~
- Client (password, creds)            Server (server_private_key, server_public_key)
+ Client (password, creds)            Server (server_private_key, server_public_key, credential_identifier, oprf_seed)
  --------------------------------------------------------------------
  (request, blind) = CreateRegistrationRequest(password)
 
                                request
                       ------------------------->
 
-            (response, oprf_key) = CreateRegistrationResponse(request, server_public_key)
+            (response, oprf_key) = CreateRegistrationResponse(request, server_public_key, credential_identifier, oprf_seed)
 
                                response
                       <-------------------------
@@ -438,8 +439,7 @@ before the registration phase. Once complete, the registration process proceeds 
 Both client and server MUST validate the other party's public key before use.
 See {{validation}} for more details.
 
-Upon completion, S stores C's credentials for later use. See {{credential-file}}
-for a recommended storage format.
+Upon completion, S stores C's credentials for later use.
 
 ## Credential Storage {#credential-storage}
 
@@ -538,6 +538,8 @@ are recommended to be stored in a `Credentials` object with the following named 
 - `client_identity`, an optional client identity (present only in the `custom_identifier` mode)
 - `server_identity`, an optional server identity (present only in the `custom_identifier` mode)
 
+Note that the total size of the Envelope is equal to Nsk + Nh + 33 bytes.
+
 ## Registration Messages
 
 ~~~
@@ -565,12 +567,16 @@ server_public_key
 ~~~
 struct {
     opaque client_public_key[Npk];
+    opaque masking_key[Nh];
     Envelope envelope;
 } RegistrationUpload;
 ~~~
 
 client_public_key
 : The client's encoded public key, corresponding to the private key `client_private_key`.
+
+masking_key
+: A key used by the server to preserve confidentiality of the envelope during login
 
 envelope
 : The client's `Envelope` structure.
@@ -598,18 +604,21 @@ Steps:
 ### CreateRegistrationResponse {#create-reg-response}
 
 ~~~
-CreateRegistrationResponse(request, server_public_key)
+CreateRegistrationResponse(request, server_public_key, credential_identifier, oprf_seed)
 
 Input:
 - request, a RegistrationRequest structure
 - server_public_key, the server's public key
+- credential_identifier, an identifier that uniquely represents the credential being
+  registered
+- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key
 
 Output:
 - response, a RegistrationResponse structure
 - oprf_key, the per-client OPRF key known only to the server
 
 Steps:
-1. (oprf_key, _) = GenerateKeyPair()
+1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
 2. Z = Evaluate(oprf_key, request.data)
 3. Create RegistrationResponse response with (Z, server_public_key)
 4. Output (response, oprf_key)
@@ -638,21 +647,22 @@ Output:
 Steps:
 1. y = Finalize(password, blind, response.data)
 2. envelope_nonce = random(32)
-3. prk = Extract(envelope_nonce, Harden(y, params))
+3. prk = Extract("", Harden(y, params))
 4. Create SecretCredentials secret_creds with creds.client_private_key
 5. Create CleartextCredentials cleartext_creds with response.server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if
    mode is custom_identifier
-6. pseudorandom_pad = Expand(prk, "Pad", len(secret_creds))
-7. auth_key = Expand(prk, "AuthKey", Nx)
-8. export_key = Expand(prk, "ExportKey", Nx)
-9. encrypted_creds = xor(secret_creds, pseudorandom_pad)
-10. Create InnerEnvelope inner_env
+6. pseudorandom_pad = Expand(prk, concat(envelope_nonce, "Pad"), len(secret_creds))
+7. auth_key = Expand(prk, concat(envelope_nonce, "AuthKey"), Nh)
+8. export_key = Expand(prk, concat(envelope_nonce, "ExportKey"), Nh)
+9. masking_key = Expand(prk, "MaskingKey", Nh)
+10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
+11. Create InnerEnvelope inner_env
       with (mode, envelope_nonce, encrypted_creds)
-11. auth_tag = MAC(auth_key, concat(inner_env, cleartext_creds))
-12. Create Envelope envelope with (inner_env, auth_tag)
-13. Create RegistrationUpload record with (envelope, creds.client_public_key)
-14. Output (record, export_key)
+12. auth_tag = MAC(auth_key, concat(inner_env, cleartext_creds))
+13. Create Envelope envelope with (inner_env, auth_tag)
+14. Create RegistrationUpload record with (creds.client_public_key, masking_key, envelope)
+15. Output (record, export_key)
 ~~~
 
 The inputs to Extract and Expand are as specified in {{dependencies}}.
@@ -661,20 +671,8 @@ See {{online-phase}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
 
-### Credential File {#credential-file}
-
-The server then constructs and stores the `credential_file` object, where `envelope` and `client_public_key`
-are obtained from `record`, and `oprf_key` is retained from the output of `CreateRegistrationResponse`.
-`oprf_key` is serialized using `SerializeScalar`. The below structure represents an example of how
-these values might be conveniently stored together.
-
-~~~
-struct {
-    SerializedScalar oprf_key;
-    opaque client_public_key[Npk];
-    Envelope envelope;
-} credential_file;
-~~~
+The server then directly stores the `record` object as the credential file for each client. Note that
+the values `oprf_seed` and `server_private_key` from the server's setup phase must also be persisted.
 
 # Online Authenticated Key Exchange {#online-phase}
 
@@ -700,14 +698,14 @@ credentials from the server-stored envelope. This process is similar to the offl
 registration stage, as shown below.
 
 ~~~
- Client (password)             Server (server_private_key, server_public_key, credential_file)
+ Client (password)             Server (server_private_key, server_public_key, oprf_seed, record)
  --------------------------------------------------------------------
  (request, blind) = CreateCredentialRequest(password)
 
                                request
                       ------------------------->
 
-    response = CreateCredentialResponse(request, server_public_key, credential_file)
+    response = CreateCredentialResponse(request, server_public_key, record, credential_identifier, oprf_seed)
 
                                response
                       <-------------------------
@@ -733,20 +731,19 @@ data
 ~~~
 struct {
     SerializedElement data;
-    opaque server_public_key[Npk];
-    Envelope envelope;
+    opaque masking_nonce[32];
+    opaque masked_response[Npk + Nsk + Nh + 33];
 } CredentialResponse;
 ~~~
 
 data
 : A serialized OPRF group element.
 
-server_public_key
-: The server's encoded public key that will be used for the online authenticated
-key exchange stage.
+masking_nonce
+: A nonce used for the confidentiality of the masked_response field
 
-envelope
-: The client's `Envelope` structure.
+masked_response
+: An encrypted form of the server's public key and the client's `Envelope` structure
 
 ### Credential Retrieval Functions
 
@@ -770,24 +767,47 @@ Steps:
 
 #### CreateCredentialResponse {#create-credential-response}
 
+There are two scenarios to handle for the construction of a CredentialResponse object: either the
+record for the client exists (corresponding to a properly registered client), or
+it was never created (corresponding to a client that has yet to register).
+
+In the case of an existing record with the corresponding identifier
+`credential_identifier`, the server invokes the following function to
+produce a CredentialResponse:
+
 ~~~
-CreateCredentialResponse(request, server_public_key, credential_file)
+CreateCredentialResponse(request, server_public_key, record, credential_identifier, oprf_seed)
 
 Input:
 - request, a CredentialRequest structure
 - server_public_key, the public key of the server
-- credential_file, the server's output from registration
-  (see {{credential-file}})
+- record, an instance of RegistrationUpload which is the server's
+  output from registration
+- credential_identifier, an identifier that uniquely represents the credential being
+  registered
+- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key
 
 Output:
 - response, a CredentialResponse structure
 
 Steps:
-1. Z = Evaluate(DeserializeScalar(credential_file.oprf_key), request.data)
-2. Create CredentialResponse response
-    with (Z, server_public_key, credential_file.envelope)
-3. Output response
+1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
+2. Z = Evaluate(oprf_key, request.data)
+3. masking_nonce = random(32)
+4. credential_response_pad = Expand(record.masking_key,
+     concat(masking_nonce, "CredentialResponsePad"), Npk + Nsk + Nh + 33)
+5. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
+6. Create CredentialResponse response with (Z, masking_nonce, masked_response)
+7. Output response
 ~~~
+
+In the case of a record that does not exist, the server invokes the CreateCredentialResponse
+function where the record argument is configured so that:
+- record.masking_key is set to a random byte string of length Nh, and
+- record.envelope is set to the byte string consisting only of zeros, of length Nsk + Nh + 33
+
+Note that the responses output by either scenario are indistinguishable to an adversary
+that is unable to guess the registered password for the client corresponding to credential_identifier.
 
 #### RecoverCredentials {#recover-credentials}
 
@@ -810,21 +830,25 @@ Output:
 
 Steps:
 1. y = Finalize(password, blind, response.data)
-2. contents = response.envelope.contents
-3. envelope_nonce = contents.nonce
-4. prk = Extract(envelope_nonce, Harden(y, params))
-5. pseudorandom_pad =
-    Expand(prk, "Pad", len(contents.encrypted_creds))
-6. auth_key = Expand(prk, "AuthKey", Nx)
-7. export_key = Expand(prk, "ExportKey", Nx)
-8. Create CleartextCredentials cleartext_creds with response.server_public_key
+2. prk = Extract("", Harden(y, params))
+3. masking_key = Expand(prk, "MaskingKey", Nh)
+4. credential_response_pad = Expand(masking_key,
+     concat(response.masking_nonce, "CredentialResponsePad"), Npk + Nsk + Nh + 33)
+5. concat(server_public_key, envelope) = xor(credential_response_pad, response.masked_response)
+6. contents = envelope.contents
+7. envelope_nonce = contents.nonce
+8. pseudorandom_pad =
+    Expand(prk, concat(envelope_nonce, "Pad"), len(contents.encrypted_creds))
+9. auth_key = Expand(prk, concat(envelope_nonce, "AuthKey"), Nh)
+10. export_key = Expand(prk, concat(envelope_nonce, "ExportKey"), Nh)
+11. Create CleartextCredentials cleartext_creds with server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if mode is
    custom_identifier
-9. expected_tag = MAC(auth_key, concat(contents, cleartext_creds))
-10. If !ct_equal(response.envelope.auth_tag, expected_tag),
+12. expected_tag = MAC(auth_key, concat(contents, cleartext_creds))
+13. If !ct_equal(envelope.auth_tag, expected_tag),
     raise DecryptionError
-11. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
-12. Output (secret_creds.client_private_key, response.server_public_key, export_key)
+14. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
+15. Output (secret_creds.client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Instantiations {#instantiations}
@@ -964,7 +988,7 @@ encryption key `handshake_encrypt_key`. Additionally, OPAQUE-3DH also
 outputs `session_key`. The schedule for computing this key material is below.
 
 ~~~
-Extract(salt=0, IKM)
+Extract("", IKM)
     |
     +-> Derive-Secret(., "handshake secret", Hash(preamble)) = handshake_secret
     |
@@ -1226,7 +1250,7 @@ define a more general procedure. Namely, what is derived from prk is a random
 seed used as an input to a key generation procedure that generates the pair
 (client_private_key, client_public_key). In this case, secret_credentials is empty and cleartext_credentials
 contains server_public_key. The random key generation seed is defined as
-HKDF-Expand(KdKey; info="KG seed", L)
+Expand(KdKey; info="KG seed", L)
 where L is the required seed length. We note that in this encryption-less
 scheme, the authentication still needs to be random-key robust which HMAC
 satisfies. -->
@@ -1246,55 +1270,42 @@ consisting of server_public_key and HMAC(Khmac; server_public_key). -->
 <!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
 envelope (for settings where storage and/or communication is expensive) -->
 
-## Client Enumeration {#SecEnumeration}
+## Preventing Client Enumeration
 
 Client enumeration refers to attacks where the attacker tries to learn
-whether a given client identity is registered with a server. Preventing
-such attacks requires the server to act with unknown client identities
-in a way that is indistinguishable from its behavior with existing
-clients. Here we suggest a way to implement such defense, namely, a way for
-simulating a CredentialResponse for non-existing clients.
-Note that if the same CredentialRequest is received
-twice by the server, the response needs to be the same in both cases (since
-this would be the case for real clients).
-For protection against this attack, one would apply the encryption function in
-the construction of the envelope to all the key material in it.
-The server S will have two keys MK, MK' for a pseudorandom function f.
-f refers to a regular pseudorandom function such as HMAC or CMAC.
-Upon receiving a CredentialRequest for a non-existing
-client client_identity, S computes oprf_key=f(MK; client_identity) and oprf_key'=f(MK'; client_identity) and responds with
-CredentialResponse carrying Z=M^oprf_key and envelope, where the latter is computed as follows.
-prk is set to oprf_key' and secret_creds is set to the all-zero string (of the
-length of a regular envelope plaintext). Care needs to be taken to avoid side-channel leakage (e.g., timing) from helping differentiate these
-operations from a regular server response.
-The above requires changes to the server-side implementation but not to the
-protocol itself or the client-side.
+extra information about the behavior of clients that have registered with
+the server. There are two types of attacks we consider:
+1) An attacker tries to learn whether a given client identity is registered
+with a server, and
+2) An attacker tries to learn whether a given client identity has recently
+completed registration, or has re-registered (e.g. after a password change).
 
-There is one form of leakage that the above allows and whose prevention would
-require a change in OPAQUE.
-An attacker that attempts authentication with the same CredentialRequest twice and receives
-different responses can conclude that either the client registered with the
-service between these two activations or that the client was registered before
-but changed its password in between the activations (assuming the server
-changes oprf_key at the time of a password change). In any case, this
-indicates that client_identity is a registered client at the time of the second activation.
-To conceal this information, S can implement the derivation of oprf_key
-as oprf_key=f(MK; client_identity) also for registered clients. Hiding changes in the envelope, however,
-requires a change in the protocol. Instead of sending envelope as is,
-S would send an encryption of envelope under a key that the client derives from the
-OPRF result (similarly to prk) and that S stores during password
-registration. During the authenticated key exchange stage, the client will derive
-this key from the OPRF result, will use it to decrypt the envelope, and continue with the
-regular protocol. If S uses a randomized encryption, the encrypted envelope will look
-each time as a fresh random string, hence S can simulate the encrypted envelope also
-for non-existing clients.
+Preventing the first type of attack requires the server to act with
+unregistered client identities in a way that is indistinguishable from its
+behavior with existing registered clients. This is achieved in
+{{create-credential-response}} for an unregistered client by simulating a
+CredentialResponse for unregistered clients through the sampling of a
+random masking_key value and relying on the semantic security provided by
+the XOR-based pad over the envelope.
 
-Note that the first case above does not change the protocol so its
-implementation is a server's decision (the client side is not changed).
-The second case, requires changes on the client side so it changes OPAQUE
-itself.
+Implementations must employ care to avoid side-channel leakage (e.g.,
+timing attacks) from helping differentiate these operations from a regular
+server response.
 
-[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22: Should this variant be documented/standardized?]]
+Preventing the second type of attack requires the server to supply a
+credential_identifier value for a given client identity, consistently between the
+{{create-reg-response}} and {{create-credential-response}} steps.
+Note that credential_identifier can be set to client_identity, for simplicity.
+
+In the event of a server compromise that results in a re-registration of
+credentials for all compromised clients, the oprf_seed value must be resampled,
+resulting in a change in the oprf_key value for each client. Although this
+change can be detected by an adversary, it is only leaked upon password rotation
+after the exposure of the credential files.
+
+Finally, note that server implementations may choose to forego the construction
+of a simulated credential response message for an unregistered client if these client
+enumeration attacks can be mitigated through other application-specific means.
 
 ## Password Salt and Storage Implications
 
