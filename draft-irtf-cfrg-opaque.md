@@ -1058,7 +1058,7 @@ Absent an application-specific profile, the following configurations are RECOMME
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following consideration. The size of AKE public and private keys -- `Npk`
-and `Npk`, respectively -- must adhere to an output length limitations of the KDF
+and `Nsk`, respectively -- must adhere to an output length limitations of the KDF
 Expand function. If HKDF is used, this means Npk, Nsk <= 255 * Nl, where Nl is the
 output size of underlying hash function. See {{RFC5869}} for details.
 
