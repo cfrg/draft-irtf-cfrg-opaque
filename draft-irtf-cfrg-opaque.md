@@ -1041,7 +1041,7 @@ such that the following conditions are met:
   the interface in {{dependencies}}. Examples include OPRF(ristretto255, SHA-512) and
   OPRF(P-256, SHA-256).
 - The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
-  Examples include HKDF {{!RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
+  Examples include HKDF {{RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
   and SHA-256 and SHA-512 for the Hash functions.
 - The MHF has fixed parameters, chosen by the application, and implements the
   interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
