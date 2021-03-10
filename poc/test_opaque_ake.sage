@@ -6,7 +6,7 @@ import json
 import hashlib
 try:
     from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_sha512, ciphersuite_p256_sha256, ciphersuite_p384_sha512, ciphersuite_p521_sha512
-    from sagelib.opaque_core import OPAQUECore, SlowHash, identity_harden
+    from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
     from sagelib.opaque_messages import InnerEnvelope, deserialize_inner_envelope, envelope_mode_base, envelope_mode_custom_identifier, \
         Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
             deserialize_credential_request, deserialize_credential_response, \
@@ -20,8 +20,10 @@ except ImportError as e:
 default_opaque_configuration = Configuration(
     envelope_mode_base, 
     oprf_ciphersuites[ciphersuite_ristretto255_sha512], 
+    HKDF(hashlib.sha512),
+    HMAC(hashlib.sha512),
     hashlib.sha512, 
-    SlowHash("Identity", identity_harden),
+    MHF("Identity", identity_harden),
     GroupRistretto255(),
 )
 
@@ -165,16 +167,16 @@ def test_3DH():
     # Configurations specified here:
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
-        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, SlowHash("Identity", identity_harden), GroupRistretto255()),
-        (oprf_ciphersuites[ciphersuite_decaf448_sha512], hashlib.sha512, SlowHash("Identity", identity_harden), GroupDecaf448()),
-        (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, SlowHash("Identity", identity_harden), GroupP256()),
-        (oprf_ciphersuites[ciphersuite_p384_sha512], hashlib.sha512, SlowHash("Identity", identity_harden), GroupP384()),
-        (oprf_ciphersuites[ciphersuite_p521_sha512], hashlib.sha512, SlowHash("Identity", identity_harden), GroupP521()),
+        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupRistretto255()),
+        (oprf_ciphersuites[ciphersuite_decaf448_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupDecaf448()),
+        (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, MHF("Identity", identity_harden), GroupP256()),
+        (oprf_ciphersuites[ciphersuite_p384_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupP384()),
+        (oprf_ciphersuites[ciphersuite_p521_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupP521()),
     ]
 
     vectors = []
     for mode in [envelope_mode_base, envelope_mode_custom_identifier]:
-        for (oprf, fast_hash, slow_hash, group) in configs:
+        for (oprf, fast_hash, mhf, group) in configs:
             (skU, pkU) = group.key_gen()
             (skS, pkS) = group.key_gen()
             skU_bytes = group.serialize_scalar(skU)
@@ -185,7 +187,9 @@ def test_3DH():
             idU = pkU_bytes
             idS = pkS_bytes
 
-            config = Configuration(mode, oprf, fast_hash, slow_hash, group)
+            kdf = HKDF(fast_hash)
+            mac = HMAC(fast_hash)
+            config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group)
 
             creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
             core = OPAQUECore(config)

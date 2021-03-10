@@ -26,11 +26,13 @@ else:
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
 
 class Configuration(object):
-    def __init__(self, mode, oprf_suite, hash, slow_hash, group):
+    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group):
         self.mode = mode
         self.oprf_suite = oprf_suite
+        self.kdf = kdf
+        self.mac = mac
         self.hash = hash
-        self.slow_hash = slow_hash
+        self.mhf = mhf
         self.group = group
         self.Npk = group.element_byte_length()
         self.Nsk = group.scalar_byte_length()
@@ -64,11 +66,10 @@ class OPAQUE3DH(KeyExchange):
             "Group": self.config.group.name,
             "EnvelopeMode": to_hex(I2OSP(self.config.mode, 1)),
             "OPRF": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
+            "KDF": self.config.kdf.name,
+            "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
-            "SlowHash": self.config.slow_hash.name,
-            "Nh": str(self.config.hash().digest_size),
-            "Npk": str(self.config.group.element_byte_length()),
-            "Nsk": str(self.config.group.scalar_byte_length()),
+            "MHF": self.config.mhf.name,
         }
 
     def derive_3dh_keys(self, dh_components, info):
