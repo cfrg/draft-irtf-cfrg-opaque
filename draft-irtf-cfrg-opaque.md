@@ -372,11 +372,11 @@ Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 - Key Derivation Function (KDF):
-  - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nl` bytes from
+  - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
     input keying material `ikm` and an optional byte string `salt`.
   - Expand(prk, info, L): Expand a pseudorandom key `prk` using optional string `info`
     into `L` bytes of output keying material.
-  - Nl: The output size of the `Extract()` function in bytes.
+  - Nx: The output size of the `Extract()` function in bytes.
 
 - Message Authentication Code (MAC):
   - MAC(key, msg): Compute a message authentication code over input `msg` with key
@@ -623,7 +623,7 @@ FinalizeRequest(password, creds, blind, response)
 Parameters:
 - params, the MHF parameters established out of band
 - mode, the InnerEnvelope mode
-- Nl, the output size of the Extract function
+- Nx, the output size of the Extract function
 
 Input:
 - password, an opaque byte string containing the client's password
@@ -644,8 +644,8 @@ Steps:
    and custom identifiers creds.client_identity and creds.server_identity if
    mode is custom_identifier
 6. pseudorandom_pad = Expand(prk, "Pad", len(secret_creds))
-7. auth_key = Expand(prk, "AuthKey", Nl)
-8. export_key = Expand(prk, "ExportKey", Nl)
+7. auth_key = Expand(prk, "AuthKey", Nx)
+8. export_key = Expand(prk, "ExportKey", Nx)
 9. encrypted_creds = xor(secret_creds, pseudorandom_pad)
 10. Create InnerEnvelope inner_env
       with (mode, envelope_nonce, encrypted_creds)
@@ -796,7 +796,7 @@ RecoverCredentials(password, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nl, the output size of the Extract function
+- Nx, the output size of the Extract function
 
 Input:
 - password, an opaque byte string containing the client's password
@@ -815,8 +815,8 @@ Steps:
 4. prk = Extract(envelope_nonce, Harden(y, params))
 5. pseudorandom_pad =
     Expand(prk, "Pad", len(contents.encrypted_creds))
-6. auth_key = Expand(prk, "AuthKey", Nl)
-7. export_key = Expand(prk, "ExportKey", Nl)
+6. auth_key = Expand(prk, "AuthKey", Nx)
+7. export_key = Expand(prk, "ExportKey", Nx)
 8. Create CleartextCredentials cleartext_creds with response.server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if mode is
    custom_identifier
@@ -876,7 +876,7 @@ struct {
 } CustomLabel;
 
 Derive-Secret(Secret, Label, Transcript-Hash) =
-    Expand-Label(Secret, Label, Transcript-Hash, Nl)
+    Expand-Label(Secret, Label, Transcript-Hash, Nx)
 ~~~
 
 Note that the Label parameter is not a NULL-terminated string.
@@ -975,14 +975,14 @@ From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
 
 ~~~
 server_mac_key =
-  Expand-Label(handshake_secret, "server mac", "", Nl)
+  Expand-Label(handshake_secret, "server mac", "", Nx)
 client_mac_key =
-  Expand-Label(handshake_secret, "client mac", "", Nl)
+  Expand-Label(handshake_secret, "client mac", "", Nx)
 handshake_encrypt_key =
-  Expand-Label(handshake_secret, "handshake enc", "", Nl)
+  Expand-Label(handshake_secret, "handshake enc", "", Nx)
 ~~~
 
-Nl is the output length of the Extract function, as specified in {{dependencies}}.
+Nx is the output length of the Extract function, as specified in {{dependencies}}.
 
 The Derive-Secret parameter `preamble` is computed as:
 
@@ -1060,8 +1060,8 @@ Absent an application-specific profile, the following configurations are RECOMME
 Future configurations may specify different combinations of dependent algorithms,
 with the following consideration. The size of AKE public and private keys -- `Npk`
 and `Nsk`, respectively -- must adhere to an output length limitations of the KDF
-Expand function. If HKDF is used, this means Npk, Nsk <= 255 * Nl, where Nl is the
-output size of underlying hash function. See {{RFC5869}} for details.
+Expand function. If HKDF is used, this means Npk, Nsk <= 255 * Nx, where Nx is the
+output size of the underlying hash function. See {{RFC5869}} for details.
 
 # Security Considerations {#security-considerations}
 
