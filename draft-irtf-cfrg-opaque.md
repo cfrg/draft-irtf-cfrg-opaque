@@ -350,12 +350,12 @@ OPAKE was taken.
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}, version -06):
-  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - GenerateKeyPair(): Generate an OPRF private and public key. OPAQUE only requires
     an OPRF private key. We write `(oprf_key, _) = GenerateKeyPair()` to denote use
     of this function for generating secret key `oprf_key` (and discarding the
     corresponding public key).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
@@ -393,9 +393,10 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
 
-- Authenticated Key Exchange (AKE, {{instantiations}}):
-  - Npk: The size of the public keys used for the key exchange protocol.
-  - Nsk: The size of the private keys used for the key exchange protocol.
+OPAQUE additionally depends on an Authenticated Key Exchange (AKE) protocol.
+This specification defines one particular AKE based on 3DH; see {{instantiations}}.
+We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
+used in the AKE.
 
 # Offline Registration {#offline-phase}
 
