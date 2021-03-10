@@ -350,12 +350,12 @@ OPAKE was taken.
 OPAQUE relies on the following protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{I-D.irtf-cfrg-voprf}}, version -06):
-  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - GenerateKeyPair(): Generate an OPRF private and public key. OPAQUE only requires
     an OPRF private key. We write `(oprf_key, _) = GenerateKeyPair()` to denote use
     of this function for generating secret key `oprf_key` (and discarding the
     corresponding public key).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
@@ -371,19 +371,32 @@ OPAQUE relies on the following protocols and primitives:
 Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
-- Cryptographic hash function:
-  - Hash(m): Compute the cryptographic hash of input message `m`. The type of the
-    hash is determined by the chosen OPRF group.
-  - Nh: The output size of the Hash function.
+- Key Derivation Function (KDF):
+  - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
+    input keying material `ikm` and an optional byte string `salt`.
+  - Expand(prk, info, L): Expand a pseudorandom key `prk` using optional string `info`
+    into `L` bytes of output keying material.
+  - Nx: The output size of the `Extract()` function in bytes.
 
-- Authenticated Key Exchange (AKE, {{instantiations}}):
-  - Npk: The size of the public keys used for the key exchange protocol.
-  - Nsk: The size of the private keys used for the key exchange protocol.
+- Message Authentication Code (MAC):
+  - MAC(key, msg): Compute a message authentication code over input `msg` with key
+    `key`, producing a fixed-length output of `Nm` bytes.
+  - Nm: The output size of the `MAC()` function in bytes.
+
+- Hash Function:
+  - Hash(msg): Apply a cryptographic hash function to input `msg`, producing an
+    fixed-length digest of size `Nh` bytes.
+  - Nh: The output size of the `Hash()` function in bytes.
 
 - Memory Hard Function (MHF):
   - Harden(msg, params): Repeatedly apply a memory-hard function with parameters
     `params` to strengthen the input `msg` against offline dictionary attacks.
     This function also needs to satisfy collision resistance.
+
+OPAQUE additionally depends on an Authenticated Key Exchange (AKE) protocol.
+This specification defines one particular AKE based on 3DH; see {{instantiations}}.
+We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
+used in the AKE.
 
 # Offline Registration {#offline-phase}
 
@@ -493,7 +506,7 @@ struct {
 
 struct {
   InnerEnvelope inner_env;
-  opaque auth_tag[Nh];
+  opaque auth_tag[Nm];
 } Envelope;
 ~~~
 
@@ -610,7 +623,7 @@ FinalizeRequest(password, creds, blind, response)
 Parameters:
 - params, the MHF parameters established out of band
 - mode, the InnerEnvelope mode
-- Nh, the output size of the Hash function
+- Nx, the output size of the Extract function
 
 Input:
 - password, an opaque byte string containing the client's password
@@ -625,26 +638,24 @@ Output:
 Steps:
 1. y = Finalize(password, blind, response.data)
 2. envelope_nonce = random(32)
-3. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+3. prk = Extract(envelope_nonce, Harden(y, params))
 4. Create SecretCredentials secret_creds with creds.client_private_key
 5. Create CleartextCredentials cleartext_creds with response.server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if
    mode is custom_identifier
-6. pseudorandom_pad =
-     HKDF-Expand(prk, "Pad", len(secret_creds))
-7. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
-8. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+6. pseudorandom_pad = Expand(prk, "Pad", len(secret_creds))
+7. auth_key = Expand(prk, "AuthKey", Nx)
+8. export_key = Expand(prk, "ExportKey", Nx)
 9. encrypted_creds = xor(secret_creds, pseudorandom_pad)
 10. Create InnerEnvelope inner_env
       with (mode, envelope_nonce, encrypted_creds)
-11. auth_tag = HMAC(auth_key, concat(inner_env, cleartext_creds))
+11. auth_tag = MAC(auth_key, concat(inner_env, cleartext_creds))
 12. Create Envelope envelope with (inner_env, auth_tag)
 13. Create RegistrationUpload record with (envelope, creds.client_public_key)
 14. Output (record, export_key)
 ~~~
 
-The inputs to HKDF-Extract and HKDF-Expand are as specified in {{RFC5869}}. The underlying hash function
-is that which is associated with the OPAQUE configuration (see {{configurations}}).
+The inputs to Extract and Expand are as specified in {{dependencies}}.
 
 See {{online-phase}} for details about the output export_key usage.
 
@@ -785,7 +796,7 @@ RecoverCredentials(password, blind, response)
 
 Parameters:
 - params, the MHF parameters established out of band
-- Nh, the output size of the Hash function
+- Nx, the output size of the Extract function
 
 Input:
 - password, an opaque byte string containing the client's password
@@ -801,15 +812,15 @@ Steps:
 1. y = Finalize(password, blind, response.data)
 2. contents = response.envelope.contents
 3. envelope_nonce = contents.nonce
-4. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+4. prk = Extract(envelope_nonce, Harden(y, params))
 5. pseudorandom_pad =
-    HKDF-Expand(prk, "Pad", len(contents.encrypted_creds))
-6. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
-7. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+    Expand(prk, "Pad", len(contents.encrypted_creds))
+6. auth_key = Expand(prk, "AuthKey", Nx)
+7. export_key = Expand(prk, "ExportKey", Nx)
 8. Create CleartextCredentials cleartext_creds with response.server_public_key
    and custom identifiers creds.client_identity and creds.server_identity if mode is
    custom_identifier
-9. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
+9. expected_tag = MAC(auth_key, concat(contents, cleartext_creds))
 10. If !ct_equal(response.envelope.auth_tag, expected_tag),
     raise DecryptionError
 11. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
@@ -839,8 +850,7 @@ and credential_response, respectively, for binding between the underlying OPRF p
 messages and the KE session.
 
 We use the parameters Npk and Nsk to denote the size of the public and private keys used
-in the AKE instantiation. Npk and Nsk must adhere to the output size limitations of the
-HKDF Expand function from {{RFC5869}}, which means that Npk, Nsk <= 255 * Nh.
+in the AKE instantiation.
 
 The rest of this section includes key schedule utility functions used by OPAQUE-3DH,
 and then provides a detailed specification for OPAQUE-3DH, including its wire format
@@ -852,26 +862,24 @@ The key derivation procedures for OPAQUE-3DH makes use of the functions below, r
 from TLS 1.3 {{?RFC8446}}.
 
 ~~~
-HKDF-Expand-Label(Secret, Label, Context, Length) =
-  HKDF-Expand(Secret, HkdfLabel, Length)
+Expand-Label(Secret, Label, Context, Length) =
+  Expand(Secret, CustomLabel, Length)
 ~~~
 
-Where HkdfLabel is specified as:
+Where CustomLabel is specified as:
 
 ~~~
 struct {
    uint16 length = Length;
    opaque label<8..255> = "OPAQUE " + Label;
    opaque context<0..255> = Context;
-} HkdfLabel;
+} CustomLabel;
 
 Derive-Secret(Secret, Label, Transcript-Hash) =
-    HKDF-Expand-Label(Secret, Label, Transcript-Hash, Nh)
+    Expand-Label(Secret, Label, Transcript-Hash, Nx)
 ~~~
 
-HKDF uses Hash as its underlying hash function, which is the same as that
-which is indicated by the OPAQUE instantiation. Note that the Label parameter
-is not a NULL-terminated string.
+Note that the Label parameter is not a NULL-terminated string.
 
 ### OPAQUE-3DH Instantiation {#opaque-3dh}
 
@@ -917,7 +925,7 @@ struct {
     uint8 server_keyshare[Npk];
   } inner_ke2;
   opaque enc_server_info<0..2^16-1>;
-  uint8 mac[Nh];
+  uint8 mac[Nm];
 } KE2;
 ~~~
 
@@ -941,7 +949,7 @@ defined below.
 
 ~~~
 struct {
-  uint8 mac[Nh];
+  uint8 mac[Nm];
 } KE3;
 ~~~
 
@@ -956,7 +964,7 @@ encryption key `handshake_encrypt_key`. Additionally, OPAQUE-3DH also
 outputs `session_key`. The schedule for computing this key material is below.
 
 ~~~
-HKDF-Extract(salt=0, IKM)
+Extract(salt=0, IKM)
     |
     +-> Derive-Secret(., "handshake secret", Hash(preamble)) = handshake_secret
     |
@@ -967,14 +975,14 @@ From `handshake_secret`, Km2, Km3, and Ke2 are computed as follows:
 
 ~~~
 server_mac_key =
-  HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+  Expand-Label(handshake_secret, "server mac", "", Nx)
 client_mac_key =
-  HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+  Expand-Label(handshake_secret, "client mac", "", Nx)
 handshake_encrypt_key =
-  HKDF-Expand-Label(handshake_secret, "handshake enc", "", Nh)
+  Expand-Label(handshake_secret, "handshake enc", "", Nx)
 ~~~
 
-Nh is the output length of the underlying hash function.
+Nx is the output length of the Extract function, as specified in {{dependencies}}.
 
 The Derive-Secret parameter `preamble` is computed as:
 
@@ -1009,9 +1017,9 @@ IKM = concat(epkU^eskS, epkU^skS, pkU^eskS)
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
 respectively. These values are computed as follows:
 
-- KE2.mac = HMAC(Km2, Hash(concat(preamble, KE2.enc_server_info)), where
+- KE2.mac = MAC(Km2, Extract(concat(preamble, KE2.enc_server_info)), where
   preamble is as defined in {{derive-3dh}}.
-- KE3.mac = HMAC(Km3, Hash(concat(preamble, KE2.enc_server_info, KE2.mac)),
+- KE3.mac = MAC(Km3, Extract(concat(preamble, KE2.enc_server_info, KE2.mac)),
   where preamble is as defined in {{derive-3dh}}.
 
 The server application info, an opaque byte string `server_info`, is encrypted
@@ -1020,36 +1028,40 @@ Specifically, a one-time-pad is derived from Ke2 and then used as input to XOR
 with the plaintext. In pseudocode, this is done as follows:
 
 ~~~
-info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
+info_pad = Expand(Ke2, "encryption pad", len(server_info))
 enc_server_info = xor(info_pad, server_info)
 ~~~
 
 # Configurations {#configurations}
 
-An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode, Group). The OPAQUE
-OPRF protocol is drawn from the "base mode" variant of {{I-D.irtf-cfrg-voprf}}. The
-following OPRF ciphersuites are supported:
+An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, EnvelopeMode, Group)
+such that the following conditions are met:
 
-- OPRF(ristretto255, SHA-512)
-- OPRF(decaf448, SHA-512)
-- OPRF(P-256, SHA-256)
-- OPRF(P-384, SHA-512)
-- OPRF(P-521, SHA-512)
+- The OPRF protocol uses the "base mode" variant of {{I-D.irtf-cfrg-voprf}} and implements
+  the interface in {{dependencies}}. Examples include OPRF(ristretto255, SHA-512) and
+  OPRF(P-256, SHA-256).
+- The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
+  Examples include HKDF {{RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
+  and SHA-256 and SHA-512 for the Hash functions.
+- The MHF has fixed parameters, chosen by the application, and implements the
+  interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
+  scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
+- EnvelopeMode value is as defined in {{credential-storage}}, and is one of
+  `base` or `custom_identifier`.
+- The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
+  match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
+  then Group SHOULD be ristretto255.
 
-Future configurations may specify different OPRF constructions.
+Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-The OPAQUE hash function is that which is associated with the OPRF ciphersuite.
-For the ciphersuites specified here, only SHA-512 and SHA-256 are supported.
+- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256
 
-The OPAQUE MHFs include Argon2 {{?I-D.irtf-cfrg-argon2}}, scrypt {{?RFC7914}},
-and PBKDF2 {{?RFC2898}} with fixed parameter choices.
-
-The EnvelopeMode value is defined in {{credential-storage}}. It MUST be one
-of `base` or `custom_identifier`. Future specifications may specify alternate
-EnvelopeMode values and their corresponding Envelope structure.
-
-The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
-match that of the OPRF.
+Future configurations may specify different combinations of dependent algorithms,
+with the following consideration. The size of AKE public and private keys -- `Npk`
+and `Nsk`, respectively -- must adhere to an output length limitations of the KDF
+Expand function. If HKDF is used, this means Npk, Nsk <= 255 * Nx, where Nx is the
+output size of the underlying hash function. See {{RFC5869}} for details.
 
 # Security Considerations {#security-considerations}
 
@@ -1322,11 +1334,6 @@ HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital sign
 rather than static DH keys for authentication. Specification of these instantiations is
 left to future documents. A sketch of how these instantiations might change is included
 in the next subsection for posterity.
-
-The AKE private key size (Nsk) is limited to the output size of the HKDF Expand function
-from {{RFC5869}}.  Future specifications which have keys exceeding this size should
-specify a mechanism by which private keys and their corresponding public keys can be
-deterministically derived from a fixed-length seed.
 
 OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
 flow above and security properties (KCI resistance and forward secrecy) outlined

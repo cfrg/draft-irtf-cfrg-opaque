@@ -25,13 +25,13 @@ class OPAQUECore(object):
     def derive_secrets(self, pwdU, response, blind, nonce, Npt):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
         y = oprf_context.finalize(pwdU, blind, response.data, None, None)
-        y_harden = self.config.slow_hash.hash(y)
-        rwdU = hkdf_extract(self.config, nonce, y_harden)
+        y_harden = self.config.mhf.harden(y)
+        rwdU = self.config.kdf.extract(nonce, y_harden)
 
         Nh = self.config.hash().digest_size
-        pseudorandom_pad = hkdf_expand(self.config, rwdU, _as_bytes("Pad"), Npt)
-        auth_key = hkdf_expand(self.config, rwdU, _as_bytes("AuthKey"), Nh)
-        export_key = hkdf_expand(self.config, rwdU, _as_bytes("ExportKey"), Nh)
+        pseudorandom_pad = self.config.kdf.expand(rwdU, _as_bytes("Pad"), Npt)
+        auth_key = self.config.kdf.expand(rwdU, _as_bytes("AuthKey"), Nh)
+        export_key = self.config.kdf.expand(rwdU, _as_bytes("ExportKey"), Nh)
 
         return rwdU, pseudorandom_pad, auth_key, export_key
 
@@ -63,7 +63,7 @@ class OPAQUECore(object):
 
         contents = InnerEnvelope(self.config.mode, nonce, ct)
         serialized_contents = contents.serialize()
-        auth_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash)
+        auth_tag = self.config.mac.mac(auth_key, serialized_contents + auth_data)
 
         envU = Envelope(contents, auth_tag)
         record = RegistrationUpload(envU, creds.pkU)
@@ -99,7 +99,7 @@ class OPAQUECore(object):
         auth_data = cleartext_creds.serialize()
 
         rwdU, pseudorandom_pad, auth_key, export_key = self.derive_secrets(pwdU, response, blind, nonce, len(ct))
-        expected_tag = hmac.digest(auth_key, serialized_contents + auth_data, self.config.hash)
+        expected_tag = self.config.mac.mac(auth_key, serialized_contents + auth_data)
 
         if expected_tag != response.envU.auth_tag:
             raise Exception("Invalid tag")
@@ -113,10 +113,10 @@ class OPAQUECore(object):
 
         return secret_credentials.skU, response.pkS, export_key
 
-class SlowHash(object):
+class MHF(object):
     def __init__(self, name, harden):
         self.name = name
-        self.hash = harden
+        self.harden = harden
 
 def scrypt_harden(pwd):
     return scrypt(pwd, b'', 32768, 8, 1, 64)
@@ -124,3 +124,58 @@ def scrypt_harden(pwd):
 def identity_harden(pwd):
     return pwd
 
+class KDF(object):
+    def __init__(self, name):
+        self.name = name
+    
+    def extract(self, salt, ikm):
+        raise Exception("Not implemented")
+
+    def expand(self, prk, info, L):
+        raise Exception("Not implemented")
+
+class HKDF(KDF):
+    def __init__(self, fast_hash):
+        KDF.__init__(self, "HKDF-" + fast_hash().name.upper())
+        self.hash = fast_hash
+
+    def extract(self, salt, ikm):
+        return hmac.digest(salt, ikm, self.hash)
+
+    def expand(self, prk, info, L):
+        # https://tools.ietf.org/html/rfc5869
+        # N = ceil(L/HashLen)
+        # T = T(1) | T(2) | T(3) | ... | T(N)
+        # OKM = first L octets of T
+        hash_length = self.hash().digest_size
+        N = ceil(L / hash_length)
+        Ts = [bytes(bytearray([]))]
+        for i in range(N):
+            Ts.append(hmac.digest(
+                prk, Ts[i] + info + int(i+1).to_bytes(1, 'big'), self.hash))
+
+        def concat(a, b):
+            return a + b
+        T = reduce(concat, map(lambda c: c, Ts))
+        return T[0:L]
+
+class MAC(object):
+    def __init__(self, name):
+        self.name = name
+    
+    def mac(self, key, input):
+        raise Exception("Not implemented")
+
+class HMAC(MAC):
+    def __init__(self, fast_hash):
+        MAC.__init__(self, "HMAC-" + fast_hash().name.upper())
+        self.hash = fast_hash
+
+    def mac(self, key, input):
+        return hmac.digest(key, input, self.hash)
+
+def scrypt_harden(pwd):
+    return scrypt(pwd, b'', 32768, 8, 1, 64)
+
+def identity_harden(pwd):
+    return pwd
