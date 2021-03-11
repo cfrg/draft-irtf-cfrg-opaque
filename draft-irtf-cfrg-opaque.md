@@ -1019,7 +1019,7 @@ respectively. These values are computed as follows:
 
 - KE2.mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info)), where
   preamble is as defined in {{derive-3dh}}.
-- KE3.mac = MAC(Km3, HASH(concat(preamble, KE2.enc_server_info, KE2.mac)),
+- KE3.mac = MAC(Km3, Hash(concat(preamble, KE2.enc_server_info, KE2.mac)),
   where preamble is as defined in {{derive-3dh}}.
 
 The server application info, an opaque byte string `server_info`, is encrypted
