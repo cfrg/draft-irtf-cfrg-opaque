@@ -1,0 +1,3038 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>The OPAQUE Asymmetric PAKE Protocol</title>
+<meta content="Hugo Krawczyk" name="author">
+<meta content="Kevin Lewi" name="author">
+<meta content="Christopher A. Wood" name="author">
+<meta content="
+       This document describes the OPAQUE protocol, a secure asymmetric
+password-authenticated key exchange (aPAKE) that supports mutual
+authentication in a client-server setting without reliance on PKI and
+with security against pre-computation attacks upon server compromise.
+In addition, the protocol provides forward secrecy and the ability to
+hide the password from the server, even during password registration.
+This document specifies the core OPAQUE protocol, along with several
+instantiations in different authenticated key exchange protocols. 
+    " name="description">
+<meta content="xml2rfc 3.5.0" name="generator">
+<meta content="Internet-Draft" name="keyword">
+<meta content="draft-irtf-cfrg-opaque-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.5.0
+    Python 3.8.7
+    appdirs 1.4.4
+    ConfigArgParse 1.2.3
+    google-i18n-address 2.4.0
+    html5lib 1.1
+    intervaltree 3.1.0
+    Jinja2 2.11.2
+    kitchen 1.2.6
+    lxml 4.6.2
+    pycountry 20.7.3
+    pyflakes 2.2.0
+    PyYAML 5.4.1
+    requests 2.25.1
+    setuptools 51.3.3
+    six 1.15.0
+-->
+<link href="draft-irtf-cfrg-opaque.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@import url('https://martinthomson.github.io/i-d-template/fonts.css');
+
+html {
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  scrollbar-color: #bbb #eee;
+}
+@media (prefers-color-scheme: dark) {
+html {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  font-family: "Cabin Condensed", sans-serif;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+#title {
+  padding: 1em 0 0.2em;
+  font-size: 32px;
+  line-height: 40px;
+  clear: both;
+}
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+}
+#abstract+p, #abstract+p code, #abstract+p samp, #abstract+p tt {
+  font-size: 18px;
+  line-height: 24px;
+}
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+.alignCenter.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  border: none;
+  /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+     support flexbox yet.
+  */
+  display: table;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+dd.break {
+  display: none;
+}
+
+/* links */
+a, a[href].selfRef:hover {
+  text-decoration: none;
+}
+a[href].selfRef {
+  color: var(--text-color);
+}
+a[href] {
+  color: var(--link-color);
+}
+a[href]:hover {
+  text-decoration: underline;
+}
+a[href].selfRef:hover {
+  background-color: var(--highlight-color);
+}
+a.xref {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px 'Oxygen Mono', monospace;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+}
+@media screen {
+  pre {
+    display: inline-block;
+    overflow-x: auto;
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  pre + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  margin: 1em 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+}
+table.right {
+  margin-left: auto;
+}
+table.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+table.left {
+  margin-right: auto;
+}
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+tr:nth-child(2n) > td {
+  background-color: var(--background-color);
+}
+tr:nth-child(2n+1) > td {
+  background-color: var(--highlight-color);
+}
+thead+tbody > tr:nth-child(2n) > td {
+  background-color: var(--highlight-color);
+}
+thead+tbody > tr:nth-child(2n+1) > td {
+  background-color: var(--background-color);
+}
+table caption {
+  margin: 0;
+  padding: 3px 0 3px 1em;
+}
+table p {
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+}
+a.pilcrow[href] { color: var(--pilcrow-weak); }
+a.pilcrow[href]:hover { text-decoration: none; }
+@media not print {
+  :hover > a.pilcrow {
+    opacity: 1;
+  }
+  a.pilcrow[href]:hover {
+    color: var(--pilcrow-strong);
+    background-color: transparent;
+  }
+}
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 8em;
+}
+#identifiers dt {
+  width: var(--identifier-width);
+  margin: 0;
+  clear: left;
+  float: left;
+  text-align: right;
+}
+#identifiers dd {
+  margin: 0 0 0 calc(1em + var(--identifier-width));
+  min-width: 5em;
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+#toc nav ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+#toc nav li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+#toc a.xref {
+  white-space: normal;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 500px) {
+  .index ul {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  .index ul ul {
+    column-count: 1;
+    column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses > section {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  #authors-addresses > section > h2 {
+    column-span: all;
+  }
+  /* hack for break-inside: avoid-column */
+  #authors-addresses address {
+    display: inline-block;
+    break-inside: avoid-column;
+  }
+}
+
+.rfcEditorRemove p:first-of-type {
+  font-style: italic;
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+  }
+  #toc.active {
+      opacity: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 2px 0 2px 6px;
+    padding-right: 1em;
+    font-size: 18px;
+    line-height: 24px;
+    min-width: 190px;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 8px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    background-color: var(--background-color);
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+  #toc.active nav {
+    display: block;
+  }
+  /* Make the collapsed ToC header render white on gray also when it's a link */
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+  #toc a.toplink {
+    margin-top: 2px;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 2em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  #toc nav > ul  {
+    margin-bottom: 2em;
+  }
+  #toc ul {
+    margin: 0 0 0 4px;
+    font-size: var(--small-font-size);
+  }
+  #toc ul p, #toc ul li {
+    margin: 2px 0;
+    line-height: 22px;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Changes introduced to fix issues found during implementation */
+
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin: 8px 0.5em 0;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table .text-left, table .text-left {
+  text-align: left;
+}
+table .text-center, table .text-center {
+  text-align: center;
+}
+table .text-right, table .text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 20em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  dd {
+    page-break-before: avoid;
+  }
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+</style>
+
+</head>
+<body>
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">OPAQUE</td>
+<td class="right">February 2021</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Krawczyk, et al.</td>
+<td class="center">Expires 19 August 2021</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-irtf-cfrg-opaque-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2021-02-15" class="published">15 February 2021</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2021-08-19">19 August 2021</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">H. Krawczyk</div>
+<div class="org">Algorand Foundation</div>
+</div>
+<div class="author">
+      <div class="author-name">K. Lewi</div>
+<div class="org">Novi Research</div>
+</div>
+<div class="author">
+      <div class="author-name">C.A. Wood</div>
+<div class="org">Cloudflare</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">The OPAQUE Asymmetric PAKE Protocol</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document describes the OPAQUE protocol, a secure asymmetric
+password-authenticated key exchange (aPAKE) that supports mutual
+authentication in a client-server setting without reliance on PKI and
+with security against pre-computation attacks upon server compromise.
+In addition, the protocol provides forward secrecy and the ability to
+hide the password from the server, even during password registration.
+This document specifies the core OPAQUE protocol, along with several
+instantiations in different authenticated key exchange protocols.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note rfcEditorRemove" id="section-note.1">
+      <h2 id="name-discussion-venues">
+<a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
+      </h2>
+<p id="section-note.1-1">This note is to be removed before publishing as an RFC.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">Source for this draft and an issue tracker can be found at
+  <span><a href="https://github.com/cfrg/draft-irtf-cfrg-opaque">https://github.com/cfrg/draft-irtf-cfrg-opaque</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 19 August 2021.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Simplified BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Simplified BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="xref">1</a>.  <a href="#name-introduction" class="xref">Introduction</a><a href="#section-toc.1-1.1.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="xref">1.1</a>.  <a href="#name-requirements-notation" class="xref">Requirements Notation</a><a href="#section-toc.1-1.1.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="xref">1.2</a>.  <a href="#name-notation" class="xref">Notation</a><a href="#section-toc.1-1.1.2.2.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="xref">2</a>.  <a href="#name-cryptographic-protocol-and-" class="xref">Cryptographic Protocol and Algorithm Dependencies</a><a href="#section-toc.1-1.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="xref">3</a>.  <a href="#name-offline-registration" class="xref">Offline Registration</a><a href="#section-toc.1-1.3.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="xref">3.1</a>.  <a href="#name-credential-storage" class="xref">Credential Storage</a><a href="#section-toc.1-1.3.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="xref">3.2</a>.  <a href="#name-registration-messages" class="xref">Registration Messages</a><a href="#section-toc.1-1.3.2.2.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="xref">3.3</a>.  <a href="#name-registration-functions" class="xref">Registration Functions</a><a href="#section-toc.1-1.3.2.3.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.3.2.3.2.1">
+                    <p id="section-toc.1-1.3.2.3.2.1.1"><a href="#section-3.3.1" class="xref">3.3.1</a>.  <a href="#name-createregistrationrequest" class="xref">CreateRegistrationRequest</a><a href="#section-toc.1-1.3.2.3.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.3.2.3.2.2">
+                    <p id="section-toc.1-1.3.2.3.2.2.1"><a href="#section-3.3.2" class="xref">3.3.2</a>.  <a href="#name-createregistrationresponse" class="xref">CreateRegistrationResponse</a><a href="#section-toc.1-1.3.2.3.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.3.2.3.2.3">
+                    <p id="section-toc.1-1.3.2.3.2.3.1"><a href="#section-3.3.3" class="xref">3.3.3</a>.  <a href="#name-finalizerequest" class="xref">FinalizeRequest</a><a href="#section-toc.1-1.3.2.3.2.3.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.3.2.3.2.4">
+                    <p id="section-toc.1-1.3.2.3.2.4.1"><a href="#section-3.3.4" class="xref">3.3.4</a>.  <a href="#name-credential-file" class="xref">Credential File</a><a href="#section-toc.1-1.3.2.3.2.4.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="xref">4</a>.  <a href="#name-online-authenticated-key-ex" class="xref">Online Authenticated Key Exchange</a><a href="#section-toc.1-1.4.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="xref">4.1</a>.  <a href="#name-credential-retrieval" class="xref">Credential Retrieval</a><a href="#section-toc.1-1.4.2.1.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.4.2.1.2.1">
+                    <p id="section-toc.1-1.4.2.1.2.1.1"><a href="#section-4.1.1" class="xref">4.1.1</a>.  <a href="#name-credential-retrieval-messag" class="xref">Credential Retrieval Messages</a><a href="#section-toc.1-1.4.2.1.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.4.2.1.2.2">
+                    <p id="section-toc.1-1.4.2.1.2.2.1"><a href="#section-4.1.2" class="xref">4.1.2</a>.  <a href="#name-credential-retrieval-functi" class="xref">Credential Retrieval Functions</a><a href="#section-toc.1-1.4.2.1.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="xref">4.2</a>.  <a href="#name-ake-instantiations" class="xref">AKE Instantiations</a><a href="#section-toc.1-1.4.2.2.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.4.2.2.2.1">
+                    <p id="section-toc.1-1.4.2.2.2.1.1"><a href="#section-4.2.1" class="xref">4.2.1</a>.  <a href="#name-key-schedule-utility-functi" class="xref">Key Schedule Utility Functions</a><a href="#section-toc.1-1.4.2.2.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.4.2.2.2.2">
+                    <p id="section-toc.1-1.4.2.2.2.2.1"><a href="#section-4.2.2" class="xref">4.2.2</a>.  <a href="#name-opaque-3dh-instantiation" class="xref">OPAQUE-3DH Instantiation</a><a href="#section-toc.1-1.4.2.2.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="xref">5</a>.  <a href="#name-configurations" class="xref">Configurations</a><a href="#section-toc.1-1.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="xref">6</a>.  <a href="#name-security-considerations" class="xref">Security Considerations</a><a href="#section-toc.1-1.6.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="xref">6.1</a>.  <a href="#name-related-analysis" class="xref">Related Analysis</a><a href="#section-toc.1-1.6.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="xref">6.2</a>.  <a href="#name-identities" class="xref">Identities</a><a href="#section-toc.1-1.6.2.2.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.3">
+                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="xref">6.3</a>.  <a href="#name-envelope-encryption" class="xref">Envelope Encryption</a><a href="#section-toc.1-1.6.2.3.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.4">
+                <p id="section-toc.1-1.6.2.4.1"><a href="#section-6.4" class="xref">6.4</a>.  <a href="#name-export-key-usage" class="xref">Export Key Usage</a><a href="#section-toc.1-1.6.2.4.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.5">
+                <p id="section-toc.1-1.6.2.5.1"><a href="#section-6.5" class="xref">6.5</a>.  <a href="#name-static-diffie-hellman-oracl" class="xref">Static Diffie-Hellman Oracles</a><a href="#section-toc.1-1.6.2.5.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.6">
+                <p id="section-toc.1-1.6.2.6.1"><a href="#section-6.6" class="xref">6.6</a>.  <a href="#name-input-validation" class="xref">Input Validation</a><a href="#section-toc.1-1.6.2.6.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.7">
+                <p id="section-toc.1-1.6.2.7.1"><a href="#section-6.7" class="xref">6.7</a>.  <a href="#name-oprf-hardening" class="xref">OPRF Hardening</a><a href="#section-toc.1-1.6.2.7.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.8">
+                <p id="section-toc.1-1.6.2.8.1"><a href="#section-6.8" class="xref">6.8</a>.  <a href="#name-client-enumeration" class="xref">Client Enumeration</a><a href="#section-toc.1-1.6.2.8.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.6.2.9">
+                <p id="section-toc.1-1.6.2.9.1"><a href="#section-6.9" class="xref">6.9</a>.  <a href="#name-password-salt-and-storage-i" class="xref">Password Salt and Storage Implications</a><a href="#section-toc.1-1.6.2.9.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="xref">7</a>.  <a href="#name-iana-considerations" class="xref">IANA Considerations</a><a href="#section-toc.1-1.7.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="xref">8</a>.  <a href="#name-references" class="xref">References</a><a href="#section-toc.1-1.8.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="xref">8.1</a>.  <a href="#name-normative-references" class="xref">Normative References</a><a href="#section-toc.1-1.8.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="xref">8.2</a>.  <a href="#name-informative-references" class="xref">Informative References</a><a href="#section-toc.1-1.8.2.2.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-appendix.a" class="xref">Appendix A</a>.  <a href="#name-acknowledgments" class="xref">Acknowledgments</a><a href="#section-toc.1-1.9.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-appendix.b" class="xref">Appendix B</a>.  <a href="#name-alternate-ake-instantiation" class="xref">Alternate AKE Instantiations</a><a href="#section-toc.1-1.10.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-b.1" class="xref">B.1</a>.  <a href="#name-hmqv-instantiation-sketch" class="xref">HMQV Instantiation Sketch</a><a href="#section-toc.1-1.10.2.1.1" class="pilcrow">¶</a></p>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.10.2.2">
+                <p id="section-toc.1-1.10.2.2.1"><a href="#section-b.2" class="xref">B.2</a>.  <a href="#name-sigma-i-instantiation-sketc" class="xref">SIGMA-I Instantiation Sketch</a><a href="#section-toc.1-1.10.2.2.1" class="pilcrow">¶</a></p>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-appendix.c" class="xref">Appendix C</a>.  <a href="#name-test-vectors" class="xref">Test Vectors</a><a href="#section-toc.1-1.11.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-c.1" class="xref">C.1</a>.  <a href="#name-opaque-3dh-test-vector-1" class="xref">OPAQUE-3DH Test Vector 1</a><a href="#section-toc.1-1.11.2.1.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.11.2.1.2.1">
+                    <p id="section-toc.1-1.11.2.1.2.1.1"><a href="#section-c.1.1" class="xref">C.1.1</a>.  <a href="#name-configuration" class="xref">Configuration</a><a href="#section-toc.1-1.11.2.1.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.1.2.2">
+                    <p id="section-toc.1-1.11.2.1.2.2.1"><a href="#section-c.1.2" class="xref">C.1.2</a>.  <a href="#name-input-values" class="xref">Input Values</a><a href="#section-toc.1-1.11.2.1.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.1.2.3">
+                    <p id="section-toc.1-1.11.2.1.2.3.1"><a href="#section-c.1.3" class="xref">C.1.3</a>.  <a href="#name-intermediate-values" class="xref">Intermediate Values</a><a href="#section-toc.1-1.11.2.1.2.3.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.1.2.4">
+                    <p id="section-toc.1-1.11.2.1.2.4.1"><a href="#section-c.1.4" class="xref">C.1.4</a>.  <a href="#name-output-values" class="xref">Output Values</a><a href="#section-toc.1-1.11.2.1.2.4.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+              <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-c.2" class="xref">C.2</a>.  <a href="#name-opaque-3dh-test-vector-2" class="xref">OPAQUE-3DH Test Vector 2</a><a href="#section-toc.1-1.11.2.2.1" class="pilcrow">¶</a></p>
+<ul class="ulEmpty toc compact">
+<li class="ulEmpty toc compact" id="section-toc.1-1.11.2.2.2.1">
+                    <p id="section-toc.1-1.11.2.2.2.1.1"><a href="#section-c.2.1" class="xref">C.2.1</a>.  <a href="#name-configuration-2" class="xref">Configuration</a><a href="#section-toc.1-1.11.2.2.2.1.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.2.2.2">
+                    <p id="section-toc.1-1.11.2.2.2.2.1"><a href="#section-c.2.2" class="xref">C.2.2</a>.  <a href="#name-input-values-2" class="xref">Input Values</a><a href="#section-toc.1-1.11.2.2.2.2.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.2.2.3">
+                    <p id="section-toc.1-1.11.2.2.2.3.1"><a href="#section-c.2.3" class="xref">C.2.3</a>.  <a href="#name-intermediate-values-2" class="xref">Intermediate Values</a><a href="#section-toc.1-1.11.2.2.2.3.1" class="pilcrow">¶</a></p>
+</li>
+                  <li class="ulEmpty toc compact" id="section-toc.1-1.11.2.2.2.4">
+                    <p id="section-toc.1-1.11.2.2.2.4.1"><a href="#section-c.2.4" class="xref">C.2.4</a>.  <a href="#name-output-values-2" class="xref">Output Values</a><a href="#section-toc.1-1.11.2.2.2.4.1" class="pilcrow">¶</a></p>
+</li>
+                </ul>
+</li>
+            </ul>
+</li>
+          <li class="ulEmpty toc compact" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-appendix.d" class="xref"></a><a href="#name-authors-addresses" class="xref">Authors' Addresses</a><a href="#section-toc.1-1.12.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="intro">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Password authentication is the prevalent form of authentication in
+the web and in many other applications. In the most common
+implementation, a client authenticates to a server by sending its client
+ID and password to the server over a TLS connection. This makes
+the password vulnerable to server mishandling, including accidentally
+logging the password or storing it in cleartext in a database. Server
+compromise resulting in access to these plaintext passwords is not an
+uncommon security incident, even among security-conscious companies.
+Moreover, plaintext password authentication over TLS is also vulnerable
+to TLS failures, including many forms of PKI attacks, certificate
+mishandling, termination outside the security perimeter, visibility
+to middle boxes, and more.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
+protocols are designed to provide password authentication and
+mutually authenticated key exchange in a client-server setting without relying on PKI (except
+during client/password registration) and without disclosing passwords
+to servers or other entities other than the client machine. A secure
+aPAKE should provide the best possible security for a password
+protocol. Namely, it should only be open to inevitable attacks, such as
+online impersonation attempts with guessed client passwords and offline
+dictionary attacks upon the compromise of a server and leakage of its
+password file. In the latter case, the attacker learns a mapping of
+a client's password under a one-way function and uses such a mapping to
+validate potential guesses for the password. Crucially important is
+for the password protocol to use an unpredictable one-way mapping.
+Otherwise, the attacker can pre-compute a deterministic list of mapped
+passwords leading to almost instantaneous leakage of passwords upon
+server compromise.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">Despite the existence of multiple designs for
+(PKI-free) aPAKE protocols, none of these protocols are secure against
+pre-computation attacks. In particular, none of these protocols can
+use the standard technique against pre-computation that combines
+<em>secret</em> random values ("salt") into the one-way password mappings.
+Either these protocols do not use a salt at all or, if they do, they
+transmit the salt from server to client in the clear, hence losing the
+secrecy of the salt and its defense against pre-computation. Furthermore,
+transmitting the salt may require additional protocol messages.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">This document describes OPAQUE, a PKI-free secure aPAKE that is secure
+against pre-computation attacks and capable of using a secret salt.
+OPAQUE provides forward secrecy (essential for
+protecting past communications in case of password leakage) and the
+ability to hide the password from the server - even during password
+registration. Furthermore, OPAQUE enjoys good performance and an array of additional
+features including the ability to increase
+the difficulty of offline dictionary attacks via iterated hashing
+or other hardening schemes, and offloading these operations to the
+client (that also helps against online guessing attacks); extensibility of
+the protocol to support storage and
+retrieval of client's secrets solely based on a password; and being
+amenable to a multi-server distributed implementation where offline
+dictionary attacks are not possible without breaking into a threshold
+of servers (such a distributed solution requires no change or awareness
+on the client side relative to a single-server implementation).<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">OPAQUE is defined and proven as the composition of two functionalities:
+an oblivious pseudorandom function (OPRF) and an authenticated key exchange (AKE) protocol. It can be seen
+as a "compiler" for transforming any suitable AKE protocol into a secure
+aPAKE protocol. (See <a href="#security-considerations" class="xref">Section 6</a> for requirements of the
+OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
+based on 3DH <span>[<a href="#SIGNAL" class="xref">SIGNAL</a>]</span>. Other instantiations are possible, as discussed in
+<a href="#alternate-akes" class="xref">Appendix B</a>, but their details are out of scope for this document.
+In general, the modularity of OPAQUE's design makes it easy to integrate with
+additional AKE protocols, e.g., IKEv2, and with future ones such as those
+based on post-quantum techniques.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">OPAQUE consists of two stages: registration and authenticated key exchange.
+In the first stage, a client registers its password with the server and stores
+its encrypted credentials on the server. In the second stage, a client obtains
+those credentials, recovers them using the client's password, and subsequently uses
+them as input to an AKE protocol.<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">Currently, the most widely deployed PKI-free aPAKE is SRP <span>[<a href="#RFC2945" class="xref">RFC2945</a>]</span>, which is
+vulnerable to pre-computation attacks, lacks a proof of security, and is less efficient
+relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
+multiplication operations, and thus does not work over plain elliptic curves. OPAQUE
+is therefore a suitable replacement for applications that use SRP.<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-8">This draft complies with the requirements for PAKE protocols set forth in
+<span>[<a href="#RFC8125" class="xref">RFC8125</a>]</span>.<a href="#section-1-8" class="pilcrow">¶</a></p>
+<div id="requirements-notation">
+<section id="section-1.1">
+        <h3 id="name-requirements-notation">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-requirements-notation" class="section-name selfRef">Requirements Notation</a>
+        </h3>
+<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+"MAY", and "OPTIONAL" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="notation">
+<section id="section-1.2">
+        <h3 id="name-notation">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-notation" class="section-name selfRef">Notation</a>
+        </h3>
+<p id="section-1.2-1">The following terms are used throughout this document to describe the
+operations, roles, and behaviors of OPAQUE:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.2-2.1">Client (C): Entity which has knowledge of a password and wishes to authenticate.<a href="#section-1.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.2">Server (S): Entity which authenticates clients using passwords.<a href="#section-1.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.3">password: An opaque byte string containing the client's password.<a href="#section-1.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.4">(client/server_private_key, client/server_public_key): An AKE key pair used by
+either the client and server, denoting either the private or public key. For example,
+(client_private_key, client_public_key) refers to C's private and public key.<a href="#section-1.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.5">oprf_key: An OPRF private key known only to the server.<a href="#section-1.2-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.6">I2OSP and OS2IP: Convert a byte string to and from a non-negative integer as
+described in Section 4 of <span>[<a href="#RFC8017" class="xref">RFC8017</a>]</span>. Note that these functions operate on byte strings in
+big-endian byte order.<a href="#section-1.2-2.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.7">concat(x0, ..., xN): Concatenate byte strings. For example,
+<code>concat(0x01, 0x0203, 0x040506) = 0x010203040506</code>.<a href="#section-1.2-2.7" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.8">random(n): Generate a cryptographically secure pseudorandom byte string of length <code>n</code> bytes.<a href="#section-1.2-2.8" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.9">xor(a,b): Apply XOR to byte strings. For example, <code>xor(0xF0F0, 0x1234) = 0xE2C4</code>.
+It is an error to call this function with two arguments of unequal
+length.<a href="#section-1.2-2.9" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-2.10">ct_equal(a, b): Return <code>true</code> if <code>a</code> is equal to <code>b</code>, and false otherwise.
+This function is constant-time in the length of <code>a</code> and <code>b</code>, which are assumed
+to be of equal length, irrespective of the values <code>a</code> or <code>b</code>.<a href="#section-1.2-2.10" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-1.2-3">Except if said otherwise, random choices in this specification refer to
+drawing with uniform distribution from a given set (i.e., "random" is short
+for "uniformly random"). Random choices can be replaced with fresh outputs from
+a cryptographically strong pseudorandom generator, according to the requirements
+in <span>[<a href="#RFC4086" class="xref">RFC4086</a>]</span>, or pseudorandom function.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+<p id="section-1.2-4">The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
+OPAKE was taken.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="dependencies">
+<section id="section-2">
+      <h2 id="name-cryptographic-protocol-and-">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-cryptographic-protocol-and-" class="section-name selfRef">Cryptographic Protocol and Algorithm Dependencies</a>
+      </h2>
+<p id="section-2-1">OPAQUE relies on the following protocols and primitives:<a href="#section-2-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-2.1">
+          <p id="section-2-2.1.1">Oblivious Pseudorandom Function (OPRF, <span>[<a href="#I-D.irtf-cfrg-voprf" class="xref">I-D.irtf-cfrg-voprf</a>]</span>):<a href="#section-2-2.1.1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-2.1.2.1">Blind(x): Convert input <code>x</code> into an element of the OPRF group, randomize it
+by some scalar <code>r</code>, producing <code>M</code>, and output (<code>r</code>, <code>M</code>).<a href="#section-2-2.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.2">KeyGen(): Generate an OPRF private and public key. OPAQUE only requires an
+OPRF private key. We write <code>(oprf_key, _) = KeyGen()</code> to denote use of this
+function for generating secret key <code>oprf_key</code> (and discarding the corresponding
+public key).<a href="#section-2-2.1.2.2" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.3">Evaluate(k, M): Evaluate input element <code>M</code> using private key <code>k</code>, yielding
+output element <code>Z</code>.<a href="#section-2-2.1.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.4">Unblind(r, Z): Remove random scalar <code>r</code> from <code>Z</code>, yielding output <code>N</code>.<a href="#section-2-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.5">Finalize(x, N, info): Compute the OPRF output using input <code>x</code>, <code>N</code>, and domain
+separation tag <code>info</code>.<a href="#section-2-2.1.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.6">SerializeScalar(s): Map a scalar <code>s</code> to a unique byte array <code>buf</code> of fixed
+length.<a href="#section-2-2.1.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.7">DeserializeScalar(buf): Map a byte array <code>buf</code> to a scalar <code>s</code>, or fail if
+the input is not a valid byte representation of a scalar.<a href="#section-2-2.1.2.7" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.8">SerializedElement: A serialized OPRF group element, a byte array of fixed
+length.<a href="#section-2-2.1.2.8" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-2.1.2.9">SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.\<a href="#section-2-2.1.2.9" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+      </ul>
+<p id="section-2-3">Note that we only need the base mode variant (as opposed to the verifiable mode
+variant) of the OPRF described in <span>[<a href="#I-D.irtf-cfrg-voprf" class="xref">I-D.irtf-cfrg-voprf</a>]</span>.<a href="#section-2-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-4.1">
+          <p id="section-2-4.1.1">Cryptographic hash function:<a href="#section-2-4.1.1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-4.1.2.1">Hash(m): Compute the cryptographic hash of input message <code>m</code>. The type of the
+hash is determined by the chosen OPRF group.<a href="#section-2-4.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="normal" id="section-2-4.1.2.2">Nh: The output size of the Hash function.<a href="#section-2-4.1.2.2" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+        <li class="normal" id="section-2-4.2">
+          <p id="section-2-4.2.1">Memory Hard Function (MHF):<a href="#section-2-4.2.1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-4.2.2.1">Harden(msg, params): Repeatedly apply a memory hard function with parameters
+<code>params</code> to strengthen the input <code>msg</code> against offline dictionary attacks.
+This function also needs to satisfy collision resistance.<a href="#section-2-4.2.2.1" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+      </ul>
+</section>
+</div>
+<div id="offline-phase">
+<section id="section-3">
+      <h2 id="name-offline-registration">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-offline-registration" class="section-name selfRef">Offline Registration</a>
+      </h2>
+<p id="section-3-1">Registration is executed between a client C and a
+server S. It is assumed S can identify C and the client can
+authenticate S during this registration phase. This is the only part
+in OPAQUE that requires an authenticated channel, either physical, out-of-band,
+PKI-based, etc. This section describes the registration flow, message encoding,
+and helper functions. Moreover, C has a key pair (client_private_key, client_public_key) for an AKE protocol
+which is suitable for use with OPAQUE; See <a href="#online-phase" class="xref">Section 4</a>. (client_private_key, client_public_key) may be
+randomly generated for the account or provided by the calling client.
+Clients MUST NOT use the same key pair (client_private_key, client_public_key) for two different accounts.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">To begin, C chooses password password, and S chooses its own pair of private-public
+keys server_private_key and server_public_key for use with the AKE. S can use
+the same pair of keys with multiple clients. These steps can happen offline, i.e.,
+before the registration phase. Once complete, the registration process proceeds as follows:<a href="#section-3-2" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3-3">
+<pre>
+ Client (password, creds)            Server (server_private_key, server_public_key)
+ --------------------------------------------------------------------
+ (request, blind) = CreateRegistrationRequest(password)
+
+                               request
+                      -------------------------&gt;
+
+            (response, oprf_key) = CreateRegistrationResponse(request, server_public_key)
+
+                               response
+                      &lt;-------------------------
+
+ (record, export_key) = FinalizeRequest(password, creds, blind, response)
+
+                                record
+                      -------------------------&gt;
+</pre><a href="#section-3-3" class="pilcrow">¶</a>
+</div>
+<p id="section-3-4"><a href="#registration-functions" class="xref">Section 3.3</a> describes details of the functions referenced above.<a href="#section-3-4" class="pilcrow">¶</a></p>
+<p id="section-3-5">Both client and server MUST validate the other party's public key before use.
+See <a href="#validation" class="xref">Section 6.6</a> for more details.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-6">Upon completion, S stores C's credentials for later use. See <a href="#credential-file" class="xref">Section 3.3.4</a>
+for a recommended storage format.<a href="#section-3-6" class="pilcrow">¶</a></p>
+<div id="credential-storage">
+<section id="section-3.1">
+        <h3 id="name-credential-storage">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-credential-storage" class="section-name selfRef">Credential Storage</a>
+        </h3>
+<p id="section-3.1-1">OPAQUE makes use of a structure <code>Envelope</code> to store client credentials.
+The <code>Envelope</code> structure embeds the following types of credentials:<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.1-2.1">client_private_key: The encoded client private key for the AKE protocol.<a href="#section-3.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-2.2">server_public_key: The encoded server public key for the AKE protocol.<a href="#section-3.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-2.3">client_identity: The client identity. This is an application-specific value, e.g., an e-mail
+address or normal account name.<a href="#section-3.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-2.4">server_identity: The server identity. This is typically a domain name, e.g., example.com.
+See <a href="#identities" class="xref">Section 6.2</a> for information about this identity.<a href="#section-3.1-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-3.1-3">Each public and private key value is an opaque byte string, specific to the AKE
+protocol in which OPAQUE is instantiated. For example, if used as raw public keys
+for TLS 1.3 <span>[<a href="#RFC8446" class="xref">RFC8446</a>]</span>, they may be RSA or ECDSA keys as per <span>[<a href="#RFC7250" class="xref">RFC7250</a>]</span>.<a href="#section-3.1-3" class="pilcrow">¶</a></p>
+<p id="section-3.1-4">These credentials are incorporated in the <code>SecretCredentials</code> and <code>CleartextCredentials</code> structs,
+depending on the mode set by the value of <code>EnvelopeMode</code>:<a href="#section-3.1-4" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3.1-5">
+<pre>
+enum {
+  base(1),
+  custom_identifier(2),
+  (255)
+} EnvelopeMode;
+</pre><a href="#section-3.1-5" class="pilcrow">¶</a>
+</div>
+<p id="section-3.1-6">The <code>base</code> mode defines <code>SecretCredentials</code> and <code>CleartextCredentials</code> as follows:<a href="#section-3.1-6" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3.1-7">
+<pre>
+struct {
+  opaque client_private_key&lt;1..2^16-1&gt;;
+} SecretCredentials;
+
+struct {
+  opaque server_public_key&lt;1..2^16-1&gt;;
+} CleartextCredentials;
+</pre><a href="#section-3.1-7" class="pilcrow">¶</a>
+</div>
+<p id="section-3.1-8">The <code>custom_identifier</code> mode defines <code>SecretCredentials</code> and <code>CleartextCredentials</code> as follows:<a href="#section-3.1-8" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3.1-9">
+<pre>
+struct {
+  opaque client_private_key&lt;1..2^16-1&gt;;
+} SecretCredentials;
+
+struct {
+  opaque server_public_key&lt;1..2^16-1&gt;;
+  opaque client_identity&lt;0..2^16-1&gt;;
+  opaque server_identity&lt;0..2^16-1&gt;;
+} CleartextCredentials;
+</pre><a href="#section-3.1-9" class="pilcrow">¶</a>
+</div>
+<p id="section-3.1-10">These credentials are embedded into the following <code>Envelope</code> structure with
+encryption and authentication.<a href="#section-3.1-10" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3.1-11">
+<pre>
+struct {
+  EnvelopeMode mode;
+  opaque nonce[32];
+  opaque encrypted_creds&lt;1..2^16-1&gt;;
+} InnerEnvelope;
+
+struct {
+  InnerEnvelope inner_env;
+  opaque auth_tag[Nh];
+} Envelope;
+</pre><a href="#section-3.1-11" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-3.1-12">
+          <dt id="section-3.1-12.1">
+mode  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-12.2">
+            <p id="section-3.1-12.2.1">The <code>EnvelopeMode</code> value. This MUST be one of <code>base</code> or <code>custom_identifier</code>.<a href="#section-3.1-12.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-12.3">
+nonce  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-12.4">
+            <p id="section-3.1-12.4.1">A unique 32-byte nonce used to protect this Envelope.<a href="#section-3.1-12.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-12.5">
+encrypted_creds  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-12.6">
+            <p id="section-3.1-12.6.1">Encoding of encrypted and authenticated <code>SecretCredentials</code>.<a href="#section-3.1-12.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-12.7">
+auth_tag  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-12.8">
+            <p id="section-3.1-12.8.1">Authentication tag protecting the contents of the envelope,
+covering <code>InnerEnvelope</code> and <code>CleartextCredentials</code>.<a href="#section-3.1-12.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-3.1-13">The full procedure for constructing <code>Envelope</code> and <code>InnerEnvelope</code> from
+<code>SecretCredentials</code> and <code>CleartextCredentials</code> is described in <a href="#finalize-request" class="xref">Section 3.3.3</a>.
+Note that only <code>SecretCredentials</code> are stored in the <code>Envelope</code> (in encrypted form).<a href="#section-3.1-13" class="pilcrow">¶</a></p>
+<p id="section-3.1-14">The <code>EnvelopeMode</code> value is specified as part of the configuration (see <a href="#configurations" class="xref">Section 5</a>).<a href="#section-3.1-14" class="pilcrow">¶</a></p>
+<p id="section-3.1-15">Credential information corresponding to the configuration-specific mode,
+along with the client public key <code>client_public_key</code> and private key <code>client_private_key</code>,
+are recommended to be stored in a <code>Credentials</code> object with the following named fields:<a href="#section-3.1-15" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.1-16.1">
+            <code>client_private_key</code>, the client's private key<a href="#section-3.1-16.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-16.2">
+            <code>client_public_key</code>, the client's public key corresponding to <code>client_private_key</code><a href="#section-3.1-16.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-16.3">
+            <code>client_identity</code>, an optional client identity (present only in the <code>custom_identifier</code> mode)<a href="#section-3.1-16.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.1-16.4">
+            <code>server_identity</code>, an optional server identity (present only in the <code>custom_identifier</code> mode)<a href="#section-3.1-16.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="registration-messages">
+<section id="section-3.2">
+        <h3 id="name-registration-messages">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-registration-messages" class="section-name selfRef">Registration Messages</a>
+        </h3>
+<div class="artwork art-text alignLeft" id="section-3.2-1">
+<pre>
+struct {
+    SerializedElement data;
+} RegistrationRequest;
+</pre><a href="#section-3.2-1" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-3.2-2">
+          <dt id="section-3.2-2.1">
+data  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.2">
+            <p id="section-3.2-2.2.1">A serialized OPRF group element.<a href="#section-3.2-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<div class="artwork art-text alignLeft" id="section-3.2-3">
+<pre>
+struct {
+    SerializedElement data;
+    opaque server_public_key&lt;1..2^16-1&gt;;
+} RegistrationResponse;
+</pre><a href="#section-3.2-3" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-3.2-4">
+          <dt id="section-3.2-4.1">
+data  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-4.2">
+            <p id="section-3.2-4.2.1">A serialized OPRF group element.<a href="#section-3.2-4.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-4.3">
+server_public_key  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-4.4">
+            <p id="section-3.2-4.4.1">The server's encoded public key that will be used for the online authenticated key exchange stage.<a href="#section-3.2-4.4.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<div class="artwork art-text alignLeft" id="section-3.2-5">
+<pre>
+struct {
+    opaque client_public_key&lt;1..2^16-1&gt;;
+    Envelope envelope;
+} RegistrationUpload;
+</pre><a href="#section-3.2-5" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-3.2-6">
+          <dt id="section-3.2-6.1">
+client_public_key  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-6.2">
+            <p id="section-3.2-6.2.1">The client's encoded public key, corresponding to the private key <code>client_private_key</code>.<a href="#section-3.2-6.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-6.3">
+envelope  </dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-6.4">
+            <p id="section-3.2-6.4.1">The client's <code>Envelope</code> structure.<a href="#section-3.2-6.4.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="registration-functions">
+<section id="section-3.3">
+        <h3 id="name-registration-functions">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-registration-functions" class="section-name selfRef">Registration Functions</a>
+        </h3>
+<div id="createregistrationrequest">
+<section id="section-3.3.1">
+          <h4 id="name-createregistrationrequest">
+<a href="#section-3.3.1" class="section-number selfRef">3.3.1. </a><a href="#name-createregistrationrequest" class="section-name selfRef">CreateRegistrationRequest</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-3.3.1-1">
+<pre>
+CreateRegistrationRequest(password)
+
+Input:
+- password, an opaque byte string containing the client's password
+
+Output:
+- request, a RegistrationRequest structure
+- blind, an OPRF scalar value
+
+Steps:
+1. (blind, M) = Blind(password)
+2. Create RegistrationRequest request with M
+3. Output (request, blind)
+</pre><a href="#section-3.3.1-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="create-reg-response">
+<section id="section-3.3.2">
+          <h4 id="name-createregistrationresponse">
+<a href="#section-3.3.2" class="section-number selfRef">3.3.2. </a><a href="#name-createregistrationresponse" class="section-name selfRef">CreateRegistrationResponse</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-3.3.2-1">
+<pre>
+CreateRegistrationResponse(request, server_public_key)
+
+Input:
+- request, a RegistrationRequest structure
+- server_public_key, the server's public key
+
+Output:
+- response, a RegistrationResponse structure
+- oprf_key, the per-client OPRF key known only to the server
+
+Steps:
+1. (oprf_key, _) = KeyGen()
+2. Z = Evaluate(oprf_key, request.data)
+3. Create RegistrationResponse response with (Z, server_public_key)
+4. Output (response, oprf_key)
+</pre><a href="#section-3.3.2-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="finalize-request">
+<section id="section-3.3.3">
+          <h4 id="name-finalizerequest">
+<a href="#section-3.3.3" class="section-number selfRef">3.3.3. </a><a href="#name-finalizerequest" class="section-name selfRef">FinalizeRequest</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-3.3.3-1">
+<pre>
+FinalizeRequest(password, creds, blind, response)
+
+Parameters:
+- params, the MHF parameters established out of band
+- mode, the InnerEnvelope mode
+- Nh, the output size of the Hash function
+
+Input:
+- password, an opaque byte string containing the client's password
+- creds, a Credentials structure
+- blind, an OPRF scalar value
+- response, a RegistrationResponse structure
+
+Output:
+- record, a RegistrationUpload structure
+- export_key, an additional key
+
+Steps:
+1. N = Unblind(blind, response.data)
+2. y = Finalize(password, N, "OPAQUE")
+3. envelope_nonce = random(32)
+4. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+5. Create SecretCredentials secret_creds with creds.client_private_key
+6. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if
+   mode is custom_identifier
+7. pseudorandom_pad =
+     HKDF-Expand(prk, "Pad", len(secret_creds))
+8. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+9. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
+11. Create InnerEnvelope inner_env
+      with (mode, envelope_nonce, encrypted_creds)
+12. auth_tag = HMAC(auth_key, concat(inner_env, cleartext_creds))
+13. Create Envelope envelope with (inner_env, auth_tag)
+14. Create RegistrationUpload record with (envelope, creds.client_public_key)
+15. Output (record, export_key)
+</pre><a href="#section-3.3.3-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3.3-2">The inputs to HKDF-Extract and HKDF-Expand are as specified in <span>[<a href="#RFC5869" class="xref">RFC5869</a>]</span>. The underlying hash function
+is that which is associated with the OPAQUE configuration (see <a href="#configurations" class="xref">Section 5</a>).<a href="#section-3.3.3-2" class="pilcrow">¶</a></p>
+<p id="section-3.3.3-3">See <a href="#online-phase" class="xref">Section 4</a> for details about the output export_key usage.<a href="#section-3.3.3-3" class="pilcrow">¶</a></p>
+<p id="section-3.3.3-4">Upon completion of this function, the client MUST send <code>record</code> to the server.<a href="#section-3.3.3-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="credential-file">
+<section id="section-3.3.4">
+          <h4 id="name-credential-file">
+<a href="#section-3.3.4" class="section-number selfRef">3.3.4. </a><a href="#name-credential-file" class="section-name selfRef">Credential File</a>
+          </h4>
+<p id="section-3.3.4-1">The server then constructs and stores the <code>credential_file</code> object, where <code>envelope</code> and <code>client_public_key</code>
+are obtained from <code>record</code>, and <code>oprf_key</code> is retained from the output of <code>CreateRegistrationResponse</code>.
+<code>oprf_key</code> is serialized using <code>SerializeScalar</code>. The below structure represents an example of how
+these values might be conveniently stored together.<a href="#section-3.3.4-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-3.3.4-2">
+<pre>
+struct {
+    SerializedScalar oprf_key;
+    opaque client_public_key&lt;1..2^16-1&gt;;
+    Envelope envelope;
+} credential_file;
+</pre><a href="#section-3.3.4-2" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="online-phase">
+<section id="section-4">
+      <h2 id="name-online-authenticated-key-ex">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-online-authenticated-key-ex" class="section-name selfRef">Online Authenticated Key Exchange</a>
+      </h2>
+<p id="section-4-1">After registration, the client and server run the authenticated
+key exchange stage of the OPAQUE protocol. This stage is composed of a concurrent
+OPRF and key exchange flow. The key exchange protocol is authenticated using the
+client and server credentials established during registration; see <a href="#offline-phase" class="xref">Section 3</a>.
+The type of keys MUST be suitable for the key exchange protocol. For example, if
+the key exchange protocol is 3DH, as described in <a href="#opaque-3dh" class="xref">Section 4.2.2</a>, then the private and
+public keys must be Diffie-Hellman keys. At the end, the client proves its
+knowledge of the password, and both client and server agree on a mutually authenticated
+shared secret key.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<p id="section-4-2">OPAQUE produces two outputs: a session secret and an export key. The export key may be used
+for additional application-specific purposes, as outlined in <a href="#export-key-usage" class="xref">Section 6.4</a>.
+The output <code>export_key</code> MUST NOT be used in any way before the HMAC value in the
+envelope is validated. See <a href="#envelope-encryption" class="xref">Section 6.3</a> for more details about this requirement.<a href="#section-4-2" class="pilcrow">¶</a></p>
+<div id="credential-retrieval">
+<section id="section-4.1">
+        <h3 id="name-credential-retrieval">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-credential-retrieval" class="section-name selfRef">Credential Retrieval</a>
+        </h3>
+<p id="section-4.1-1">The online AKE stage of the protocol requires clients to obtain and decrypt their
+credentials from the server-stored envelope. This process is similar to the offline
+registration stage, as shown below.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.1-2">
+<pre>
+ Client (password)             Server (server_private_key, server_public_key, credential_file)
+ --------------------------------------------------------------------
+ (request, blind) = CreateCredentialRequest(password)
+
+                               request
+                      -------------------------&gt;
+
+    response = CreateCredentialResponse(request, server_public_key, credential_file)
+
+                               response
+                      &lt;-------------------------
+
+ (client_private_key, server_public_key, export_key) =
+     RecoverCredentials(password, blind, response)
+</pre><a href="#section-4.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.1-3">The rest of this section describes these credential retrieval functions in
+more detail.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<div id="credential-retrieval-messages">
+<section id="section-4.1.1">
+          <h4 id="name-credential-retrieval-messag">
+<a href="#section-4.1.1" class="section-number selfRef">4.1.1. </a><a href="#name-credential-retrieval-messag" class="section-name selfRef">Credential Retrieval Messages</a>
+          </h4>
+<div class="artwork art-text alignLeft" id="section-4.1.1-1">
+<pre>
+struct {
+    SerializedElement data;
+} CredentialRequest;
+</pre><a href="#section-4.1.1-1" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-4.1.1-2">
+            <dt id="section-4.1.1-2.1">
+data  </dt>
+            <dd style="margin-left: 1.5em" id="section-4.1.1-2.2">
+              <p id="section-4.1.1-2.2.1">A serialized OPRF group element.<a href="#section-4.1.1-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+</dl>
+<div class="artwork art-text alignLeft" id="section-4.1.1-3">
+<pre>
+struct {
+    SerializedElement data;
+    opaque server_public_key&lt;1..2^16-1&gt;;
+    Envelope envelope;
+} CredentialResponse;
+</pre><a href="#section-4.1.1-3" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-4.1.1-4">
+            <dt id="section-4.1.1-4.1">
+data  </dt>
+            <dd style="margin-left: 1.5em" id="section-4.1.1-4.2">
+              <p id="section-4.1.1-4.2.1">A serialized OPRF group element.<a href="#section-4.1.1-4.2.1" class="pilcrow">¶</a></p>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-4.1.1-4.3">
+server_public_key  </dt>
+            <dd style="margin-left: 1.5em" id="section-4.1.1-4.4">
+              <p id="section-4.1.1-4.4.1">The server's encoded public key that will be used for the online authenticated
+key exchange stage.<a href="#section-4.1.1-4.4.1" class="pilcrow">¶</a></p>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-4.1.1-4.5">
+envelope  </dt>
+            <dd style="margin-left: 1.5em" id="section-4.1.1-4.6">
+              <p id="section-4.1.1-4.6.1">The client's <code>Envelope</code> structure.<a href="#section-4.1.1-4.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="credential-retrieval-functions">
+<section id="section-4.1.2">
+          <h4 id="name-credential-retrieval-functi">
+<a href="#section-4.1.2" class="section-number selfRef">4.1.2. </a><a href="#name-credential-retrieval-functi" class="section-name selfRef">Credential Retrieval Functions</a>
+          </h4>
+<div id="create-credential-request">
+<section id="section-4.1.2.1">
+            <h5 id="name-createcredentialrequest">
+<a href="#section-4.1.2.1" class="section-number selfRef">4.1.2.1. </a><a href="#name-createcredentialrequest" class="section-name selfRef">CreateCredentialRequest</a>
+            </h5>
+<div class="artwork art-text alignLeft" id="section-4.1.2.1-1">
+<pre>
+CreateCredentialRequest(password)
+
+Input:
+- password, an opaque byte string containing the client's password
+
+Output:
+- request, a CredentialRequest structure
+- blind, an OPRF scalar value
+
+Steps:
+1. (blind, M) = Blind(password)
+2. Create CredentialRequest request with M
+3. Output (request, blind)
+</pre><a href="#section-4.1.2.1-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="create-credential-response">
+<section id="section-4.1.2.2">
+            <h5 id="name-createcredentialresponse">
+<a href="#section-4.1.2.2" class="section-number selfRef">4.1.2.2. </a><a href="#name-createcredentialresponse" class="section-name selfRef">CreateCredentialResponse</a>
+            </h5>
+<div class="artwork art-text alignLeft" id="section-4.1.2.2-1">
+<pre>
+CreateCredentialResponse(request, server_public_key, credential_file)
+
+Input:
+- request, a CredentialRequest structure
+- server_public_key, the public key of the server
+- credential_file, the server's output from registration
+  (see {{credential-file}})
+
+Output:
+- response, a CredentialResponse structure
+
+Steps:
+1. Z = Evaluate(DeserializeScalar(credential_file.oprf_key), request.data)
+2. Create CredentialResponse response
+    with (Z, server_public_key, credential_file.envelope)
+3. Output response
+</pre><a href="#section-4.1.2.2-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="recover-credentials">
+<section id="section-4.1.2.3">
+            <h5 id="name-recovercredentials">
+<a href="#section-4.1.2.3" class="section-number selfRef">4.1.2.3. </a><a href="#name-recovercredentials" class="section-name selfRef">RecoverCredentials</a>
+            </h5>
+<div class="artwork art-text alignLeft" id="section-4.1.2.3-1">
+<pre>
+RecoverCredentials(password, blind, response)
+
+Parameters:
+- params, the MHF parameters established out of band
+- Nh, the output size of the Hash function
+
+Input:
+- password, an opaque byte string containing the client's password
+- blind, an OPRF scalar value
+- response, a CredentialResponse structure
+
+Output:
+- client_private_key, the client's private key for the AKE protocol
+- server_public_key, the public key of the server
+- export_key, an additional key
+
+Steps:
+1. N = Unblind(blind, response.data)
+2. y = Finalize(password, N, "OPAQUE")
+3. contents = response.envelope.contents
+4. envelope_nonce = contents.nonce
+5. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+6. pseudorandom_pad =
+    HKDF-Expand(prk, "Pad", len(contents.encrypted_creds))
+7. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+8. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+9. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if mode is
+   custom_identifier
+10. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
+11. If !ct_equal(response.envelope.auth_tag, expected_tag),
+    raise DecryptionError
+12. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
+13. Output (secret_creds.client_private_key, response.server_public_key, export_key)
+</pre><a href="#section-4.1.2.3-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="instantiations">
+<section id="section-4.2">
+        <h3 id="name-ake-instantiations">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-ake-instantiations" class="section-name selfRef">AKE Instantiations</a>
+        </h3>
+<p id="section-4.2-1">This section describes instantiations of OPAQUE using 3-message AKEs which
+satisfies the forward secrecy and KCI properties discussed in <a href="#security-considerations" class="xref">Section 6</a>.
+As shown in <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span>, OPAQUE cannot use less than three messages so the 3-message
+instantiations presented here are optimal in terms of number of messages. On the other
+hand, there is no impediment of using OPAQUE with protocols with more than 3 messages
+as in the case of IKEv2 (or the underlying SIGMA-R protocol <span>[<a href="#SIGMA" class="xref">SIGMA</a>]</span>).<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2">The generic outline of OPAQUE with a 3-message AKE protocol includes three messages
+KE1, KE2, and KE3, where KE1 and KE2 include key exchange shares, e.g., DH values, sent
+by client and server, respectively, and KE3 provides explicit client authentication and
+full forward security (without it, forward secrecy is only achieved against eavesdroppers
+which is insufficient for OPAQUE security).<a href="#section-4.2-2" class="pilcrow">¶</a></p>
+<p id="section-4.2-3">The output of the authentication phase is a session secret <code>session_key</code> and export
+key <code>export_key</code>. Applications can use <code>session_key</code> to derive additional keying material
+as needed. Key derivation and other details of the protocol are specified by the AKE scheme.
+We note that by the results in <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span>, KE2 and KE3 must authenticate credential_request
+and credential_response, respectively, for binding between the underlying OPRF protocol
+messages and the KE session.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+<p id="section-4.2-4">The rest of this section includes key schedule utility functions used by OPAQUE-3DH,
+and then provides a detailed specification for OPAQUE-3DH, including its wire format
+messages.<a href="#section-4.2-4" class="pilcrow">¶</a></p>
+<div id="key-schedule-utility-functions">
+<section id="section-4.2.1">
+          <h4 id="name-key-schedule-utility-functi">
+<a href="#section-4.2.1" class="section-number selfRef">4.2.1. </a><a href="#name-key-schedule-utility-functi" class="section-name selfRef">Key Schedule Utility Functions</a>
+          </h4>
+<p id="section-4.2.1-1">The key derivation procedures for OPAQUE-3DH makes use of the functions below, re-purposed
+from TLS 1.3 <span>[<a href="#RFC8446" class="xref">RFC8446</a>]</span>.<a href="#section-4.2.1-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.1-2">
+<pre>
+HKDF-Expand-Label(Secret, Label, Context, Length) =
+  HKDF-Expand(Secret, HkdfLabel, Length)
+</pre><a href="#section-4.2.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.1-3">Where HkdfLabel is specified as:<a href="#section-4.2.1-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.1-4">
+<pre>
+struct {
+   uint16 length = Length;
+   opaque label&lt;8..255&gt; = "OPAQUE " + Label;
+   opaque context&lt;0..255&gt; = Context;
+} HkdfLabel;
+
+Derive-Secret(Secret, Label, Transcript) =
+    HKDF-Expand-Label(Secret, Label, Hash(Transcript), Nh)
+</pre><a href="#section-4.2.1-4" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.1-5">HKDF uses Hash as its underlying hash function, which is the same as that
+which is indicated by the OPAQUE instantiation. Note that the Label parameter
+is not a NULL-terminated string.<a href="#section-4.2.1-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="opaque-3dh">
+<section id="section-4.2.2">
+          <h4 id="name-opaque-3dh-instantiation">
+<a href="#section-4.2.2" class="section-number selfRef">4.2.2. </a><a href="#name-opaque-3dh-instantiation" class="section-name selfRef">OPAQUE-3DH Instantiation</a>
+          </h4>
+<p id="section-4.2.2-1">OPAQUE-3DH is implemented using a suitable prime order group. All operations in
+the key derivation steps in <a href="#derive-3dh" class="xref">Section 4.2.2.2</a> are performed in this group and
+represented here using multiplicative notation. The output of OPAQUE-3DH is a
+session secret <code>session_key</code> and export key <code>export_key</code>.<a href="#section-4.2.2-1" class="pilcrow">¶</a></p>
+<div id="opaque-3dh-messages">
+<section id="section-4.2.2.1">
+            <h5 id="name-opaque-3dh-messages">
+<a href="#section-4.2.2.1" class="section-number selfRef">4.2.2.1. </a><a href="#name-opaque-3dh-messages" class="section-name selfRef">OPAQUE-3DH Messages</a>
+            </h5>
+<p id="section-4.2.2.1-1">The three messages for OPAQUE-3DH are described below.<a href="#section-4.2.2.1-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.1-2">
+<pre>
+struct {
+  CredentialRequest request;
+  uint8 client_nonce[32];
+  opaque client_info&lt;0..2^16-1&gt;;
+  uint8 client_keyshare[Npk];
+} KE1;
+</pre><a href="#section-4.2.2.1-2" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-4.2.2.1-3">
+              <dt id="section-4.2.2.1-3.1">
+request  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-3.2">
+                <p id="section-4.2.2.1-3.2.1">A <code>CredentialRequest</code> generated according to <a href="#create-credential-request" class="xref">Section 4.1.2.1</a>.<a href="#section-4.2.2.1-3.2.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-3.3">
+client_nonce  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-3.4">
+                <p id="section-4.2.2.1-3.4.1">A fresh 32-byte randomly generated nonce.<a href="#section-4.2.2.1-3.4.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-3.5">
+client_info  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-3.6">
+                <p id="section-4.2.2.1-3.6.1">Optional application-specific information to exchange during the protocol.<a href="#section-4.2.2.1-3.6.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-3.7">
+client_keyshare  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-3.8">
+                <p id="section-4.2.2.1-3.8.1">Client ephemeral key share of fixed size Npk, where Npk depends on the corresponding
+prime order group.<a href="#section-4.2.2.1-3.8.1" class="pilcrow">¶</a></p>
+</dd>
+            <dd class="break"></dd>
+</dl>
+<div class="artwork art-text alignLeft" id="section-4.2.2.1-4">
+<pre>
+struct {
+  CredentialResponse response;
+  uint8 server_nonce[32];
+  uint8 server_keyshare[Npk];
+  opaque enc_server_info&lt;0..2^16-1&gt;;
+  uint8 mac[Nh];
+} KE2;
+</pre><a href="#section-4.2.2.1-4" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-4.2.2.1-5">
+              <dt id="section-4.2.2.1-5.1">
+response  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-5.2">
+                <p id="section-4.2.2.1-5.2.1">A <code>CredentialResponse</code> generated according to <a href="#create-credential-response" class="xref">Section 4.1.2.2</a>.<a href="#section-4.2.2.1-5.2.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-5.3">
+server_nonce  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-5.4">
+                <p id="section-4.2.2.1-5.4.1">A fresh 32-byte randomly generated nonce.<a href="#section-4.2.2.1-5.4.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-5.5">
+server_keyshare  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-5.6">
+                <p id="section-4.2.2.1-5.6.1">Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
+prime order group.<a href="#section-4.2.2.1-5.6.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-5.7">
+enc_server_info  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-5.8">
+                <p id="section-4.2.2.1-5.8.1">Optional application-specific information to exchange during the protocol encrypted
+under key Ke2, defined below.<a href="#section-4.2.2.1-5.8.1" class="pilcrow">¶</a></p>
+</dd>
+              <dd class="break"></dd>
+<dt id="section-4.2.2.1-5.9">
+mac  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-5.10">
+                <p id="section-4.2.2.1-5.10.1">An authentication tag computed over the handshake transcript computed using Km2,
+defined below.<a href="#section-4.2.2.1-5.10.1" class="pilcrow">¶</a></p>
+</dd>
+            <dd class="break"></dd>
+</dl>
+<div class="artwork art-text alignLeft" id="section-4.2.2.1-6">
+<pre>
+struct {
+  uint8 mac[Nh];
+} KE3;
+</pre><a href="#section-4.2.2.1-6" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlParallel" id="section-4.2.2.1-7">
+              <dt id="section-4.2.2.1-7.1">
+mac  </dt>
+              <dd style="margin-left: 1.5em" id="section-4.2.2.1-7.2">
+                <p id="section-4.2.2.1-7.2.1">An authentication tag computed over the handshake transcript computed using
+Km3, defined below.<a href="#section-4.2.2.1-7.2.1" class="pilcrow">¶</a></p>
+</dd>
+            <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="derive-3dh">
+<section id="section-4.2.2.2">
+            <h5 id="name-opaque-3dh-key-schedule">
+<a href="#section-4.2.2.2" class="section-number selfRef">4.2.2.2. </a><a href="#name-opaque-3dh-key-schedule" class="section-name selfRef">OPAQUE-3DH Key Schedule</a>
+            </h5>
+<p id="section-4.2.2.2-1">OPAQUE-3DH requires MAC keys <code>server_mac_key</code> and <code>client_mac_key</code> and
+encryption key <code>handshake_encrypt_key</code>. Additionally, OPAQUE-3DH also
+outputs <code>session_key</code>. The schedule for computing this key material is below.<a href="#section-4.2.2.2-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.2-2">
+<pre>
+HKDF-Extract(salt=0, IKM)
+    |
+    +-&gt; Derive-Secret(., "handshake secret", info) = handshake_secret
+    |
+    +-&gt; Derive-Secret(., "session secret", info) = session_key
+</pre><a href="#section-4.2.2.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.2.2-3">From <code>handshake_secret</code>, Km2, Km3, and Ke2 are computed as follows:<a href="#section-4.2.2.2-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.2-4">
+<pre>
+server_mac_key =
+  HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+client_mac_key =
+  HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+handshake_encrypt_key =
+  HKDF-Expand-Label(handshake_secret, "handshake enc", "", Nh)
+</pre><a href="#section-4.2.2.2-4" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.2.2-5">Nh is the output length of the underlying hash function.<a href="#section-4.2.2.2-5" class="pilcrow">¶</a></p>
+<p id="section-4.2.2.2-6">The HKDF input parameter <code>info</code> is computed as follows:<a href="#section-4.2.2.2-6" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.2-7">
+<pre>
+info = "3DH keys" || I2OSP(len(client_nonce), 2) || client_nonce
+                  || I2OSP(len(server_nonce), 2) || server_nonce
+                  || I2OSP(len(client_identity), 2) || client_identity
+                  || I2OSP(len(server_identity), 2) || server_identity
+</pre><a href="#section-4.2.2.2-7" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.2.2-8">See <a href="#identities" class="xref">Section 6.2</a> for more information about identities client_identity and server_identity.<a href="#section-4.2.2.2-8" class="pilcrow">¶</a></p>
+<p id="section-4.2.2.2-9">Let <code>epkS</code> and <code>eskS</code> be <code>server_keyshare</code> and the corresponding secret key,
+and <code>epkU</code> and <code>eskU</code> be <code>client_keyshare</code> and the corresponding secret key.
+The input parameter <code>IKM</code> the concatenation of three DH values computed by
+the client as follows:<a href="#section-4.2.2.2-9" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.2-10">
+<pre>
+IKM = epkS^eskU || pkS^eskU || epkS^skU
+</pre><a href="#section-4.2.2.2-10" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2.2.2-11">Likewise, <code>IKM</code> is computed by the server as follows:<a href="#section-4.2.2.2-11" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.2-12">
+<pre>
+IKM = epkU^eskS || epkU^skS || pkU^eskS
+</pre><a href="#section-4.2.2.2-12" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="opaque-3dh-encryption-and-key-confirmation-3dh-core">
+<section id="section-4.2.2.3">
+            <h5 id="name-opaque-3dh-encryption-and-k">
+<a href="#section-4.2.2.3" class="section-number selfRef">4.2.2.3. </a><a href="#name-opaque-3dh-encryption-and-k" class="section-name selfRef">OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}</a>
+            </h5>
+<p id="section-4.2.2.3-1">Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
+respectively. These values are computed as HMAC(mac_key, transcript), where
+mac_key and transcript are as follows:<a href="#section-4.2.2.3-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.2.2.3-2.1">KE2.mac: mac_key is Km2 and transcript is the concatenation of KE1 and KE2,
+excluding KE2.mac.<a href="#section-4.2.2.3-2.1" class="pilcrow">¶</a>
+</li>
+              <li class="normal" id="section-4.2.2.3-2.2">KE3.mac: mac_key is Km3 and transcript is the concatenation of KE1 and KE2,
+including KE2.mac.<a href="#section-4.2.2.3-2.2" class="pilcrow">¶</a>
+</li>
+            </ul>
+<p id="section-4.2.2.3-3">The server applicaton info, an opaque byte string <code>server_info</code>, is encrypted
+using a technique similar to that used for secret credential encryption.
+Specifically, a one-time-pad is derived from Ke2 and then used as input to XOR
+with the plaintext. In pseudocode, this is done as follows:<a href="#section-4.2.2.3-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-4.2.2.3-4">
+<pre>
+info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
+enc_server_info = xor(info_pad, server_info)
+</pre><a href="#section-4.2.2.3-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="configurations">
+<section id="section-5">
+      <h2 id="name-configurations">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-configurations" class="section-name selfRef">Configurations</a>
+      </h2>
+<p id="section-5-1">An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode). The OPAQUE OPRF
+protocol is drawn from the "base mode" variant of <span>[<a href="#I-D.irtf-cfrg-voprf" class="xref">I-D.irtf-cfrg-voprf</a>]</span>. The
+following OPRF ciphersuites are supported:<a href="#section-5-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5-2.1">OPRF(ristretto255, SHA-512)<a href="#section-5-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.2">OPRF(decaf448, SHA-512)<a href="#section-5-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.3">OPRF(P-256, SHA-256)<a href="#section-5-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.4">OPRF(P-384, SHA-512)<a href="#section-5-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.5">OPRF(P-521, SHA-512)<a href="#section-5-2.5" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-5-3">Future configurations may specify different OPRF constructions.<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">The OPAQUE hash function is that which is associated with the OPRF ciphersuite.
+For the ciphersuites specified here, only SHA-512 and SHA-256 are supported.<a href="#section-5-4" class="pilcrow">¶</a></p>
+<p id="section-5-5">The OPAQUE MHFs include Argon2 <span>[<a href="#I-D.irtf-cfrg-argon2" class="xref">I-D.irtf-cfrg-argon2</a>]</span>, scrypt <span>[<a href="#RFC7914" class="xref">RFC7914</a>]</span>,
+and PBKDF2 <span>[<a href="#RFC2898" class="xref">RFC2898</a>]</span> with fixed parameter choices.<a href="#section-5-5" class="pilcrow">¶</a></p>
+<p id="section-5-6">The EnvelopeMode value is defined in <a href="#credential-storage" class="xref">Section 3.1</a>. It MUST be one
+of <code>base</code> or <code>custom_identifier</code>. Future specifications may specify alternate
+EnvelopeMode values and their corresponding Envelope structure.<a href="#section-5-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-6">
+      <h2 id="name-security-considerations">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-6-1">OPAQUE is defined and proven as the composition of two
+functionalities: an OPRF and an AKE protocol.
+It can be seen as a "compiler" for transforming any AKE
+protocol (with KCI security and forward secrecy - see below)
+into a secure aPAKE protocol. In OPAQUE, the client stores a secret private key at the
+server during password registration and retrieves this key each time
+it needs to authenticate to the server. The OPRF security properties
+ensure that only the correct password can unlock the private key
+while at the same time avoiding potential offline guessing attacks.
+This general composability property provides great flexibility and
+enables a variety of OPAQUE instantiations, from optimized
+performance to integration with TLS. The latter aspect is of prime
+importance as the use of OPAQUE with TLS constitutes a major security
+improvement relative to the standard password-over-TLS practice.
+At the same time, the combination with TLS builds OPAQUE as a fully functional
+secure communications protocol and can help provide privacy to
+account information sent by the client to the server prior to authentication.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">The KCI property required from AKE protocols for use with OPAQUE
+states that knowledge of a party's private key does not allow an attacker
+to impersonate others to that party. This is an important security
+property achieved by most public-key based AKE protocols, including
+protocols that use signatures or public key encryption for
+authentication. It is also a property of many implicitly
+authenticated protocols, e.g., HMQV, but not all of them. We also note that
+key exchange protocols based on shared keys do not satisfy the KCI
+requirement, hence they are not considered in the OPAQUE setting.
+We note that KCI is needed to ensure a crucial property of OPAQUE: even upon
+compromise of the server, the attacker cannot impersonate the client to the
+server without first running an exhaustive dictionary attack.
+Another essential requirement from AKE protocols for use in OPAQUE is to
+provide forward secrecy (against active attackers).<a href="#section-6-2" class="pilcrow">¶</a></p>
+<div id="related-analysis">
+<section id="section-6.1">
+        <h3 id="name-related-analysis">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-related-analysis" class="section-name selfRef">Related Analysis</a>
+        </h3>
+<p id="section-6.1-1">Jarecki et al. <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span> proved the security of OPAQUE
+in a strong aPAKE model that ensures security against pre-computation attacks
+and is formulated in the Universal Composability (UC) framework <span>[<a href="#Canetti01" class="xref">Canetti01</a>]</span>
+under the random oracle model. This assumes security of the OPRF
+function and of the underlying key exchange protocol. In turn, the
+security of the OPRF protocol from <span>[<a href="#I-D.irtf-cfrg-voprf" class="xref">I-D.irtf-cfrg-voprf</a>]</span> is proven
+in the random oracle model under the One-More Diffie-Hellman assumption <span>[<a href="#JKKX16" class="xref">JKKX16</a>]</span>.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2">Very few aPAKE protocols have been proven formally, and those proven were analyzed
+in a weak security model that allows for pre-computation attacks (e.g.,
+<span>[<a href="#GMR06" class="xref">GMR06</a>]</span>). This is not just a formal issue: these protocols are
+actually vulnerable to such attacks. This includes protocols that have recent
+analyses in the UC model such as AuCPace <span>[<a href="#AuCPace" class="xref">AuCPace</a>]</span> and SPAKE2+ <span>[<a href="#SPAKE2plus" class="xref">SPAKE2plus</a>]</span>.
+We note that as shown in <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span>, these protocols, and any aPAKE
+in the model from <span>[<a href="#GMR06" class="xref">GMR06</a>]</span>, can be converted into an aPAKE secure against
+pre-computation attacks at the expense of an additional OPRF execution.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<p id="section-6.1-3">OPAQUE's design builds on a line of work initiated in the seminal
+paper of Ford and Kaliski <span>[<a href="#FK00" class="xref">FK00</a>]</span> and is based on the HPAKE protocol
+of Xavier Boyen <span>[<a href="#Boyen09" class="xref">Boyen09</a>]</span> and the (1,1)-PPSS protocol from Jarecki
+et al. <span>[<a href="#JKKX16" class="xref">JKKX16</a>]</span>. None of these papers considered security against
+pre-computation attacks or presented a proof of aPAKE security
+(not even in a weak model).<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="identities">
+<section id="section-6.2">
+        <h3 id="name-identities">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-identities" class="section-name selfRef">Identities</a>
+        </h3>
+<p id="section-6.2-1">AKE protocols generate keys that need to be uniquely and verifiably bound to a pair
+of identities. In the case of OPAQUE, those identities correspond to client_identity and server_identity.
+Thus, it is essential for the parties to agree on such identities, including an
+agreed bit representation of these identities as needed.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<p id="section-6.2-2">Applications may have different policies about how and when identities are
+determined. A natural approach is to tie client_identity to the identity the server uses
+to fetch envelope (hence determined during password registration) and to tie server_identity
+to the server identity used by the client to initiate an offline password
+registration or online authenticated key exchange session. server_identity and client_identity can also
+be part of envelope or be tied to the parties' public keys. In principle, it is possible
+that identities change across different sessions as long as there is a policy that
+can establish if the identity is acceptable or not to the peer. However, we note
+that the public keys of both the server and the client must always be those defined
+at time of password registration.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
+<p id="section-6.2-3">The client identity (client_identity) and server identity (server_identity) are
+optional parameters which are left to the application to designate as monikers for the client
+and server. If the application layer does not supply values for these
+parameters, then they will be omitted from the creation of the envelope
+during the registration stage. Furthermore, they will be substituted with
+client_identity = client_public_key and server_identity = server_public_key during
+the authenticated key exchange stage.<a href="#section-6.2-3" class="pilcrow">¶</a></p>
+<p id="section-6.2-4">The advantage to supplying a custom client_identity and server_identity (instead of simply relying
+on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
+mappings between client_identity and client_public_key (and server_identity and server_public_key)
+are protected by the authentication from the envelope. Then, the client can verify that the
+client_identity and server_identity contained in its envelope matches the client_identity
+and server_identity supplied by the server.<a href="#section-6.2-4" class="pilcrow">¶</a></p>
+<p id="section-6.2-5">However, if this extra layer of verification is unnecessary for the application, then simply
+leaving client_identity and server_identity unspecified (and using client_public_key and
+server_public_key instead) is acceptable.<a href="#section-6.2-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="envelope-encryption">
+<section id="section-6.3">
+        <h3 id="name-envelope-encryption">
+<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-envelope-encryption" class="section-name selfRef">Envelope Encryption</a>
+        </h3>
+<p id="section-6.3-1">The analysis of OPAQUE from <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span> requires the authenticated encryption scheme
+used to produce envelope to have a special property called random key-robustness
+(or key-committing). This specification enforces this property by utilizing
+encrypt-then-HMAC in the construction of envelope. There is no option to use another
+authenticated-encryption scheme with this specification. (Deviating from the
+key-robustness requirement may open the protocol to attacks, e.g., <span>[<a href="#LGR20" class="xref">LGR20</a>]</span>.)
+We remark that export_key for authentication or encryption requires no special
+properties from the authentication or encryption schemes as long as export_key
+is used only after the envelope is validated, i.e., after the HMAC in RecoverCredentials
+passes verification.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="export-key-usage">
+<section id="section-6.4">
+        <h3 id="name-export-key-usage">
+<a href="#section-6.4" class="section-number selfRef">6.4. </a><a href="#name-export-key-usage" class="section-name selfRef">Export Key Usage</a>
+        </h3>
+<p id="section-6.4-1">The export key can be used (separately from the OPAQUE protocol) to provide
+confidentiality and integrity to other data which only the client should be
+able to process. For instance, if the server is expected to maintain any
+client-side secrets which require a password to access, then this export key
+can be used to encrypt these secrets so that they remain hidden from the
+server.<a href="#section-6.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="static-diffie-hellman-oracles">
+<section id="section-6.5">
+        <h3 id="name-static-diffie-hellman-oracl">
+<a href="#section-6.5" class="section-number selfRef">6.5. </a><a href="#name-static-diffie-hellman-oracl" class="section-name selfRef">Static Diffie-Hellman Oracles</a>
+        </h3>
+<p id="section-6.5-1">While one can expect the practical security of the OPRF function (namely,
+the hardness of computing the function without knowing the key) to be in the
+order of computing discrete logarithms or solving Diffie-Hellman, Brown and
+Gallant <span>[<a href="#BG04" class="xref">BG04</a>]</span> and Cheon <span>[<a href="#Cheon06" class="xref">Cheon06</a>]</span> show an attack that slightly improves
+on generic attacks. For typical curves, the attack requires an infeasible
+number of calls to the OPRF or results in insignificant security loss;
+see <span>[<a href="#I-D.irtf-cfrg-voprf" class="xref">I-D.irtf-cfrg-voprf</a>]</span> for more information. For OPAQUE, these attacks
+are particularly impractical as they translate into an infeasible number of
+failed authentication attempts directed at individual users.<a href="#section-6.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="validation">
+<section id="section-6.6">
+        <h3 id="name-input-validation">
+<a href="#section-6.6" class="section-number selfRef">6.6. </a><a href="#name-input-validation" class="section-name selfRef">Input Validation</a>
+        </h3>
+<p id="section-6.6-1">Both client and server MUST validate the other party's public key(s) used
+for the execution of OPAQUE. This includes the keys shared during the
+offline registration phase, as well as any keys shared during the online
+key agreement phase. The validation procedure varies depending on the
+type of key. For example, for OPAQUE instantiations
+using 3DH with P-256, P-384, or P-521 as the underlying group, validation
+is as specified in Section 5.6.2.3.4 of <span>[<a href="#keyagreement" class="xref">keyagreement</a>]</span>. This includes
+checking that the coordinates are in the correct range, that the point
+is on the curve, and that the point is not the point at infinity.
+Additionally, validation MUST ensure the Diffie-Hellman shared secret is
+not the point at infinity.<a href="#section-6.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="oprf-hardening">
+<section id="section-6.7">
+        <h3 id="name-oprf-hardening">
+<a href="#section-6.7" class="section-number selfRef">6.7. </a><a href="#name-oprf-hardening" class="section-name selfRef">OPRF Hardening</a>
+        </h3>
+<p id="section-6.7-1">Hardening the output of the OPRF greatly increases the cost of an offline
+attack upon the compromise of the password file at the server. Applications
+SHOULD select parameters that balance cost and complexity.<a href="#section-6.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="SecEnumeration">
+<section id="section-6.8">
+        <h3 id="name-client-enumeration">
+<a href="#section-6.8" class="section-number selfRef">6.8. </a><a href="#name-client-enumeration" class="section-name selfRef">Client Enumeration</a>
+        </h3>
+<p id="section-6.8-1">Client enumeration refers to attacks where the attacker tries to learn
+whether a given client identity is registered with a server. Preventing
+such attacks requires the server to act with unknown client identities
+in a way that is indistinguishable from its behavior with existing
+clients. Here we suggest a way to implement such defense, namely, a way for
+simulating a CredentialResponse for non-existing clients.
+Note that if the same CredentialRequest is received
+twice by the server, the response needs to be the same in both cases (since
+this would be the case for real clients).
+For protection against this attack, one would apply the encryption function in
+the construction of envelope to all the key material in envelope.
+The server S will have two keys MK, MK' for a pseudorandom function f.
+f refers to a regular pseudorandom function such as HMAC or CMAC.
+Upon receiving a CredentialRequest for a non-existing
+client client_identity, S computes oprf_key=f(MK; client_identity) and oprf_key'=f(MK'; client_identity) and responds with
+CredentialResponse carrying Z=M^oprf_key and envelope, where the latter is computed as follows.
+prk is set to oprf_key' and secret_creds is set to the all-zero string (of the
+length of a regular envelope plaintext). Care needs to be taken to avoid side
+channel leakage (e.g., timing) from helping differentiate these
+operations from a regular server response.
+The above requires changes to the server-side implementation but not to the
+protocol itself or the client side.<a href="#section-6.8-1" class="pilcrow">¶</a></p>
+<p id="section-6.8-2">There is one form of leakage that the above allows and whose prevention would
+require a change in OPAQUE.
+An attacker that attempts authentication with the same CredentialRequest twice and receives
+different responses can conclude that either the client registered with the
+service between these two activations or that the client was registered before
+but changed its password in between the activations (assuming the server
+changes oprf_key at the time of a password change). In any case, this
+indicates that client_identity is a registered client at the time of the second activation.
+To conceal this information, S can implement the derivation of oprf_key
+as oprf_key=f(MK; client_identity) also for registered clients. Hiding changes in envelope, however,
+requires a change in the protocol. Instead of sending envelope as is,
+S would send an encryption of envelope under a key that the client derives from the
+OPRF result (similarly to prk) and that S stores during password
+registration. During the authenticated key exchange stage, the client will derive
+this key from the OPRF result, will use it to decrypt envelope, and continue with the
+regular protocol. If S uses a randomized encryption, the encrypted envelope will look
+each time as a fresh random string, hence S can simulate the encrypted envelope also
+for non-existing clients.<a href="#section-6.8-2" class="pilcrow">¶</a></p>
+<p id="section-6.8-3">Note that the first case above does not change the protocol so its
+implementation is a server's decision (the client side is not changed).
+The second case, requires changes on the client side so it changes OPAQUE
+itself.<a href="#section-6.8-3" class="pilcrow">¶</a></p>
+<p id="section-6.8-4">[[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22: Should this variant be documented/standardized?]]<a href="#section-6.8-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="password-salt-and-storage-implications">
+<section id="section-6.9">
+        <h3 id="name-password-salt-and-storage-i">
+<a href="#section-6.9" class="section-number selfRef">6.9. </a><a href="#name-password-salt-and-storage-i" class="section-name selfRef">Password Salt and Storage Implications</a>
+        </h3>
+<p id="section-6.9-1">In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibility
+of pre-computation attacks. No extra salt value is needed. Also, clients never
+disclose their password to the server, even during registration. Note that a corrupted
+server can run an exhaustive offline dictionary attack to validate guesses for the client's
+password; this is inevitable in any aPAKE protocol. (OPAQUE enables a defense against such
+offline dictionary attacks by distributing the server so that an offline attack is only
+possible if all - or a minimal number of - servers are compromised <span>[<a href="#OPAQUE" class="xref">OPAQUE</a>]</span>.)<a href="#section-6.9-1" class="pilcrow">¶</a></p>
+<p id="section-6.9-2">Some applications may require learning the client's password for enforcing password
+rules. Doing so invalidates this important security property of OPAQUE and is
+NOT RECOMMENDED. Applications should move such checks to the client. Note that
+limited checks at the server are possible to implement, e.g., detecting repeated
+passwords.<a href="#section-6.9-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-7">
+      <h2 id="name-iana-considerations">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-7-1">This document makes no IANA requests.<a href="#section-7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-8">
+      <h2 id="name-references">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-8.1">
+        <h3 id="name-normative-references">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC4086">[RFC4086]</dt>
+        <dd>
+<span class="refAuthor">Eastlake 3rd, D.</span><span class="refAuthor">, Schiller, J.</span><span class="refAuthor">, and S. Crocker</span>, <span class="refTitle">"Randomness Requirements for Security"</span>, <span class="seriesInfo">BCP 106</span>, <span class="seriesInfo">RFC 4086</span>, <span class="seriesInfo">DOI 10.17487/RFC4086</span>, <time datetime="2005-06" class="refDate">June 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4086">https://www.rfc-editor.org/info/rfc4086</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+      <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-8.2">
+        <h3 id="name-informative-references">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="AuCPace">[AuCPace]</dt>
+        <dd>
+<span class="refAuthor">Haase, B.</span><span class="refAuthor"> and B. Labrique</span>, <span class="refTitle">"AuCPace: Efficient verifier-based PAKE protocol tailored for the IIoT"</span>, <span class="seriesInfo">http://eprint.iacr.org/2018/286 </span>, <time datetime="2018" class="refDate">2018</time>. </dd>
+<dd class="break"></dd>
+<dt id="BG04">[BG04]</dt>
+        <dd>
+<span class="refAuthor">Brown, D.</span><span class="refAuthor"> and R. Galant</span>, <span class="refTitle">"The static Diffie-Hellman problem"</span>, <span class="seriesInfo">http://eprint.iacr.org/2004/306 </span>, <time datetime="2004" class="refDate">2004</time>. </dd>
+<dd class="break"></dd>
+<dt id="Boyen09">[Boyen09]</dt>
+        <dd>
+<span class="refAuthor">Boyen, X.</span>, <span class="refTitle">"HPAKE: Password authentication secure against cross-site user impersonation"</span>, <span class="seriesInfo">Cryptology and Network Security (CANS) </span>, <time datetime="2009" class="refDate">2009</time>. </dd>
+<dd class="break"></dd>
+<dt id="Canetti01">[Canetti01]</dt>
+        <dd>
+<span class="refAuthor">Canetti, R.</span>, <span class="refTitle">"Universally composable security: A new paradigm for cryptographic protocols"</span>, <span class="seriesInfo">IEEE Symposium on Foundations of Computer Science (FOCS) </span>, <time datetime="2001" class="refDate">2001</time>. </dd>
+<dd class="break"></dd>
+<dt id="Cheon06">[Cheon06]</dt>
+        <dd>
+<span class="refAuthor">Cheon, J.H.</span>, <span class="refTitle">"Security analysis of the strong Diffie-Hellman problem"</span>, <span class="seriesInfo">Euroctypt 2006 </span>, <time datetime="2006" class="refDate">2006</time>. </dd>
+<dd class="break"></dd>
+<dt id="FK00">[FK00]</dt>
+        <dd>
+<span class="refAuthor">Ford, W.</span><span class="refAuthor"> and B.S. Kaliski, Jr</span>, <span class="refTitle">"Server-assisted generation of a strong secret from a password"</span>, <span class="seriesInfo">WETICE </span>, <time datetime="2000" class="refDate">2000</time>. </dd>
+<dd class="break"></dd>
+<dt id="GMR06">[GMR06]</dt>
+        <dd>
+<span class="refAuthor">Gentry, C.</span><span class="refAuthor">, MacKenzie, P.</span><span class="refAuthor">, and . Z, Ramzan</span>, <span class="refTitle">"A method for making password-based key exchange resilient to server compromise"</span>, <span class="seriesInfo">CRYPTO </span>, <time datetime="2006" class="refDate">2006</time>. </dd>
+<dd class="break"></dd>
+<dt id="HMQV">[HMQV]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span>, <span class="refTitle">"HMQV: A high-performance secure Diffie-Hellman protocol"</span>, <span class="seriesInfo">CRYPTO </span>, <time datetime="2005" class="refDate">2005</time>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.irtf-cfrg-argon2">[I-D.irtf-cfrg-argon2]</dt>
+        <dd>
+<span class="refAuthor">Biryukov, A.</span><span class="refAuthor">, Dinu, D.</span><span class="refAuthor">, Khovratovich, D.</span><span class="refAuthor">, and S. Josefsson</span>, <span class="refTitle">"The memory-hard Argon2 password hash and proof-of-work function"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-argon2-12</span>, <time datetime="2020-09-08" class="refDate">8 September 2020</time>, <span>&lt;<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-argon2-12.txt">https://www.ietf.org/archive/id/draft-irtf-cfrg-argon2-12.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.irtf-cfrg-hash-to-curve">[I-D.irtf-cfrg-hash-to-curve]</dt>
+        <dd>
+<span class="refAuthor">Faz-Hernandez, A.</span><span class="refAuthor">, Scott, S.</span><span class="refAuthor">, Sullivan, N.</span><span class="refAuthor">, Wahby, R. S.</span><span class="refAuthor">, and C. A. Wood</span>, <span class="refTitle">"Hashing to Elliptic Curves"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-hash-to-curve-10</span>, <time datetime="2020-10-11" class="refDate">11 October 2020</time>, <span>&lt;<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-10.txt">https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-10.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.irtf-cfrg-voprf">[I-D.irtf-cfrg-voprf]</dt>
+        <dd>
+<span class="refAuthor">Davidson, A.</span><span class="refAuthor">, Faz-Hernandez, A.</span><span class="refAuthor">, Sullivan, N.</span><span class="refAuthor">, and C. A. Wood</span>, <span class="refTitle">"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-voprf-05</span>, <time datetime="2020-11-02" class="refDate">2 November 2020</time>, <span>&lt;<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-05.txt">https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-05.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.sullivan-tls-opaque">[I-D.sullivan-tls-opaque]</dt>
+        <dd>
+<span class="refAuthor">Sullivan, N.</span><span class="refAuthor">, Krawczyk, H.</span><span class="refAuthor">, Friel, O.</span><span class="refAuthor">, and R. Barnes</span>, <span class="refTitle">"Usage of OPAQUE with TLS 1.3"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-sullivan-tls-opaque-00</span>, <time datetime="2019-03-11" class="refDate">11 March 2019</time>, <span>&lt;<a href="https://www.ietf.org/archive/id/draft-sullivan-tls-opaque-00.txt">https://www.ietf.org/archive/id/draft-sullivan-tls-opaque-00.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="JKKX16">[JKKX16]</dt>
+        <dd>
+<span class="refAuthor">Jarecki, S.</span><span class="refAuthor">, Kiayias, A.</span><span class="refAuthor">, Krawczyk, H.</span><span class="refAuthor">, and J. Xu</span>, <span class="refTitle">"Highly-efficient and composable password-protected secret sharing (or: how to protect your bitcoin wallet online)"</span>, <span class="seriesInfo">IEEE European Symposium on Security and Privacy </span>, <time datetime="2016" class="refDate">2016</time>. </dd>
+<dd class="break"></dd>
+<dt id="keyagreement">[keyagreement]</dt>
+        <dd>
+<span class="refAuthor">Barker, E.</span><span class="refAuthor">, Chen, L.</span><span class="refAuthor">, Roginsky, A.</span><span class="refAuthor">, Vassilev, A.</span><span class="refAuthor">, and R. Davis</span>, <span class="refTitle">"Recommendation for pair-wise key-establishment schemes using discrete logarithm cryptography"</span>, <span class="seriesInfo">National Institute of Standards and Technology report</span>, <span class="seriesInfo">DOI 10.6028/nist.sp.800-56ar3</span>, <time datetime="2018-04" class="refDate">April 2018</time>, <span>&lt;<a href="https://doi.org/10.6028/nist.sp.800-56ar3">https://doi.org/10.6028/nist.sp.800-56ar3</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="LGR20">[LGR20]</dt>
+        <dd>
+<span class="refAuthor">Len, J.</span><span class="refAuthor">, Grubbs, P.</span><span class="refAuthor">, and T. Ristenpart</span>, <span class="refTitle">"Partitioning Oracle Attacks"</span>, <span>n.d.</span>, <span>&lt;<a href="https://eprint.iacr.org/2020/1491.pdf">https://eprint.iacr.org/2020/1491.pdf</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="OPAQUE">[OPAQUE]</dt>
+        <dd>
+<span class="refAuthor">Jarecki, S.</span><span class="refAuthor">, Krawczyk, H.</span><span class="refAuthor">, and J. Xu</span>, <span class="refTitle">"OPAQUE: An Asymmetric PAKE Protocol Secure Against Pre-Computation Attacks"</span>, <span class="seriesInfo">Eurocrypt </span>, <time datetime="2018" class="refDate">2018</time>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2898">[RFC2898]</dt>
+        <dd>
+<span class="refAuthor">Kaliski, B.</span>, <span class="refTitle">"PKCS #5: Password-Based Cryptography Specification Version 2.0"</span>, <span class="seriesInfo">RFC 2898</span>, <span class="seriesInfo">DOI 10.17487/RFC2898</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2898">https://www.rfc-editor.org/info/rfc2898</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2945">[RFC2945]</dt>
+        <dd>
+<span class="refAuthor">Wu, T.</span>, <span class="refTitle">"The SRP Authentication and Key Exchange System"</span>, <span class="seriesInfo">RFC 2945</span>, <span class="seriesInfo">DOI 10.17487/RFC2945</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2945">https://www.rfc-editor.org/info/rfc2945</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5869">[RFC5869]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span><span class="refAuthor"> and P. Eronen</span>, <span class="refTitle">"HMAC-based Extract-and-Expand Key Derivation Function (HKDF)"</span>, <span class="seriesInfo">RFC 5869</span>, <span class="seriesInfo">DOI 10.17487/RFC5869</span>, <time datetime="2010-05" class="refDate">May 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5869">https://www.rfc-editor.org/info/rfc5869</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7250">[RFC7250]</dt>
+        <dd>
+<span class="refAuthor">Wouters, P., Ed.</span><span class="refAuthor">, Tschofenig, H., Ed.</span><span class="refAuthor">, Gilmore, J.</span><span class="refAuthor">, Weiler, S.</span><span class="refAuthor">, and T. Kivinen</span>, <span class="refTitle">"Using Raw Public Keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)"</span>, <span class="seriesInfo">RFC 7250</span>, <span class="seriesInfo">DOI 10.17487/RFC7250</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7250">https://www.rfc-editor.org/info/rfc7250</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7914">[RFC7914]</dt>
+        <dd>
+<span class="refAuthor">Percival, C.</span><span class="refAuthor"> and S. Josefsson</span>, <span class="refTitle">"The scrypt Password-Based Key Derivation Function"</span>, <span class="seriesInfo">RFC 7914</span>, <span class="seriesInfo">DOI 10.17487/RFC7914</span>, <time datetime="2016-08" class="refDate">August 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7914">https://www.rfc-editor.org/info/rfc7914</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8017">[RFC8017]</dt>
+        <dd>
+<span class="refAuthor">Moriarty, K., Ed.</span><span class="refAuthor">, Kaliski, B.</span><span class="refAuthor">, Jonsson, J.</span><span class="refAuthor">, and A. Rusch</span>, <span class="refTitle">"PKCS #1: RSA Cryptography Specifications Version 2.2"</span>, <span class="seriesInfo">RFC 8017</span>, <span class="seriesInfo">DOI 10.17487/RFC8017</span>, <time datetime="2016-11" class="refDate">November 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8017">https://www.rfc-editor.org/info/rfc8017</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8125">[RFC8125]</dt>
+        <dd>
+<span class="refAuthor">Schmidt, J.</span>, <span class="refTitle">"Requirements for Password-Authenticated Key Agreement (PAKE) Schemes"</span>, <span class="seriesInfo">RFC 8125</span>, <span class="seriesInfo">DOI 10.17487/RFC8125</span>, <time datetime="2017-04" class="refDate">April 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8125">https://www.rfc-editor.org/info/rfc8125</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8446">[RFC8446]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8446">https://www.rfc-editor.org/info/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="SIGMA">[SIGMA]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span>, <span class="refTitle">"SIGMA: The SIGn-and-MAc approach to authenticated Diffie-Hellman and its use in the IKE protocols"</span>, <span class="seriesInfo">CRYPTO </span>, <time datetime="2003" class="refDate">2003</time>. </dd>
+<dd class="break"></dd>
+<dt id="SIGNAL">[SIGNAL]</dt>
+        <dd>
+<span class="refTitle">"Signal recommended cryptographic algorithms"</span>, <span class="seriesInfo">https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms </span>, <time datetime="2016" class="refDate">2016</time>. </dd>
+<dd class="break"></dd>
+<dt id="SPAKE2plus">[SPAKE2plus]</dt>
+      <dd>
+<span class="refAuthor">Shoup, V.</span>, <span class="refTitle">"Security Analysis of SPAKE2+"</span>, <span class="seriesInfo">http://eprint.iacr.org/2020/313 </span>, <time datetime="2020" class="refDate">2020</time>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="acknowledgments">
+<section id="section-appendix.a">
+      <h2 id="name-acknowledgments">
+<a href="#section-appendix.a" class="section-number selfRef">Appendix A. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="section-appendix.a-1">The OPAQUE protocol and its analysis is joint work of the author with Stas
+Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
+aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
+This draft has benefited from comments by multiple people. Special thanks
+to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
+Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.<a href="#section-appendix.a-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="alternate-akes">
+<section id="section-appendix.b">
+      <h2 id="name-alternate-ake-instantiation">
+<a href="#section-appendix.b" class="section-number selfRef">Appendix B. </a><a href="#name-alternate-ake-instantiation" class="section-name selfRef">Alternate AKE Instantiations</a>
+      </h2>
+<p id="section-appendix.b-1">It is possible to instantiate OPAQUE with other AKEs, such as HMQV <span>[<a href="#HMQV" class="xref">HMQV</a>]</span> and SIGMA-I.
+HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
+rather than static DH keys for authentication. Specification of these instantiations is
+left to future documents. A sketch of how these instantiations might change is included
+below for posterity.<a href="#section-appendix.b-1" class="pilcrow">¶</a></p>
+<p id="section-appendix.b-2">OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has the message
+flow above and security properties (KCI resistance and forward secrecy) outlined
+in <a href="#security-considerations" class="xref">Section 6</a>. Note that such an instantiation is not quantum safe unless
+the OPRF is quantum safe. However, an OPAQUE instantiation where the AKE is quantum safe,
+but the OPRF is not, would still ensure the confidentiality of application data encrypted
+under session_key (or a key derived from it) with a quantum-safe encryption function.<a href="#section-appendix.b-2" class="pilcrow">¶</a></p>
+<div id="hmqv-instantiation-sketch">
+<section id="section-b.1">
+        <h2 id="name-hmqv-instantiation-sketch">
+<a href="#section-b.1" class="section-number selfRef">B.1. </a><a href="#name-hmqv-instantiation-sketch" class="section-name selfRef">HMQV Instantiation Sketch</a>
+        </h2>
+<p id="section-b.1-1">An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
+schedule <span>[<a href="#HMQV" class="xref">HMQV</a>]</span>. First, the key schedule <code>info</code> value would use a different constant prefix
+-- "HMQV keys" instead of "3DH keys" -- as shown below.<a href="#section-b.1-1" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-b.1-2">
+<pre>
+info = "HMQV keys" || I2OSP(len(client_nonce), 2) || client_nonce
+                   || I2OSP(len(server_nonce), 2) || server_nonce
+                   || I2OSP(len(client_identity), 2) || client_identity
+                   || I2OSP(len(server_identity), 2) || server_identity
+</pre><a href="#section-b.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-b.1-3">Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
+group of prime order p with bit length L, clients would compute <code>IKM</code> as follows:<a href="#section-b.1-3" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-b.1-4">
+<pre>
+u' = (eskU + u \* skU) mod p
+IKM = (epkS \* pkS^s)^u'
+</pre><a href="#section-b.1-4" class="pilcrow">¶</a>
+</div>
+<p id="section-b.1-5">Likewise, servers would compute <code>IKM</code> as follows:<a href="#section-b.1-5" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-b.1-6">
+<pre>
+s' = (eskS + s \* skS) mod p
+IKM = (epkU \* pkU^u)^s'
+</pre><a href="#section-b.1-6" class="pilcrow">¶</a>
+</div>
+<p id="section-b.1-7">In both cases, <code>u</code> would be computed as follows:<a href="#section-b.1-7" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-b.1-8">
+<pre>
+hashInput = I2OSP(len(epkU), 2) || epkU ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("client"), 2) || "client"
+u = Hash(hashInput) mod L
+</pre><a href="#section-b.1-8" class="pilcrow">¶</a>
+</div>
+<p id="section-b.1-9">Likewise, <code>s</code> would be computed as follows:<a href="#section-b.1-9" class="pilcrow">¶</a></p>
+<div class="artwork art-text alignLeft" id="section-b.1-10">
+<pre>
+hashInput = I2OSP(len(epkS), 2) || epkS ||
+            I2OSP(len(info), 2) || info ||
+            I2OSP(len("server"), 2) || "server"
+s = Hash(hashInput) mod L
+</pre><a href="#section-b.1-10" class="pilcrow">¶</a>
+</div>
+<p id="section-b.1-11">Hash is the same hash function used in the main OPAQUE protocol for key derivation.
+Its output length (in bits) must be at least L.<a href="#section-b.1-11" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sigma-i-instantiation-sketch">
+<section id="section-b.2">
+        <h2 id="name-sigma-i-instantiation-sketc">
+<a href="#section-b.2" class="section-number selfRef">B.2. </a><a href="#name-sigma-i-instantiation-sketc" class="section-name selfRef">SIGMA-I Instantiation Sketch</a>
+        </h2>
+<p id="section-b.2-1">A SIGMA-I instantiation differs more drastically from OPAQUE-3DH, since authentication
+uses digital signatures in lieu of Diffie Hellman. In particular, both KE2 and KE3
+would carry a digital signature, computed using the server and client private keys
+established during registration, respectively, as well as a MAC, where the MAC is
+computed as in OPAQUE-3DH.<a href="#section-b.2-1" class="pilcrow">¶</a></p>
+<p id="section-b.2-2">The key schedule would also change. Specifically, the key schedule <code>info</code> value would
+use a different constant prefix -- "SIGMA-I keys" instead of "3DH keys" -- and the <code>IKM</code>
+computation would use only the ephemeral key shares exchanged between client and server.<a href="#section-b.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="test-vectors">
+<section id="section-appendix.c">
+      <h2 id="name-test-vectors">
+<a href="#section-appendix.c" class="section-number selfRef">Appendix C. </a><a href="#name-test-vectors" class="section-name selfRef">Test Vectors</a>
+      </h2>
+<p id="section-appendix.c-1">This section contains test vectors for the OPAQUE-3DH specification. Each test
+vector specifies the configuration information, protocol inputs, intermeidate
+values computed during registration and authentication, and protocol outputs.
+All values are encoded in hexadecimal strings. The configuration information
+includes the (OPRF, Hash, MHF, EnvelopeMode) tuple, along with the group
+to which the AKE authentication keys correspond.<a href="#section-appendix.c-1" class="pilcrow">¶</a></p>
+<div id="opaque-3dh-test-vector-1">
+<section id="section-c.1">
+        <h2 id="name-opaque-3dh-test-vector-1">
+<a href="#section-c.1" class="section-number selfRef">C.1. </a><a href="#name-opaque-3dh-test-vector-1" class="section-name selfRef">OPAQUE-3DH Test Vector 1</a>
+        </h2>
+<div id="configuration">
+<section id="section-c.1.1">
+          <h3 id="name-configuration">
+<a href="#section-c.1.1" class="section-number selfRef">C.1.1. </a><a href="#name-configuration" class="section-name selfRef">Configuration</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.1.1-1">
+<pre>
+Group: ristretto255
+EnvelopeMode: 01
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+</pre><a href="#section-c.1.1-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="input-values">
+<section id="section-c.1.2">
+          <h3 id="name-input-values">
+<a href="#section-c.1.2" class="section-number selfRef">C.1.2. </a><a href="#name-input-values" class="section-name selfRef">Input Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.1.2-1">
+<pre>
+server_nonce: a4997137a8fa0d4baf7052a499bf877057f9404e03c889d641a0d7c
+807b6a518
+oprf_key: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be03
+7e50b
+password: 436f7272656374486f72736542617474657279537461706c65
+blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
+e3263503
+server_private_keyshare: 31587dff30b8001d9d43584decc22e358fa7f9d6e606
+29fb1223081c3bae7103
+client_nonce: 75a1ad27ab77578bc08b44c4318f09b31d53145c9ba3b42abf0ea08
+a781277a6
+server_info: 6772656574696e677320616c696365
+client_info: 68656c6c6f20626f62
+client_private_keyshare: fbbf4ad24119f08a35bf999f8ae0c779ed7b3e266bf3
+3f793f6bf9ebf4578005
+envelope_nonce: 6c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e037
+585783444c0
+server_keyshare: 82be40ef93bf7c6edd43d4ed9f52fa19827649b819de39c52a22
+43e985b75d62
+blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
+f5e46e512cf8e03
+client_public_key: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3ef
+caba4f1c4ae861
+client_private_key: f0f56cfb488649fe28691dd9aa5dc9ff4c0e6028075baa3c5
+615398a2cb12304
+client_keyshare: 484e47e31b3132f4ee512e41805a1690891111a7b885bc526198
+22c14cabf360
+server_public_key: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdc
+eeeb935924a903
+server_private_key: d63d709e3a739a128929a9f289ff263fdcbc457f2f47f7c43
+ccafbbfee72290c
+</pre><a href="#section-c.1.2-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="intermediate-values">
+<section id="section-c.1.3">
+          <h3 id="name-intermediate-values">
+<a href="#section-c.1.3" class="section-number selfRef">C.1.3. </a><a href="#name-intermediate-values" class="section-name selfRef">Intermediate Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.1.3-1">
+<pre>
+auth_key: 22198da4ad73b1d35cd8bb875e64ce1a9fc2edeb073d760e114d1d7a2f8
+6d47411caf1787907e2ff96cd3190b14d101101d74cff234259d9f19a18f2cfe29d0b
+server_mac_key: 9de28e2f7107afe266570934c033dd6a403fb2b09a9f1a1357a81
+9fb072d25e6651626638d77bd7f0adf4b2b715d0a0bee2ac531fd0f7da699aba6e9ed
+717466
+envelope: 016c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e0375857
+83444c00022e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92c73838c043
+fc316deeb83deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23775aa54633
+ed75665cd88f451e044cac1b282d890269476d1ac18ff9a4c0cb832e1143ffa7d447a
+prk: 732303f65e76c39f30876aec31af1f5bcd8861626c922baa2e842209c7d5bf2e
+024912db2d6cac00b1260c437d34ec588a664a55fc7a0a40251915d2b15d8ec9
+client_mac_key: 1536168d48218d08dcbed3438e897d98eff566894240d8d136be0
+4ba46b2c788883fd165ce7614c52a6a9c926bf55d249e6c29bc4a23d5a1775ad294a7
+858922
+pseudorandom_pad: e99274b5cd27d14aeeaf16e7aa8d7e7a03071d58229c5dc96d0
+46ed57a761ddccdbc
+handshake_encrypt_key: c646def7a8ca75282ac1a0ad15630834cba2772837d7a3
+a26d00b36923e55b3f5d065679c715e4c799654f261c865f1a55bc94cabc29a6e2e72
+296dfc494a984
+handshake_secret: cc887e128c28064106d4101ac3de633e9096e170f2c4a9913d3
+50f306274b1665a5b251f761672c12db4c403a615c22cee96adb3539fa62662a17f2e
+18cd5fed
+</pre><a href="#section-c.1.3-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="output-values">
+<section id="section-c.1.4">
+          <h3 id="name-output-values">
+<a href="#section-c.1.4" class="section-number selfRef">C.1.4. </a><a href="#name-output-values" class="section-name selfRef">Output Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.1.4-1">
+<pre>
+registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
+30cdba66ccb379e57200205442a6f57333a332b4c6f07308f6fa846bde3ed27425820
+cdceeeb935924a903
+export_key: 6ca2c344763e5bc9e3d2bbfe3d982b826b709da597e28e85f9594ec54
+2a20c697d55de277ccce1d1af7c48ab7fea1467ac1e3a99c71dcf6326a909d280bd2f
+6f
+registration_upload: 0020b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9a
+a2c3efcaba4f1c4ae861016c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc5
+56e037585783444c00022e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92
+c73838c043fc316deeb83deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23
+775aa54633ed75665cd88f451e044cac1b282d890269476d1ac18ff9a4c0cb832e114
+3ffa7d447a
+registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
+44418164c4d49003e
+session_key: ee9f1ef224d498858f6c9b3a121016a38bad7816055c452b1c7edf3d
+d439c42a4cc78cbd672e985a20910df14f8f1af4ce5793303ffe6954ff5f1a264e3fd
+515
+KE3: e771daf28bc5e8068dead67c3db19f9ad03ee919e52f6c7a6e79cf1085bd7448
+1e76512c77f37762578eb2faff8fe98e4185ca2d01957216c556d33a6fba3028
+KE2: e83812f06568d57b8cdfdcc90fe91454e21bd25dd2a1c32dd1599a2e4a4b6c35
+00205442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdceeeb935924a9030
+16c6bb9021b9833c788dd25994d3ce7f3811338744fd6dc556e037585783444c00022
+e9b28440a1dc99cca7513e8eb754d427caf8515642b45a92c73838c043fc316deeb83
+deface81589bc8e5c2c767b5ab79218834fbf4fa4f87cf23775aa54633ed75665cd88
+f451e044cac1b282d890269476d1ac18ff9a4c0cb832e1143ffa7d447aa4997137a8f
+a0d4baf7052a499bf877057f9404e03c889d641a0d7c807b6a51882be40ef93bf7c6e
+dd43d4ed9f52fa19827649b819de39c52a2243e985b75d62000f13aed85ae30aee2f8
+9ac5e1c5dd53609b890267ef2d765bb56000bc704c2ba4e4256107befee6655cdb084
+64e6c75d8b251642e0d721b3fce38f245568b50e7f6c98825d54cc1a26d6eafadcc1d
+344
+KE1: b68e0e356f8490fa9c3bed952e16cc02db21eda686b3c484f3d9d912caa41f76
+75a1ad27ab77578bc08b44c4318f09b31d53145c9ba3b42abf0ea08a781277a600096
+8656c6c6f20626f62484e47e31b3132f4ee512e41805a1690891111a7b885bc526198
+22c14cabf360
+</pre><a href="#section-c.1.4-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="opaque-3dh-test-vector-2">
+<section id="section-c.2">
+        <h2 id="name-opaque-3dh-test-vector-2">
+<a href="#section-c.2" class="section-number selfRef">C.2. </a><a href="#name-opaque-3dh-test-vector-2" class="section-name selfRef">OPAQUE-3DH Test Vector 2</a>
+        </h2>
+<div id="configuration-1">
+<section id="section-c.2.1">
+          <h3 id="name-configuration-2">
+<a href="#section-c.2.1" class="section-number selfRef">C.2.1. </a><a href="#name-configuration-2" class="section-name selfRef">Configuration</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.2.1-1">
+<pre>
+Group: ristretto255
+EnvelopeMode: 02
+OPRF: 0001
+SlowHash: Identity
+Hash: SHA512
+</pre><a href="#section-c.2.1-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="input-values-1">
+<section id="section-c.2.2">
+          <h3 id="name-input-values-2">
+<a href="#section-c.2.2" class="section-number selfRef">C.2.2. </a><a href="#name-input-values-2" class="section-name selfRef">Input Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.2.2-1">
+<pre>
+server_nonce: 0f3a6da8b667bc7a383c987586bee749c5f2787691baca68757e78b
+6128b0a0f
+oprf_key: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b
+0e707
+password: 436f7272656374486f72736542617474657279537461706c65
+blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
+4171ea02
+server_private_keyshare: 70c944dcb7f4dddde168ecb48dd9488c62b6fc7e9bb4
+2a16d291afca9dd25b07
+client_nonce: 480917b09c6720680b4a7a0ba9f54b69d870f640a4a7994b47ad07d
+1a95c984f
+server_info: 6772656574696e677320616c696365
+server_identity: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdcee
+eb935924a903
+client_info: 68656c6c6f20626f62
+client_private_keyshare: a4ba6cb7e16ab76eccdb4c0b9261eedd426d7863f00b
+fc4a0e09476d3121e70c
+envelope_nonce: e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7dee
+b8cfb42d13f
+server_public_key: 5442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdc
+eeeb935924a903
+client_identity: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3efca
+ba4f1c4ae861
+blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
+cec831b8c681a09
+client_public_key: b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9aa2c3ef
+caba4f1c4ae861
+client_private_key: f0f56cfb488649fe28691dd9aa5dc9ff4c0e6028075baa3c5
+615398a2cb12304
+client_keyshare: 4ae7d50bb80cc8f5034d36c1c27edc30caca0983677a941bc0ac
+e5e10b18300a
+server_keyshare: a2e9e0809b270a1d5c8208f3498a3188538265e6a9e6b274cb38
+c4c5d9b1792d
+server_private_key: d63d709e3a739a128929a9f289ff263fdcbc457f2f47f7c43
+ccafbbfee72290c
+</pre><a href="#section-c.2.2-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="intermediate-values-1">
+<section id="section-c.2.3">
+          <h3 id="name-intermediate-values-2">
+<a href="#section-c.2.3" class="section-number selfRef">C.2.3. </a><a href="#name-intermediate-values-2" class="section-name selfRef">Intermediate Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.2.3-1">
+<pre>
+auth_key: 4c7c0ae950ad7e9c518266f953d4a01bd2232695f92fb028aa6c124996e
+31a205f621305fd4997edf8a5fce04a51252ba8430227c134b81d7093a58e01c70752
+server_mac_key: 974bde939ef1d30ba29f9ec2addcaff1eeb105a1f534e04113f9f
+0b5c3b9a0797e3fa5f7006e63dfb2b0ce74d002bd1161767c361507bfb1fa0fed5063
+1cdcb7
+envelope: 02e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7deeb8cf
+b42d13f00227ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26ecd566d7688
+095f9478a721e5a592be9dd3bda76ed97421819aca4a30752813223d33bc7ea443be9
+76754605116278c7fffda4de142674ed154f540bd3285080637eb4b929e1378336b11
+prk: e3bb74ca5f88a95571578e921489e1b6119b438e4efce6e955ae9b6453f24aa4
+e3a34fa22bc5f470cfc134ca0784a9cd7df64be46ff3b325fc19f4009979bf2e
+client_mac_key: 1c55ecba64d98dc2db8f45faa72b8fdd63cad8677b8665cc575cf
+8ad36ef38ec63c9dfc5552007573215983f55d8f5cfa1651da8417e3f27094dde5254
+7f5b89
+pseudorandom_pad: 7ef495b828a97c896f381824d3371ba012eb63c3f19bb535676
+a3b63b18373255ba3
+handshake_encrypt_key: 0852fb826109073be6e7c065b6e2d1f872c16f9977c177
+cd2f945b26bb933fe6252f226f40483f7aa52f545f801d1e4430f30f80fd42070494e
+a77fdcecd6595
+handshake_secret: bfd3bfbe451520880975d0e568cbd3b5155b23c02de504fccb9
+dd5a8195266cd94d49d040530b3d6b0a585d542eb24da708a2b6f6dc34dee4652d0c1
+c62c4e59
+</pre><a href="#section-c.2.3-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="output-values-1">
+<section id="section-c.2.4">
+          <h3 id="name-output-values-2">
+<a href="#section-c.2.4" class="section-number selfRef">C.2.4. </a><a href="#name-output-values-2" class="section-name selfRef">Output Values</a>
+          </h3>
+<div class="artwork art-text alignLeft" id="section-c.2.4-1">
+<pre>
+registration_response: 088ac01ebf5700f0c96bc2988509343cb7e2dd6f0df820
+d0fb807faa11a26f5600205442a6f57333a332b4c6f07308f6fa846bde3ed27425820
+cdceeeb935924a903
+export_key: 0effa605dc47ba4fe565c423b782b8b6697b26ee2ede7059b0e17510d
+f8b11554ce053409671480a56ffbe77b91edc95205c213caeaf9dcb0841790ff834a0
+09
+registration_upload: 0020b2d1b10f3741a8efef3139f4d2889f2b11f776b79b9a
+a2c3efcaba4f1c4ae86102e38fb444afe3df13ae05e6876d10eca7661196375518eb6
+6d7deeb8cfb42d13f00227ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26e
+cd566d7688095f9478a721e5a592be9dd3bda76ed97421819aca4a30752813223d33b
+c7ea443be976754605116278c7fffda4de142674ed154f540bd3285080637eb4b929e
+1378336b11
+registration_request: c8d2e9ba503bf3f8821226653314427edb1ec8a3ecc94a5
+dfbbe33d59d07b645
+session_key: 8dc21ff264f2774de95955d35544ba314e92d07f4a3b32c89ead5e70
+c83ac4c0221deadd34ed11d43fc4d3651aec612d696c63979c96bf1ddd1ee44da5d0c
+d68
+KE3: c178e45ed9b314653685cdbf5f7730e3e40f8652ceb9b10f47d1c784fdd75dd1
+07c4ae3f7683de5a692359178c8f13f41a043fc1dcfc14b1fb7cb411514efc6c
+KE2: 5079b16709b195b3b63257b419efb752bd0603170160fa72b828ce9ff9209c0c
+00205442a6f57333a332b4c6f07308f6fa846bde3ed27425820cdceeeb935924a9030
+2e38fb444afe3df13ae05e6876d10eca7661196375518eb66d7deeb8cfb42d13f0022
+7ed4654d4452340f26c6304dceeeb1fddb142fcd91b3b26ecd566d7688095f9478a72
+1e5a592be9dd3bda76ed97421819aca4a30752813223d33bc7ea443be976754605116
+278c7fffda4de142674ed154f540bd3285080637eb4b929e1378336b110f3a6da8b66
+7bc7a383c987586bee749c5f2787691baca68757e78b6128b0a0fa2e9e0809b270a1d
+5c8208f3498a3188538265e6a9e6b274cb38c4c5d9b1792d000f5a1a0b34573bf728b
+14f53485f3bf62fd91154dc9ca01b21945b2204f96adc87bd80e8283ecf3522b6d893
+7527f2e9b9782a94fedab0fa304590d1d4f03d72fb1664fca1523a3be95f6c3a97d0a
+2ed
+KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
+480917b09c6720680b4a7a0ba9f54b69d870f640a4a7994b47ad07d1a95c984f00096
+8656c6c6f20626f624ae7d50bb80cc8f5034d36c1c27edc30caca0983677a941bc0ac
+e5e10b18300a
+</pre><a href="#section-c.2.4-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="section-appendix.d">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Hugo Krawczyk</span></div>
+<div dir="auto" class="left"><span class="org">Algorand Foundation</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:hugokraw@gmail.com" class="email">hugokraw@gmail.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Kevin Lewi</span></div>
+<div dir="auto" class="left"><span class="org">Novi Research</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:lewi.kevin.k@gmail.com" class="email">lewi.kevin.k@gmail.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Christopher A. Wood</span></div>
+<div dir="auto" class="left"><span class="org">Cloudflare</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:caw@heapingbits.net" class="email">caw@heapingbits.net</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

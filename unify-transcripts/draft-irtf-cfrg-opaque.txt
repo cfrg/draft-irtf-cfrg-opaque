@@ -1,0 +1,1693 @@
+
+
+
+
+Network Working Group                                        H. Krawczyk
+Internet-Draft                                       Algorand Foundation
+Intended status: Informational                                   K. Lewi
+Expires: 21 August 2021                                    Novi Research
+                                                               C.A. Wood
+                                                              Cloudflare
+                                                        17 February 2021
+
+
+                  The OPAQUE Asymmetric PAKE Protocol
+                     draft-irtf-cfrg-opaque-latest
+
+Abstract
+
+   This document describes the OPAQUE protocol, a secure asymmetric
+   password-authenticated key exchange (aPAKE) that supports mutual
+   authentication in a client-server setting without reliance on PKI and
+   with security against pre-computation attacks upon server compromise.
+   In addition, the protocol provides forward secrecy and the ability to
+   hide the password from the server, even during password registration.
+   This document specifies the core OPAQUE protocol, along with several
+   instantiations in different authenticated key exchange protocols.
+
+Discussion Venues
+
+   This note is to be removed before publishing as an RFC.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/cfrg/draft-irtf-cfrg-opaque.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 21 August 2021.
+
+Copyright Notice
+
+   Copyright (c) 2021 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Simplified BSD License text
+   as described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction
+     1.1.  Requirements Notation
+     1.2.  Notation
+   2.  Cryptographic Protocol and Algorithm Dependencies
+   3.  Offline Registration
+     3.1.  Credential Storage
+     3.2.  Registration Messages
+     3.3.  Registration Functions
+       3.3.1.  CreateRegistrationRequest
+       3.3.2.  CreateRegistrationResponse
+       3.3.3.  FinalizeRequest
+       3.3.4.  Credential File
+   4.  Online Authenticated Key Exchange
+     4.1.  Credential Retrieval
+       4.1.1.  Credential Retrieval Messages
+       4.1.2.  Credential Retrieval Functions
+     4.2.  AKE Instantiations
+       4.2.1.  Key Schedule Utility Functions
+       4.2.2.  OPAQUE-3DH Instantiation
+   5.  Configurations
+   6.  Security Considerations
+     6.1.  Related Analysis
+     6.2.  Identities
+     6.3.  Envelope Encryption
+     6.4.  Export Key Usage
+     6.5.  Static Diffie-Hellman Oracles
+     6.6.  Input Validation
+     6.7.  OPRF Hardening
+     6.8.  Client Enumeration
+     6.9.  Password Salt and Storage Implications
+   7.  IANA Considerations
+   8.  References
+     8.1.  Normative References
+     8.2.  Informative References
+   Appendix A.  Acknowledgments
+   Appendix B.  Alternate AKE Instantiations
+     B.1.  HMQV Instantiation Sketch
+     B.2.  SIGMA-I Instantiation Sketch
+   Appendix C.  Test Vectors
+     C.1.  OPAQUE-3DH Test Vector 1
+       C.1.1.  Configuration
+       C.1.2.  Input Values
+       C.1.3.  Intermediate Values
+       C.1.4.  Output Values
+     C.2.  OPAQUE-3DH Test Vector 2
+       C.2.1.  Configuration
+       C.2.2.  Input Values
+       C.2.3.  Intermediate Values
+       C.2.4.  Output Values
+   Authors' Addresses
+
+1.  Introduction
+
+   Password authentication is the prevalent form of authentication in
+   the web and in many other applications.  In the most common
+   implementation, a client authenticates to a server by sending its
+   client ID and password to the server over a TLS connection.  This
+   makes the password vulnerable to server mishandling, including
+   accidentally logging the password or storing it in cleartext in a
+   database.  Server compromise resulting in access to these plaintext
+   passwords is not an uncommon security incident, even among security-
+   conscious companies.  Moreover, plaintext password authentication
+   over TLS is also vulnerable to TLS failures, including many forms of
+   PKI attacks, certificate mishandling, termination outside the
+   security perimeter, visibility to middle boxes, and more.
+
+   Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
+   protocols are designed to provide password authentication and
+   mutually authenticated key exchange in a client-server setting
+   without relying on PKI (except during client/password registration)
+   and without disclosing passwords to servers or other entities other
+   than the client machine.  A secure aPAKE should provide the best
+   possible security for a password protocol.  Namely, it should only be
+   open to inevitable attacks, such as online impersonation attempts
+   with guessed client passwords and offline dictionary attacks upon the
+   compromise of a server and leakage of its password file.  In the
+   latter case, the attacker learns a mapping of a client's password
+   under a one-way function and uses such a mapping to validate
+   potential guesses for the password.  Crucially important is for the
+   password protocol to use an unpredictable one-way mapping.
+   Otherwise, the attacker can pre-compute a deterministic list of
+   mapped passwords leading to almost instantaneous leakage of passwords
+   upon server compromise.
+
+   Despite the existence of multiple designs for (PKI-free) aPAKE
+   protocols, none of these protocols are secure against pre-computation
+   attacks.  In particular, none of these protocols can use the standard
+   technique against pre-computation that combines _secret_ random
+   values ("salt") into the one-way password mappings.  Either these
+   protocols do not use a salt at all or, if they do, they transmit the
+   salt from server to client in the clear, hence losing the secrecy of
+   the salt and its defense against pre-computation.  Furthermore,
+   transmitting the salt may require additional protocol messages.
+
+   This document describes OPAQUE, a PKI-free secure aPAKE that is
+   secure against pre-computation attacks and capable of using a secret
+   salt.  OPAQUE provides forward secrecy (essential for protecting past
+   communications in case of password leakage) and the ability to hide
+   the password from the server - even during password registration.
+   Furthermore, OPAQUE enjoys good performance and an array of
+   additional features including the ability to increase the difficulty
+   of offline dictionary attacks via iterated hashing or other hardening
+   schemes, and offloading these operations to the client (that also
+   helps against online guessing attacks); extensibility of the protocol
+   to support storage and retrieval of client's secrets solely based on
+   a password; and being amenable to a multi-server distributed
+   implementation where offline dictionary attacks are not possible
+   without breaking into a threshold of servers (such a distributed
+   solution requires no change or awareness on the client side relative
+   to a single-server implementation).
+
+   OPAQUE is defined and proven as the composition of two
+   functionalities: an oblivious pseudorandom function (OPRF) and an
+   authenticated key exchange (AKE) protocol.  It can be seen as a
+   "compiler" for transforming any suitable AKE protocol into a secure
+   aPAKE protocol.  (See Section 6 for requirements of the OPRF and AKE
+   protocols.)  This document specifies one OPAQUE instantiation based
+   on 3DH [SIGNAL].  Other instantiations are possible, as discussed in
+   Appendix B, but their details are out of scope for this document.  In
+   general, the modularity of OPAQUE's design makes it easy to integrate
+   with additional AKE protocols, e.g., IKEv2, and with future ones such
+   as those based on post-quantum techniques.
+
+   OPAQUE consists of two stages: registration and authenticated key
+   exchange.  In the first stage, a client registers its password with
+   the server and stores its encrypted credentials on the server.  In
+   the second stage, a client obtains those credentials, recovers them
+   using the client's password, and subsequently uses them as input to
+   an AKE protocol.
+
+   Currently, the most widely deployed PKI-free aPAKE is SRP [RFC2945],
+   which is vulnerable to pre-computation attacks, lacks a proof of
+   security, and is less efficient relative to OPAQUE.  Moreover, SRP
+   requires a ring as it mixes addition and multiplication operations,
+   and thus does not work over plain elliptic curves.  OPAQUE is
+   therefore a suitable replacement for applications that use SRP.
+
+   This draft complies with the requirements for PAKE protocols set
+   forth in [RFC8125].
+
+1.1.  Requirements Notation
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+1.2.  Notation
+
+   The following terms are used throughout this document to describe the
+   operations, roles, and behaviors of OPAQUE:
+
+   *  Client (C): Entity which has knowledge of a password and wishes to
+      authenticate.
+
+   *  Server (S): Entity which authenticates clients using passwords.
+
+   *  password: An opaque byte string containing the client's password.
+
+   *  (client/server_private_key, client/server_public_key): An AKE key
+      pair used by either the client and server, denoting either the
+      private or public key.  For example, (client_private_key,
+      client_public_key) refers to C's private and public key.
+
+   *  oprf_key: An OPRF private key known only to the server.
+
+   *  I2OSP and OS2IP: Convert a byte string to and from a non-negative
+      integer as described in Section 4 of [RFC8017].  Note that these
+      functions operate on byte strings in big-endian byte order.
+
+   *  concat(x0, ..., xN): Concatenate byte strings.  For example,
+      "concat(0x01, 0x0203, 0x040506) = 0x010203040506".
+
+   *  random(n): Generate a cryptographically secure pseudorandom byte
+      string of length "n" bytes.
+
+   *  xor(a,b): Apply XOR to byte strings.  For example, "xor(0xF0F0,
+      0x1234) = 0xE2C4".  It is an error to call this function with two
+      arguments of unequal length.
+
+   *  ct_equal(a, b): Return "true" if "a" is equal to "b", and false
+      otherwise.  This function is constant-time in the length of "a"
+      and "b", which are assumed to be of equal length, irrespective of
+      the values "a" or "b".
+
+   Except if said otherwise, random choices in this specification refer
+   to drawing with uniform distribution from a given set (i.e., "random"
+   is short for "uniformly random").  Random choices can be replaced
+   with fresh outputs from a cryptographically strong pseudorandom
+   generator, according to the requirements in [RFC4086], or
+   pseudorandom function.
+
+   The name OPAQUE is a homonym of O-PAKE where O is for Oblivious.  The
+   name OPAKE was taken.
+
+2.  Cryptographic Protocol and Algorithm Dependencies
+
+   OPAQUE relies on the following protocols and primitives:
+
+   *  Oblivious Pseudorandom Function (OPRF, [I-D.irtf-cfrg-voprf]):
+
+      -  Blind(x): Convert input "x" into an element of the OPRF group,
+         randomize it by some scalar "r", producing "M", and output
+         ("r", "M").
+
+      -  KeyGen(): Generate an OPRF private and public key.  OPAQUE only
+         requires an OPRF private key.  We write "(oprf_key, _) =
+         KeyGen()" to denote use of this function for generating secret
+         key "oprf_key" (and discarding the corresponding public key).
+
+      -  Evaluate(k, M): Evaluate input element "M" using private key
+         "k", yielding output element "Z".
+
+      -  Unblind(r, Z): Remove random scalar "r" from "Z", yielding
+         output "N".
+
+      -  Finalize(x, N, info): Compute the OPRF output using input "x",
+         "N", and domain separation tag "info".
+
+      -  SerializeScalar(s): Map a scalar "s" to a unique byte array
+         "buf" of fixed length.
+
+      -  DeserializeScalar(buf): Map a byte array "buf" to a scalar "s",
+         or fail if the input is not a valid byte representation of a
+         scalar.
+
+      -  SerializedElement: A serialized OPRF group element, a byte
+         array of fixed length.
+
+      -  SerializedScalar: A serialized OPRF scalar, a byte array of
+         fixed length.\
+
+   Note that we only need the base mode variant (as opposed to the
+   verifiable mode variant) of the OPRF described in
+   [I-D.irtf-cfrg-voprf].
+
+   *  Cryptographic hash function:
+
+      -  Hash(m): Compute the cryptographic hash of input message "m".
+         The type of the hash is determined by the chosen OPRF group.
+
+      -  Nh: The output size of the Hash function.
+
+   *  Memory Hard Function (MHF):
+
+      -  Harden(msg, params): Repeatedly apply a memory hard function
+         with parameters "params" to strengthen the input "msg" against
+         offline dictionary attacks.  This function also needs to
+         satisfy collision resistance.
+
+3.  Offline Registration
+
+   Registration is executed between a client C and a server S.  It is
+   assumed S can identify C and the client can authenticate S during
+   this registration phase.  This is the only part in OPAQUE that
+   requires an authenticated channel, either physical, out-of-band, PKI-
+   based, etc.  This section describes the registration flow, message
+   encoding, and helper functions.  Moreover, C has a key pair
+   (client_private_key, client_public_key) for an AKE protocol which is
+   suitable for use with OPAQUE; See Section 4. (client_private_key,
+   client_public_key) may be randomly generated for the account or
+   provided by the calling client.  Clients MUST NOT use the same key
+   pair (client_private_key, client_public_key) for two different
+   accounts.
+
+   To begin, C chooses password password, and S chooses its own pair of
+   private-public keys server_private_key and server_public_key for use
+   with the AKE.  S can use the same pair of keys with multiple clients.
+   These steps can happen offline, i.e., before the registration phase.
+   Once complete, the registration process proceeds as follows:
+
+ Client (password, creds)            Server (server_private_key, server_public_key)
+ --------------------------------------------------------------------
+ (request, blind) = CreateRegistrationRequest(password)
+
+                               request
+                      ------------------------->
+
+            (response, oprf_key) = CreateRegistrationResponse(request, server_public_key)
+
+                               response
+                      <-------------------------
+
+ (record, export_key) = FinalizeRequest(password, creds, blind, response)
+
+                                record
+                      ------------------------->
+
+   Section 3.3 describes details of the functions referenced above.
+
+   Both client and server MUST validate the other party's public key
+   before use.  See Section 6.6 for more details.
+
+   Upon completion, S stores C's credentials for later use.  See
+   Section 3.3.4 for a recommended storage format.
+
+3.1.  Credential Storage
+
+   OPAQUE makes use of a structure "Envelope" to store client
+   credentials.  The "Envelope" structure embeds the following types of
+   credentials:
+
+   *  client_private_key: The encoded client private key for the AKE
+      protocol.
+
+   *  server_public_key: The encoded server public key for the AKE
+      protocol.
+
+   *  client_identity: The client identity.  This is an application-
+      specific value, e.g., an e-mail address or normal account name.
+
+   *  server_identity: The server identity.  This is typically a domain
+      name, e.g., example.com.  See Section 6.2 for information about
+      this identity.
+
+   Each public and private key value is an opaque byte string, specific
+   to the AKE protocol in which OPAQUE is instantiated.  For example, if
+   used as raw public keys for TLS 1.3 [RFC8446], they may be RSA or
+   ECDSA keys as per [RFC7250].
+
+   These credentials are incorporated in the "SecretCredentials" and
+   "CleartextCredentials" structs, depending on the mode set by the
+   value of "EnvelopeMode":
+
+   enum {
+     base(1),
+     custom_identifier(2),
+     (255)
+   } EnvelopeMode;
+
+   The "base" mode defines "SecretCredentials" and
+   "CleartextCredentials" as follows:
+
+   struct {
+     opaque client_private_key<1..2^16-1>;
+   } SecretCredentials;
+
+   struct {
+     opaque server_public_key<1..2^16-1>;
+   } CleartextCredentials;
+
+   The "custom_identifier" mode defines "SecretCredentials" and
+   "CleartextCredentials" as follows:
+
+   struct {
+     opaque client_private_key<1..2^16-1>;
+   } SecretCredentials;
+
+   struct {
+     opaque server_public_key<1..2^16-1>;
+     opaque client_identity<0..2^16-1>;
+     opaque server_identity<0..2^16-1>;
+   } CleartextCredentials;
+
+   These credentials are embedded into the following "Envelope"
+   structure with encryption and authentication.
+
+   struct {
+     EnvelopeMode mode;
+     opaque nonce[32];
+     opaque encrypted_creds<1..2^16-1>;
+   } InnerEnvelope;
+
+   struct {
+     InnerEnvelope inner_env;
+     opaque auth_tag[Nh];
+   } Envelope;
+
+   mode  The "EnvelopeMode" value.  This MUST be one of "base" or
+      "custom_identifier".
+
+   nonce  A unique 32-byte nonce used to protect this Envelope.
+
+   encrypted_creds  Encoding of encrypted and authenticated
+      "SecretCredentials".
+
+   auth_tag  Authentication tag protecting the contents of the envelope,
+      covering "InnerEnvelope" and "CleartextCredentials".
+
+   The full procedure for constructing "Envelope" and "InnerEnvelope"
+   from "SecretCredentials" and "CleartextCredentials" is described in
+   Section 3.3.3.  Note that only "SecretCredentials" are stored in the
+   "Envelope" (in encrypted form).
+
+   The "EnvelopeMode" value is specified as part of the configuration
+   (see Section 5).
+
+   Credential information corresponding to the configuration-specific
+   mode, along with the client public key "client_public_key" and
+   private key "client_private_key", are recommended to be stored in a
+   "Credentials" object with the following named fields:
+
+   *  "client_private_key", the client's private key
+
+   *  "client_public_key", the client's public key corresponding to
+      "client_private_key"
+
+   *  "client_identity", an optional client identity (present only in
+      the "custom_identifier" mode)
+
+   *  "server_identity", an optional server identity (present only in
+      the "custom_identifier" mode)
+
+3.2.  Registration Messages
+
+   struct {
+       SerializedElement data;
+   } RegistrationRequest;
+
+   data  A serialized OPRF group element.
+
+   struct {
+       SerializedElement data;
+       opaque server_public_key<1..2^16-1>;
+   } RegistrationResponse;
+
+   data  A serialized OPRF group element.
+
+   server_public_key  The server's encoded public key that will be used
+      for the online authenticated key exchange stage.
+
+   struct {
+       opaque client_public_key<1..2^16-1>;
+       Envelope envelope;
+   } RegistrationUpload;
+
+   client_public_key  The client's encoded public key, corresponding to
+      the private key "client_private_key".
+
+   envelope  The client's "Envelope" structure.
+
+3.3.  Registration Functions
+
+3.3.1.  CreateRegistrationRequest
+
+   CreateRegistrationRequest(password)
+
+   Input:
+   - password, an opaque byte string containing the client's password
+
+   Output:
+   - request, a RegistrationRequest structure
+   - blind, an OPRF scalar value
+
+   Steps:
+   1. (blind, M) = Blind(password)
+   2. Create RegistrationRequest request with M
+   3. Output (request, blind)
+
+3.3.2.  CreateRegistrationResponse
+
+   CreateRegistrationResponse(request, server_public_key)
+
+   Input:
+   - request, a RegistrationRequest structure
+   - server_public_key, the server's public key
+
+   Output:
+   - response, a RegistrationResponse structure
+   - oprf_key, the per-client OPRF key known only to the server
+
+   Steps:
+   1. (oprf_key, _) = KeyGen()
+   2. Z = Evaluate(oprf_key, request.data)
+   3. Create RegistrationResponse response with (Z, server_public_key)
+   4. Output (response, oprf_key)
+
+3.3.3.  FinalizeRequest
+
+FinalizeRequest(password, creds, blind, response)
+
+Parameters:
+- params, the MHF parameters established out of band
+- mode, the InnerEnvelope mode
+- Nh, the output size of the Hash function
+
+Input:
+- password, an opaque byte string containing the client's password
+- creds, a Credentials structure
+- blind, an OPRF scalar value
+- response, a RegistrationResponse structure
+
+Output:
+- record, a RegistrationUpload structure
+- export_key, an additional key
+
+Steps:
+1. N = Unblind(blind, response.data)
+2. y = Finalize(password, N, "OPAQUE")
+3. envelope_nonce = random(32)
+4. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+5. Create SecretCredentials secret_creds with creds.client_private_key
+6. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if
+   mode is custom_identifier
+7. pseudorandom_pad =
+     HKDF-Expand(prk, "Pad", len(secret_creds))
+8. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+9. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
+11. Create InnerEnvelope inner_env
+      with (mode, envelope_nonce, encrypted_creds)
+12. auth_tag = HMAC(auth_key, concat(inner_env, cleartext_creds))
+13. Create Envelope envelope with (inner_env, auth_tag)
+14. Create RegistrationUpload record with (envelope, creds.client_public_key)
+15. Output (record, export_key)
+
+   The inputs to HKDF-Extract and HKDF-Expand are as specified in
+   [RFC5869].  The underlying hash function is that which is associated
+   with the OPAQUE configuration (see Section 5).
+
+   See Section 4 for details about the output export_key usage.
+
+   Upon completion of this function, the client MUST send "record" to
+   the server.
+
+3.3.4.  Credential File
+
+   The server then constructs and stores the "credential_file" object,
+   where "envelope" and "client_public_key" are obtained from "record",
+   and "oprf_key" is retained from the output of
+   "CreateRegistrationResponse". "oprf_key" is serialized using
+   "SerializeScalar".  The below structure represents an example of how
+   these values might be conveniently stored together.
+
+   struct {
+       SerializedScalar oprf_key;
+       opaque client_public_key<1..2^16-1>;
+       Envelope envelope;
+   } credential_file;
+
+4.  Online Authenticated Key Exchange
+
+   After registration, the client and server run the authenticated key
+   exchange stage of the OPAQUE protocol.  This stage is composed of a
+   concurrent OPRF and key exchange flow.  The key exchange protocol is
+   authenticated using the client and server credentials established
+   during registration; see Section 3.  The type of keys MUST be
+   suitable for the key exchange protocol.  For example, if the key
+   exchange protocol is 3DH, as described in Section 4.2.2, then the
+   private and public keys must be Diffie-Hellman keys.  At the end, the
+   client proves its knowledge of the password, and both client and
+   server agree on a mutually authenticated shared secret key.
+
+   OPAQUE produces two outputs: a session secret and an export key.  The
+   export key may be used for additional application-specific purposes,
+   as outlined in Section 6.4.  The output "export_key" MUST NOT be used
+   in any way before the HMAC value in the envelope is validated.  See
+   Section 6.3 for more details about this requirement.
+
+4.1.  Credential Retrieval
+
+   The online AKE stage of the protocol requires clients to obtain and
+   decrypt their credentials from the server-stored envelope.  This
+   process is similar to the offline registration stage, as shown below.
+
+ Client (password)             Server (server_private_key, server_public_key, credential_file)
+ --------------------------------------------------------------------
+ (request, blind) = CreateCredentialRequest(password)
+
+                               request
+                      ------------------------->
+
+    response = CreateCredentialResponse(request, server_public_key, credential_file)
+
+                               response
+                      <-------------------------
+
+ (client_private_key, server_public_key, export_key) =
+     RecoverCredentials(password, blind, response)
+
+   The rest of this section describes these credential retrieval
+   functions in more detail.
+
+4.1.1.  Credential Retrieval Messages
+
+   struct {
+       SerializedElement data;
+   } CredentialRequest;
+
+   data  A serialized OPRF group element.
+
+   struct {
+       SerializedElement data;
+       opaque server_public_key<1..2^16-1>;
+       Envelope envelope;
+   } CredentialResponse;
+
+   data  A serialized OPRF group element.
+
+   server_public_key  The server's encoded public key that will be used
+      for the online authenticated key exchange stage.
+
+   envelope  The client's "Envelope" structure.
+
+4.1.2.  Credential Retrieval Functions
+
+4.1.2.1.  CreateCredentialRequest
+
+   CreateCredentialRequest(password)
+
+   Input:
+   - password, an opaque byte string containing the client's password
+
+   Output:
+   - request, a CredentialRequest structure
+   - blind, an OPRF scalar value
+
+   Steps:
+   1. (blind, M) = Blind(password)
+   2. Create CredentialRequest request with M
+   3. Output (request, blind)
+
+4.1.2.2.  CreateCredentialResponse
+
+CreateCredentialResponse(request, server_public_key, credential_file)
+
+Input:
+- request, a CredentialRequest structure
+- server_public_key, the public key of the server
+- credential_file, the server's output from registration
+  (see {{credential-file}})
+
+Output:
+- response, a CredentialResponse structure
+
+Steps:
+1. Z = Evaluate(DeserializeScalar(credential_file.oprf_key), request.data)
+2. Create CredentialResponse response
+    with (Z, server_public_key, credential_file.envelope)
+3. Output response
+
+4.1.2.3.  RecoverCredentials
+
+RecoverCredentials(password, blind, response)
+
+Parameters:
+- params, the MHF parameters established out of band
+- Nh, the output size of the Hash function
+
+Input:
+- password, an opaque byte string containing the client's password
+- blind, an OPRF scalar value
+- response, a CredentialResponse structure
+
+Output:
+- client_private_key, the client's private key for the AKE protocol
+- server_public_key, the public key of the server
+- export_key, an additional key
+
+Steps:
+1. N = Unblind(blind, response.data)
+2. y = Finalize(password, N, "OPAQUE")
+3. contents = response.envelope.contents
+4. envelope_nonce = contents.nonce
+5. prk = HKDF-Extract(envelope_nonce, Harden(y, params))
+6. pseudorandom_pad =
+    HKDF-Expand(prk, "Pad", len(contents.encrypted_creds))
+7. auth_key = HKDF-Expand(prk, "AuthKey", Nh)
+8. export_key = HKDF-Expand(prk, "ExportKey", Nh)
+9. Create CleartextCredentials cleartext_creds with response.server_public_key
+   and custom identifiers creds.client_identity and creds.server_identity if mode is
+   custom_identifier
+10. expected_tag = HMAC(auth_key, concat(contents, cleartext_creds))
+11. If !ct_equal(response.envelope.auth_tag, expected_tag),
+    raise DecryptionError
+12. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
+13. Output (secret_creds.client_private_key, response.server_public_key, export_key)
+
+4.2.  AKE Instantiations
+
+   This section describes instantiations of OPAQUE using 3-message AKEs
+   which satisfies the forward secrecy and KCI properties discussed in
+   Section 6.  As shown in [OPAQUE], OPAQUE cannot use less than three
+   messages so the 3-message instantiations presented here are optimal
+   in terms of number of messages.  On the other hand, there is no
+   impediment of using OPAQUE with protocols with more than 3 messages
+   as in the case of IKEv2 (or the underlying SIGMA-R protocol [SIGMA]).
+
+   The generic outline of OPAQUE with a 3-message AKE protocol includes
+   three messages KE1, KE2, and KE3, where KE1 and KE2 include key
+   exchange shares, e.g., DH values, sent by client and server,
+   respectively, and KE3 provides explicit client authentication and
+   full forward security (without it, forward secrecy is only achieved
+   against eavesdroppers which is insufficient for OPAQUE security).
+
+   The output of the authentication phase is a session secret
+   "session_key" and export key "export_key".  Applications can use
+   "session_key" to derive additional keying material as needed.  Key
+   derivation and other details of the protocol are specified by the AKE
+   scheme.  We note that by the results in [OPAQUE], KE2 and KE3 must
+   authenticate credential_request and credential_response,
+   respectively, for binding between the underlying OPRF protocol
+   messages and the KE session.
+
+   The rest of this section includes key schedule utility functions used
+   by OPAQUE-3DH, and then provides a detailed specification for OPAQUE-
+   3DH, including its wire format messages.
+
+4.2.1.  Key Schedule Utility Functions
+
+   The key derivation procedures for OPAQUE-3DH makes use of the
+   functions below, re-purposed from TLS 1.3 [RFC8446].
+
+   HKDF-Expand-Label(Secret, Label, Context, Length) =
+     HKDF-Expand(Secret, HkdfLabel, Length)
+
+   Where HkdfLabel is specified as:
+
+   struct {
+      uint16 length = Length;
+      opaque label<8..255> = "OPAQUE " + Label;
+      opaque context<0..255> = Context;
+   } HkdfLabel;
+
+   Derive-Secret(Secret, Label, Transcript-Hash) =
+       HKDF-Expand-Label(Secret, Label, Transcript-Hash, Nh)
+
+   HKDF uses Hash as its underlying hash function, which is the same as
+   that which is indicated by the OPAQUE instantiation.  Note that the
+   Label parameter is not a NULL-terminated string.
+
+4.2.2.  OPAQUE-3DH Instantiation
+
+   OPAQUE-3DH is implemented using a suitable prime order group.  All
+   operations in the key derivation steps in Section 4.2.2.2 are
+   performed in this group and represented here using multiplicative
+   notation.  The output of OPAQUE-3DH is a session secret "session_key"
+   and export key "export_key".
+
+4.2.2.1.  OPAQUE-3DH Messages
+
+   The three messages for OPAQUE-3DH are described below.
+
+   struct {
+     CredentialRequest request;
+     uint8 client_nonce[32];
+     opaque client_info<0..2^16-1>;
+     uint8 client_keyshare[Npk];
+   } KE1;
+
+   request  A "CredentialRequest" generated according to
+      Section 4.1.2.1.
+
+   client_nonce  A fresh 32-byte randomly generated nonce.
+
+   client_info  Optional application-specific information to exchange
+      during the protocol.
+
+   client_keyshare  Client ephemeral key share of fixed size Npk, where
+      Npk depends on the corresponding prime order group.
+
+   struct {
+     struct {
+       CredentialResponse response;
+       uint8 server_nonce[32];
+       uint8 server_keyshare[Npk];
+     } inner_ke2;
+     opaque enc_server_info<0..2^16-1>;
+     uint8 mac[Nh];
+   } KE2;
+
+   response  A "CredentialResponse" generated according to
+      Section 4.1.2.2.
+
+   server_nonce  A fresh 32-byte randomly generated nonce.
+
+   server_keyshare  Server ephemeral key share of fixed size Npk, where
+      Npk depends on the corresponding prime order group.
+
+   enc_server_info  Optional application-specific information to
+      exchange during the protocol encrypted under key Ke2, defined
+      below.
+
+   mac  An authentication tag computed over the handshake transcript
+      computed using Km2, defined below.
+
+   struct {
+     uint8 mac[Nh];
+   } KE3;
+
+   mac  An authentication tag computed over the handshake transcript
+      computed using Km3, defined below.
+
+4.2.2.2.  OPAQUE-3DH Key Schedule
+
+   OPAQUE-3DH requires MAC keys "server_mac_key" and "client_mac_key"
+   and encryption key "handshake_encrypt_key".  Additionally, OPAQUE-3DH
+   also outputs "session_key".  The schedule for computing this key
+   material is below.
+
+HKDF-Extract(salt=0, IKM)
+    |
+    +-> Derive-Secret(., "handshake secret", Hash(preamble)) = handshake_secret
+    |
+    +-> Derive-Secret(., "session secret", Hash(preamble)) = session_key
+
+   From "handshake_secret", Km2, Km3, and Ke2 are computed as follows:
+
+   server_mac_key =
+     HKDF-Expand-Label(handshake_secret, "server mac", "", Nh)
+   client_mac_key =
+     HKDF-Expand-Label(handshake_secret, "client mac", "", Nh)
+   handshake_encrypt_key =
+     HKDF-Expand-Label(handshake_secret, "handshake enc", "", Nh)
+
+   Nh is the output length of the underlying hash function.
+
+   The Derive-Secret parameter "preamble" is computed as:
+
+   preamble = concat("3DH",
+                     I2OSP(len(client_identity), 2), client_identity,
+                     KE1,
+                     I2OSP(len(server_identity), 2), server_identity,
+                     KE2.inner_ke2)
+
+   See Section 6.2 for more information about identities client_identity
+   and server_identity.
+
+   Let "epkS" and "eskS" be "server_keyshare" and the corresponding
+   secret key, and "epkU" and "eskU" be "client_keyshare" and the
+   corresponding secret key.  The input parameter "IKM" the
+   concatenation of three DH values computed by the client as follows:
+
+   IKM = concat(epkS^eskU, pkS^eskU, epkS^skU)
+
+   Likewise, "IKM" is computed by the server as follows:
+
+   IKM = concat(epkU^eskS, epkU^skS, pkU^eskS)
+
+4.2.2.3.  OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
+
+   Clients and servers use keys Km2 and Km3 in computing KE2.mac and
+   KE3.mac, respectively.  These values are computed as follows:
+
+   *  KE2.mac = HMAC(Km2, Hash(concat(preamble, KE2.enc_server_info)),
+      where preamble is as defined in Section 4.2.2.2.
+
+   *  KE3.mac = HMAC(Km3, Hash(concat(preamble, KE2.enc_server_info,
+      KE2.mac)), where preamble is as defined in Section 4.2.2.2.
+
+   The server applicaton info, an opaque byte string "server_info", is
+   encrypted using a technique similar to that used for secret
+   credential encryption.  Specifically, a one-time-pad is derived from
+   Ke2 and then used as input to XOR with the plaintext.  In pseudocode,
+   this is done as follows:
+
+   info_pad = HKDF-Expand(Ke2, "encryption pad", len(server_info))
+   enc_server_info = xor(info_pad, server_info)
+
+5.  Configurations
+
+   An OPAQUE configuration is a tuple (OPRF, Hash, MHF, EnvelopeMode).
+   The OPAQUE OPRF protocol is drawn from the "base mode" variant of
+   [I-D.irtf-cfrg-voprf].  The following OPRF ciphersuites are
+   supported:
+
+   *  OPRF(ristretto255, SHA-512)
+
+   *  OPRF(decaf448, SHA-512)
+
+   *  OPRF(P-256, SHA-256)
+
+   *  OPRF(P-384, SHA-512)
+
+   *  OPRF(P-521, SHA-512)
+
+   Future configurations may specify different OPRF constructions.
+
+   The OPAQUE hash function is that which is associated with the OPRF
+   ciphersuite.  For the ciphersuites specified here, only SHA-512 and
+   SHA-256 are supported.
+
+   The OPAQUE MHFs include Argon2 [I-D.irtf-cfrg-argon2], scrypt
+   [RFC7914], and PBKDF2 [RFC2898] with fixed parameter choices.
+
+   The EnvelopeMode value is defined in Section 3.1.  It MUST be one of
+   "base" or "custom_identifier".  Future specifications may specify
+   alternate EnvelopeMode values and their corresponding Envelope
+   structure.
+
+6.  Security Considerations
+
+   OPAQUE is defined and proven as the composition of two
+   functionalities: an OPRF and an AKE protocol.  It can be seen as a
+   "compiler" for transforming any AKE protocol (with KCI security and
+   forward secrecy - see below) into a secure aPAKE protocol.  In
+   OPAQUE, the client stores a secret private key at the server during
+   password registration and retrieves this key each time it needs to
+   authenticate to the server.  The OPRF security properties ensure that
+   only the correct password can unlock the private key while at the
+   same time avoiding potential offline guessing attacks.  This general
+   composability property provides great flexibility and enables a
+   variety of OPAQUE instantiations, from optimized performance to
+   integration with TLS.  The latter aspect is of prime importance as
+   the use of OPAQUE with TLS constitutes a major security improvement
+   relative to the standard password-over-TLS practice.  At the same
+   time, the combination with TLS builds OPAQUE as a fully functional
+   secure communications protocol and can help provide privacy to
+   account information sent by the client to the server prior to
+   authentication.
+
+   The KCI property required from AKE protocols for use with OPAQUE
+   states that knowledge of a party's private key does not allow an
+   attacker to impersonate others to that party.  This is an important
+   security property achieved by most public-key based AKE protocols,
+   including protocols that use signatures or public key encryption for
+   authentication.  It is also a property of many implicitly
+   authenticated protocols, e.g., HMQV, but not all of them.  We also
+   note that key exchange protocols based on shared keys do not satisfy
+   the KCI requirement, hence they are not considered in the OPAQUE
+   setting.  We note that KCI is needed to ensure a crucial property of
+   OPAQUE: even upon compromise of the server, the attacker cannot
+   impersonate the client to the server without first running an
+   exhaustive dictionary attack.  Another essential requirement from AKE
+   protocols for use in OPAQUE is to provide forward secrecy (against
+   active attackers).
+
+6.1.  Related Analysis
+
+   Jarecki et al.  [OPAQUE] proved the security of OPAQUE in a strong
+   aPAKE model that ensures security against pre-computation attacks and
+   is formulated in the Universal Composability (UC) framework
+   [Canetti01] under the random oracle model.  This assumes security of
+   the OPRF function and of the underlying key exchange protocol.  In
+   turn, the security of the OPRF protocol from [I-D.irtf-cfrg-voprf] is
+   proven in the random oracle model under the One-More Diffie-Hellman
+   assumption [JKKX16].
+
+   Very few aPAKE protocols have been proven formally, and those proven
+   were analyzed in a weak security model that allows for pre-
+   computation attacks (e.g., [GMR06]).  This is not just a formal
+   issue: these protocols are actually vulnerable to such attacks.  This
+   includes protocols that have recent analyses in the UC model such as
+   AuCPace [AuCPace] and SPAKE2+ [SPAKE2plus].  We note that as shown in
+   [OPAQUE], these protocols, and any aPAKE in the model from [GMR06],
+   can be converted into an aPAKE secure against pre-computation attacks
+   at the expense of an additional OPRF execution.
+
+   OPAQUE's design builds on a line of work initiated in the seminal
+   paper of Ford and Kaliski [FK00] and is based on the HPAKE protocol
+   of Xavier Boyen [Boyen09] and the (1,1)-PPSS protocol from Jarecki et
+   al.  [JKKX16].  None of these papers considered security against pre-
+   computation attacks or presented a proof of aPAKE security (not even
+   in a weak model).
+
+6.2.  Identities
+
+   AKE protocols generate keys that need to be uniquely and verifiably
+   bound to a pair of identities.  In the case of OPAQUE, those
+   identities correspond to client_identity and server_identity.  Thus,
+   it is essential for the parties to agree on such identities,
+   including an agreed bit representation of these identities as needed.
+
+   Applications may have different policies about how and when
+   identities are determined.  A natural approach is to tie
+   client_identity to the identity the server uses to fetch envelope
+   (hence determined during password registration) and to tie
+   server_identity to the server identity used by the client to initiate
+   an offline password registration or online authenticated key exchange
+   session. server_identity and client_identity can also be part of
+   envelope or be tied to the parties' public keys.  In principle, it is
+   possible that identities change across different sessions as long as
+   there is a policy that can establish if the identity is acceptable or
+   not to the peer.  However, we note that the public keys of both the
+   server and the client must always be those defined at time of
+   password registration.
+
+   The client identity (client_identity) and server identity
+   (server_identity) are optional parameters which are left to the
+   application to designate as monikers for the client and server.  If
+   the application layer does not supply values for these parameters,
+   then they will be omitted from the creation of the envelope during
+   the registration stage.  Furthermore, they will be substituted with
+   client_identity = client_public_key and server_identity =
+   server_public_key during the authenticated key exchange stage.
+
+   The advantage to supplying a custom client_identity and
+   server_identity (instead of simply relying on a fallback to
+   client_public_key and server_public_key) is that the client can then
+   ensure that any mappings between client_identity and
+   client_public_key (and server_identity and server_public_key) are
+   protected by the authentication from the envelope.  Then, the client
+   can verify that the client_identity and server_identity contained in
+   its envelope matches the client_identity and server_identity supplied
+   by the server.
+
+   However, if this extra layer of verification is unnecessary for the
+   application, then simply leaving client_identity and server_identity
+   unspecified (and using client_public_key and server_public_key
+   instead) is acceptable.
+
+6.3.  Envelope Encryption
+
+   The analysis of OPAQUE from [OPAQUE] requires the authenticated
+   encryption scheme used to produce envelope to have a special property
+   called random key-robustness (or key-committing).  This specification
+   enforces this property by utilizing encrypt-then-HMAC in the
+   construction of envelope.  There is no option to use another
+   authenticated-encryption scheme with this specification.  (Deviating
+   from the key-robustness requirement may open the protocol to attacks,
+   e.g., [LGR20].)  We remark that export_key for authentication or
+   encryption requires no special properties from the authentication or
+   encryption schemes as long as export_key is used only after the
+   envelope is validated, i.e., after the HMAC in RecoverCredentials
+   passes verification.
+
+6.4.  Export Key Usage
+
+   The export key can be used (separately from the OPAQUE protocol) to
+   provide confidentiality and integrity to other data which only the
+   client should be able to process.  For instance, if the server is
+   expected to maintain any client-side secrets which require a password
+   to access, then this export key can be used to encrypt these secrets
+   so that they remain hidden from the server.
+
+6.5.  Static Diffie-Hellman Oracles
+
+   While one can expect the practical security of the OPRF function
+   (namely, the hardness of computing the function without knowing the
+   key) to be in the order of computing discrete logarithms or solving
+   Diffie-Hellman, Brown and Gallant [BG04] and Cheon [Cheon06] show an
+   attack that slightly improves on generic attacks.  For the case that
+   q-1 or q+1, where q is the order of the group G, has a t-bit divisor,
+   they show an attack that calls the OPRF on 2^t chosen inputs and
+   reduces security by t/2 bits, i.e., it can find the OPRF key in time
+   2^{q/2-t/2} and 2^{q/2-t/2} memory.  For typical curves, the attack
+   requires an infeasible number of calls and/or results in
+   insignificant security loss (*).  Moreover, in the OPAQUE
+   application, these attacks are completely impractical as the number
+   of calls to the function translates to an equal number of failed
+   authentication attempts by a _single_ client.  For example, one would
+   need a billion impersonation attempts to reduce security by 15 bits
+   and a trillion to reduce it by 20 bits - and most curves will not
+   even allow for such attacks in the first place (note that this
+   theoretical loss of security is with respect to computing discrete
+   logarithms, not in reducing the password strength).
+
+   (*) Some examples (courtesy of Dan Brown): For P-384, 2^90 calls
+   reduce security from 192 to 147 bits; for NIST P-256 the options are
+   6-bit reduction with 2153 OPRF calls, about 14 bit reduction with 187
+   million calls and 20 bits with a trillion calls.  For Curve25519,
+   attacks are completely infeasible (require over 2^100 calls) but its
+   twist form allows an attack with 25759 calls that reduces security by
+   7 bits and one with 117223 calls that reduces security by 8.4 bits.
+
+6.6.  Input Validation
+
+   Both client and server MUST validate the other party's public key(s)
+   used for the execution of OPAQUE.  This includes the keys shared
+   during the offline registration phase, as well as any keys shared
+   during the online key agreement phase.  The validation procedure
+   varies depending on the type of key.  For example, for OPAQUE
+   instantiations using 3DH with P-256, P-384, or P-521 as the
+   underlying group, validation is as specified in Section 5.6.2.3.4 of
+   [keyagreement].  This includes checking that the coordinates are in
+   the correct range, that the point is on the curve, and that the point
+   is not the point at infinity.  Additionally, validation MUST ensure
+   the Diffie-Hellman shared secret is not the point at infinity.
+
+6.7.  OPRF Hardening
+
+   Hardening the output of the OPRF greatly increases the cost of an
+   offline attack upon the compromise of the password file at the
+   server.  Applications SHOULD select parameters that balance cost and
+   complexity.
+
+6.8.  Client Enumeration
+
+   Client enumeration refers to attacks where the attacker tries to
+   learn whether a given client identity is registered with a server.
+   Preventing such attacks requires the server to act with unknown
+   client identities in a way that is indistinguishable from its
+   behavior with existing clients.  Here we suggest a way to implement
+   such defense, namely, a way for simulating a CredentialResponse for
+   non-existing clients.  Note that if the same CredentialRequest is
+   received twice by the server, the response needs to be the same in
+   both cases (since this would be the case for real clients).  For
+   protection against this attack, one would apply the encryption
+   function in the construction of envelope to all the key material in
+   envelope.  The server S will have two keys MK, MK' for a pseudorandom
+   function f. f refers to a regular pseudorandom function such as HMAC
+   or CMAC.  Upon receiving a CredentialRequest for a non-existing
+   client client_identity, S computes oprf_key=f(MK; client_identity)
+   and oprf_key'=f(MK'; client_identity) and responds with
+   CredentialResponse carrying Z=M^oprf_key and envelope, where the
+   latter is computed as follows. prk is set to oprf_key' and
+   secret_creds is set to the all-zero string (of the length of a
+   regular envelope plaintext).  Care needs to be taken to avoid side
+   channel leakage (e.g., timing) from helping differentiate these
+   operations from a regular server response.  The above requires
+   changes to the server-side implementation but not to the protocol
+   itself or the client side.
+
+   There is one form of leakage that the above allows and whose
+   prevention would require a change in OPAQUE.  An attacker that
+   attempts authentication with the same CredentialRequest twice and
+   receives different responses can conclude that either the client
+   registered with the service between these two activations or that the
+   client was registered before but changed its password in between the
+   activations (assuming the server changes oprf_key at the time of a
+   password change).  In any case, this indicates that client_identity
+   is a registered client at the time of the second activation.  To
+   conceal this information, S can implement the derivation of oprf_key
+   as oprf_key=f(MK; client_identity) also for registered clients.
+   Hiding changes in envelope, however, requires a change in the
+   protocol.  Instead of sending envelope as is, S would send an
+   encryption of envelope under a key that the client derives from the
+   OPRF result (similarly to prk) and that S stores during password
+   registration.  During the authenticated key exchange stage, the
+   client will derive this key from the OPRF result, will use it to
+   decrypt envelope, and continue with the regular protocol.  If S uses
+   a randomized encryption, the encrypted envelope will look each time
+   as a fresh random string, hence S can simulate the encrypted envelope
+   also for non-existing clients.
+
+   Note that the first case above does not change the protocol so its
+   implementation is a server's decision (the client side is not
+   changed).  The second case, requires changes on the client side so it
+   changes OPAQUE itself.
+
+   [[https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22: Should
+   this variant be documented/standardized?]]
+
+6.9.  Password Salt and Storage Implications
+
+   In OPAQUE, the OPRF key acts as the secret salt value that ensures
+   the infeasibility of pre-computation attacks.  No extra salt value is
+   needed.  Also, clients never disclose their password to the server,
+   even during registration.  Note that a corrupted server can run an
+   exhaustive offline dictionary attack to validate guesses for the
+   client's password; this is inevitable in any aPAKE protocol.  (OPAQUE
+   enables a defense against such offline dictionary attacks by
+   distributing the server so that an offline attack is only possible if
+   all - or a minimal number of - servers are compromised [OPAQUE].)
+
+   Some applications may require learning the client's password for
+   enforcing password rules.  Doing so invalidates this important
+   security property of OPAQUE and is NOT RECOMMENDED.  Applications
+   should move such checks to the client.  Note that limited checks at
+   the server are possible to implement, e.g., detecting repeated
+   passwords.
+
+7.  IANA Considerations
+
+   This document makes no IANA requests.
+
+8.  References
+
+8.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC4086]  Eastlake 3rd, D., Schiller, J., and S. Crocker,
+              "Randomness Requirements for Security", BCP 106, RFC 4086,
+              DOI 10.17487/RFC4086, June 2005,
+              <https://www.rfc-editor.org/info/rfc4086>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+8.2.  Informative References
+
+   [AuCPace]  Haase, B. and B. Labrique, "AuCPace: Efficient verifier-
+              based PAKE protocol tailored for the IIoT",
+              http://eprint.iacr.org/2018/286 , 2018.
+
+   [BG04]     Brown, D. and R. Galant, "The static Diffie-Hellman
+              problem", http://eprint.iacr.org/2004/306 , 2004.
+
+   [Boyen09]  Boyen, X., "HPAKE: Password authentication secure against
+              cross-site user impersonation", Cryptology and Network
+              Security (CANS) , 2009.
+
+   [Canetti01]
+              Canetti, R., "Universally composable security: A new
+              paradigm for cryptographic protocols", IEEE Symposium on
+              Foundations of Computer Science (FOCS) , 2001.
+
+   [Cheon06]  Cheon, J.H., "Security analysis of the strong Diffie-
+              Hellman problem", Euroctypt 2006 , 2006.
+
+   [FK00]     Ford, W. and B.S. Kaliski, Jr, "Server-assisted generation
+              of a strong secret from a password", WETICE , 2000.
+
+   [GMR06]    Gentry, C., MacKenzie, P., and . Z, Ramzan, "A method for
+              making password-based key exchange resilient to server
+              compromise", CRYPTO , 2006.
+
+   [HMQV]     Krawczyk, H., "HMQV: A high-performance secure Diffie-
+              Hellman protocol", CRYPTO , 2005.
+
+   [I-D.irtf-cfrg-argon2]
+              Biryukov, A., Dinu, D., Khovratovich, D., and S.
+              Josefsson, "The memory-hard Argon2 password hash and
+              proof-of-work function", Work in Progress, Internet-Draft,
+              draft-irtf-cfrg-argon2-12, 8 September 2020,
+              <https://www.ietf.org/archive/id/draft-irtf-cfrg-
+              argon2-12.txt>.
+
+   [I-D.irtf-cfrg-hash-to-curve]
+              Faz-Hernandez, A., Scott, S., Sullivan, N., Wahby, R. S.,
+              and C. A. Wood, "Hashing to Elliptic Curves", Work in
+              Progress, Internet-Draft, draft-irtf-cfrg-hash-to-curve-
+              10, 11 October 2020, <https://www.ietf.org/archive/id/
+              draft-irtf-cfrg-hash-to-curve-10.txt>.
+
+   [I-D.irtf-cfrg-voprf]
+              Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A.
+              Wood, "Oblivious Pseudorandom Functions (OPRFs) using
+              Prime-Order Groups", Work in Progress, Internet-Draft,
+              draft-irtf-cfrg-voprf-05, 2 November 2020,
+              <https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-
+              05.txt>.
+
+   [I-D.sullivan-tls-opaque]
+              Sullivan, N., Krawczyk, H., Friel, O., and R. Barnes,
+              "Usage of OPAQUE with TLS 1.3", Work in Progress,
+              Internet-Draft, draft-sullivan-tls-opaque-00, 11 March
+              2019, <https://www.ietf.org/archive/id/draft-sullivan-tls-
+              opaque-00.txt>.
+
+   [JKKX16]   Jarecki, S., Kiayias, A., Krawczyk, H., and J. Xu,
+              "Highly-efficient and composable password-protected secret
+              sharing (or: how to protect your bitcoin wallet online)",
+              IEEE European Symposium on Security and Privacy , 2016.
+
+   [keyagreement]
+              Barker, E., Chen, L., Roginsky, A., Vassilev, A., and R.
+              Davis, "Recommendation for pair-wise key-establishment
+              schemes using discrete logarithm cryptography", National
+              Institute of Standards and Technology report,
+              DOI 10.6028/nist.sp.800-56ar3, April 2018,
+              <https://doi.org/10.6028/nist.sp.800-56ar3>.
+
+   [LGR20]    Len, J., Grubbs, P., and T. Ristenpart, "Partitioning
+              Oracle Attacks", n.d.,
+              <https://eprint.iacr.org/2020/1491.pdf>.
+
+   [OPAQUE]   Jarecki, S., Krawczyk, H., and J. Xu, "OPAQUE: An
+              Asymmetric PAKE Protocol Secure Against Pre-Computation
+              Attacks", Eurocrypt , 2018.
+
+   [RFC2898]  Kaliski, B., "PKCS #5: Password-Based Cryptography
+              Specification Version 2.0", RFC 2898,
+              DOI 10.17487/RFC2898, September 2000,
+              <https://www.rfc-editor.org/info/rfc2898>.
+
+   [RFC2945]  Wu, T., "The SRP Authentication and Key Exchange System",
+              RFC 2945, DOI 10.17487/RFC2945, September 2000,
+              <https://www.rfc-editor.org/info/rfc2945>.
+
+   [RFC5869]  Krawczyk, H. and P. Eronen, "HMAC-based Extract-and-Expand
+              Key Derivation Function (HKDF)", RFC 5869,
+              DOI 10.17487/RFC5869, May 2010,
+              <https://www.rfc-editor.org/info/rfc5869>.
+
+   [RFC7250]  Wouters, P., Ed., Tschofenig, H., Ed., Gilmore, J.,
+              Weiler, S., and T. Kivinen, "Using Raw Public Keys in
+              Transport Layer Security (TLS) and Datagram Transport
+              Layer Security (DTLS)", RFC 7250, DOI 10.17487/RFC7250,
+              June 2014, <https://www.rfc-editor.org/info/rfc7250>.
+
+   [RFC7914]  Percival, C. and S. Josefsson, "The scrypt Password-Based
+              Key Derivation Function", RFC 7914, DOI 10.17487/RFC7914,
+              August 2016, <https://www.rfc-editor.org/info/rfc7914>.
+
+   [RFC8017]  Moriarty, K., Ed., Kaliski, B., Jonsson, J., and A. Rusch,
+              "PKCS #1: RSA Cryptography Specifications Version 2.2",
+              RFC 8017, DOI 10.17487/RFC8017, November 2016,
+              <https://www.rfc-editor.org/info/rfc8017>.
+
+   [RFC8125]  Schmidt, J., "Requirements for Password-Authenticated Key
+              Agreement (PAKE) Schemes", RFC 8125, DOI 10.17487/RFC8125,
+              April 2017, <https://www.rfc-editor.org/info/rfc8125>.
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/info/rfc8446>.
+
+   [SIGMA]    Krawczyk, H., "SIGMA: The SIGn-and-MAc approach to
+              authenticated Diffie-Hellman and its use in the IKE
+              protocols", CRYPTO , 2003.
+
+   [SIGNAL]   "Signal recommended cryptographic algorithms",
+              https://signal.org/docs/specifications/
+              doubleratchet/#recommended-cryptographic-algorithms ,
+              2016.
+
+   [SPAKE2plus]
+              Shoup, V., "Security Analysis of SPAKE2+",
+              http://eprint.iacr.org/2020/313 , 2020.
+
+Appendix A.  Acknowledgments
+
+   The OPAQUE protocol and its analysis is joint work of the author with
+   Stas Jarecki and Jiayu Xu.  We are indebted to the OPAQUE reviewers
+   during CFRG's aPAKE selection process, particularly Julia Hesse and
+   Bjorn Tackmann.  This draft has benefited from comments by multiple
+   people.  Special thanks to Richard Barnes, Dan Brown, Eric Crockett,
+   Paul Grubbs, Fredrik Kuivinen, Payman Mohassel, Jason Resch, Greg
+   Rubin, and Nick Sullivan.
+
+Appendix B.  Alternate AKE Instantiations
+
+   It is possible to instantiate OPAQUE with other AKEs, such as HMQV
+   [HMQV] and SIGMA-I.  HMQV is similar to 3DH but varies in its key
+   schedule.  SIGMA-I uses digital signatures rather than static DH keys
+   for authentication.  Specification of these instantiations is left to
+   future documents.  A sketch of how these instantiations might change
+   is included below for posterity.
+
+   OPAQUE may also be instantiated with any post-quantum (PQ) AKE
+   protocol that has the message flow above and security properties (KCI
+   resistance and forward secrecy) outlined in Section 6.  Note that
+   such an instantiation is not quantum safe unless the OPRF is quantum
+   safe.  However, an OPAQUE instantiation where the AKE is quantum
+   safe, but the OPRF is not, would still ensure the confidentiality of
+   application data encrypted under session_key (or a key derived from
+   it) with a quantum-safe encryption function.
+
+B.1.  HMQV Instantiation Sketch
+
+   An HMQV instantiation would work similar to OPAQUE-3DH, differing
+   primarily in the key schedule [HMQV].  First, the key schedule
+   "preamble" value would use a different constant prefix -- "HMQV"
+   instead of "3DH" -- as shown below.
+
+   preamble = concat("HMQV",
+                     I2OSP(len(client_identity), 2), client_identity,
+                     KE1,
+                     I2OSP(len(server_identity), 2), server_identity,
+                     KE2.inner_ke2)
+
+   Second, the IKM derivation would change.  Assuming HMQV is
+   instantiated with a cyclic group of prime order p with bit length L,
+   clients would compute "IKM" as follows:
+
+   u' = (eskU + u \* skU) mod p
+   IKM = (epkS \* pkS^s)^u'
+
+   Likewise, servers would compute "IKM" as follows:
+
+   s' = (eskS + s \* skS) mod p
+   IKM = (epkU \* pkU^u)^s'
+
+   In both cases, "u" would be computed as follows:
+
+   hashInput = concat(I2OSP(len(epkU), 2), epkU,
+                      I2OSP(len(info), 2), info,
+                      I2OSP(len("client"), 2), "client")
+   u = Hash(hashInput) mod L
+
+   Likewise, "s" would be computed as follows:
+
+   hashInput = concat(I2OSP(len(epkS), 2), epkS,
+                      I2OSP(len(info), 2), info,
+                      I2OSP(len("server"), 2), "server")
+   s = Hash(hashInput) mod L
+
+   Hash is the same hash function used in the main OPAQUE protocol for
+   key derivation.  Its output length (in bits) must be at least L.
+
+B.2.  SIGMA-I Instantiation Sketch
+
+   A SIGMA-I instantiation differs more drastically from OPAQUE-3DH,
+   since authentication uses digital signatures in lieu of Diffie
+   Hellman.  In particular, both KE2 and KE3 would carry a digital
+   signature, computed using the server and client private keys
+   established during registration, respectively, as well as a MAC,
+   where the MAC is computed as in OPAQUE-3DH.
+
+   The key schedule would also change.  Specifically, the key schedule
+   "preamble" value would use a different constant prefix -- "SIGMA-I"
+   instead of "3DH" -- and the "IKM" computation would use only the
+   ephemeral key shares exchanged between client and server.
+
+Appendix C.  Test Vectors
+
+   This section contains test vectors for the OPAQUE-3DH specification.
+   Each test vector specifies the configuration information, protocol
+   inputs, intermeidate values computed during registration and
+   authentication, and protocol outputs.  All values are encoded in
+   hexadecimal strings.  The configuration information includes the
+   (OPRF, Hash, MHF, EnvelopeMode) tuple, along with the group to which
+   the AKE authentication keys correspond.
+
+C.1.  OPAQUE-3DH Test Vector 1
+
+C.1.1.  Configuration
+
+   Group: ristretto255
+   EnvelopeMode: 01
+   OPRF: 0001
+   SlowHash: Identity
+   Hash: SHA512
+
+C.1.2.  Input Values
+
+   server_nonce: 0ef5dc5c619b5a58eecb1c8fba63ae5e723e059552bb067bc460efd
+   910ff58af
+   oprf_key: 5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be03
+   7e50b
+   password: 436f7272656374486f72736542617474657279537461706c65
+   blind_login: ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63
+   e3263503
+   server_private_keyshare: ac56b748ee205ea817e823697857b4b40ad758328074
+   6897e9eb9192636db704
+   client_nonce: d0298cebb277efb5af53932af6bb10180b2ac35e5f69b55ad4c4191
+   4d579add6
+   server_info: 6772656574696e677320616c696365
+   client_info: 68656c6c6f20626f62
+   client_private_keyshare: 46244633cd475d25f3db6a6eb8304e2fe02e2a006805
+   3efee984e49b7f4ff60e
+   envelope_nonce: 9a87511fa84547961a5467f96caba559fb15f3a203146e4041bb4
+   b2179e83594
+   server_keyshare: a83ddbb1abf9e8e8c73fe39d3c18da434dd3f6fd52f01279028f
+   086126893d7f
+   blind_registration: c604c785ada70d77a5256ae21767de8c3304115237d262134
+   f5e46e512cf8e03
+   client_public_key: dec9d1223019c1aaaaac7397355016f8ea099b949fb5bcf5de
+   3b9b0b1b298301
+   client_private_key: f141e91e7006c583b615261f9d13e1807d811f6d108bbbab8
+   f44ab092c8cb206
+   client_keyshare: e00213e806c74d73509c68860d75620d09665f1a5030e485ff85
+   172d8ea54f54
+   server_public_key: 3881fefba6d687143ecaaec0d8658eb7fa247555f05fedb075
+   7866d49ea9883e
+   server_private_key: bc778d1c50714f8f2e7d1378650b5aaf8d61c003f07081ad3
+   93317506168c004
+
+C.1.3.  Intermediate Values
+
+   auth_key: 974ae6360db0593766490b4a95592552ae08fd3e611af028d82be4bde95
+   b39e2c5a68818fa5ca6be687fb7ec5f26d7c178fd81f7b61056959e88d339a13f560d
+   server_mac_key: cc7ee1c4d12a2693dc6358b91a1a97bb4e0bffab50bd19aa4a169
+   9584ed540baea9fa95f2139a0c9aa4d763be5eb5d7984acfecec65363f690c8058e09
+   5e96f7
+   envelope: 019a87511fa84547961a5467f96caba559fb15f3a203146e4041bb4b217
+   9e83594002262a8d608d300886f5a2bd8b9abe76da19af847755fda0541a1729bfd57
+   e94fbd79be8c03267be7f578b1a017eaff6f23a667f378ac41c516591d04681db9556
+   09ac4a200b398d0ea88faaa4a74f0291f462119a5cd51491c0935171d75a6421c4b62
+   prk: c2b586d349c6b573c59d85656958218a187862bd8ae2e06bf3e1e5500182b87d
+   44e5bb443e6593076934730f9a38a13c5d79f037d9e3e351dbc57f943ac23f29
+   client_mac_key: b2b2cb96dd005f8b4f52e3bcd9a8258ec39503b371d882ff99e08
+   7f9860aebfadab51fef9c7edb64318fe3b1bda1250bfd77edd98e8e18a7350ad09b8a
+   08c45c
+   pseudorandom_pad: 628827493a1ef8699fa86eac8df8f0b27b783af440b715ca1ad
+   914b9fce06331cbb8
+   handshake_encrypt_key: e5a1bc0dffdf22ba837cef7df4db164acc56eab7ba6796
+   e1a7caab9fce21485560a20f64b217f1c0ebea53b1bde1006860fa9907ca3b8ff1a48
+   0803664c30458
+   handshake_secret: 994ae04565986a5b3783488b3e299670a69f55274a6344d6afe
+   665907dd66750f594e59b40effb99806630766a74bd5bde6a45d26fc4f017d1b73a41
+   4f523502
+
+C.1.4.  Output Values
+
+   registration_response: 1867301bcc67bdf8e640b7d6edcbe2a65488446417b50d
+   30cdba66ccb379e57200203881fefba6d687143ecaaec0d8658eb7fa247555f05fedb
+   0757866d49ea9883e
+   export_key: 93c48fa650a6c2b9fddc27c9697be2f259b0083515b650a7b1520af92
+   e631c85946fb811b22d636d137ef97380bf9322606b5d97452ca262e9136284d23467
+   76
+   registration_upload: 0020dec9d1223019c1aaaaac7397355016f8ea099b949fb5
+   bcf5de3b9b0b1b298301019a87511fa84547961a5467f96caba559fb15f3a203146e4
+   041bb4b2179e83594002262a8d608d300886f5a2bd8b9abe76da19af847755fda0541
+   a1729bfd57e94fbd79be8c03267be7f578b1a017eaff6f23a667f378ac41c516591d0
+   4681db955609ac4a200b398d0ea88faaa4a74f0291f462119a5cd51491c0935171d75
+   a6421c4b62
+   registration_request: 241b621c417c0705b5ea7a8b7cdd5039fd61e6b63effe2a
+   44418164c4d49003e
+   session_key: f058bc490684af7833743104168cabe0357ffb648fd0104aae507d59
+   b9dfdde1a26ab0dc6f7d03a2ea4feb2d2aea04bfc9a1fbd89e309362082c13edc1598
+   f97
+   KE3: 290e6fd07a3c225810e88234402879e0d6ed0791f8a3446cf80ac4fbd7e23afc
+   3b539d926edc9983edacee08c285e82c46b48cb055c983d3cc2c629586dfe99d
+   KE2: e83812f06568d57b8cdfdcc90fe91454e21bd25dd2a1c32dd1599a2e4a4b6c35
+   00203881fefba6d687143ecaaec0d8658eb7fa247555f05fedb0757866d49ea9883e0
+   19a87511fa84547961a5467f96caba559fb15f3a203146e4041bb4b2179e835940022
+   62a8d608d300886f5a2bd8b9abe76da19af847755fda0541a1729bfd57e94fbd79be8
+   c03267be7f578b1a017eaff6f23a667f378ac41c516591d04681db955609ac4a200b3
+   98d0ea88faaa4a74f0291f462119a5cd51491c0935171d75a6421c4b620ef5dc5c619
+   b5a58eecb1c8fba63ae5e723e059552bb067bc460efd910ff58afa83ddbb1abf9e8e8
+   c73fe39d3c18da434dd3f6fd52f01279028f086126893d7f000ffa4ba765e84dd8080
+   c061267b2604326ed135cef21f36407f3bc15609f9693c8eedbe73f2bf8c22c84b295
+   b3181b074ced2cc9f66a4776401336b7b43d50bed3188593e9e8fb310ff9e6660e44e
+   d2f
+   KE1: b68e0e356f8490fa9c3bed952e16cc02db21eda686b3c484f3d9d912caa41f76
+   d0298cebb277efb5af53932af6bb10180b2ac35e5f69b55ad4c41914d579add600096
+   8656c6c6f20626f62e00213e806c74d73509c68860d75620d09665f1a5030e485ff85
+   172d8ea54f54
+
+C.2.  OPAQUE-3DH Test Vector 2
+
+C.2.1.  Configuration
+
+   Group: ristretto255
+   EnvelopeMode: 02
+   OPRF: 0001
+   SlowHash: Identity
+   Hash: SHA512
+
+C.2.2.  Input Values
+
+   server_nonce: 2bf0d250ba1b4ee89929fcb6f91c521551ad52cdd6ef1ab438cc024
+   e94d6a8c9
+   oprf_key: 89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b
+   0e707
+   password: 436f7272656374486f72736542617474657279537461706c65
+   blind_login: e6d0f1d89ad552e383d6c6f4e8598cc3037d6e274d22da3089e7afbd
+   4171ea02
+   server_private_keyshare: 7447dd29f57e61d9a67e25cf840b359b605e54eb8bc6
+   67fcd7fe18fdb47a0100
+   client_nonce: c1162f56eb58419746bb66e1113d401edb0302d894ee962f7e79ae1
+   2821bdefd
+   server_info: 6772656574696e677320616c696365
+   server_identity: 3881fefba6d687143ecaaec0d8658eb7fa247555f05fedb07578
+   66d49ea9883e
+   client_info: 68656c6c6f20626f62
+   client_private_keyshare: b08950a66fc7f2845f3c0e8f6027a8cd843103c560a2
+   0e8390457c9a705d1304
+   envelope_nonce: 6757226024757abf5c42c9d4451a31c90317bcf54741bb9d9e426
+   41aab0d0fbd
+   server_public_key: 3881fefba6d687143ecaaec0d8658eb7fa247555f05fedb075
+   7866d49ea9883e
+   client_identity: dec9d1223019c1aaaaac7397355016f8ea099b949fb5bcf5de3b
+   9b0b1b298301
+   blind_registration: 019cbd1d7420292528f8cdd62f339fdabb602f04a95dac9db
+   cec831b8c681a09
+   client_public_key: dec9d1223019c1aaaaac7397355016f8ea099b949fb5bcf5de
+   3b9b0b1b298301
+   client_private_key: f141e91e7006c583b615261f9d13e1807d811f6d108bbbab8
+   f44ab092c8cb206
+   client_keyshare: 9a5fd96f24fea1d99183cfdbaf559a5eb8083ebba2b066bc5d1e
+   b511896a5417
+   server_keyshare: 1a6074e0cc3d156865ebecbe371777078d7eccd6ceddae09bec2
+   65d77f3d0301
+   server_private_key: bc778d1c50714f8f2e7d1378650b5aaf8d61c003f07081ad3
+   93317506168c004
+
+C.2.3.  Intermediate Values
+
+   auth_key: 8c66139db274252b21b83791f53883406d057b19f75637f9d891d1d982d
+   ceab86549900fdd3952d3d16ed6c874b15de2229f5d0b6c09e1b42dbb3bb985884e6f
+   server_mac_key: 64b39a39691023fceb04e5c13c40d50fc4ca5a71d0315e30e86f9
+   116a4c7edc91398745186155e2ceee26f82c48939c24299263eb1c88644a17536196f
+   981207
+   envelope: 026757226024757abf5c42c9d4451a31c90317bcf54741bb9d9e42641aa
+   b0d0fbd0022b82a0432f3d9c24998d3c74e4b824ea7b835067fedb21d21fafec27968
+   09853e0d5da9109493ed080c98752f92ecd39353d785a84c63f623920b24f2683f76a
+   c44ecd0a289b260507d90773502ef3e3fa03ab2e4a6cc54c15eca358ab8ebfc097cb8
+   prk: cfd0673e7df8668da7873319036876c00d3ca13920318352336cd2a6f9a0b6be
+   f69a5ad94f42bcf506d7014444fd59b35270131c9383c11199a3cb60c086ffbf
+   client_mac_key: 106910daa6f98b40af2b99c6e277be37d57cdee8e623e08c04a91
+   ce77817338976bd9d91c70aa094e7132338c0b86312315a2648dd8be36f46dc85066b
+   d789fc
+   pseudorandom_pad: b80af5731ac7b24f5d50715b6d9dd3b459b57bfef2df0daa415
+   54d3dc300a9b2bf5b
+   handshake_encrypt_key: 62c52174d46d3ddcb34849d0706b0c08ecbc5b5add858e
+   d74d037f6696e2fc8fa772ad8871b104f6cddbc72f4b478ef35cc662c1ae5c303fc03
+   92c288ca87a16
+   handshake_secret: 5c2dc6c992daa89f2d881a3f0fd56e88a633330134efbe3910f
+   e7f7c521f0c98f70439acbb0dd3d3ebba735d26ccbdf92299dc95042c4dbd628d3e89
+   83828712
+
+C.2.4.  Output Values
+
+   registration_response: 088ac01ebf5700f0c96bc2988509343cb7e2dd6f0df820
+   d0fb807faa11a26f5600203881fefba6d687143ecaaec0d8658eb7fa247555f05fedb
+   0757866d49ea9883e
+   export_key: 12114bfdd23ba4c7c9abedf72cf068f5bf14a6e8c39c28eb536fe46f3
+   80fa2276328f15fe89f1147462d84c3114bc734bbbc6acaa240f33d3e230d10c563d1
+   8b
+   registration_upload: 0020dec9d1223019c1aaaaac7397355016f8ea099b949fb5
+   bcf5de3b9b0b1b298301026757226024757abf5c42c9d4451a31c90317bcf54741bb9
+   d9e42641aab0d0fbd0022b82a0432f3d9c24998d3c74e4b824ea7b835067fedb21d21
+   fafec2796809853e0d5da9109493ed080c98752f92ecd39353d785a84c63f623920b2
+   4f2683f76ac44ecd0a289b260507d90773502ef3e3fa03ab2e4a6cc54c15eca358ab8
+   ebfc097cb8
+   registration_request: c8d2e9ba503bf3f8821226653314427edb1ec8a3ecc94a5
+   dfbbe33d59d07b645
+   session_key: 818d3e379a3ffef7b2707ca760d4b47c91daaa1d67131305116318bf
+   43266da203b890129a9117da5e1214c537989c3b91cc71549280b55d27e9594e80856
+   eba
+   KE3: 3944b13ec8812a9fc9206b215afd6b8f81af4ba85fee2d3ac9c55e088d18f5a0
+   126c423ac44a1992703d4c68b9784abf2862f80726e1c5d0677e61453f72a108
+   KE2: 5079b16709b195b3b63257b419efb752bd0603170160fa72b828ce9ff9209c0c
+   00203881fefba6d687143ecaaec0d8658eb7fa247555f05fedb0757866d49ea9883e0
+   26757226024757abf5c42c9d4451a31c90317bcf54741bb9d9e42641aab0d0fbd0022
+   b82a0432f3d9c24998d3c74e4b824ea7b835067fedb21d21fafec2796809853e0d5da
+   9109493ed080c98752f92ecd39353d785a84c63f623920b24f2683f76ac44ecd0a289
+   b260507d90773502ef3e3fa03ab2e4a6cc54c15eca358ab8ebfc097cb82bf0d250ba1
+   b4ee89929fcb6f91c521551ad52cdd6ef1ab438cc024e94d6a8c91a6074e0cc3d1568
+   65ebecbe371777078d7eccd6ceddae09bec265d77f3d0301000fba6a857cb74713bd0
+   fd39f363bcc71a6f30218ca78126c553840bb4207237a2379fd803a6e6a25fb77806f
+   0b05eb477322931cffcad25ac5e78571ac0d2f56627ddb1a136121bea8c01d869266a
+   435
+   KE1: 7024ca0d5423176294fbb9ca968d8ce3fc879a231f1ceef69e672c89e02ded59
+   c1162f56eb58419746bb66e1113d401edb0302d894ee962f7e79ae12821bdefd00096
+   8656c6c6f20626f629a5fd96f24fea1d99183cfdbaf559a5eb8083ebba2b066bc5d1e
+   b511896a5417
+
+Authors' Addresses
+
+   Hugo Krawczyk
+   Algorand Foundation
+
+   Email: hugokraw@gmail.com
+
+
+   Kevin Lewi
+   Novi Research
+
+   Email: lewi.kevin.k@gmail.com
+
+
+   Christopher A. Wood
+   Cloudflare
+
+   Email: caw@heapingbits.net
