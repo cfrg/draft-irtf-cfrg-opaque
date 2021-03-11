@@ -1017,7 +1017,7 @@ IKM = concat(epkU^eskS, epkU^skS, pkU^eskS)
 Clients and servers use keys Km2 and Km3 in computing KE2.mac and KE3.mac,
 respectively. These values are computed as follows:
 
-- KE2.mac = MAC(Km2, HASH(concat(preamble, KE2.enc_server_info)), where
+- KE2.mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info)), where
   preamble is as defined in {{derive-3dh}}.
 - KE3.mac = MAC(Km3, HASH(concat(preamble, KE2.enc_server_info, KE2.mac)),
   where preamble is as defined in {{derive-3dh}}.
