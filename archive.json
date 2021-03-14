@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-11T00:48:11.815391+00:00",
+  "timestamp": "2021-03-14T00:51:06.430265+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4300,6 +4300,54 @@
       "body": "This includes specifying `Nm`, `Nx`, etc. values in addition to the KDF and MAC used.",
       "createdAt": "2021-03-10T19:43:25Z",
       "updatedAt": "2021-03-10T19:44:24Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 160,
+      "id": "MDU6SXNzdWU4Mjg5MjUyMTQ=",
+      "title": "Replace instances of \"HMAC\" with \"MAC\" in main text",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/160",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "After https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/155, some references to \"HMAC\" were left -- these should be updated to just refer to MAC",
+      "createdAt": "2021-03-11T08:37:33Z",
+      "updatedAt": "2021-03-11T08:37:33Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 161,
+      "id": "MDU6SXNzdWU4MjkyNTEzNjg=",
+      "title": "Revert AKE mac back to running hash",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/161",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "#155 changed the AKE MAC payload from the output of a running hash to a call to Extract(). ",
+      "createdAt": "2021-03-11T15:19:22Z",
+      "updatedAt": "2021-03-11T20:05:44Z",
+      "closedAt": "2021-03-11T20:05:44Z",
+      "comments": []
+    },
+    {
+      "number": 163,
+      "id": "MDU6SXNzdWU4MzA4MDAzMzY=",
+      "title": "3DH and X3DH",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/163",
+      "state": "OPEN",
+      "author": "claucece",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Apologies if this has already been discussed or if it does not take into account security considerations already discussed.\r\n\r\nThe document describes that it is using 3DH as defined by Signal. However, this might not be completely accurate as Signal uses X3DH (as described here: https://signal.org/docs/specifications/x3dh/); even though, at the beginning, they were indeed using 3DH, as described here: https://signal.org/blog/simplifying-otr-deniability/ . So maybe there is a place to change that reference in the document.\r\n\r\nThe reason why Signal moved from 3DH to X3DH are many, but one of them is due to an attack on forward secrecy as provided by 3DH: an active adversary modifies the first flow from the Initiator to use an adversarially controlled ephemeral key, captures and drops the response from the Receiver, and then compromises the Initiator\u2019s long-term secret key. This attack requires a powerful adversary. This is also addressed in the specification itself (https://signal.org/docs/specifications/x3dh/ , section 4.5) and by the paper: https://content.sciendo.com/downloadpdf/journals/popets/2018/1/article-p21.xml\r\n\r\nSignal\u2019s X3DH protocol somewhat mitigates this attack by using signed prekeys. \r\n\r\nI haven't have the time to analyse this attack in the specific context of OPAQUE; but it could be that this has already been taken into account.\r\n\r\ncc./ @chris-wood ",
+      "createdAt": "2021-03-13T04:10:42Z",
+      "updatedAt": "2021-03-13T04:10:42Z",
       "closedAt": null,
       "comments": []
     }
@@ -10298,13 +10346,13 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-03-08T22:34:53Z",
+      "updatedAt": "2021-03-13T08:53:56Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "6012168b4e1093d7ae47081b64af0cc020334aa8",
+      "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "master",
-      "headRefOid": "e1a119c32f71327ecc3d2b277c6140563bbe904b",
+      "headRefOid": "4e17ff3aded89dea5724b9175295874b167c4ef6",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -10316,6 +10364,13 @@
           "body": "Line 302-306 would need to be adapted as well:\r\n\r\n> OPAQUE consists of two stages: registration and authenticated key exchange.\r\n> In the first stage, a client registers its password with the server and stores\r\n> its encrypted credentials on the server. In the second stage, a client obtains\r\n> those credentials, recovers them using the client's password, and subsequently uses\r\n> them as input to an AKE protocol.",
           "createdAt": "2021-03-07T14:53:24Z",
           "updatedAt": "2021-03-07T14:53:24Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Latest changes include:\r\n- Moving envelope mode and nonce out of the inner envelope up into the envelope. The inner envelope is now purely independent from one mode to the other and use it as they see fit. E.g. the internal mode uses a \"nil\" envelope.\r\n- In case no custom identifiers are used, the client didn't have access to its public key. The internal mode could get it for the cost of a scalar multiplication, but the external mode wouldn't be covered. Sending it to the client in the CredentialResponse covers both modes. Integrated with CleartextCredentials it's authenticated under the mac.\r\n- Introduced `Nn` to abstract nonce length, to not have magic numbers laying around in the document\r\n\r\n\r\n(_Todo: adapt sending of Pkc only if custom identifiers are not used_)",
+          "createdAt": "2021-03-11T14:55:53Z",
+          "updatedAt": "2021-03-13T08:53:55Z"
         }
       ],
       "reviews": [
@@ -10335,25 +10390,25 @@
               "originalPosition": 68,
               "body": "> For example, if used as raw public keys for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.\r\n\r\nThis is not relevant anymore in that part of the document.",
               "createdAt": "2021-03-03T00:23:40Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 196,
               "body": "I will do a commit on this later",
               "createdAt": "2021-03-03T00:24:35Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 223,
               "body": "@chris-wood I think we should define the HashToScalar similarly to what has been done in VOPRF. What do you think?",
               "createdAt": "2021-03-03T00:27:47Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 221,
               "body": "I'm open to suggestions on how to best formulate this.\r\nI'm thinking of something around this\r\n\r\n> KeyGenFromSeed(seed): expand the seed to full private/public generation in the AKE setup",
               "createdAt": "2021-03-03T00:58:18Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10373,37 +10428,37 @@
               "originalPosition": 221,
               "body": "Can't this just be equal to hash_to_field with a specific DST?",
               "createdAt": "2021-03-03T23:10:11Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 223,
               "body": "Either hash_to_field or HashToScalar from VOPRF (may be cleaner to just specify hash_to_field from the h2c spec)",
               "createdAt": "2021-03-03T23:10:14Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 59,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:03Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 125,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:20Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 158,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:26Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 30,
               "body": "I like the way this is written! Let's just remove all of the other references to this identity being \"optional\" in the later texts, and we can clarify that it defaults to the client_public_key and server_public_key.",
               "createdAt": "2021-03-03T23:18:33Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10423,7 +10478,7 @@
               "originalPosition": 221,
               "body": "I think we should describe a generic `KeyGenFromSeed(seed)` here, and then specify that in OPAQUE-3DH we use `hash_to_field` with dst etc.. This way, it stays relevant for other AKEs, that  just need to define their own `KeyGenFromSeed(seed)` implementation.",
               "createdAt": "2021-03-04T01:33:48Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10443,7 +10498,7 @@
               "originalPosition": 59,
               "body": "That's a leftover, well spotted!",
               "createdAt": "2021-03-04T01:35:02Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10463,7 +10518,7 @@
               "originalPosition": 223,
               "body": "Maybe \"redefine but with the same definition as in VOPRF\", just to make clear not to use VOPRF's DST for this hash_to_field",
               "createdAt": "2021-03-04T01:40:48Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10483,43 +10538,43 @@
               "originalPosition": 52,
               "body": "Maybe delete this entire sentence and the list (and replace it with one sentence above^)?",
               "createdAt": "2021-03-05T20:44:03Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 33,
               "body": "```suggestion\r\nDuring protocol execution, these values are stored in an implementation-specific `Credentials` object with names matching the values. For example, `Credentials.server_public_key` is the server's public key.\r\n\r\nThese values are used in `SecretCredentials` and `CleartextCredentials` structures as follows:\r\n```",
               "createdAt": "2021-03-05T20:45:47Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 196,
               "body": "I don't think we need to include this rationale. It's probably fine to simply say, \"Applications can use existing key pairs for OPAQUE-3DH with the \"external\" mode,\" or something.",
               "createdAt": "2021-03-05T20:55:47Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 201,
               "body": "```suggestion\r\nIn this mode, the client's private and public keys are deterministically derived from the OPRF output. For OPAQUE-3DH, this is done by hashing the OPRF output to a scalar in the corresponding prime order group to produce a private key, and then multiplying that scalar by the fixed generator to produce the public key.\r\n```",
               "createdAt": "2021-03-05T20:57:35Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 203,
               "body": "```suggestion\r\n```",
               "createdAt": "2021-03-05T20:57:45Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 221,
               "body": "\ud83d\udc4d agreed, and maybe call this `DeriveKeyPair(seed)`? Its implementation for OPAQUE-3DH would then be:\r\n\r\n```\r\nUse hash_to_field from {{!I-D.irtf-cfrg-hash-to-curve}} using Order() as the prime modulus, L = 48, `expand_message_xmd` with SHA-512, and DST = \"OPAQUE\", to produce sk. Then compute pk = sk * G.\r\n```\r\n... or something",
               "createdAt": "2021-03-05T20:59:28Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             },
             {
               "originalPosition": 223,
               "body": "I think the implementation should be something like:\r\n\r\n```\r\nsk = HashToScalar(seed)\r\npk = sk * G\r\n```",
               "createdAt": "2021-03-05T21:00:46Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:57Z"
             }
           ]
         },
@@ -10539,7 +10594,7 @@
               "originalPosition": 223,
               "body": "ok, with something like \"OPAQUE-HashToScalar\" for dst?",
               "createdAt": "2021-03-05T21:24:01Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:58Z"
             }
           ]
         },
@@ -10559,7 +10614,27 @@
               "originalPosition": 221,
               "body": "(Discussed offline) let's just mimic what the VOPRF draft does for HashToScalar here :) ",
               "createdAt": "2021-03-06T00:50:52Z",
-              "updatedAt": "2021-03-08T22:34:53Z"
+              "updatedAt": "2021-03-11T15:27:58Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjA5NjE0MjY1",
+          "commit": {
+            "abbreviatedOid": "cffa6f3"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T10:35:10Z",
+          "updatedAt": "2021-03-11T10:35:11Z",
+          "comments": [
+            {
+              "originalPosition": 539,
+              "body": "@kevinlewi should the modification be applied here as well?",
+              "createdAt": "2021-03-11T10:35:10Z",
+              "updatedAt": "2021-03-11T15:27:58Z"
             }
           ]
         }
@@ -10577,7 +10652,7 @@
       "labels": [],
       "body": "Starting as a draft for now, since this does technically add more dependencies, but I think it's more future proof. \r\n\r\nOnce we agree on the contents here, I'll update the PoC to match. Note that this should not change any test vectors, but will in fact remove some!\r\n\r\nCloses #132.",
       "createdAt": "2021-03-03T18:09:49Z",
-      "updatedAt": "2021-03-10T16:31:42Z",
+      "updatedAt": "2021-03-11T15:11:35Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6012168b4e1093d7ae47081b64af0cc020334aa8",
@@ -11092,6 +11167,46 @@
               "updatedAt": "2021-03-10T16:24:23Z"
             }
           ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjA5ODY2ODY1",
+          "commit": {
+            "abbreviatedOid": "0d93d4f"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T15:08:37Z",
+          "updatedAt": "2021-03-11T15:08:38Z",
+          "comments": [
+            {
+              "originalPosition": 234,
+              "body": "@chris-wood I missed this. Why are we moving from a running hash to an Extract()?",
+              "createdAt": "2021-03-11T15:08:38Z",
+              "updatedAt": "2021-03-11T15:08:38Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjA5ODcwMTg3",
+          "commit": {
+            "abbreviatedOid": "0d93d4f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T15:11:35Z",
+          "updatedAt": "2021-03-11T15:11:35Z",
+          "comments": [
+            {
+              "originalPosition": 234,
+              "body": "I missed this too -- I meant to revert this to `Hash`. Can you file an issue (and send PR)? :) ",
+              "createdAt": "2021-03-11T15:11:35Z",
+              "updatedAt": "2021-03-11T15:11:35Z"
+            }
+          ]
         }
       ]
     },
@@ -11107,13 +11222,13 @@
       "labels": [],
       "body": "- Introduces an `oprf_seed` parameter which must be generated during server setup and persisted across all registration/login requests (similar to `server_private_key`)\r\n- Introduces a `cred_identifier` parameter -- this could be the same as `client_identity`, but does not need to be\r\n- Derives `oprf_key` from `oprf_seed` and `cred_identifier` -- this results in altering `RegistrationResponse` and `CredentialResponse`\r\n- Modifies the \"Credential File\" section to just store the RegistrationUpload object, while making clear that the `oprf_seed` and `server_private_key` need to be kept around too\r\n- In `FinalizeRequest`, adds a new element `envelope_key` which must be stored as part of a `RegistrationUpload` object\r\n- Reverts the changes described in #120 (PR #126), necessary in order for the decryption step involving `envelope_key` to work properly\r\n- Introduces an `encryption_nonce` parameter, and steps for encrypting the envelope using `envelope_key`, in `CreateCredentialResponse`\r\n- Adds a new `FakeCredentialResponse` function\r\n- Introduces a new \"N\" parameter, `Nok` for representing the size of an OPRF key. Removes unused calls to `SerializeScalar` and `DeserializeScalar` from the VOPRF draft\r\n- Removes the text corresponding to the \"Client Enumeration\" section\r\n\r\nCloses #22.",
       "createdAt": "2021-03-05T05:52:05Z",
-      "updatedAt": "2021-03-10T20:38:37Z",
+      "updatedAt": "2021-03-11T08:45:25Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "6012168b4e1093d7ae47081b64af0cc020334aa8",
+      "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "client_enumeration",
-      "headRefOid": "4a56e375333f4b6412c402e3df014664dabe1a2c",
+      "headRefOid": "ccf45ee2c4c2002a79bb6ef61b413abdcc16015e",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -11181,6 +11296,13 @@
           "body": "@chris-wood Could the IETF/CFRG impose on the server to implement  FakeCredentialResponse for standard-compliance even though it is not needed for interoperability? In principle, such compliance could be tested by simulating a user enumeration attacker.   But I doubt it is something IETF would mandate. What do you think?",
           "createdAt": "2021-03-10T00:03:34Z",
           "updatedAt": "2021-03-10T00:03:34Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Rebased, added DeriveKeyPair reference, and added the following optional text to the end of the Client Enumeration section:\r\n\r\n> Finally, note that server implementations may choose to forego the construction\r\nof a simulated credential response message for an unregistered client if these client\r\nenumeration attacks can be mitigated through other application-specific means.",
+          "createdAt": "2021-03-11T08:44:45Z",
+          "updatedAt": "2021-03-11T08:44:45Z"
         }
       ],
       "reviews": [
@@ -11200,7 +11322,96 @@
               "originalPosition": 109,
               "body": "I don't think this is a workable replacement. This basically type casts bytes to an OPRF private key. I think we should revert this, and instead use DeriveKeyPair(HKDF(...)).",
               "createdAt": "2021-03-10T20:32:14Z",
-              "updatedAt": "2021-03-10T20:38:37Z"
+              "updatedAt": "2021-03-11T08:45:14Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjA5NTEyNDQ0",
+          "commit": {
+            "abbreviatedOid": "ccf45ee"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T08:45:25Z",
+          "updatedAt": "2021-03-11T08:45:25Z",
+          "comments": [
+            {
+              "originalPosition": 109,
+              "body": "Addressed in the latest push",
+              "createdAt": "2021-03-11T08:45:25Z",
+              "updatedAt": "2021-03-11T08:45:25Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 162,
+      "id": "MDExOlB1bGxSZXF1ZXN0NTkwOTQ5MTU4",
+      "title": "Revert AKE MAC pre-hashing back to HASH()",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/162",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "cc @chris-wood ",
+      "createdAt": "2021-03-11T15:23:14Z",
+      "updatedAt": "2021-03-11T20:05:37Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
+      "headRepository": "bytemare/draft-irtf-cfrg-opaque",
+      "headRefName": "patch-2",
+      "headRefOid": "056a6c367d5d90db008e5f1e819d9a034a7f1afa",
+      "closedAt": "2021-03-11T20:05:37Z",
+      "mergedAt": "2021-03-11T20:05:37Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "2e018a1c0c24d75c639eac2b71db990bcc4d4415"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjEwMTc2OTgw",
+          "commit": {
+            "abbreviatedOid": "265e679"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T20:05:11Z",
+          "updatedAt": "2021-03-11T20:05:12Z",
+          "comments": [
+            {
+              "originalPosition": 5,
+              "body": "```suggestion\r\n- KE2.mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info)), where\r\n```",
+              "createdAt": "2021-03-11T20:05:11Z",
+              "updatedAt": "2021-03-11T20:05:31Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjEwMTc3MTY1",
+          "commit": {
+            "abbreviatedOid": "265e679"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-11T20:05:23Z",
+          "updatedAt": "2021-03-11T20:05:24Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "```suggestion\r\n- KE3.mac = MAC(Km3, Hash(concat(preamble, KE2.enc_server_info, KE2.mac)),\r\n```",
+              "createdAt": "2021-03-11T20:05:23Z",
+              "updatedAt": "2021-03-11T20:05:31Z"
             }
           ]
         }
