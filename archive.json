@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-14T00:51:06.430265+00:00",
+  "timestamp": "2021-03-16T00:48:03.127268+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -11222,7 +11222,7 @@
       "labels": [],
       "body": "- Introduces an `oprf_seed` parameter which must be generated during server setup and persisted across all registration/login requests (similar to `server_private_key`)\r\n- Introduces a `cred_identifier` parameter -- this could be the same as `client_identity`, but does not need to be\r\n- Derives `oprf_key` from `oprf_seed` and `cred_identifier` -- this results in altering `RegistrationResponse` and `CredentialResponse`\r\n- Modifies the \"Credential File\" section to just store the RegistrationUpload object, while making clear that the `oprf_seed` and `server_private_key` need to be kept around too\r\n- In `FinalizeRequest`, adds a new element `envelope_key` which must be stored as part of a `RegistrationUpload` object\r\n- Reverts the changes described in #120 (PR #126), necessary in order for the decryption step involving `envelope_key` to work properly\r\n- Introduces an `encryption_nonce` parameter, and steps for encrypting the envelope using `envelope_key`, in `CreateCredentialResponse`\r\n- Adds a new `FakeCredentialResponse` function\r\n- Introduces a new \"N\" parameter, `Nok` for representing the size of an OPRF key. Removes unused calls to `SerializeScalar` and `DeserializeScalar` from the VOPRF draft\r\n- Removes the text corresponding to the \"Client Enumeration\" section\r\n\r\nCloses #22.",
       "createdAt": "2021-03-05T05:52:05Z",
-      "updatedAt": "2021-03-11T08:45:25Z",
+      "updatedAt": "2021-03-15T22:10:31Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
@@ -11343,6 +11343,32 @@
               "body": "Addressed in the latest push",
               "createdAt": "2021-03-11T08:45:25Z",
               "updatedAt": "2021-03-11T08:45:25Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjEyNTMxODY5",
+          "commit": {
+            "abbreviatedOid": "ccf45ee"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-03-15T18:42:23Z",
+          "updatedAt": "2021-03-15T22:10:31Z",
+          "comments": [
+            {
+              "originalPosition": 244,
+              "body": "\"credential_file _argument_\"",
+              "createdAt": "2021-03-15T18:42:24Z",
+              "updatedAt": "2021-03-15T22:10:31Z"
+            },
+            {
+              "originalPosition": 237,
+              "body": "#157 : \"CredentialResponsePad\" ;)",
+              "createdAt": "2021-03-15T21:07:47Z",
+              "updatedAt": "2021-03-15T22:10:31Z"
             }
           ]
         }
