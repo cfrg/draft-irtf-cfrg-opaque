@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-18T00:49:09.667764+00:00",
+  "timestamp": "2021-03-21T00:52:21.728142+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4347,9 +4347,38 @@
       "labels": [],
       "body": "Apologies if this has already been discussed or if it does not take into account security considerations already discussed.\r\n\r\nThe document describes that it is using 3DH as defined by Signal. However, this might not be completely accurate as Signal uses X3DH (as described here: https://signal.org/docs/specifications/x3dh/); even though, at the beginning, they were indeed using 3DH, as described here: https://signal.org/blog/simplifying-otr-deniability/ . So maybe there is a place to change that reference in the document.\r\n\r\nThe reason why Signal moved from 3DH to X3DH are many, but one of them is due to an attack on forward secrecy as provided by 3DH: an active adversary modifies the first flow from the Initiator to use an adversarially controlled ephemeral key, captures and drops the response from the Receiver, and then compromises the Initiator\u2019s long-term secret key. This attack requires a powerful adversary. This is also addressed in the specification itself (https://signal.org/docs/specifications/x3dh/ , section 4.5) and by the paper: https://content.sciendo.com/downloadpdf/journals/popets/2018/1/article-p21.xml\r\n\r\nSignal\u2019s X3DH protocol somewhat mitigates this attack by using signed prekeys. \r\n\r\nI haven't have the time to analyse this attack in the specific context of OPAQUE; but it could be that this has already been taken into account.\r\n\r\ncc./ @chris-wood ",
       "createdAt": "2021-03-13T04:10:42Z",
-      "updatedAt": "2021-03-13T04:10:42Z",
+      "updatedAt": "2021-03-18T18:23:30Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "jhoyla",
+          "authorAssociation": "NONE",
+          "body": "I'm not sure that X3DH actually stops the attack.\r\nThis attack is actually mostly an attack on the definitions.\r\nPFS says that as long as the LTKs are not compromised before the protocol completes then the attacker cannot derive the session key.\r\nThis leads to two points:\r\n1. If you consider that the server's identity and signed prekey are both LTKs (in as much as they are reused across sessions) then the attack on 3DH works just as well.\r\nA powerful attacker modifies the first flow to change the ephemeral key to one it controls, and then later compromises the server's identity and signed prekey.\r\n\r\n2. The attack on both 3DH and X3DH disappears if you add an explicit key confirmation step. In this case, client would not complete the protocol until it had received explicit proof that the server knows the derived key. \r\nThis requires the attacker to compromise the LTKs _before_ the protocol completes, thus meeting the definition of PFS.\r\n\r\nIn the case of OPAQUE the message KE2 includes a MAC keyed with Km2, which is derived from the output of 3DH, giving the client key confirmation.\r\nThe server gets key confirmation from the client from KE3, because of the MAC keyed with Km3. \r\n\r\nSo w.r.t. the draft, I think we should clean up the text:\r\n1. to say that Signal uses X3DH, it's important to get these things right. \r\n1. to say that the AKE does _not_ need explicit key confirmation, because OPAQUE has a separate key confirmation step.\r\n2. to make it easier to see where the keys actually come from, because at the moment it's a bit hard to see that Km2 is dependent on 3DH. \r\n",
+          "createdAt": "2021-03-18T17:03:21Z",
+          "updatedAt": "2021-03-18T17:03:21Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "My comment is not adding anything useful to the conversation, but just FTR that the link in the doc points to [this](https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms), and I think it should point to [this](https://signal.org/docs/specifications/x3dh).",
+          "createdAt": "2021-03-18T17:50:15Z",
+          "updatedAt": "2021-03-18T17:50:15Z"
+        },
+        {
+          "author": "claucece",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Thanks @jhoyla I agree. \r\nI'll send a PR and cc you ;)\r\n\r\n@bytemare \r\n\r\n> My comment is not adding anything useful to the conversation, but just FTR that the link in the doc points to this, and I think it should point to this.\r\n\r\n3DH is defined here: https://signal.org/blog/simplifying-otr-deniability/ (section: Potential Simplifications and Improvements) I think that is the document to point to. I don't think we should include the link to X3DH, as it might confuse readers but rather mention that Signal uses this variant. \r\n\r\nThank you!",
+          "createdAt": "2021-03-18T18:16:28Z",
+          "updatedAt": "2021-03-18T18:16:28Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Oh yes, totally agree! I didn't see it was there \ud83d\udc4d\r\n( it's not obviously written on it \ud83d\ude05 )",
+          "createdAt": "2021-03-18T18:23:00Z",
+          "updatedAt": "2021-03-18T18:23:30Z"
+        }
+      ]
     }
   ],
   "pulls": [
