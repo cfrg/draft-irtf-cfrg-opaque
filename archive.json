@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-21T00:52:21.728142+00:00",
+  "timestamp": "2021-03-23T00:49:40.620814+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4347,7 +4347,7 @@
       "labels": [],
       "body": "Apologies if this has already been discussed or if it does not take into account security considerations already discussed.\r\n\r\nThe document describes that it is using 3DH as defined by Signal. However, this might not be completely accurate as Signal uses X3DH (as described here: https://signal.org/docs/specifications/x3dh/); even though, at the beginning, they were indeed using 3DH, as described here: https://signal.org/blog/simplifying-otr-deniability/ . So maybe there is a place to change that reference in the document.\r\n\r\nThe reason why Signal moved from 3DH to X3DH are many, but one of them is due to an attack on forward secrecy as provided by 3DH: an active adversary modifies the first flow from the Initiator to use an adversarially controlled ephemeral key, captures and drops the response from the Receiver, and then compromises the Initiator\u2019s long-term secret key. This attack requires a powerful adversary. This is also addressed in the specification itself (https://signal.org/docs/specifications/x3dh/ , section 4.5) and by the paper: https://content.sciendo.com/downloadpdf/journals/popets/2018/1/article-p21.xml\r\n\r\nSignal\u2019s X3DH protocol somewhat mitigates this attack by using signed prekeys. \r\n\r\nI haven't have the time to analyse this attack in the specific context of OPAQUE; but it could be that this has already been taken into account.\r\n\r\ncc./ @chris-wood ",
       "createdAt": "2021-03-13T04:10:42Z",
-      "updatedAt": "2021-03-18T18:23:30Z",
+      "updatedAt": "2021-03-22T20:08:26Z",
       "closedAt": null,
       "comments": [
         {
@@ -4377,6 +4377,27 @@
           "body": "Oh yes, totally agree! I didn't see it was there \ud83d\udc4d\r\n( it's not obviously written on it \ud83d\ude05 )",
           "createdAt": "2021-03-18T18:23:00Z",
           "updatedAt": "2021-03-18T18:23:30Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "ccing @hugokraw in case he has any thoughts on whether or not it would be necessary to move to X3DH instead of 3DH.",
+          "createdAt": "2021-03-21T22:42:40Z",
+          "updatedAt": "2021-03-21T22:42:40Z"
+        },
+        {
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "body": "No need to move to X3DH. X3DH cannot be used in a PAKE as it requires long-term keys on the client side.. As for the attack @claucece points to (namely lacking strong forward secrecy), this is addressed (as @jhoyla explains) by having explicit authentication by both parties via the MAC values. Strong forward secrecy is a built-in requirement in OPAQUE.\r\n\r\nAs for the relation to Signal, my original text said that \"3DH serves as a basis for the key-exchange protocol of SIGNAL.\" which I think is accurate. The reason we are using 3DH is because it is simple to describe and it is relatively efficient (more specifically, it is there because HMQV, which two less exponentiations, has a patent)",
+          "createdAt": "2021-03-21T23:22:57Z",
+          "updatedAt": "2021-03-21T23:24:40Z"
+        },
+        {
+          "author": "claucece",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Thank you @hugokraw for the explanation and @kevinlewi for the pointer ;) \r\n\r\nWe talked this offline with @jhoyla extensively and agree on this. \r\n\r\nWe will send a PR just with clarifications for a reader that gets confused, and cc you all into it for your comments ;)",
+          "createdAt": "2021-03-22T20:08:25Z",
+          "updatedAt": "2021-03-22T20:08:25Z"
         }
       ]
     }
@@ -11251,7 +11272,7 @@
       "labels": [],
       "body": "- Introduces an `oprf_seed` parameter which must be generated during server setup and persisted across all registration/login requests (similar to `server_private_key`)\r\n- Introduces a `cred_identifier` parameter -- this could be the same as `client_identity`, but does not need to be\r\n- Derives `oprf_key` from `oprf_seed` and `cred_identifier` -- this results in altering `RegistrationResponse` and `CredentialResponse`\r\n- Modifies the \"Credential File\" section to just store the RegistrationUpload object, while making clear that the `oprf_seed` and `server_private_key` need to be kept around too\r\n- In `FinalizeRequest`, adds a new element `envelope_key` which must be stored as part of a `RegistrationUpload` object\r\n- Reverts the changes described in #120 (PR #126), necessary in order for the decryption step involving `envelope_key` to work properly\r\n- Introduces an `encryption_nonce` parameter, and steps for encrypting the envelope using `envelope_key`, in `CreateCredentialResponse`\r\n- Adds a new `FakeCredentialResponse` function\r\n- Introduces a new \"N\" parameter, `Nok` for representing the size of an OPRF key. Removes unused calls to `SerializeScalar` and `DeserializeScalar` from the VOPRF draft\r\n- Removes the text corresponding to the \"Client Enumeration\" section\r\n\r\nCloses #22.",
       "createdAt": "2021-03-05T05:52:05Z",
-      "updatedAt": "2021-03-16T23:58:47Z",
+      "updatedAt": "2021-03-23T00:24:55Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "2e018a1c0c24d75c639eac2b71db990bcc4d4415",
