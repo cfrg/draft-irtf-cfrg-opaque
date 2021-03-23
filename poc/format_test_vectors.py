@@ -7,7 +7,10 @@ import json
 config_keys = [
     "OPRF",
     "Hash",
-    "SlowHash",
+    "MHF",
+    "KDF",
+    "MAC",
+    "Name",
     "EnvelopeMode",
     "Group",
     "Nh",
@@ -18,8 +21,11 @@ config_keys = [
 input_keys = [
     "client_identity",
     "server_identity",
+    "oprf_seed",
+    "credential_identifier",
     "password",
     "envelope_nonce",
+    "masking_nonce",
     "client_private_key",
     "client_public_key",
     "server_private_key",

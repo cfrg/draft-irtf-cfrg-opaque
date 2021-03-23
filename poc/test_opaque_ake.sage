@@ -65,6 +65,7 @@ def test_envelope_serialization():
     assert recovered_envelope.auth_tag == envelope.auth_tag
 
 def test_core_protocol_serialization():
+    idU = _as_bytes("Username")
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
 
     config = default_opaque_configuration 
@@ -75,6 +76,7 @@ def test_core_protocol_serialization():
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
+    oprf_seed = random_bytes(config.hash().digest_size)
 
     core = OPAQUECore(config)
     creds = Credentials(skU_enc, pkU_enc)
@@ -86,7 +88,7 @@ def test_core_protocol_serialization():
         config, serialized_request)
     assert request == deserialized_request
 
-    response, kU = core.create_registration_response(request, pkS_enc)
+    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU)
     serialized_response = response.serialize()
     deserialized_response = deserialize_registration_response(
         config, serialized_response)
@@ -106,7 +108,7 @@ def test_core_protocol_serialization():
     assert cred_request == deserialized_request
     assert length == len(serialized_request)
 
-    cred_response = core.create_credential_response(cred_request, pkS_enc, kU, record.envU)
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
     serialized_response = cred_response.serialize()
     deserialized_response, length = deserialize_credential_response(
         config, serialized_response)
@@ -121,6 +123,7 @@ def test_core_protocol_serialization():
     assert recovered_pkS == pkS_enc
 
 def test_registration_and_authentication():
+    idU = _as_bytes("Username")
     pwdU = _as_bytes("opaquerulez")
     badPwdU = _as_bytes("iloveopaque")
     
@@ -132,16 +135,17 @@ def test_registration_and_authentication():
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
+    oprf_seed = random_bytes(config.oprf_suite.group.scalar_byte_length())
   
     core = OPAQUECore(config)
     creds = Credentials(skU_enc, pkU_enc)
 
     request, metadata = core.create_registration_request(pwdU)
-    response, kU = core.create_registration_response(request, pkS_enc)
+    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU)
     record, export_key = core.finalize_request(creds, pwdU, metadata, response)
     
     cred_request, cred_metadata = core.create_credential_request(pwdU)
-    cred_response = core.create_credential_response(cred_request, pkS_enc, kU, record.envU)
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
     recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response)
 
     assert export_key == recovered_export_key
@@ -149,7 +153,7 @@ def test_registration_and_authentication():
     assert recovered_pkS == pkS_enc
 
     cred_request, cred_metadata = core.create_credential_request(badPwdU)
-    cred_response = core.create_credential_response(cred_request, pkS_enc, kU, record.envU)
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
     try:
         recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(badPwdU, cred_metadata, cred_response)
         assert False
@@ -159,6 +163,7 @@ def test_registration_and_authentication():
 
 def test_3DH():
     idU = _as_bytes("alice")
+    credential_identifier = _as_bytes("1234")
     idS = _as_bytes("bob")
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
     info1 = _as_bytes("hello bob")
@@ -183,6 +188,7 @@ def test_3DH():
             pkU_bytes = group.serialize(pkU)
             skS_bytes = group.serialize_scalar(skS)
             pkS_bytes = group.serialize(pkS)
+            oprf_seed = random_bytes(fast_hash().digest_size)
 
             idU = pkU_bytes
             idS = pkS_bytes
@@ -195,14 +201,14 @@ def test_3DH():
             core = OPAQUECore(config)
 
             reg_request, metadata = core.create_registration_request(pwdU)
-            reg_response, kU = core.create_registration_response(reg_request, pkS_bytes)
+            reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier)
             record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
 
             client_kex = OPAQUE3DH(config)
             server_kex = OPAQUE3DH(config)
 
             ke1 = client_kex.generate_ke1(pwdU, info1, idU, skU, pkU, idS, pkS)
-            ke2 = server_kex.generate_ke2(ke1, kU, record.envU, info2, idS, skS, pkS, idU, pkU)
+            ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, info2, idS, skS, pkS, idU, pkU)
             ke3 = client_kex.generate_ke3(ke2)
             server_session_key = server_kex.finish(ke3)
 
@@ -216,7 +222,9 @@ def test_3DH():
             if config.mode == envelope_mode_custom_identifier:
                 inputs["client_identity"] = to_hex(idU)
                 inputs["server_identity"] = to_hex(idS)
-            inputs["password"] = to_hex(pwdU)
+            inputs["oprf_seed"] = to_hex(oprf_seed)
+            inputs["credential_identifier"] = to_hex(credential_identifier)
+            inputs["password"] = to_hex(pwdU)            
             inputs["client_private_key"] = to_hex(skU_bytes)
             inputs["client_public_key"] = to_hex(pkU_bytes)
             inputs["server_private_key"] = to_hex(skS_bytes)
@@ -230,6 +238,7 @@ def test_3DH():
             inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.eskS))
             inputs["server_keyshare"] = to_hex(group.serialize(server_kex.epkS))
             inputs["envelope_nonce"] = to_hex(core.envelope_nonce)
+            inputs["masking_nonce"] = to_hex(server_kex.core.masking_nonce)
             inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
             inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
             inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
@@ -237,6 +246,7 @@ def test_3DH():
             # Intermediate computations
             intermediates["envelope"] = to_hex(record.envU.serialize())
             intermediates["prk"] = to_hex(core.registration_rwdU)
+            intermediates["masking_key"] = to_hex(core.masking_key)
             intermediates["pseudorandom_pad"] = to_hex(core.pseudorandom_pad)
             intermediates["auth_key"] = to_hex(core.auth_key)
             intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)
