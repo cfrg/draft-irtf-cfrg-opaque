@@ -185,27 +185,30 @@ class RegistrationResponse(ProtocolMessage):
 
 # struct {
 #     opaque pkU[Npk];
+#     opaque masking_key[Nh];
 #     Envelope envU;
 # } RegistrationUpload;
 def deserialize_registration_upload(config, msg_bytes):
-    offset = 0
-
     if len(msg_bytes) < config.Npk:
         raise Exception("Invalid message")
-    pkU = msg_bytes[offset:config.Npk]
+    pkU = msg_bytes[:config.Npk]
 
-    envU, _ = deserialize_envelope(config, msg_bytes[config.Npk:])
+    Nh = config.hash().digest_size
+    masking_key = msg_bytes[config.Npk:config.Npk+Nh]
 
-    return RegistrationUpload(envU, pkU)
+    envU, _ = deserialize_envelope(config, msg_bytes[config.Npk+Nh:])
+
+    return RegistrationUpload(pkU, masking_key, envU)
 
 class RegistrationUpload(ProtocolMessage):
-    def __init__(self, envU, pkU):
+    def __init__(self, pkU, masking_key, envU):
         ProtocolMessage.__init__(self)
-        self.envU = envU
         self.pkU = pkU
+        self.masking_key = masking_key
+        self.envU = envU
 
     def serialize(self):
-        return self.pkU + self.envU.serialize()
+        return self.pkU + self.masking_key + self.envU.serialize()
 
 # struct {
 #     SerializedElement data;
@@ -226,27 +229,26 @@ class CredentialRequest(ProtocolMessage):
 
 # struct {
 #     SerializedElement data;
-#     opaque pkS[Npk];
-#     Envelope envelope;
+#     opaque masking_nonce[32];
+#     opaque masked_response[Npk + Nsk + Nh + 33];
 # } CredentialResponse;
 def deserialize_credential_response(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
     data = msg_bytes[0:length]
+    masking_nonce = msg_bytes[length:length+32]
 
-    pkS = msg_bytes[length:length+config.Npk]
-    offset = length + config.Npk
-
-    envU, length = deserialize_envelope(config, msg_bytes[offset:])
-    offset = offset + length
-
-    return CredentialResponse(data, pkS, envU), offset
+    Nh = config.hash().digest_size
+    Npk = config.Npk
+    Nsk = config.Nsk
+    masked_response = msg_bytes[length+32:length+32+Npk+Nsk+Nh+33]
+    return CredentialResponse(data, masking_nonce, masked_response), length+32+Npk+Nsk+Nh+33
 
 class CredentialResponse(ProtocolMessage):
-    def __init__(self, data, pkS, envU):
+    def __init__(self, data, masking_nonce, masked_response):
         ProtocolMessage.__init__(self)
         self.data = data
-        self.pkS = pkS
-        self.envU = envU
+        self.masking_nonce = masking_nonce
+        self.masked_response = masked_response
 
     def serialize(self):
-        return self.data + self.pkS + self.envU.serialize()
+        return self.data + self.masking_nonce + self.masked_response

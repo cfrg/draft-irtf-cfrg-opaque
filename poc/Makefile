@@ -25,6 +25,7 @@ test: pyfiles
 vectors: pyfiles
 	@mkdir -p vectors
 	sage test_opaque_ake.sage
+	python3 format_test_vectors.py vectors/vectors.json > vectors/formatted.txt
 
 .PHONY: clean
 clean:
