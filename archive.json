@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-23T00:49:40.620814+00:00",
+  "timestamp": "2021-03-25T00:28:57.323261+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -369,7 +369,7 @@
       "id": "MDU6SXNzdWU2MjY0NzAwNjk=",
       "title": "Lift user enumeration text to the OPAQUE AKE stage",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [
@@ -379,8 +379,8 @@
       "labels": [],
       "body": "We might consider standardizing the mechanism by which servers prevent user enumeration attacks. ",
       "createdAt": "2020-05-28T12:29:17Z",
-      "updatedAt": "2021-03-09T10:53:05Z",
-      "closedAt": null,
+      "updatedAt": "2021-03-24T21:49:29Z",
+      "closedAt": "2021-03-24T21:49:29Z",
       "comments": [
         {
           "author": "crockeea",
@@ -4400,6 +4400,62 @@
           "updatedAt": "2021-03-22T20:08:25Z"
         }
       ]
+    },
+    {
+      "number": 165,
+      "id": "MDU6SXNzdWU4NDAxMTk4MjA=",
+      "title": "Expand input name",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/165",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "We currently use `prk` as the input to `Expand()` calls for alignment with HKDF, but this deviates from the original paper which used `rwd`. The latter might be too easily confused with `pwd`, so how about we clarify and call it `randomized_pwd`? That would also be more in line with other naming conventions used in the doc, where we spell things out rather than use acronyms. \r\n\r\n@hugokraw, what do you think?",
+      "createdAt": "2021-03-24T20:00:11Z",
+      "updatedAt": "2021-03-24T20:18:40Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I am ok with it.",
+          "createdAt": "2021-03-24T20:18:39Z",
+          "updatedAt": "2021-03-24T20:18:39Z"
+        }
+      ]
+    },
+    {
+      "number": 166,
+      "id": "MDU6SXNzdWU4NDAxNjg0Mjg=",
+      "title": "Adding test vectors for \"faked\" credential response?",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/166",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "In https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22, we added the option for a server to be able to issue a \"fake\" credential response in the absence of a password file for a registered user. The current draft also describes how this response should be constructed. Should we also include test vectors for this functionality?",
+      "createdAt": "2021-03-24T21:12:48Z",
+      "updatedAt": "2021-03-24T21:12:48Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 167,
+      "id": "MDU6SXNzdWU4NDAyMDkxNDg=",
+      "title": "Include primitive parameters in test vectors",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/167",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "See [this comment](https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/164#pullrequestreview-620267851)!",
+      "createdAt": "2021-03-24T22:02:45Z",
+      "updatedAt": "2021-03-24T22:02:45Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
@@ -10396,13 +10452,13 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-03-13T08:53:56Z",
+      "updatedAt": "2021-03-25T00:27:55Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "master",
-      "headRefOid": "4e17ff3aded89dea5724b9175295874b167c4ef6",
+      "headRefOid": "7cb2481dac4a7735d9dd945678ad4c072c67ec6f",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -10440,25 +10496,25 @@
               "originalPosition": 68,
               "body": "> For example, if used as raw public keys for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.\r\n\r\nThis is not relevant anymore in that part of the document.",
               "createdAt": "2021-03-03T00:23:40Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 196,
               "body": "I will do a commit on this later",
               "createdAt": "2021-03-03T00:24:35Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 223,
               "body": "@chris-wood I think we should define the HashToScalar similarly to what has been done in VOPRF. What do you think?",
               "createdAt": "2021-03-03T00:27:47Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 221,
               "body": "I'm open to suggestions on how to best formulate this.\r\nI'm thinking of something around this\r\n\r\n> KeyGenFromSeed(seed): expand the seed to full private/public generation in the AKE setup",
               "createdAt": "2021-03-03T00:58:18Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10478,37 +10534,37 @@
               "originalPosition": 221,
               "body": "Can't this just be equal to hash_to_field with a specific DST?",
               "createdAt": "2021-03-03T23:10:11Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 223,
               "body": "Either hash_to_field or HashToScalar from VOPRF (may be cleaner to just specify hash_to_field from the h2c spec)",
               "createdAt": "2021-03-03T23:10:14Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 59,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:03Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 125,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:20Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 158,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:26Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 30,
               "body": "I like the way this is written! Let's just remove all of the other references to this identity being \"optional\" in the later texts, and we can clarify that it defaults to the client_public_key and server_public_key.",
               "createdAt": "2021-03-03T23:18:33Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10528,7 +10584,7 @@
               "originalPosition": 221,
               "body": "I think we should describe a generic `KeyGenFromSeed(seed)` here, and then specify that in OPAQUE-3DH we use `hash_to_field` with dst etc.. This way, it stays relevant for other AKEs, that  just need to define their own `KeyGenFromSeed(seed)` implementation.",
               "createdAt": "2021-03-04T01:33:48Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10548,7 +10604,7 @@
               "originalPosition": 59,
               "body": "That's a leftover, well spotted!",
               "createdAt": "2021-03-04T01:35:02Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10568,7 +10624,7 @@
               "originalPosition": 223,
               "body": "Maybe \"redefine but with the same definition as in VOPRF\", just to make clear not to use VOPRF's DST for this hash_to_field",
               "createdAt": "2021-03-04T01:40:48Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10588,43 +10644,43 @@
               "originalPosition": 52,
               "body": "Maybe delete this entire sentence and the list (and replace it with one sentence above^)?",
               "createdAt": "2021-03-05T20:44:03Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 33,
               "body": "```suggestion\r\nDuring protocol execution, these values are stored in an implementation-specific `Credentials` object with names matching the values. For example, `Credentials.server_public_key` is the server's public key.\r\n\r\nThese values are used in `SecretCredentials` and `CleartextCredentials` structures as follows:\r\n```",
               "createdAt": "2021-03-05T20:45:47Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 196,
               "body": "I don't think we need to include this rationale. It's probably fine to simply say, \"Applications can use existing key pairs for OPAQUE-3DH with the \"external\" mode,\" or something.",
               "createdAt": "2021-03-05T20:55:47Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 201,
               "body": "```suggestion\r\nIn this mode, the client's private and public keys are deterministically derived from the OPRF output. For OPAQUE-3DH, this is done by hashing the OPRF output to a scalar in the corresponding prime order group to produce a private key, and then multiplying that scalar by the fixed generator to produce the public key.\r\n```",
               "createdAt": "2021-03-05T20:57:35Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 203,
               "body": "```suggestion\r\n```",
               "createdAt": "2021-03-05T20:57:45Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 221,
               "body": "\ud83d\udc4d agreed, and maybe call this `DeriveKeyPair(seed)`? Its implementation for OPAQUE-3DH would then be:\r\n\r\n```\r\nUse hash_to_field from {{!I-D.irtf-cfrg-hash-to-curve}} using Order() as the prime modulus, L = 48, `expand_message_xmd` with SHA-512, and DST = \"OPAQUE\", to produce sk. Then compute pk = sk * G.\r\n```\r\n... or something",
               "createdAt": "2021-03-05T20:59:28Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             },
             {
               "originalPosition": 223,
               "body": "I think the implementation should be something like:\r\n\r\n```\r\nsk = HashToScalar(seed)\r\npk = sk * G\r\n```",
               "createdAt": "2021-03-05T21:00:46Z",
-              "updatedAt": "2021-03-11T15:27:57Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10644,7 +10700,7 @@
               "originalPosition": 223,
               "body": "ok, with something like \"OPAQUE-HashToScalar\" for dst?",
               "createdAt": "2021-03-05T21:24:01Z",
-              "updatedAt": "2021-03-11T15:27:58Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10664,7 +10720,7 @@
               "originalPosition": 221,
               "body": "(Discussed offline) let's just mimic what the VOPRF draft does for HashToScalar here :) ",
               "createdAt": "2021-03-06T00:50:52Z",
-              "updatedAt": "2021-03-11T15:27:58Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         },
@@ -10684,7 +10740,187 @@
               "originalPosition": 539,
               "body": "@kevinlewi should the modification be applied here as well?",
               "createdAt": "2021-03-11T10:35:10Z",
-              "updatedAt": "2021-03-11T15:27:58Z"
+              "updatedAt": "2021-03-25T00:27:55Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjg0NDg1",
+          "commit": {
+            "abbreviatedOid": "4e17ff3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "Second pass done -- looking good! The rebase will obviously change some things, but the factored out functions is _really_ nice. I have comments and questions about some of the semantic changes and presentation, but we can certainly work through them (here or online -- whichever you prefer!)",
+          "createdAt": "2021-03-24T22:32:40Z",
+          "updatedAt": "2021-03-24T22:54:57Z",
+          "comments": [
+            {
+              "originalPosition": 55,
+              "body": "```suggestion\r\n opaque server_identity<1..2^16-1>;\r\n opaque client_identity<1..2^16-1>;\r\n```\r\n\r\n(Since neither field can be empty)",
+              "createdAt": "2021-03-24T22:32:40Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 61,
+              "body": "```suggestion\r\n\r\n~~~\r\n```",
+              "createdAt": "2021-03-24T22:33:03Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 100,
+              "body": "```suggestion\r\n\r\n~~~\r\n```",
+              "createdAt": "2021-03-24T22:33:30Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 104,
+              "body": "Why is `auth_tag` _before_ `inner_env`? It seems like `auth_tag` should cover the entire envelope, right?",
+              "createdAt": "2021-03-24T22:34:10Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 122,
+              "body": "This also includes `mode` and `nonce`, right?",
+              "createdAt": "2021-03-24T22:34:54Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 128,
+              "body": "```suggestion\r\nCreateEnvelope(random_pwd, server_public_key, creds)\r\n```",
+              "createdAt": "2021-03-24T22:35:19Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 128,
+              "body": "(here and below!)",
+              "createdAt": "2021-03-24T22:35:38Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 148,
+              "body": "@kevinlewi's change removed the nonce from this step, so we can probably lift derivation of `prk` to the function that calls `CreateEnvelope`.",
+              "createdAt": "2021-03-24T22:38:47Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 158,
+              "body": "The server public key is passed in as a parameter (as part of the CredentialResponse), so why is it needed to be part of `creds`?",
+              "createdAt": "2021-03-24T22:40:33Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 217,
+              "body": "```suggestion\r\nIn this mode, the client's private and public keys are deterministically derived from the OPRF output. \r\n```",
+              "createdAt": "2021-03-24T22:44:03Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 219,
+              "body": "```suggestion\r\nWith the internal key mode the `EnvelopeMode` value MUST be `internal` and the `InnerEnvelope` is empty.\r\n```",
+              "createdAt": "2021-03-24T22:44:16Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 230,
+              "body": "```suggestion\r\n```\r\nThe group seems implicit, so I think we can remove this.",
+              "createdAt": "2021-03-24T22:45:14Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 242,
+              "body": "```suggestion\r\n- client_public_key, the client's AKE public key\r\n\r\nSteps:\r\n1. _, client_public_key = DeriveKeyPair(prk)\r\n2. Output (nil, client_public_key)\r\n```",
+              "createdAt": "2021-03-24T22:46:00Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 242,
+              "body": "(Just renaming some things)",
+              "createdAt": "2021-03-24T22:46:09Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 248,
+              "body": "I think we should move this to the configuration section, which discusses particular types of Groups for 3DH.",
+              "createdAt": "2021-03-24T22:47:54Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 7,
+              "body": "```suggestion\r\n```\r\n\r\nThis isn't an API that's exposed outside of its use in DeriveKeyPair, right? If not, we can probably drop it from here, and describe it where we specify how to implement DeriveKeyPair. (In the configurations section?)",
+              "createdAt": "2021-03-24T22:48:59Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 246,
+              "body": "```suggestion\r\nOPAQUE-3DH implements DeriveKeyPair(prk) as follows:\r\n```",
+              "createdAt": "2021-03-24T22:49:32Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 282,
+              "body": "```suggestion\r\n1. (client_secret_key, _) = DeriveKeyPair(prk)\r\n```",
+              "createdAt": "2021-03-24T22:50:02Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 291,
+              "body": "```suggestion\r\nIn this mode, the application provides the OPAQUE instantiation with the client's authentication material through the `Credentials` structure. An encryption key is generated from the hardened OPRF output and used to encrypt the client's private key, which is then stored encrypted in the `Envelope`. This allows for applications which prefer to generate keys using some existing method. \r\n```",
+              "createdAt": "2021-03-24T22:51:51Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 341,
+              "body": "Flagging this as a section that changed in @kevinlewi's PR, too.",
+              "createdAt": "2021-03-24T22:52:20Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            },
+            {
+              "originalPosition": 487,
+              "body": "Why is this needed? In internal mode, clients can compute it from the seed. In external mode, clients can also presumably compute it from the private key. Is this for settings where clients can't compute the public key from a private key?",
+              "createdAt": "2021-03-24T22:53:45Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzMwNDE1",
+          "commit": {
+            "abbreviatedOid": "4e17ff3"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:19:33Z",
+          "updatedAt": "2021-03-25T00:19:34Z",
+          "comments": [
+            {
+              "originalPosition": 104,
+              "body": "`auth_tag` covers the entire envelope, indeed, but putting it before `inner_env` ensures it's always in the same position, regardless of the mode, and thus simplifies parsing. What do you think?",
+              "createdAt": "2021-03-25T00:19:33Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzMzMjA3",
+          "commit": {
+            "abbreviatedOid": "4e17ff3"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:27:22Z",
+          "updatedAt": "2021-03-25T00:27:23Z",
+          "comments": [
+            {
+              "originalPosition": 487,
+              "body": "Indeed. I don't know if we can presume that clients can recompute their public key from the private key alone.\r\nAs much as I dislike this, simply sending it back to the client covers all cases and simplifies the implementation.\r\n\r\nBut if you think we should assume public key regeneration possible from the private one I'm totally on board.",
+              "createdAt": "2021-03-25T00:27:23Z",
+              "updatedAt": "2021-03-25T00:27:55Z"
             }
           ]
         }
@@ -11265,24 +11501,26 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NTg1MzQxOTc3",
       "title": "Addressing client enumeration section with protocol changes",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/156",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "- Introduces an `oprf_seed` parameter which must be generated during server setup and persisted across all registration/login requests (similar to `server_private_key`)\r\n- Introduces a `cred_identifier` parameter -- this could be the same as `client_identity`, but does not need to be\r\n- Derives `oprf_key` from `oprf_seed` and `cred_identifier` -- this results in altering `RegistrationResponse` and `CredentialResponse`\r\n- Modifies the \"Credential File\" section to just store the RegistrationUpload object, while making clear that the `oprf_seed` and `server_private_key` need to be kept around too\r\n- In `FinalizeRequest`, adds a new element `envelope_key` which must be stored as part of a `RegistrationUpload` object\r\n- Reverts the changes described in #120 (PR #126), necessary in order for the decryption step involving `envelope_key` to work properly\r\n- Introduces an `encryption_nonce` parameter, and steps for encrypting the envelope using `envelope_key`, in `CreateCredentialResponse`\r\n- Adds a new `FakeCredentialResponse` function\r\n- Introduces a new \"N\" parameter, `Nok` for representing the size of an OPRF key. Removes unused calls to `SerializeScalar` and `DeserializeScalar` from the VOPRF draft\r\n- Removes the text corresponding to the \"Client Enumeration\" section\r\n\r\nCloses #22.",
       "createdAt": "2021-03-05T05:52:05Z",
-      "updatedAt": "2021-03-23T00:24:55Z",
+      "updatedAt": "2021-03-25T00:20:24Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "2e018a1c0c24d75c639eac2b71db990bcc4d4415",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "client_enumeration",
-      "headRefOid": "1678296184a615ca509e3dce19e57cdb724d3d07",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "aba1fca8c3c5b65e7f205a2afa8523870e069891",
+      "closedAt": "2021-03-24T21:49:29Z",
+      "mergedAt": "2021-03-24T21:49:29Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "a9c566d33cba27a54e065a7acfec4d67331ddf01"
+      },
       "comments": [
         {
           "author": "hugokraw",
@@ -11353,6 +11591,20 @@
           "body": "Rebased, added DeriveKeyPair reference, and added the following optional text to the end of the Client Enumeration section:\r\n\r\n> Finally, note that server implementations may choose to forego the construction\r\nof a simulated credential response message for an unregistered client if these client\r\nenumeration attacks can be mitigated through other application-specific means.",
           "createdAt": "2021-03-11T08:44:45Z",
           "updatedAt": "2021-03-11T08:44:45Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Addressed above comments. Also changed the use of \"CredentialResponsePad\" literal string to use encryption_nonce instead.",
+          "createdAt": "2021-03-23T03:54:50Z",
+          "updatedAt": "2021-03-23T03:54:50Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Changed names:\r\n- `encryption_nonce` -> `masking_nonce`\r\n- `encrypted_response` -> `masked_response`",
+          "createdAt": "2021-03-23T18:19:57Z",
+          "updatedAt": "2021-03-23T18:19:57Z"
         }
       ],
       "reviews": [
@@ -11372,7 +11624,7 @@
               "originalPosition": 109,
               "body": "I don't think this is a workable replacement. This basically type casts bytes to an OPRF private key. I think we should revert this, and instead use DeriveKeyPair(HKDF(...)).",
               "createdAt": "2021-03-10T20:32:14Z",
-              "updatedAt": "2021-03-16T23:58:46Z"
+              "updatedAt": "2021-03-24T21:23:29Z"
             }
           ]
         },
@@ -11392,7 +11644,7 @@
               "originalPosition": 109,
               "body": "Addressed in the latest push",
               "createdAt": "2021-03-11T08:45:25Z",
-              "updatedAt": "2021-03-16T23:58:46Z"
+              "updatedAt": "2021-03-24T21:23:29Z"
             }
           ]
         },
@@ -11412,13 +11664,639 @@
               "originalPosition": 244,
               "body": "\"credential_file _argument_\"",
               "createdAt": "2021-03-15T18:42:24Z",
-              "updatedAt": "2021-03-16T23:58:46Z"
+              "updatedAt": "2021-03-24T21:23:29Z"
             },
             {
               "originalPosition": 237,
               "body": "#157 : \"CredentialResponsePad\" ;)",
               "createdAt": "2021-03-15T21:07:47Z",
-              "updatedAt": "2021-03-16T23:58:47Z"
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MDAzNzUy",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-03-22T21:38:22Z",
+          "updatedAt": "2021-03-23T01:20:02Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "This is part of the OPRF API, right? Why not move it up?",
+              "createdAt": "2021-03-22T21:38:22Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 45,
+              "body": "Is it required that the same seed be used across all users?",
+              "createdAt": "2021-03-22T21:41:21Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 167,
+              "body": "This is now a bit of an orphan section. Should we just fold the contents here into the preceding section?",
+              "createdAt": "2021-03-22T21:43:40Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 168,
+              "body": "Should we say that the credential file also stores the credential identifier? Or at least has a pointer to it? ",
+              "createdAt": "2021-03-22T21:45:19Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 207,
+              "body": "```suggestion\r\nIn the case of an existing credential_file record with the corresponding identifier `credential_identifier`, the server invokes the following function to\r\n```",
+              "createdAt": "2021-03-22T21:45:39Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 195,
+              "body": "Is this missing `encryption_nonce`?",
+              "createdAt": "2021-03-22T23:24:03Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 268,
+              "body": "```suggestion\r\n4. credential_response_pad = Expand(masking_key,\r\n```",
+              "createdAt": "2021-03-22T23:36:04Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 114,
+              "body": "```suggestion\r\n1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(\"OPRFKey\", credential_identifier), Nok))\r\n```\r\nFor case consistency?",
+              "createdAt": "2021-03-23T00:17:08Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTIwOTY4",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T02:07:02Z",
+          "updatedAt": "2021-03-23T02:07:03Z",
+          "comments": [
+            {
+              "originalPosition": 45,
+              "body": "It does not have to be one seed for all. For example, there could be a seed for all userid's that start with letter a, one for those that start with letter b, etc. But a userid should always use the same oprf seed. A change of seed can only happen at re-registration.",
+              "createdAt": "2021-03-23T02:07:03Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTc0MDIx",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:22:44Z",
+          "updatedAt": "2021-03-23T03:22:44Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "Yes, it is. Can you clarify what you mean by \"move it up\"? It is already under the OPRF section -- do you mean to move it up in front of `Blind(x)`, `Evaluate(k, M)`, etc?",
+              "createdAt": "2021-03-23T03:22:44Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTc0NzAy",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:24:41Z",
+          "updatedAt": "2021-03-23T03:24:41Z",
+          "comments": [
+            {
+              "originalPosition": 45,
+              "body": "@chris-wood: How should we allow for the flexibility in this API, in terms of producing test vectors, etc. ? Does it suffice to just add a note here saying that multiple oprf_seeds can be used?",
+              "createdAt": "2021-03-23T03:24:41Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTc1MTI1",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:25:50Z",
+          "updatedAt": "2021-03-23T03:25:51Z",
+          "comments": [
+            {
+              "originalPosition": 168,
+              "body": "I don't think that's necessary. In the same way we don't mention the storing of any user or server identifiers when CustomIdentifier mode is used, I don't think we need to mention that the credential file has to store the credential identifier. But we can add it too if you think it increases clarity",
+              "createdAt": "2021-03-23T03:25:50Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTc4ODg1",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:36:44Z",
+          "updatedAt": "2021-03-23T03:36:45Z",
+          "comments": [
+            {
+              "originalPosition": 167,
+              "body": "Folded!",
+              "createdAt": "2021-03-23T03:36:44Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTgxOTQ2",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:46:07Z",
+          "updatedAt": "2021-03-23T03:46:07Z",
+          "comments": [
+            {
+              "originalPosition": 195,
+              "body": "It is. Thanks for the catch -- added!",
+              "createdAt": "2021-03-23T03:46:07Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4MTgzMzEx",
+          "commit": {
+            "abbreviatedOid": "1678296"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T03:50:30Z",
+          "updatedAt": "2021-03-23T03:50:30Z",
+          "comments": [
+            {
+              "originalPosition": 114,
+              "body": "Thanks, used \"OprfKey\" here instead, following the usual convention of CamelCase for acronyms that are longer than 2 letters.",
+              "createdAt": "2021-03-23T03:50:30Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTQ4NzMz",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:43:08Z",
+          "updatedAt": "2021-03-23T18:43:09Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "Yep! If it's an OPRF API, it should be in the same list as Blind() etc.",
+              "createdAt": "2021-03-23T18:43:08Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTQ5MTgy",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:43:39Z",
+          "updatedAt": "2021-03-23T18:43:39Z",
+          "comments": [
+            {
+              "originalPosition": 45,
+              "body": "Yeah, I think noting that multiple seeds may be used is sufficient, but the test vectors should just use one seed for all users.",
+              "createdAt": "2021-03-23T18:43:39Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTUwMDI4",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:44:36Z",
+          "updatedAt": "2021-03-23T18:44:37Z",
+          "comments": [
+            {
+              "originalPosition": 168,
+              "body": "I'm mainly interested in reducing the number of parameters to our core functions, which is growing little by little. We can keep this as-is for now, but we should keep this possible change on the back burner.",
+              "createdAt": "2021-03-23T18:44:36Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTU0NTk0",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:49:47Z",
+          "updatedAt": "2021-03-23T18:49:47Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "I guess what I am saying is, it is **already** in the same list as Blind() etc... unless I am misinterpreting what you are saying?",
+              "createdAt": "2021-03-23T18:49:47Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTU2NTcz",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:52:04Z",
+          "updatedAt": "2021-03-23T18:52:04Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "It's in a separate list, like the KDF and other functions below.",
+              "createdAt": "2021-03-23T18:52:04Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE4OTU5NjE0",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T18:55:29Z",
+          "updatedAt": "2021-03-23T18:55:29Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "OH I see what you mean -- I thought you were referring to the `Nok` parameter as needing to move up. But now I realize that you are referring to `DeriveKeyPair` being needed to move up. Got it! :) The comment line numbers this points to was a bit ambiguous :)",
+              "createdAt": "2021-03-23T18:55:29Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE5MDA1MTIx",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T19:50:17Z",
+          "updatedAt": "2021-03-23T19:50:18Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "Ah, yep :) Sorry, I should have been more clear.",
+              "createdAt": "2021-03-23T19:50:17Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE5MTQxODE0",
+          "commit": {
+            "abbreviatedOid": "bc5f1c1"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T22:33:54Z",
+          "updatedAt": "2021-03-23T22:33:54Z",
+          "comments": [
+            {
+              "originalPosition": 45,
+              "body": "Added a side note that multiple seeds can be used",
+              "createdAt": "2021-03-23T22:33:54Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE5MTQyMzY1",
+          "commit": {
+            "abbreviatedOid": "fe37df6"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-23T22:34:54Z",
+          "updatedAt": "2021-03-23T22:34:55Z",
+          "comments": [
+            {
+              "originalPosition": 23,
+              "body": "This should be resolved in the latest diff.",
+              "createdAt": "2021-03-23T22:34:55Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjI5OTQz",
+          "commit": {
+            "abbreviatedOid": "fe37df6"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM modulo some final nits!",
+          "createdAt": "2021-03-24T21:04:35Z",
+          "updatedAt": "2021-03-24T21:11:02Z",
+          "comments": [
+            {
+              "originalPosition": 63,
+              "body": "Where does `credential_identifier` come from? It should probably be included in the Server inputs on L419.",
+              "createdAt": "2021-03-24T21:04:35Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 99,
+              "body": "```suggestion\r\n: A key used by the server to preserve confidentiality of the envelope during login\r\n```",
+              "createdAt": "2021-03-24T21:05:00Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 133,
+              "body": "```suggestion\r\n3. prk = Extract(\"\", Harden(y, params))\r\n```",
+              "createdAt": "2021-03-24T21:06:23Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 249,
+              "body": "```suggestion\r\n- record, an instance of RegistrationUpload which is the server's\r\n```",
+              "createdAt": "2021-03-24T21:08:30Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            },
+            {
+              "originalPosition": 249,
+              "body": "(here and elsewhere, since we refer to the element of this type as `record` in the FinalizeRequest function.)",
+              "createdAt": "2021-03-24T21:09:12Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjM5MDMy",
+          "commit": {
+            "abbreviatedOid": "fe37df6"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T21:17:19Z",
+          "updatedAt": "2021-03-24T21:17:19Z",
+          "comments": [
+            {
+              "originalPosition": 63,
+              "body": "Added!",
+              "createdAt": "2021-03-24T21:17:19Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjQzMTk1",
+          "commit": {
+            "abbreviatedOid": "fe37df6"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T21:23:08Z",
+          "updatedAt": "2021-03-24T21:23:08Z",
+          "comments": [
+            {
+              "originalPosition": 249,
+              "body": "Done!",
+              "createdAt": "2021-03-24T21:23:08Z",
+              "updatedAt": "2021-03-24T21:23:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjQzOTA4",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T21:24:14Z",
+          "updatedAt": "2021-03-24T21:24:14Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "Cool, also changed the salt=0 instance to \"\" in the \"OPAQUE-3DH Key Schedule\" section",
+              "createdAt": "2021-03-24T21:24:14Z",
+              "updatedAt": "2021-03-24T21:24:14Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjYwMjQ2",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T21:49:23Z",
+          "updatedAt": "2021-03-24T21:49:24Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "Actually, it is better to set the salt to 0. It does not have to be described as salt=0 but just 0 (instead of \"\"). In principle, any fixed salt value can do, but I prefer to see 0 being used as the default \"fixed value\". In particular, 0 is used in TLS 1.3 key derivation when a random value for salt is not available and here we want to stay as close as possible to TLS 1.3 key derivation.",
+              "createdAt": "2021-03-24T21:49:23Z",
+              "updatedAt": "2021-03-24T21:49:24Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjY0NjY0",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T21:56:33Z",
+          "updatedAt": "2021-03-24T21:56:33Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "For what it's worth, \"\" is the notation used in TLS for zero-length strings, which is what we want here, I think.",
+              "createdAt": "2021-03-24T21:56:33Z",
+              "updatedAt": "2021-03-24T21:56:44Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjk2MzY0",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T22:56:37Z",
+          "updatedAt": "2021-03-24T22:56:37Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "What is the meaning of 0 in the following TLS 1.3 figure. Is it the value 0 or a 0-length string?\r\n             0\r\n             |\r\n             v\r\n   PSK ->  HKDF-Extract = Early Secret",
+              "createdAt": "2021-03-24T22:56:37Z",
+              "updatedAt": "2021-03-24T22:56:37Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjk2ODEw",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T22:57:35Z",
+          "updatedAt": "2021-03-24T22:57:36Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "Actually I see the answer: \"0\" indicates a string of Hash.length bytes set to zero.\r\n\r\nWe should specify the same here.",
+              "createdAt": "2021-03-24T22:57:35Z",
+              "updatedAt": "2021-03-24T22:57:36Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjk2OTU0",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T22:57:56Z",
+          "updatedAt": "2021-03-24T22:57:56Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "That's a zero-length string (or NULL, or the equivalent of providing no salt at all), but I was referring to \"\" used elsewhere where context strings.",
+              "createdAt": "2021-03-24T22:57:56Z",
+              "updatedAt": "2021-03-24T22:57:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjk4MDI3",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-24T23:00:08Z",
+          "updatedAt": "2021-03-24T23:00:08Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "> Actually I see the answer: \"0\" indicates a string of Hash.length bytes set to zero.\r\n\r\nI'm not sure this is best, since the KDF might not be HKDF (and therefore have an implied hash function underneath). I think nil/\"\"/0/whatever are equivalent, and \"\" seems to be most clear (to me) and consistent with 8446.",
+              "createdAt": "2021-03-24T23:00:08Z",
+              "updatedAt": "2021-03-24T23:00:08Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzMwNzI2",
+          "commit": {
+            "abbreviatedOid": "aba1fca"
+          },
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:20:24Z",
+          "updatedAt": "2021-03-25T00:20:24Z",
+          "comments": [
+            {
+              "originalPosition": 133,
+              "body": "Good point. If we are treating the KDF as a general Extract-then-Expand primitive then we cannot say \"a string of Hash.length bytes set to zero\" but we also cannot say the empty string as it may not make sense in some other KDF. If you want to be generic, then you should refer to this salt value as a \"constant\" (as opposed to a random one), maybe call it const_salt and set it to \"a string of Hash.length bytes set to zero\" in the case of HKDF.",
+              "createdAt": "2021-03-25T00:20:24Z",
+              "updatedAt": "2021-03-25T00:20:24Z"
             }
           ]
         }
@@ -11490,6 +12368,74 @@
               "updatedAt": "2021-03-11T20:05:31Z"
             }
           ]
+        }
+      ]
+    },
+    {
+      "number": 164,
+      "id": "MDExOlB1bGxSZXF1ZXN0NTk5MTY4MTA3",
+      "title": "Implement client enumeration fix.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/164",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Based on changes in #156.",
+      "createdAt": "2021-03-23T20:36:53Z",
+      "updatedAt": "2021-03-24T22:03:00Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "a9c566d33cba27a54e065a7acfec4d67331ddf01",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/client-enumeration",
+      "headRefOid": "69e7cd7ead354fb0a7524f7ca8e9df42af31ff12",
+      "closedAt": "2021-03-24T22:03:00Z",
+      "mergedAt": "2021-03-24T22:03:00Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjE5MjU5MDQw",
+          "commit": {
+            "abbreviatedOid": "2cf2ddf"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-03-24T02:35:14Z",
+          "updatedAt": "2021-03-24T02:35:48Z",
+          "comments": [
+            {
+              "originalPosition": 12,
+              "body": "I believe this should be `Nh` (length of the hash output) bytes long, because `oprf_seed` is fed into the KDF's expand function.",
+              "createdAt": "2021-03-24T02:35:14Z",
+              "updatedAt": "2021-03-24T21:53:15Z"
+            },
+            {
+              "originalPosition": 46,
+              "body": "same here",
+              "createdAt": "2021-03-24T02:35:31Z",
+              "updatedAt": "2021-03-24T21:53:15Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMjY3ODUx",
+          "commit": {
+            "abbreviatedOid": "69e7cd7"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "We can consider re-adding the N* parameters back in at some point",
+          "createdAt": "2021-03-24T22:01:46Z",
+          "updatedAt": "2021-03-24T22:01:46Z",
+          "comments": []
         }
       ]
     }
