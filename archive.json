@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-25T00:28:57.323261+00:00",
+  "timestamp": "2021-03-28T01:02:19.823409+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -369,7 +369,7 @@
       "id": "MDU6SXNzdWU2MjY0NzAwNjk=",
       "title": "Lift user enumeration text to the OPAQUE AKE stage",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22",
-      "state": "CLOSED",
+      "state": "OPEN",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [
@@ -379,8 +379,8 @@
       "labels": [],
       "body": "We might consider standardizing the mechanism by which servers prevent user enumeration attacks. ",
       "createdAt": "2020-05-28T12:29:17Z",
-      "updatedAt": "2021-03-24T21:49:29Z",
-      "closedAt": "2021-03-24T21:49:29Z",
+      "updatedAt": "2021-03-26T16:20:35Z",
+      "closedAt": null,
       "comments": [
         {
           "author": "crockeea",
@@ -612,6 +612,62 @@
           "body": "Thanks for the clarification. That makes sense to me, and now I am convinced that we do not need to add the extra `oprf_key_nonce` parameter that I had proposed in https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22#issuecomment-791261028.\r\n\r\nI'm in favor of continuing with the proposed changes in #156 ",
           "createdAt": "2021-03-09T10:53:05Z",
           "updatedAt": "2021-03-09T10:53:05Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Re-opening to discuss the following:\r\n\r\n@hugokraw : The client's static public key is also a part of the password file that the server stores. In the absence of the password file because the user has not been registered, what should the server use in place of the client's static public key in order to generate the \"fake\" CredentialResponse message?\r\n\r\nThis will affect the generation of the KE2 message. Would it suffice to pick a uniformly random 32-byte string? Or do we need another PRF evaluation here?\r\n\r\nHope the question is clear!",
+          "createdAt": "2021-03-25T08:29:52Z",
+          "updatedAt": "2021-03-25T08:29:52Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "NONE",
+          "body": "is this possible to implement without having a timing side-channel?",
+          "createdAt": "2021-03-25T11:46:01Z",
+          "updatedAt": "2021-03-25T11:46:01Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "NONE",
+          "body": "i am also wondering if all these computations are proportional and an attacker has more computation to do than a defender, otherwise it might be quite economic do do a resource exhaustion dos against an opaque server, no?",
+          "createdAt": "2021-03-25T11:47:17Z",
+          "updatedAt": "2021-03-25T11:47:17Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Not Hugo, but:\r\n\r\n> This will affect the generation of the KE2 message. Would it suffice to pick a uniformly random 32-byte string? Or do we need another PRF evaluation here?\r\n\r\n~~Since this is otherwise sent in cleartext in KE2, I think a PRF evaluation is probably necessary.~~\r\n\r\n(I confused myself with ephemeral keys.)\r\n\r\nThe public keys only affect the handshake secret, which is already ephemeral by virtue of including the server's ephemeral share, so no PRF seems necessary.",
+          "createdAt": "2021-03-25T13:30:35Z",
+          "updatedAt": "2021-03-25T17:24:31Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "In response to @stef:\r\n\r\n> is this possible to implement without having a timing side-channel?\r\n\r\nYes, the specification of the faked response was written in a way so as to explicitly mitigate timing side-channels (though it will of course depend on the implementation as to whether or not it is done properly). There is text in the draft which mentions that implementations must take care to prevent timing attacks. Also see this comment here: https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/156#issuecomment-793706164\r\n\r\n> i am also wondering if all these computations are proportional and an attacker has more computation to do than a defender, otherwise it might be quite economic do do a resource exhaustion dos against an opaque server, no?\r\n\r\nThese operations are actually not super complicated or resource-intensive, so I don't think that there is an opportunity for an attacker to do this. Especially when considering the full registration / login flow, where the client must evaluate a memory-hard function, it looks more like the client has to do the bulk of the work rather than the server!",
+          "createdAt": "2021-03-26T01:37:09Z",
+          "updatedAt": "2021-03-26T01:37:22Z"
+        },
+        {
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "body": "The simplest and universal (i.e., for al key exchange protocols) solution to this issue is to use masking_key to encrypt the whole message from the server, namely, both the envelope and the KE2 message. The client decrypts the whole stream and operates on it as in the regular protocol. In this case, for non-existing userid's the server just sends a stream of random bits (of the same length as the envelope + KE2).\r\nIf we want to use masking_key only to encrypt the envelope, then the masking of KE2 depends on the protocol. For 3DH and HMQV specified here (it is similar for SIGMA), what the server sends is the server_nonce,  server_keyshare, enc_server_info and mac. These can all be simulated with random bits *except* for server_keyshare that is a group element and would be distinguishable (except for special encodings) from a random string of the same length. Thus, if we do not want to use masking_key to cover KE2, the server will send random bits in place of the nonce, enc_server_info and mac (each such random string of the length of the field it occupies), but will need to send a random group element as server_keyshare. The latter costs an exponentiation operation.  \r\nSimulating these replacements while not leaking via timing is delicate. The server would need to deliberately slow-down the sending of its message to simulate the time it would take to compute the keys Ke2 and Km2 with a real user.",
+          "createdAt": "2021-03-26T04:26:00Z",
+          "updatedAt": "2021-03-26T04:26:00Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "NONE",
+          "body": "> In response to @stef:\r\n> > i am also wondering if all these computations are proportional and an attacker has more computation to do than a defender, otherwise it might be quite economic do do a resource exhaustion dos against an opaque server, no?\r\n> \r\n> These operations are actually not super complicated or resource-intensive, so I don't think that there is an opportunity for an attacker to do this. Especially when considering the full registration / login flow, where the client must evaluate a memory-hard function, it looks more like the client has to do the bulk of the work rather than the server!\r\n\r\ni was more wondering of the simple case, a DDoS where attackers just send random garbage that is interpreted as a `CredentialRequest` message, and since we hide the userids - to prohibit enumeration - the attackers can send anything, and we cannot just sleep for x time to not leak time side chan, we have to actually do computation, and so the attacker very cheaply just sends random strings, and the server has to do much more expensive calculations. where if there would be no user enumeration protection, the cred requests that refer to nonexistent userids can simply be dropped, forcing the dos attackers to actually know valid userids, which if only  a few are used can be also dropped without processing - even at a firewall already. i know it's a tradeoff, but maybe noteoworthy mentioning in the draft?",
+          "createdAt": "2021-03-26T12:35:50Z",
+          "updatedAt": "2021-03-26T12:35:50Z"
+        },
+        {
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "body": "If you use the technique by which all of the server's message (envelope + KE2 message) are encrypted under masking_key then the only non-trivial cost for the server is the computation of the OPRF response (one var-base exponentiation). If you do not encrypt KE2 under masking_key then the additional cost is a fixed-base exponentiation to compute server_keyshare which is relatively minor in comparison with the var-base exponentiation. All other values in KE2 are replaced with random strings. *Note that the server does not need to compute IKM or any of the derived keys **\r\nThe total cost for the server is less than establishing a TLS session with the attacker and in most cases OPAQUE will be run after establishing such channel (e.g., to protect the privacy of userid), so the gain for a DoS attacker from reacting to a fake userid in OPAQUE is not too significant.  Of course, if you compare with current password-over-TLS then the attacker always has the opportunity to do a DoS on TLS establishment and when using a real userid, it also forces the server to do the hardening procedure which I assume is significantly more expensive than an exponentiation.",
+          "createdAt": "2021-03-26T16:20:35Z",
+          "updatedAt": "2021-03-26T16:20:35Z"
         }
       ]
     },
@@ -10452,13 +10508,13 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-03-25T00:27:55Z",
+      "updatedAt": "2021-03-26T02:36:20Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "d344e4f0062df1a4f54f674c3a1ff9147929ed5c",
+      "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "master",
-      "headRefOid": "7cb2481dac4a7735d9dd945678ad4c072c67ec6f",
+      "headRefOid": "44b372fdc431065cc85712e9f9f1ecbab5f8a2a9",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -10496,25 +10552,25 @@
               "originalPosition": 68,
               "body": "> For example, if used as raw public keys for TLS 1.3 {{?RFC8446}}, they may be RSA or ECDSA keys as per {{?RFC7250}}.\r\n\r\nThis is not relevant anymore in that part of the document.",
               "createdAt": "2021-03-03T00:23:40Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 196,
               "body": "I will do a commit on this later",
               "createdAt": "2021-03-03T00:24:35Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 223,
               "body": "@chris-wood I think we should define the HashToScalar similarly to what has been done in VOPRF. What do you think?",
               "createdAt": "2021-03-03T00:27:47Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 221,
               "body": "I'm open to suggestions on how to best formulate this.\r\nI'm thinking of something around this\r\n\r\n> KeyGenFromSeed(seed): expand the seed to full private/public generation in the AKE setup",
               "createdAt": "2021-03-03T00:58:18Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10534,37 +10590,37 @@
               "originalPosition": 221,
               "body": "Can't this just be equal to hash_to_field with a specific DST?",
               "createdAt": "2021-03-03T23:10:11Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 223,
               "body": "Either hash_to_field or HashToScalar from VOPRF (may be cleaner to just specify hash_to_field from the h2c spec)",
               "createdAt": "2021-03-03T23:10:14Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 59,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:03Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 125,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:20Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 158,
               "body": "reference to `custom_identifier` mode which needs to be updated",
               "createdAt": "2021-03-03T23:11:26Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 30,
               "body": "I like the way this is written! Let's just remove all of the other references to this identity being \"optional\" in the later texts, and we can clarify that it defaults to the client_public_key and server_public_key.",
               "createdAt": "2021-03-03T23:18:33Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10584,7 +10640,7 @@
               "originalPosition": 221,
               "body": "I think we should describe a generic `KeyGenFromSeed(seed)` here, and then specify that in OPAQUE-3DH we use `hash_to_field` with dst etc.. This way, it stays relevant for other AKEs, that  just need to define their own `KeyGenFromSeed(seed)` implementation.",
               "createdAt": "2021-03-04T01:33:48Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10604,7 +10660,7 @@
               "originalPosition": 59,
               "body": "That's a leftover, well spotted!",
               "createdAt": "2021-03-04T01:35:02Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10624,7 +10680,7 @@
               "originalPosition": 223,
               "body": "Maybe \"redefine but with the same definition as in VOPRF\", just to make clear not to use VOPRF's DST for this hash_to_field",
               "createdAt": "2021-03-04T01:40:48Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10644,43 +10700,43 @@
               "originalPosition": 52,
               "body": "Maybe delete this entire sentence and the list (and replace it with one sentence above^)?",
               "createdAt": "2021-03-05T20:44:03Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 33,
               "body": "```suggestion\r\nDuring protocol execution, these values are stored in an implementation-specific `Credentials` object with names matching the values. For example, `Credentials.server_public_key` is the server's public key.\r\n\r\nThese values are used in `SecretCredentials` and `CleartextCredentials` structures as follows:\r\n```",
               "createdAt": "2021-03-05T20:45:47Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 196,
               "body": "I don't think we need to include this rationale. It's probably fine to simply say, \"Applications can use existing key pairs for OPAQUE-3DH with the \"external\" mode,\" or something.",
               "createdAt": "2021-03-05T20:55:47Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 201,
               "body": "```suggestion\r\nIn this mode, the client's private and public keys are deterministically derived from the OPRF output. For OPAQUE-3DH, this is done by hashing the OPRF output to a scalar in the corresponding prime order group to produce a private key, and then multiplying that scalar by the fixed generator to produce the public key.\r\n```",
               "createdAt": "2021-03-05T20:57:35Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 203,
               "body": "```suggestion\r\n```",
               "createdAt": "2021-03-05T20:57:45Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 221,
               "body": "\ud83d\udc4d agreed, and maybe call this `DeriveKeyPair(seed)`? Its implementation for OPAQUE-3DH would then be:\r\n\r\n```\r\nUse hash_to_field from {{!I-D.irtf-cfrg-hash-to-curve}} using Order() as the prime modulus, L = 48, `expand_message_xmd` with SHA-512, and DST = \"OPAQUE\", to produce sk. Then compute pk = sk * G.\r\n```\r\n... or something",
               "createdAt": "2021-03-05T20:59:28Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 223,
               "body": "I think the implementation should be something like:\r\n\r\n```\r\nsk = HashToScalar(seed)\r\npk = sk * G\r\n```",
               "createdAt": "2021-03-05T21:00:46Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10700,7 +10756,7 @@
               "originalPosition": 223,
               "body": "ok, with something like \"OPAQUE-HashToScalar\" for dst?",
               "createdAt": "2021-03-05T21:24:01Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10720,7 +10776,7 @@
               "originalPosition": 221,
               "body": "(Discussed offline) let's just mimic what the VOPRF draft does for HashToScalar here :) ",
               "createdAt": "2021-03-06T00:50:52Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10740,7 +10796,7 @@
               "originalPosition": 539,
               "body": "@kevinlewi should the modification be applied here as well?",
               "createdAt": "2021-03-11T10:35:10Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10760,127 +10816,127 @@
               "originalPosition": 55,
               "body": "```suggestion\r\n opaque server_identity<1..2^16-1>;\r\n opaque client_identity<1..2^16-1>;\r\n```\r\n\r\n(Since neither field can be empty)",
               "createdAt": "2021-03-24T22:32:40Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 61,
               "body": "```suggestion\r\n\r\n~~~\r\n```",
               "createdAt": "2021-03-24T22:33:03Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 100,
               "body": "```suggestion\r\n\r\n~~~\r\n```",
               "createdAt": "2021-03-24T22:33:30Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 104,
               "body": "Why is `auth_tag` _before_ `inner_env`? It seems like `auth_tag` should cover the entire envelope, right?",
               "createdAt": "2021-03-24T22:34:10Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 122,
               "body": "This also includes `mode` and `nonce`, right?",
               "createdAt": "2021-03-24T22:34:54Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 128,
               "body": "```suggestion\r\nCreateEnvelope(random_pwd, server_public_key, creds)\r\n```",
               "createdAt": "2021-03-24T22:35:19Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 128,
               "body": "(here and below!)",
               "createdAt": "2021-03-24T22:35:38Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 148,
               "body": "@kevinlewi's change removed the nonce from this step, so we can probably lift derivation of `prk` to the function that calls `CreateEnvelope`.",
               "createdAt": "2021-03-24T22:38:47Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 158,
               "body": "The server public key is passed in as a parameter (as part of the CredentialResponse), so why is it needed to be part of `creds`?",
               "createdAt": "2021-03-24T22:40:33Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 217,
               "body": "```suggestion\r\nIn this mode, the client's private and public keys are deterministically derived from the OPRF output. \r\n```",
               "createdAt": "2021-03-24T22:44:03Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 219,
               "body": "```suggestion\r\nWith the internal key mode the `EnvelopeMode` value MUST be `internal` and the `InnerEnvelope` is empty.\r\n```",
               "createdAt": "2021-03-24T22:44:16Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 230,
               "body": "```suggestion\r\n```\r\nThe group seems implicit, so I think we can remove this.",
               "createdAt": "2021-03-24T22:45:14Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 242,
               "body": "```suggestion\r\n- client_public_key, the client's AKE public key\r\n\r\nSteps:\r\n1. _, client_public_key = DeriveKeyPair(prk)\r\n2. Output (nil, client_public_key)\r\n```",
               "createdAt": "2021-03-24T22:46:00Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 242,
               "body": "(Just renaming some things)",
               "createdAt": "2021-03-24T22:46:09Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 248,
               "body": "I think we should move this to the configuration section, which discusses particular types of Groups for 3DH.",
               "createdAt": "2021-03-24T22:47:54Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 7,
               "body": "```suggestion\r\n```\r\n\r\nThis isn't an API that's exposed outside of its use in DeriveKeyPair, right? If not, we can probably drop it from here, and describe it where we specify how to implement DeriveKeyPair. (In the configurations section?)",
               "createdAt": "2021-03-24T22:48:59Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 246,
               "body": "```suggestion\r\nOPAQUE-3DH implements DeriveKeyPair(prk) as follows:\r\n```",
               "createdAt": "2021-03-24T22:49:32Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 282,
               "body": "```suggestion\r\n1. (client_secret_key, _) = DeriveKeyPair(prk)\r\n```",
               "createdAt": "2021-03-24T22:50:02Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 291,
               "body": "```suggestion\r\nIn this mode, the application provides the OPAQUE instantiation with the client's authentication material through the `Credentials` structure. An encryption key is generated from the hardened OPRF output and used to encrypt the client's private key, which is then stored encrypted in the `Envelope`. This allows for applications which prefer to generate keys using some existing method. \r\n```",
               "createdAt": "2021-03-24T22:51:51Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 341,
               "body": "Flagging this as a section that changed in @kevinlewi's PR, too.",
               "createdAt": "2021-03-24T22:52:20Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             },
             {
               "originalPosition": 487,
               "body": "Why is this needed? In internal mode, clients can compute it from the seed. In external mode, clients can also presumably compute it from the private key. Is this for settings where clients can't compute the public key from a private key?",
               "createdAt": "2021-03-24T22:53:45Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10900,7 +10956,7 @@
               "originalPosition": 104,
               "body": "`auth_tag` covers the entire envelope, indeed, but putting it before `inner_env` ensures it's always in the same position, regardless of the mode, and thus simplifies parsing. What do you think?",
               "createdAt": "2021-03-25T00:19:33Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         },
@@ -10920,7 +10976,207 @@
               "originalPosition": 487,
               "body": "Indeed. I don't know if we can presume that clients can recompute their public key from the private key alone.\r\nAs much as I dislike this, simply sending it back to the client covers all cases and simplifies the implementation.\r\n\r\nBut if you think we should assume public key regeneration possible from the private one I'm totally on board.",
               "createdAt": "2021-03-25T00:27:23Z",
-              "updatedAt": "2021-03-25T00:27:55Z"
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzM0NTkz",
+          "commit": {
+            "abbreviatedOid": "7cb2481"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:31:32Z",
+          "updatedAt": "2021-03-25T00:31:32Z",
+          "comments": [
+            {
+              "originalPosition": 122,
+              "body": "Yes, it does! Well spotted.",
+              "createdAt": "2021-03-25T00:31:32Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzM4NjQ5",
+          "commit": {
+            "abbreviatedOid": "7cb2481"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:42:53Z",
+          "updatedAt": "2021-03-25T00:42:53Z",
+          "comments": [
+            {
+              "originalPosition": 158,
+              "body": "Indeed, I think this is a leftover of a drafting phase. In my implementation, I only use this field to pass the server public key to the server when responding on login. Thanks for spotting this !",
+              "createdAt": "2021-03-25T00:42:53Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzQzNjU4",
+          "commit": {
+            "abbreviatedOid": "7cb2481"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T00:57:59Z",
+          "updatedAt": "2021-03-25T00:57:59Z",
+          "comments": [
+            {
+              "originalPosition": 487,
+              "body": "Also, deriving the public key from the private key pushes the `auth_tag` verification to be done after the secret is recovered, i.e. we have the secret open and in memory, before we can authenticate the envelope. But maybe I'm just being overly paranoid.",
+              "createdAt": "2021-03-25T00:57:59Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwMzQ0Nzgz",
+          "commit": {
+            "abbreviatedOid": "7cb2481"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T01:01:11Z",
+          "updatedAt": "2021-03-25T01:01:11Z",
+          "comments": [
+            {
+              "originalPosition": 158,
+              "body": "And that I'm thinking of it, client_public_key isn't necessary either.",
+              "createdAt": "2021-03-25T01:01:11Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwNDIxNDU1",
+          "commit": {
+            "abbreviatedOid": "89754dc"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T02:11:12Z",
+          "updatedAt": "2021-03-25T02:11:12Z",
+          "comments": [
+            {
+              "originalPosition": 104,
+              "body": "Yep, that makes sense. Let's leave this as-is.",
+              "createdAt": "2021-03-25T02:11:12Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwNDI0MjE0",
+          "commit": {
+            "abbreviatedOid": "89754dc"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T02:13:06Z",
+          "updatedAt": "2021-03-25T02:13:07Z",
+          "comments": [
+            {
+              "originalPosition": 487,
+              "body": "Hmm... how does this simplify the implementation? Does the client need to check that the public key it receives is correct for the given private key? I'd prefer we assume that the public key is recoverable from the private key.",
+              "createdAt": "2021-03-25T02:13:06Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwNDQzMzE1",
+          "commit": {
+            "abbreviatedOid": "12b4cf7"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T02:25:49Z",
+          "updatedAt": "2021-03-25T02:25:49Z",
+          "comments": [
+            {
+              "originalPosition": 158,
+              "body": "Fixed.",
+              "createdAt": "2021-03-25T02:25:49Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwNDU1NTcw",
+          "commit": {
+            "abbreviatedOid": "9195e95"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T02:33:11Z",
+          "updatedAt": "2021-03-25T02:33:11Z",
+          "comments": [
+            {
+              "originalPosition": 248,
+              "body": "Moved to the configurations sections, please have a look",
+              "createdAt": "2021-03-25T02:33:11Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIwNDcwMzI1",
+          "commit": {
+            "abbreviatedOid": "9598a45"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T02:42:12Z",
+          "updatedAt": "2021-03-25T02:42:13Z",
+          "comments": [
+            {
+              "originalPosition": 487,
+              "body": "It simplifies the implementation in case you're using something else than POG and if you need extra data to generate your public key (e.g. for RSA). But I forgot we pinned this to 3DH only. I'll amend.",
+              "createdAt": "2021-03-25T02:42:12Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjIxNjI0ODg2",
+          "commit": {
+            "abbreviatedOid": "ad77e8a"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-25T22:19:33Z",
+          "updatedAt": "2021-03-25T22:19:33Z",
+          "comments": [
+            {
+              "originalPosition": 487,
+              "body": "Fixed. See https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/154/commits/ad77e8accc08c246dca858aeb9fbf503566ec506",
+              "createdAt": "2021-03-25T22:19:33Z",
+              "updatedAt": "2021-03-26T02:36:20Z"
             }
           ]
         }
