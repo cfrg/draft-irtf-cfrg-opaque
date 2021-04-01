@@ -13,7 +13,7 @@ from collections import namedtuple
 try:
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
     from sagelib.opaque_core import OPAQUECore
-    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, envelope_mode_base, envelope_mode_custom_identifier
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -36,6 +36,7 @@ class Configuration(object):
         self.group = group
         self.Npk = group.element_byte_length()
         self.Nsk = group.scalar_byte_length()
+        self.Ne = group.element_byte_length()
 
 class KeyExchange(object):
     def __init__(self):
@@ -97,7 +98,7 @@ class OPAQUE3DH(KeyExchange):
 
         return server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret
 
-    def generate_ke1(self, pwdU, info1, idU, skU, pkU, idS, pkS):
+    def generate_ke1(self, pwdU, info1, idU, pkU, idS, pkS):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
@@ -109,7 +110,10 @@ class OPAQUE3DH(KeyExchange):
         # cred_request, nonceU, info1, epkU
         hasher = self.config.hash()
         hasher.update(_as_bytes("3DH"))
-        hasher.update(encode_vector_len(idU, 2))
+        if idU:
+            hasher.update(encode_vector_len(idU, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
         hasher.update(encode_vector(info1))
@@ -147,12 +151,18 @@ class OPAQUE3DH(KeyExchange):
 
         hasher = self.config.hash()
         hasher.update(_as_bytes("3DH"))
-        hasher.update(encode_vector_len(idU, 2))
+        if idU:
+            hasher.update(encode_vector_len(idU, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
         hasher.update(encode_vector(info1))
         hasher.update(self.config.group.serialize(epkU))
-        hasher.update(encode_vector_len(idS, 2))
+        if idS:
+            hasher.update(encode_vector_len(idS, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkS), 2))
         hasher.update(serialized_response)
         hasher.update(nonceS)
         hasher.update(self.config.group.serialize(epkS))
@@ -194,6 +204,8 @@ class OPAQUE3DH(KeyExchange):
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)
         pkS = self.config.group.deserialize(pkS_bytes)
+        pkU = skU * self.config.group.generator()
+        pkU_bytes = self.config.group.serialize(pkU)
         
         idU = self.idU
         idS = self.idS
@@ -207,7 +219,10 @@ class OPAQUE3DH(KeyExchange):
         mac = handshake_encrypt_key.mac
 
         hasher = self.hasher
-        hasher.update(encode_vector_len(idS, 2))
+        if idS:
+            hasher.update(encode_vector_len(idS, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkS), 2))
         hasher.update(serialized_response)
         hasher.update(nonceS)
         hasher.update(self.config.group.serialize(epkS))
