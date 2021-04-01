@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-03-30T01:00:29.009775+00:00",
+  "timestamp": "2021-04-01T01:04:25.219580+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -10508,7 +10508,7 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-03-29T01:22:08Z",
+      "updatedAt": "2021-03-31T22:37:37Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -11197,6 +11197,100 @@
               "body": "`CreateCleartextCredentials()`\r\nThe name might be misleading for the new reader.",
               "createdAt": "2021-03-29T01:22:08Z",
               "updatedAt": "2021-03-29T01:22:08Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI0ODc5Mjc2",
+          "commit": {
+            "abbreviatedOid": "6da4b38"
+          },
+          "author": "afbase",
+          "authorAssociation": "NONE",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-31T04:19:57Z",
+          "updatedAt": "2021-03-31T04:19:57Z",
+          "comments": [
+            {
+              "originalPosition": 73,
+              "body": ">OPAQUE allows applications to either provide custom client private and public keys for authentication or to generate them internally, making the application oblivious to the client's private key. Each public and private key value is an opaque byte string, specific to the AKE protocol in which OPAQUE is instantiated.\r\n>\r\n>These two options are defined as the Internal Key and External Key modes. See {{envelope-modes}} for their specifications.\r\n\r\nCould we maybe be even more explicit to state that the the `EnvelopeMode` is external when a separate application(s) provide custom client private and public keys for authentication? \r\n\r\n>or to generate them internally\r\n\r\nAnd then a secondary statement which states the complimentary where the `EnvelopeMode` is internal when it is not the case when a separate application(s) provide custom client private and public keys for authentication. \r\n\r\nApologies if I'm falling out of the sky into this PR.  I've been following OPAQUE and TLS OPAQUE loosely for a bit.",
+              "createdAt": "2021-03-31T04:19:57Z",
+              "updatedAt": "2021-03-31T04:19:57Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI1NTExNDA1",
+          "commit": {
+            "abbreviatedOid": "6da4b38"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-03-31T16:49:56Z",
+          "updatedAt": "2021-03-31T17:21:31Z",
+          "comments": [
+            {
+              "originalPosition": 48,
+              "body": "@chris-wood: You wanted this moved into the OPRF part in my PR, just calling this out that it is moved back into its own section here",
+              "createdAt": "2021-03-31T16:49:56Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 25,
+              "body": "This is not used anymore, and I believe DeriveKeyPair should be used instead. So, delete this, I think...",
+              "createdAt": "2021-03-31T16:51:03Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 125,
+              "body": "Let's just remove these two steps (one because NoPubKeyError / nil is not defined anywhere, and two because this pseudocode can just assume that server_public_key and client_public_key already exist)",
+              "createdAt": "2021-03-31T16:52:16Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 183,
+              "body": "s/client_secret_key/client_private_key/\r\n\r\nHere, and everywhere else in the doc",
+              "createdAt": "2021-03-31T16:59:07Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 126,
+              "body": "We should define nil somewhere, or just turn this into pseudocode by saying \"if server_identity not specified\". Same for client_identity",
+              "createdAt": "2021-03-31T17:01:34Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 176,
+              "body": "\"specifying at least the `EnvelopeMode`.\"\r\n\r\nThat's no longer true, right?",
+              "createdAt": "2021-03-31T17:02:55Z",
+              "updatedAt": "2021-03-31T17:21:31Z"
+            },
+            {
+              "originalPosition": 341,
+              "body": "Yes, it was removed -- can you remove it here as well?",
+              "createdAt": "2021-03-31T17:05:14Z",
+              "updatedAt": "2021-03-31T17:21:32Z"
+            },
+            {
+              "originalPosition": 58,
+              "body": "Can we remove the word \"generally\"? Or are there exceptions to this rule? Also, is there ever a case where `Nn` is not equal to 32, and if so, can we just remove the use of this extra variable and hard-code 32 in place of `Nn`?",
+              "createdAt": "2021-03-31T17:07:08Z",
+              "updatedAt": "2021-03-31T17:21:32Z"
+            },
+            {
+              "originalPosition": 176,
+              "body": "Can you also perhaps add a reference in the doc to where a reader can find the definition(s) of `InnerEnvelope`? Because they haven't been defined yet and it can cause confusion",
+              "createdAt": "2021-03-31T17:08:59Z",
+              "updatedAt": "2021-03-31T17:21:32Z"
+            },
+            {
+              "originalPosition": 335,
+              "body": "internal key -> external key",
+              "createdAt": "2021-03-31T17:10:27Z",
+              "updatedAt": "2021-03-31T17:21:32Z"
             }
           ]
         }
