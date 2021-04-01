@@ -70,11 +70,16 @@ class OPAQUECore(object):
         pk = sk * self.config.group.generator()
         return self.config.group.serialize(pk)
 
+    def derive_group_key_pair(self, seed):
+        skS = self.config.group.hash_to_scalar(seed, dst=_as_bytes("OPAQUE-HashToScalar"))
+        pkS = skS * self.config.group.generator()
+        return (skS, pkS)
+
     def build_inner_envelope(self, random_pwd, envelope_nonce, client_private_key):
         if self.config.mode == envelope_mode_internal:
             Nsk = self.config.Nsk
             seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), Nsk)
-            (_, client_public_key) = DeriveKeyPair(self.config.oprf_suite, seed)
+            (_, client_public_key) = self.derive_group_key_pair(seed)
             pk_bytes = self.config.group.serialize(client_public_key)
             return (InnerEnvelope(), self.config.group.serialize(client_public_key))
         if self.config.mode == envelope_mode_external:
@@ -152,7 +157,7 @@ class OPAQUECore(object):
         if self.config.mode == envelope_mode_internal:
             Nsk = self.config.Nsk
             seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), Nsk)
-            (client_private_key, client_public_key) = DeriveKeyPair(self.config.oprf_suite, seed)
+            (client_private_key, client_public_key) = self.derive_group_key_pair(seed)
             secret_creds = SecretCredentials(self.config.group.serialize_scalar(client_private_key))
             pk_bytes = self.config.group.serialize(client_public_key)
             return secret_creds, self.config.group.serialize(client_public_key)
