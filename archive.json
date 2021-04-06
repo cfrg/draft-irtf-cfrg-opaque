@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-04T01:05:30.695694+00:00",
+  "timestamp": "2021-04-06T01:04:07.858246+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -10524,7 +10524,7 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-04-03T02:29:56Z",
+      "updatedAt": "2021-04-04T08:49:44Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -11699,6 +11699,46 @@
               "body": ">A usage example is when the same application needs the private key for some other use (with the internal mode, the private key never leaves the AKE).\r\n\r\nThat is a lot clearer thank you @bytemare  !",
               "createdAt": "2021-04-03T02:29:56Z",
               "updatedAt": "2021-04-03T02:29:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI3NTE1MzE5",
+          "commit": {
+            "abbreviatedOid": "004e9af"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-04T08:11:53Z",
+          "updatedAt": "2021-04-04T08:11:54Z",
+          "comments": [
+            {
+              "originalPosition": 310,
+              "body": "Why is the length of the seed that is passed as input to DeriveAkeKeyPair of length `Nsk`?\r\n\r\nShouldn't it be `Nh`?\r\n\r\ncc: @chris-wood ",
+              "createdAt": "2021-04-04T08:11:53Z",
+              "updatedAt": "2021-04-04T08:11:54Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI3NTE3OTc5",
+          "commit": {
+            "abbreviatedOid": "004e9af"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-04T08:49:44Z",
+          "updatedAt": "2021-04-04T08:49:44Z",
+          "comments": [
+            {
+              "originalPosition": 310,
+              "body": "Yes, you're right !",
+              "createdAt": "2021-04-04T08:49:44Z",
+              "updatedAt": "2021-04-04T08:49:44Z"
             }
           ]
         }
@@ -13229,7 +13269,7 @@
       "labels": [],
       "body": "Implements #154. Starting as a draft while we work through interop.",
       "createdAt": "2021-04-01T01:10:02Z",
-      "updatedAt": "2021-04-01T17:19:33Z",
+      "updatedAt": "2021-04-04T20:37:12Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -13241,7 +13281,48 @@
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI3NTI1MDQ5",
+          "commit": {
+            "abbreviatedOid": "5131d32"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-04T10:22:11Z",
+          "updatedAt": "2021-04-04T10:22:11Z",
+          "comments": [
+            {
+              "originalPosition": 108,
+              "body": "auth_tag needs to be computed over the mode and the nonce as well, not just the inner_env and cleartext_creds",
+              "createdAt": "2021-04-04T10:22:11Z",
+              "updatedAt": "2021-04-04T10:22:11Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI3NTcwOTEy",
+          "commit": {
+            "abbreviatedOid": "5131d32"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-04T20:37:11Z",
+          "updatedAt": "2021-04-04T20:37:12Z",
+          "comments": [
+            {
+              "originalPosition": 232,
+              "body": "One problem: when these are derived from the randomized_pwd seed, these are no longer inputs -- they are intermediate values. In particular, I don't think these were updated as their corresponding values when derived from the randomized_pwd seed, and so they end up not matching...",
+              "createdAt": "2021-04-04T20:37:12Z",
+              "updatedAt": "2021-04-04T20:37:12Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
