@@ -83,10 +83,8 @@ class OPAQUECore(object):
             pk_bytes = self.config.group.serialize(client_public_key)
             return (InnerEnvelope(), self.config.group.serialize(client_public_key))
         if self.config.mode == envelope_mode_external:
-            secret_creds = SecretCredentials(client_private_key)
-            serialized_creds = secret_creds.serialize()
-            pseudorandom_pad = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("Pad"), len(serialized_creds))
-            encrypted_creds = xor(serialized_creds, pseudorandom_pad)
+            pseudorandom_pad = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("Pad"), len(client_private_key))
+            encrypted_creds = xor(client_private_key, pseudorandom_pad)
             client_public_key = self.recover_public_key(client_private_key)
             return (InnerEnvelope(encrypted_creds), client_public_key)
         raise Exception("Unsupported mode")
@@ -107,7 +105,7 @@ class OPAQUECore(object):
 
         inner_env, client_public_key = self.build_inner_envelope(random_pwd, envelope_nonce, creds.skU)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, creds.idS, creds.idU)
-        auth_tag = self.config.mac.mac(auth_key, inner_env.serialize() + cleartext_creds.serialize())
+        auth_tag = self.config.mac.mac(auth_key, self.config.mode + envelope_nonce + inner_env.serialize() + cleartext_creds.serialize())
         envelope = Envelope(self.config.mode, envelope_nonce, auth_tag, inner_env)
 
         self.auth_key = auth_key
