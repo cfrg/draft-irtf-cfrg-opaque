@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-06T01:04:07.858246+00:00",
+  "timestamp": "2021-04-08T01:07:25.100118+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -13269,7 +13269,7 @@
       "labels": [],
       "body": "Implements #154. Starting as a draft while we work through interop.",
       "createdAt": "2021-04-01T01:10:02Z",
-      "updatedAt": "2021-04-04T20:37:12Z",
+      "updatedAt": "2021-04-06T21:50:59Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -13280,7 +13280,15 @@
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Something quite peculiar: P384 and P512 in the internal mode only have a public key in the registration upload vectors that doesn't correspond to either the client public key vector (that is false anyway) and the recovered public key from the password.\r\n\r\nIn all other vectors, the public key in the registration upload is correct.",
+          "createdAt": "2021-04-06T21:50:59Z",
+          "updatedAt": "2021-04-06T21:50:59Z"
+        }
+      ],
       "reviews": [
         {
           "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI3NTI1MDQ5",
@@ -13321,8 +13329,80 @@
               "updatedAt": "2021-04-04T20:37:12Z"
             }
           ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI5MTc3MDM3",
+          "commit": {
+            "abbreviatedOid": "5131d32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-04-06T16:28:49Z",
+          "updatedAt": "2021-04-06T16:30:30Z",
+          "comments": [
+            {
+              "originalPosition": 82,
+              "body": "We're dropping `SecretCredentials` and encrypt `client_private_key` directly",
+              "createdAt": "2021-04-06T16:28:49Z",
+              "updatedAt": "2021-04-06T16:30:30Z"
+            },
+            {
+              "originalPosition": 108,
+              "body": "Agreed, that's where the vectors don't match :)",
+              "createdAt": "2021-04-06T16:30:05Z",
+              "updatedAt": "2021-04-06T16:30:30Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjI5NDM1ODg2",
+          "commit": {
+            "abbreviatedOid": "5131d32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-06T21:46:31Z",
+          "updatedAt": "2021-04-06T21:46:32Z",
+          "comments": [
+            {
+              "originalPosition": 232,
+              "body": "I confirm",
+              "createdAt": "2021-04-06T21:46:31Z",
+              "updatedAt": "2021-04-06T21:46:32Z"
+            }
+          ]
         }
       ]
+    },
+    {
+      "number": 170,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjA5OTk4Mzk3",
+      "title": "patch secret creds and auth_tag",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/170",
+      "state": "OPEN",
+      "author": "bytemare",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-06T16:40:00Z",
+      "updatedAt": "2021-04-06T16:40:00Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "caw/internal-external",
+      "baseRefOid": "5131d32ee8185ca656a331e6fb1b163851a0093d",
+      "headRepository": "bytemare/draft-irtf-cfrg-opaque",
+      "headRefName": "patch-3",
+      "headRefOid": "8ae6351da25cb1be55cb40ff32791ac0fb59dd43",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
