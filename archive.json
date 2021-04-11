@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-08T01:07:25.100118+00:00",
+  "timestamp": "2021-04-11T01:07:22.200380+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4308,7 +4308,7 @@
       "labels": [],
       "body": "Here is a list of all of the constant strings currently specified in the protocol:\r\n\r\nStrings relating to envelope construction:\r\n- \"Pad\"\r\n- \"AuthKey\"\r\n- \"ExportKey\"\r\n\r\nStrings relating to the AKE section:\r\n- \"3DH\"\r\n- \"client mac\"\r\n- \"handshake secret\"\r\n- \"server mac\"\r\n- \"handshake enc\"\r\n- \"encryption pad\"\r\n- \"session secret\"\r\n- \"OPAQUE \"\r\n\r\nStrings coming from the VOPRF draft (out of scope for this draft, but here for reference):\r\n- \"VOPRF06-HashToGroup-\"\r\n- \"VOPRF06-Finalize-\"\r\n\r\nCan we agree on a convention for all of these strings?\r\n\r\nHere's my proposal: I say we change all of them (except for the VOPRF ones obviously) to look like \"AuthKey\", \"HandshakeSecret\", \"SessionSecret\", and to remove the space at the end of \"OPAQUE \".",
       "createdAt": "2021-03-05T05:59:58Z",
-      "updatedAt": "2021-03-05T21:23:36Z",
+      "updatedAt": "2021-04-08T13:26:27Z",
       "closedAt": null,
       "comments": [
         {
@@ -4324,6 +4324,13 @@
           "body": "+1 as well!",
           "createdAt": "2021-03-05T21:23:36Z",
           "updatedAt": "2021-03-05T21:23:36Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "For OPAQUE defined strings, how about this:\r\n\r\nEnvelope construction:\r\n- \"OPAQUE-HashToScalar\"\r\n- \"Pad\"\r\n- \"AuthKey\"\r\n- \"ExportKey\"\r\n- \"MaskingKey\"\r\n- \"PrivateKey\"\r\n- \"OprfKey\"\r\n- \"CredentialResponsePad\"\r\n\r\nStrings relating to the AKE section:\r\n- \"3DH\"\r\n- \"OPAQUE-\" _(note the dash in lieu of the space, I believe this will lead to fewer implementation mishaps)_\r\n- \"ClientMac\"\r\n- \"ServerMac\"\r\n- \"SessionSecret\"\r\n- \"EncryptionPad\"\r\n- \"HandshakeEnc\"\r\n- \"HandshakeSecret\"",
+          "createdAt": "2021-04-08T13:26:27Z",
+          "updatedAt": "2021-04-08T13:26:27Z"
         }
       ]
     },
@@ -4528,6 +4535,30 @@
       "updatedAt": "2021-04-01T19:26:01Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 171,
+      "id": "MDU6SXNzdWU4NTM0NjI4MzM=",
+      "title": "List DST used in expanding and hashing",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/171",
+      "state": "OPEN",
+      "author": "bytemare",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Currently, the list of HashTo* DST's used are:\r\n\r\n| Designation | Value  | Used in | Defined in|\r\n| ------------- | ------------- | ------------- | ------------- |\r\n| skc h2s | \"OPAQUE-HashToScalar\" | DeriveAkeKeyPair() | OPAQUE  |\r\n| password h2c | ? | VOPRF/Blind() | [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n| masking key h2s | ? | VOPRF/DeriveKeyPair()| [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n| oprf finalize | ? | VOPRF/Finalize() | [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n\r\nExpand DST defined in OPAQUE used in the core mechanism\r\n| Designation | Value  | Used in |\r\n| ------------- | ------------- | ------------- |\r\n| external pad | \"Pad\" | BuildInnerEnvelope() |\r\n| env mac key | \"AuthKey\" | CreateEnvelope(), RecoverEnvelope()  |\r\n| export key | \"ExportKey\" | CreateEnvelope() , RecoverEnvelope() |\r\n| masking key | \"MaskingKey\" | CreateEnvelope(), RecoverEnvelope() |\r\n| inner skc seed | \"PrivateKey\" | BuildInnerEnvelope(), RecoverKeys() |\r\n| ku seed | \"OprfKey\" | CreateRegistrationResponse(), RecoverCredentials() |\r\n| masking encryption | \"CredentialResponsePad\" | CreateCredentialResponse(), RecoverCredentials() |\r\n\r\nExpand DST defined in OPAQUE used in 3DH\r\n| Designation | Value  | Used in |\r\n| ------------- | ------------- | ------------- |\r\n| ake label prefix | \"OPAQUE \" | CustomLabel |\r\n| handshake secret | \"handshake secret\" | Derive-Secret() |\r\n| session secret | \"session secret\" | Derive-Secret() |\r\n| 3DH prefix | \"3DH\" | Derive-Secret() preamble |\r\n| ake server auth | \"server mac\" | Key Schedule |\r\n| ake client auth | \"client mac\" | Key Schedule |\r\n| handshake encryption | \"handshake enc\" | Key Schedule |\r\n| server info encryption | \"encryption pad\" | Key Schedule |\r\n\r\nIt could be useful to have them listed in a section of the document and refer to them by constants in the functions where they are used. (This issue is a slight duplicate and must be in line and updated with the format consistency discussion in #157 )",
+      "createdAt": "2021-04-08T13:15:47Z",
+      "updatedAt": "2021-04-08T13:19:42Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "cc @kevinlewi \r\n\r\nAlso, I put the VOPRF DST values to \"?\" for now as they are still being discussed in [#236](https://github.com/cfrg/draft-irtf-cfrg-voprf/issues/236) and [#244](https://github.com/cfrg/draft-irtf-cfrg-voprf/issues/244).",
+          "createdAt": "2021-04-08T13:19:42Z",
+          "updatedAt": "2021-04-08T13:19:42Z"
+        }
+      ]
     }
   ],
   "pulls": [
@@ -10524,7 +10555,7 @@
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-04-04T08:49:44Z",
+      "updatedAt": "2021-04-08T13:45:55Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -11739,6 +11770,26 @@
               "body": "Yes, you're right !",
               "createdAt": "2021-04-04T08:49:44Z",
               "updatedAt": "2021-04-04T08:49:44Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjMxNDE0NzM3",
+          "commit": {
+            "abbreviatedOid": "004e9af"
+          },
+          "author": "bytemare",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-08T13:45:55Z",
+          "updatedAt": "2021-04-08T13:45:55Z",
+          "comments": [
+            {
+              "originalPosition": 73,
+              "body": "But you are right, this is a totally valid use case and we could include that example. Thanks!",
+              "createdAt": "2021-04-08T13:45:55Z",
+              "updatedAt": "2021-04-08T13:45:55Z"
             }
           ]
         }
