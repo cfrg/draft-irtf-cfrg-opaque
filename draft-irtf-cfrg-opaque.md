@@ -493,7 +493,7 @@ Parameter:
 Input:
 - prk, pseudo-random key
 - server_public_key, The encoded server public key for the AKE protocol
-- client_private_key, The encoded client private key for the AKE protocol
+- client_private_key, The encoded client private key for the AKE protocol. This is nil in the internal key mode
 - server_identity, The encoded server identity
 - client_identity, The encoded client identity
 
@@ -817,7 +817,7 @@ Steps:
 FinalizeRequest(client_private_key, password, blind, response)
 
 Input:
-- client_private_key, the client's private key. In the internal key mode, this is empty.
+- client_private_key, the client's private key. In the internal key mode, this is nil
 - password, an opaque byte string containing the client's password
 - creds, a Credentials structure
 - blind, the OPRF scalar value used for blinding
