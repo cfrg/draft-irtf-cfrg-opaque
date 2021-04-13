@@ -602,7 +602,7 @@ Output:
 - client_public_key, the client's AKE public key
 
 Steps:
-1. seed = Expand(prk, concat(nonce, "PrivateKey"), Nh)
+1. seed = Expand(prk, concat(nonce, "PrivateKey"), Nsk)
 2. _, client_public_key = DeriveAkeKeyPair(seed)
 3. Output (nil, client_public_key)
 ~~~
