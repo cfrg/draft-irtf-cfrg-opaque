@@ -170,6 +170,7 @@ def test_3DH():
                 # TODO(caw): do something else with this
                 pkU_enc = record.pkU
                 pkU = group.deserialize(pkU_enc)
+                pkU_bytes = pkU_enc
 
                 client_kex = OPAQUE3DH(config)
                 server_kex = OPAQUE3DH(config)
@@ -192,9 +193,10 @@ def test_3DH():
                     inputs["server_identity"] = to_hex(idS)
                 inputs["oprf_seed"] = to_hex(oprf_seed)
                 inputs["credential_identifier"] = to_hex(credential_identifier)
-                inputs["password"] = to_hex(pwdU)            
-                inputs["client_private_key"] = to_hex(skU_bytes)
-                inputs["client_public_key"] = to_hex(pkU_bytes)
+                inputs["password"] = to_hex(pwdU)
+                if mode == envelope_mode_external:
+                    inputs["client_private_key"] = to_hex(skU_bytes)
+                    inputs["client_public_key"] = to_hex(pkU_bytes)
                 inputs["server_private_key"] = to_hex(skS_bytes)
                 inputs["server_public_key"] = to_hex(pkS_bytes)
                 inputs["client_info"] = to_hex(info1)
@@ -212,6 +214,8 @@ def test_3DH():
                 inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
 
                 # Intermediate computations
+                if mode == envelope_mode_internal:
+                    inputs["client_public_key"] = to_hex(pkU_bytes)
                 intermediates["envelope"] = to_hex(record.envU.serialize())
                 intermediates["prk"] = to_hex(core.registration_rwdU)
                 intermediates["masking_key"] = to_hex(core.masking_key)

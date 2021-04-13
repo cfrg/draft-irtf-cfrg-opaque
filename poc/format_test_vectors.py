@@ -44,6 +44,7 @@ input_keys = [
 ]
 
 intermediate_keys = [
+    "client_public_key",
     "auth_key",
     "prk",
     "pseudorandom_pad",
