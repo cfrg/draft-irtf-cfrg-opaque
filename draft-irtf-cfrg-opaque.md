@@ -484,6 +484,9 @@ The size of the serialized envelope is denoted `Ne` and varies based on the mode
 
 The `CreateEnvelope` function allows a client to create its `Envelope` at registration.
 
+For the `external` key mode, implementations are free to addtionnally provide the `client_public_key` to this function. With this the the public key doesn't have to be recovered in BuildInnerEnvelope() (thus saving a scalar multiplication) and that function must then be adapted accordingly.
+For the `internal` key mode, implementations can chose to leave the `client_private_key` out completely, as it is not used.
+
 ~~~
 CreateEnvelope(prk, server_public_key, client_private_key, creds)
 
@@ -638,6 +641,8 @@ struct {
 ~~~
 
 encrypted_creds : Encrypted client_private_key. Authentication of this field is ensured with the `AuthTag` in the envelope that covers this `InnerEnvelope`.
+
+If the implementation provides the `client_public_key` to `CreateEnvelope()`, then `BuildInnerEnvelope()` should spare the `RecoverPublicKey()` call as the key is already available.
 
 ~~~
 BuildInnerEnvelope(prk, nonce, client_private_key)
@@ -812,6 +817,11 @@ Steps:
 ~~~
 
 ### FinalizeRequest {#finalize-request}
+
+To create the user record used for further authentication, the client executes the following function. In the internal key mode, the `client_private_key` is empty or nil.
+
+For the `external` key mode, implementations are free to addtionnally provide the `client_public_key` to this function. With this the the public key doesn't have to be recovered in BuildInnerEnvelope() (thus saving a scalar multiplication) and that function must then be adapted accordingly.
+For the `internal` key mode, implementations can chose to leave the `client_private_key` out completely, as it is not used.
 
 ~~~
 FinalizeRequest(client_private_key, password, blind, response)
