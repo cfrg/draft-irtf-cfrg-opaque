@@ -30,7 +30,9 @@ def random_bytes(n):
     return os.urandom(n)
 
 def xor(a, b):
-    assert len(a) == len(b)
+    if len(a) != len(b):
+        print(len(a), len(b))
+        assert len(a) == len(b)
     c = bytearray(a)
     for i, v in enumerate(b):
         c[i] = c[i] ^^ v  # bitwise XOR
