@@ -74,6 +74,12 @@ class OPAQUE3DH(KeyExchange):
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
             "MHF": self.config.mhf.name,
+            "Nh": str(self.config.Nh),
+            "Npk": str(self.config.Npk),
+            "Nsk": str(self.config.Nsk),
+            "Nm": str(self.config.Nm),
+            "Nx": str(self.config.Nx),
+            "Nok": str(self.config.Nok),
         }
 
     def derive_3dh_keys(self, dh_components, info):
