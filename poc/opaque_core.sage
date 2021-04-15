@@ -264,6 +264,9 @@ class HMAC(MAC):
         MAC.__init__(self, "HMAC-" + fast_hash().name.upper())
         self.hash = fast_hash
 
+    def output_size(self):
+        return self.hash().digest_size
+
     def mac(self, key, input):
         return hmac.digest(key, input, self.hash)
 

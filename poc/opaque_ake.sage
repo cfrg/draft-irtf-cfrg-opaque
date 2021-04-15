@@ -36,7 +36,10 @@ class Configuration(object):
         self.group = group
         self.Npk = group.element_byte_length()
         self.Nsk = group.scalar_byte_length()
-        self.Ne = group.element_byte_length()
+        self.Nm = mac.output_size()
+        self.Nx = hash().digest_size
+        self.Nok = oprf_suite.group.scalar_byte_length()
+        self.Nh = hash().digest_size
 
 class KeyExchange(object):
     def __init__(self):
@@ -71,6 +74,12 @@ class OPAQUE3DH(KeyExchange):
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
             "MHF": self.config.mhf.name,
+            "Nh": str(self.config.Nh),
+            "Npk": str(self.config.Npk),
+            "Nsk": str(self.config.Nsk),
+            "Nm": str(self.config.Nm),
+            "Nx": str(self.config.Nx),
+            "Nok": str(self.config.Nok),
         }
 
     def derive_3dh_keys(self, dh_components, info):
@@ -84,17 +93,17 @@ class OPAQUE3DH(KeyExchange):
         ikm = dh1_encoded + dh2_encoded + dh3_encoded
 
         prk = hkdf_extract(self.config, bytes([]), ikm)
-        handshake_secret = derive_secret(self.config, prk, _as_bytes("handshake secret"), info)
-        session_key = derive_secret(self.config, prk, _as_bytes("session secret"), info)
+        handshake_secret = derive_secret(self.config, prk, _as_bytes("HandshakeSecret"), info)
+        session_key = derive_secret(self.config, prk, _as_bytes("SessionKey"), info)
 
-        # client_mac_key = HKDF-Expand-Label(handshake_secret, "client mac", "", Hash.length)
-        # server_mac_key = HKDF-Expand-Label(handshake_secret, "server mac", "", Hash.length)
-        # handshake_encrypt_key = HKDF-Expand-Label(handshake_secret, "handshake enc", "", key_length)
+        # client_mac_key = HKDF-Expand-Label(handshake_secret, "ClientMAC", "", Hash.length)
+        # server_mac_key = HKDF-Expand-Label(handshake_secret, "ServerMAC", "", Hash.length)
+        # handshake_encrypt_key = HKDF-Expand-Label(handshake_secret, "HandshakeKey", "", key_length)
         Nh = self.config.hash().digest_size
         empty_info = bytes([])
-        server_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("server mac"), empty_info, Nh)
-        client_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("client mac"), empty_info, Nh)
-        handshake_encrypt_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("handshake enc"), empty_info, Nh)
+        server_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("ServerMAC"), empty_info, Nh)
+        client_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("ClientMAC"), empty_info, Nh)
+        handshake_encrypt_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("HandshakeKey"), empty_info, Nh)
 
         return server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret
 
@@ -172,7 +181,7 @@ class OPAQUE3DH(KeyExchange):
         server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
 
         # Encrypt e_info2
-        pad = hkdf_expand(self.config, handshake_encrypt_key, _as_bytes("encryption pad"), len(info2))
+        pad = hkdf_expand(self.config, handshake_encrypt_key, _as_bytes("EncryptionPad"), len(info2))
         e_info2 = xor(pad, info2)
 
         hasher.update(encode_vector(e_info2))
