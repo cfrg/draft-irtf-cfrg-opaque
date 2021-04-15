@@ -5,10 +5,10 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                                   K. Lewi
-Expires: 25 September 2021                                 Novi Research
+Expires: 17 October 2021                                   Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           24 March 2021
+                                                           15 April 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 September 2021.
+   This Internet-Draft will expire on 17 October 2021.
 
 Copyright Notice
 
@@ -69,37 +69,43 @@ Table of Contents
      1.1.  Requirements Notation
      1.2.  Notation
    2.  Cryptographic Protocol and Algorithm Dependencies
-   3.  Offline Registration
-     3.1.  Setup Phase
-     3.2.  Credential Registration
-     3.3.  Credential Storage
-     3.4.  Registration Messages
-     3.5.  Registration Functions
-       3.5.1.  CreateRegistrationRequest
-       3.5.2.  CreateRegistrationResponse
-       3.5.3.  FinalizeRequest
-   4.  Online Authenticated Key Exchange
-     4.1.  Credential Retrieval
-       4.1.1.  Credential Retrieval Messages
-       4.1.2.  Credential Retrieval Functions
-     4.2.  AKE Instantiations
-       4.2.1.  Key Schedule Utility Functions
-       4.2.2.  OPAQUE-3DH Instantiation
-   5.  Configurations
-   6.  Security Considerations
-     6.1.  Related Analysis
-     6.2.  Identities
-     6.3.  Envelope Encryption
-     6.4.  Export Key Usage
-     6.5.  Static Diffie-Hellman Oracles
-     6.6.  Input Validation
-     6.7.  OPRF Hardening
-     6.8.  Preventing Client Enumeration
-     6.9.  Password Salt and Storage Implications
-   7.  IANA Considerations
-   8.  References
-     8.1.  Normative References
-     8.2.  Informative References
+   3.  Client Credential Storage
+     3.1.  Envelope Structure
+     3.2.  Envelope Creation and Recovery
+     3.3.  Envelope Modes
+       3.3.1.  Internal mode
+       3.3.2.  External Key mode
+   4.  Offline Registration
+     4.1.  Setup Phase
+     4.2.  Credential Registration
+     4.3.  Registration Messages
+     4.4.  Registration Functions
+       4.4.1.  CreateRegistrationRequest
+       4.4.2.  CreateRegistrationResponse
+       4.4.3.  FinalizeRequest
+       4.4.4.  Finalize Registration
+   5.  Online Authenticated Key Exchange
+     5.1.  Credential Retrieval
+       5.1.1.  Credential Retrieval Messages
+       5.1.2.  Credential Retrieval Functions
+     5.2.  AKE Instantiations
+       5.2.1.  Key Schedule Utility Functions
+       5.2.2.  OPAQUE-3DH Instantiation
+   6.  Configurations
+   7.  Security Considerations
+     7.1.  Related Analysis
+     7.2.  Identities
+     7.3.  Envelope Encryption
+     7.4.  Export Key Usage
+     7.5.  Static Diffie-Hellman Oracles
+     7.6.  Input Validation
+     7.7.  OPRF Hardening
+     7.8.  Preventing Client Enumeration
+     7.9.  Password Salt and Storage Implications
+   8.  IANA Considerations
+   9.  References
+     9.1.  Normative References
+     9.2.  Informative References
    Appendix A.  Acknowledgments
    Appendix B.  Alternate AKE Instantiations
      B.1.  HMQV Instantiation Sketch
@@ -221,7 +227,7 @@ Table of Contents
    functionalities: an oblivious pseudorandom function (OPRF) and an
    authenticated key exchange (AKE) protocol.  It can be seen as a
    "compiler" for transforming any suitable AKE protocol into a secure
-   aPAKE protocol.  (See Section 6 for requirements of the OPRF and AKE
+   aPAKE protocol.  (See Section 7 for requirements of the OPRF and AKE
    protocols.)  This document specifies one OPAQUE instantiation based
    on 3DH [SIGNAL].  Other instantiations are possible, as discussed in
    Appendix B, but their details are out of scope for this document.  In
@@ -238,7 +244,7 @@ Table of Contents
 
    Currently, the most widely deployed PKI-free aPAKE is SRP [RFC2945],
    which is vulnerable to pre-computation attacks, lacks proof of
-   security and is less efficient relative to OPAQUE.  Moreover, SRP
+   security, and is less efficient relative to OPAQUE.  Moreover, SRP
    requires a ring as it mixes addition and multiplication operations,
    and thus does not work over plain elliptic curves.  OPAQUE is
    therefore a suitable replacement for applications that use SRP.
@@ -284,6 +290,8 @@ Table of Contents
       otherwise.  This function is constant-time in the length of "a"
       and "b", which are assumed to be of equal length, irrespective of
       the values "a" or "b".
+
+   *  We define "nil" as a lack of value.
 
    Except if said otherwise, random choices in this specification refer
    to drawing with uniform distribution from a given set (i.e., "random"
@@ -351,7 +359,7 @@ Table of Contents
    *  Hash Function:
 
       -  Hash(msg): Apply a cryptographic hash function to input "msg",
-         producing an fixed-length digest of size "Nh" bytes.
+         producing a fixed-length digest of size "Nh" bytes.
 
       -  Nh: The output size of the "Hash()" function in bytes.
 
@@ -364,10 +372,357 @@ Table of Contents
 
    OPAQUE additionally depends on an Authenticated Key Exchange (AKE)
    protocol.  This specification defines one particular AKE based on
-   3DH; see Section 4.2.  We let "Npk" and "Nsk" denote the size of
+   3DH; see Section 5.2.  We let "Npk" and "Nsk" denote the size of
    public and private keys, respectively, used in the AKE.
 
-3.  Offline Registration
+   *  Deterministic AKE Key Generation Functions:
+
+      -  RecoverPublicKey(private_key): Recover the public key related
+         to the input private key.
+
+      -  DeriveAkeKeyPair(seed): Derive a private and public key pair
+         deterministically from the seed.
+
+   Random nonces used in this protocol are of length "Nn = 32" bytes.
+
+3.  Client Credential Storage
+
+   OPAQUE makes use of a structure "Envelope" to manage client
+   credentials.  This envelope holds information about its format and
+   content for the client to obtain its authentication material.
+
+   OPAQUE allows applications to either provide custom client private
+   and public keys for authentication or to generate them internally,
+   making the application oblivious to the client's private key.  Each
+   public and private key value is an opaque byte string, specific to
+   the AKE protocol in which OPAQUE is instantiated.
+
+   These two options are defined as the "Internal" and "External" modes.
+   See Section 3.3 for their specifications.
+
+   Applications may pin key material to identities if desired.  If no
+   identity is given for a party, its value MUST default to its public
+   key.  The following types of application credential information are
+   hereby considered:
+
+   *  client_private_key: The encoded client private key for the AKE
+      protocol.
+
+   *  client_public_key: The encoded client public key for the AKE
+      protocol.
+
+   *  server_public_key: The encoded server public key for the AKE
+      protocol.
+
+   *  client_identity: The client identity.  This is an application-
+      specific value, e.g., an e-mail address or normal account name.
+      If not specified, it defaults to the client's public key.
+
+   *  server_identity: The server identity.  This is typically a domain
+      name, e.g., example.com.  If not specified, it defaults to the
+      server's public key.  See Section 7.2 for information about this
+      identity.
+
+   These credential values are used in the "CleartextCredentials"
+   structure as follows:
+
+   struct {
+    opaque server_public_key[Npk];
+    opaque server_identity<1..2^16-1>;
+    opaque client_identity<1..2^16-1>;
+   } CleartextCredentials;
+
+   The function CreateCleartextCredentials constructs a
+   "CleartextCredentials" structure given application credential
+   information.
+
+CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
+
+Input:
+- server_public_key, The encoded server public key for the AKE protocol
+- client_public_key, The encoded client public key for the AKE protocol
+- server_identity, The optional encoded server identity
+- client_identity, The optional encoded client identity
+
+Output:
+- cleartext_credentials, a CleartextCredentials structure
+
+Steps:
+1. if server_identity == nil
+2.  server_identity = server_public_key
+3. if client_identity == nil
+4.  client_identity = client_public_key
+5. Create CleartextCredentials cleartext_credentials with (server_public_key, server_identity, client_identity)
+6. Output cleartext_credentials
+
+   During protocol execution, the identity values can be stored in an
+   implementation-specific "Credentials" object with names matching the
+   values.
+
+   struct {
+    opaque server_identity;
+    opaque client_identity;
+   } Credentials;
+
+3.1.  Envelope Structure
+
+   A client "Envelope" is constructed independently of the
+   "EnvelopeMode", but offers an "InnerEnvelope" entry whose structure
+   is determined by the mode.  Future modes MAY introduce alternate
+   "InnerEnvelope" contents.  "Envelope" is constructed as follows:
+
+   struct {
+    EnvelopeMode mode;
+    opaque nonce[Nn];
+    opaque auth_tag[Nm];
+    InnerEnvelope inner_env;
+   } Envelope;
+
+   mode : The "EnvelopeMode" used for the "Envelope".
+
+   nonce : A unique nonce of length "Nn" used to protect this Envelope.
+
+   auth_tag : Authentication tag protecting the contents of the
+   envelope, covering "EnvelopeMode", envelope nonce, "InnerEnvelope"
+   and "CleartextCredentials".
+
+   inner_env : A mode dependent "InnerEnvelope" structure.  See
+   Section 3.3 for its specifications.
+
+   The size of the serialized envelope is denoted "Ne" and varies based
+   on the mode.  The exact value for "Ne" is specified in Section 3.3.1
+   and Section 3.3.2.
+
+3.2.  Envelope Creation and Recovery
+
+   Clients create an "Envelope" at registration with the function
+   "CreateEnvelope" defined below.
+
+   For the "internal" mode, implementations can choose to leave out the
+   "client_private_key" parameter, as it is not used.  For the
+   "external" mode, implementations are free to additionally provide
+   "client_public_key" to this function.  With this, the public key
+   doesn't need to be recovered by "BuildInnerEnvelope()" and that
+   function should also be adapted accordingly.
+
+CreateEnvelope(prk, server_public_key, client_private_key, creds)
+
+Parameter:
+- mode, the EnvelopeMode mode
+
+Input:
+- prk, pseudo-random key
+- server_public_key, The encoded server public key for the AKE protocol
+- client_private_key, The encoded client private key for the AKE protocol. This is nil in the internal key mode
+- server_identity, The optional encoded server identity
+- client_identity, The optional encoded client identity
+
+Output:
+- envelope, the client's `Envelope` structure
+- client_public_key, the client's AKE public key
+- masking_key, a key used by the server to preserve the confidentiality of the envelope during login
+- export_key, an additional key
+
+Steps:
+1. envelope_nonce = random(Nn)
+2. auth_key = Expand(prk, concat(envelope_nonce, "AuthKey"), Nh)
+3. export_key = Expand(prk, concat(envelope_nonce, "ExportKey"), Nh)
+4. masking_key = Expand(prk, "MaskingKey", Nh)
+5. inner_env, client_public_key = BuildInnerEnvelope(prk, envelope_nonce, client_private_key)
+6. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
+7. auth_tag = MAC(auth_key, concat(mode, envelope_nonce, inner_env, cleartext_creds))
+8. Create Envelope envelope with (mode, envelope_nonce, auth_tag, inner_env)
+9. Output (envelope, client_public_key, masking_key, export_key)
+
+   Clients recover their "Envelope" during authentication with the
+   "RecoverEnvelope" function defined below.
+
+RecoverEnvelope(prk, server_public_key, creds, envelope)
+
+Parameter:
+- mode, the EnvelopeMode mode
+
+Input:
+- prk, pseudo-random key
+- server_public_key, The encoded server public key for the AKE protocol
+- creds, a Credentials structure
+- envelope, the client's `Envelope` structure
+
+Output:
+- client_private_key, The encoded client private key for the AKE protocol
+- export_key, an additional key
+
+Steps:
+1. auth_key = Expand(prk, concat(envelope.nonce, "AuthKey"), Nh)
+2. export_key = Expand(prk, concat(envelope.nonce, "ExportKey", Nh)
+3. client_private_key, client_public_key = RecoverKeys(prk, envelope.nonce, envelope.inner_env)
+4. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, creds.server_identity, creds.client_identity)
+5. expected_tag = MAC(auth_key, concat(mode, envelope_nonce, inner_env, cleartext_creds))
+6. If !ct_equal(envelope.auth_tag, expected_tag),
+     raise MacError
+7. Output (client_private_key, export_key)
+
+3.3.  Envelope Modes
+
+   The "EnvelopeMode" specifies the structure and encoding of the
+   corresponding "InnerEnvelope".  This document specifies the values of
+   the two aforementioned modes:
+
+   enum {
+    internal(1),
+    external(2),
+    (255)
+   } EnvelopeMode;
+
+   Each "EnvelopeMode" defines its own "InnerEnvelope" structure and
+   must implement the following interface: - "inner_env,
+   client_public_key = BuildInnerEnvelope(prk, nonce,
+   client_private_key)": build and return the mode's "InnerEnvelope"
+   structure and the client's public key. - "client_private_key,
+   client_public_key = RecoverKeys(prk, nonce, inner_env)": recover and
+   return the client's private and public keys for the AKE protocol.
+
+   The implementation of this interface for both "internal" and
+   "external" modes is in Section 3.3.1 and Section 3.3.2, respectively.
+
+3.3.1.  Internal mode
+
+   In this mode, the client's private and public keys are
+   deterministically derived from the OPRF output.
+
+   With the internal key mode the "EnvelopeMode" value MUST be
+   "internal" and the "InnerEnvelope" is empty, and the size "Ne" of the
+   serialized "Envelope" is 1 + Nn + Nm.
+
+   To generate the private key OPAQUE-3DH implements
+   "DeriveAkeKeyPair(seed)" as follows:
+
+DeriveAkeKeyPair(seed)
+
+Parameter:
+- dst, domain separation tag for HashToScalar set to "OPAQUE-HashToScalar"
+
+Input:
+- seed, pseudo-random byte sequence used as a seed
+
+Output:
+- private_key, a private key
+- public_key, the associated public key
+
+Steps:
+1. private_key = HashToScalar(seed, dst)
+2. public_key = private_key * G
+3. Output (private_key, public_key)
+
+   HashToScalar(msg, dst) is as specified in [I-D.irtf-cfrg-voprf],
+   except that dst = "OPAQUE-HashToScalar".
+
+BuildInnerEnvelope(prk, nonce, client_private_key)
+
+Input:
+- prk, pseudo-random key
+- nonce, a unique nonce of length `Nn`
+- client_private_key, empty value. Not used in this function, it only serves to comply with the API
+
+Output:
+- inner_env, nil value (serves to comply with the API)
+- client_public_key, the client's AKE public key
+
+Steps:
+1. seed = Expand(prk, concat(nonce, "PrivateKey"), Nsk)
+2. _, client_public_key = DeriveAkeKeyPair(seed)
+3. Output (nil, client_public_key)
+
+   Note that implementations are free to leave out the
+   "client_private_key" parameter, as it is not used.
+
+RecoverKeys(prk, nonce, inner_env)
+
+Input:
+- prk, pseudo-random key
+- nonce, a unique nonce of length `Nn`
+- inner_env, an InnerEnvelope structure. Not used in this function, it only serves to comply with the API
+
+Output:
+- client_private_key, The encoded client private key for the AKE protocol
+- client_public_key, The encoded client public key for the AKE protocol
+
+Steps:
+1. seed = Expand(prk, concat(nonce, "PrivateKey"), Nh)
+2. client_private_key, client_public_key = DeriveAkeKeyPair(seed)
+4. Output (client_private_key, client_public_key)
+
+   Note that implementations are free to leave out the "inner_env"
+   parameter, as it is not used.
+
+3.3.2.  External Key mode
+
+   This mode allows applications to import custom keys for the client.
+   This specification only imports the client's private key and
+   internally recovers the corresponding public key.  Implementations
+   are free to import both and thus spare a scalar multiplication at
+   registration.  In this case, the functions "FinalizeRequest()",
+   "CreateEnvelope()", and "BuildInnerEnvelope()" must be adapted
+   accordingly.
+
+   With the external key mode the "EnvelopeMode" value MUST be
+   "external", and the size "Ne" of the serialized "Envelope" is 1 + Nn
+   + Nm + Nsk.
+
+   An encryption key is generated from the hardened OPRF output and used
+   to encrypt the client's private key, which is then stored encrypted
+   in the "InnerEnvelope".  This encryption must follow the requirements
+   in Section 7.3.  On key recovery, the client's public key is
+   recovered using the private key.
+
+   struct {
+    opaque encrypted_creds[Nsk];
+   } InnerEnvelope;
+
+   encrypted_creds : Encrypted client_private_key.  Authentication of
+   this field is ensured with the "AuthTag" in the envelope that covers
+   this "InnerEnvelope".
+
+   If the implementation provides the "client_public_key", then
+   "BuildInnerEnvelope()" can skip the "RecoverPublicKey()" call.
+
+BuildInnerEnvelope(prk, nonce, client_private_key)
+
+Input:
+- prk, pseudo-random key
+- nonce, a unique nonce of length `Nn`
+- client_private_key, The encoded client private key for the AKE protocol
+
+Output:
+- inner_env, an InnerEnvelope structure
+- client_public_key, The encoded client public key for the AKE protocol
+
+Steps:
+1. pseudorandom_pad = Expand(prk, concat(nonce, "Pad"), len(client_private_key))
+2. encrypted_creds = xor(client_private_key, pseudorandom_pad)
+3. Create InnerEnvelope inner_env with encrypted_creds
+4. client_public_key = RecoverPublicKey(client_private_key)
+5. Output (inner_env, client_public_key)
+
+RecoverKeys(prk, nonce, inner_env)
+
+Input:
+- prk, pseudo-random key
+- nonce, a unique nonce of length `Nn`
+- inner_env, an InnerEnvelope structure
+
+Output:
+- client_private_key, The encoded client private key for the AKE protocol
+- client_public_key, the client's AKE public key
+
+Steps:
+1. encrypted_creds = inner_env.encrypted_creds
+2. pseudorandom_pad = Expand(prk, concat(nonce, "Pad"), len(encrypted_creds))
+3. client_private_key = xor(encrypted_creds, pseudorandom_pad)
+4. client_public_key = RecoverPublicKey(client_private_key)
+5. Output (client_private_key, client_public_key)
+
+4.  Offline Registration
 
    Registration is executed between a client C and a server S.  It is
    assumed S can identify C and the client can authenticate S during
@@ -376,25 +731,25 @@ Table of Contents
    out-of-band, PKI-based, etc.  This section describes the registration
    flow, message encoding, and helper functions.  Moreover, C has a key
    pair (client_private_key, client_public_key) for an AKE protocol
-   which is suitable for use with OPAQUE; See Section 4.  The private-
+   which is suitable for use with OPAQUE; See Section 5.  The private-
    public keys (client_private_key, client_public_key) may be randomly
    generated (using a cryptographically secure pseudorandom number
    generator) for the account or provided by the calling client.
    Clients MUST NOT use the same key pair (client_private_key,
    client_public_key) for two different accounts.
 
-3.1.  Setup Phase
+4.1.  Setup Phase
 
    In a setup phase, C chooses its password, and S chooses its own pair
    of private-public AKE keys (server_private_key, server_public_key)
    for use with the AKE, along with a Nh-byte oprf_seed.  S can use the
-   same pair of keys with multiple clients, and can opt to use multiple
+   same pair of keys with multiple clients and can opt to use multiple
    seeds (so long as they are kept consistent for each client).  These
    steps can happen offline, i.e., before the registration phase.
 
    Once complete, the registration process proceeds as follows.
 
-3.2.  Credential Registration
+4.2.  Credential Registration
 
  Client (password, creds)            Server (server_private_key, server_public_key, credential_identifier, oprf_seed)
  --------------------------------------------------------------------
@@ -408,129 +763,19 @@ Table of Contents
                                response
                       <-------------------------
 
- (record, export_key) = FinalizeRequest(password, creds, blind, response)
+ (record, export_key) = FinalizeRequest(client_private_key, password, blind, response)
 
                                 record
                       ------------------------->
 
-   Section 3.5 describes details of the functions referenced above.
+   Section 4.4 describes details of the functions referenced above.
 
    Both client and server MUST validate the other party's public key
-   before use.  See Section 6.6 for more details.
+   before use.  See Section 7.6 for more details.
 
    Upon completion, S stores C's credentials for later use.
 
-3.3.  Credential Storage
-
-   OPAQUE makes use of a structure "Envelope" to store client
-   credentials.  The "Envelope" structure embeds the following types of
-   credentials:
-
-   *  client_private_key: The encoded client private key for the AKE
-      protocol.
-
-   *  server_public_key: The encoded server public key for the AKE
-      protocol.
-
-   *  client_identity: The client identity.  This is an application-
-      specific value, e.g., an e-mail address or normal account name.
-
-   *  server_identity: The server identity.  This is typically a domain
-      name, e.g., example.com.  See Section 6.2 for information about
-      this identity.
-
-   Each public and private key value is an opaque byte string, specific
-   to the AKE protocol in which OPAQUE is instantiated.  For example, if
-   used as raw public keys for TLS 1.3 [RFC8446], they may be RSA or
-   ECDSA keys as per [RFC7250].
-
-   These credentials are incorporated in the "SecretCredentials" and
-   "CleartextCredentials" structs, depending on the mode set by the
-   value of "EnvelopeMode":
-
-   enum {
-     base(1),
-     custom_identifier(2),
-     (255)
-   } EnvelopeMode;
-
-   The "base" mode defines "SecretCredentials" and
-   "CleartextCredentials" as follows:
-
-   struct {
-     opaque client_private_key[Nsk];
-   } SecretCredentials;
-
-   struct {
-     opaque server_public_key[Npk];
-   } CleartextCredentials;
-
-   The "custom_identifier" mode defines "SecretCredentials" and
-   "CleartextCredentials" as follows:
-
-   struct {
-     opaque client_private_key[Nsk];
-   } SecretCredentials;
-
-   struct {
-     opaque server_public_key[Npk];
-     opaque client_identity<0..2^16-1>;
-     opaque server_identity<0..2^16-1>;
-   } CleartextCredentials;
-
-   These credentials are embedded into the following "Envelope"
-   structure with encryption and authentication.
-
-   struct {
-     EnvelopeMode mode;
-     opaque nonce[32];
-     opaque encrypted_creds[Nsk];
-   } InnerEnvelope;
-
-   struct {
-     InnerEnvelope inner_env;
-     opaque auth_tag[Nm];
-   } Envelope;
-
-   mode  The "EnvelopeMode" value.  This MUST be one of "base" or
-      "custom_identifier".
-
-   nonce  A unique 32-byte nonce used to protect this Envelope.
-
-   encrypted_creds  Encoding of encrypted and authenticated
-      "SecretCredentials".
-
-   auth_tag  Authentication tag protecting the contents of the envelope,
-      covering "InnerEnvelope" and "CleartextCredentials".
-
-   The full procedure for constructing "Envelope" and "InnerEnvelope"
-   from "SecretCredentials" and "CleartextCredentials" is described in
-   Section 3.5.3.  Note that only "SecretCredentials" are stored in the
-   "Envelope" (in encrypted form).
-
-   The "EnvelopeMode" value is specified as part of the configuration
-   (see Section 5).
-
-   Credential information corresponding to the configuration-specific
-   mode, along with the client public key "client_public_key" and
-   private key "client_private_key", are recommended to be stored in a
-   "Credentials" object with the following named fields:
-
-   *  "client_private_key", the client's private key
-
-   *  "client_public_key", the client's public key corresponding to
-      "client_private_key"
-
-   *  "client_identity", an optional client identity (present only in
-      the "custom_identifier" mode)
-
-   *  "server_identity", an optional server identity (present only in
-      the "custom_identifier" mode)
-
-   Note that the total size of the Envelope is equal to Nsk + Nh + 33
-   bytes.
-
-3.4.  Registration Messages
+4.3.  Registration Messages
 
    struct {
        SerializedElement data;
@@ -562,9 +807,9 @@ Table of Contents
 
    envelope  The client's "Envelope" structure.
 
-3.5.  Registration Functions
+4.4.  Registration Functions
 
-3.5.1.  CreateRegistrationRequest
+4.4.1.  CreateRegistrationRequest
 
    CreateRegistrationRequest(password)
 
@@ -580,7 +825,7 @@ Table of Contents
    2. Create RegistrationRequest request with M
    3. Output (request, blind)
 
-3.5.2.  CreateRegistrationResponse
+4.4.2.  CreateRegistrationResponse
 
 CreateRegistrationResponse(request, server_public_key, credential_identifier, oprf_seed)
 
@@ -601,19 +846,24 @@ Steps:
 3. Create RegistrationResponse response with (Z, server_public_key)
 4. Output (response, oprf_key)
 
-3.5.3.  FinalizeRequest
+4.4.3.  FinalizeRequest
 
-FinalizeRequest(password, creds, blind, response)
+   To create the user record used for further authentication, the client
+   executes the following function.  In the internal key mode, the
+   "client_private_key" is nil.
 
-Parameters:
-- params, the MHF parameters established out of band
-- mode, the InnerEnvelope mode
-- Nx, the output size of the Extract function
+   Depending on the mode, implementations are free to leave out the
+   "client_private_key" parameter ("internal" mode), or to additionally
+   include "client_public_key".  See {#envelope-creation-recovery} for
+   more details.
+
+FinalizeRequest(client_private_key, password, blind, response)
 
 Input:
+- client_private_key, the client's private key. In the internal key mode, this is nil
 - password, an opaque byte string containing the client's password
 - creds, a Credentials structure
-- blind, an OPRF scalar value
+- blind, the OPRF scalar value used for blinding
 - response, a RegistrationResponse structure
 
 Output:
@@ -622,56 +872,44 @@ Output:
 
 Steps:
 1. y = Finalize(password, blind, response.data)
-2. envelope_nonce = random(32)
-3. prk = Extract("", Harden(y, params))
-4. Create SecretCredentials secret_creds with creds.client_private_key
-5. Create CleartextCredentials cleartext_creds with response.server_public_key
-   and custom identifiers creds.client_identity and creds.server_identity if
-   mode is custom_identifier
-6. pseudorandom_pad = Expand(prk, concat(envelope_nonce, "Pad"), len(secret_creds))
-7. auth_key = Expand(prk, concat(envelope_nonce, "AuthKey"), Nh)
-8. export_key = Expand(prk, concat(envelope_nonce, "ExportKey"), Nh)
-9. masking_key = Expand(prk, "MaskingKey", Nh)
-10. encrypted_creds = xor(secret_creds, pseudorandom_pad)
-11. Create InnerEnvelope inner_env
-      with (mode, envelope_nonce, encrypted_creds)
-12. auth_tag = MAC(auth_key, concat(inner_env, cleartext_creds))
-13. Create Envelope envelope with (inner_env, auth_tag)
-14. Create RegistrationUpload record with (creds.client_public_key, masking_key, envelope)
-15. Output (record, export_key)
+2. prk = Extract("", Harden(y, params))
+3. envelope, client_public_key, masking_key, export_key = CreateEnvelope(prk, response.server_public_key, client_private_key, creds)
+4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+5. Output (record, export_key)
 
-   The inputs to Extract and Expand are as specified in Section 2.
-
-   See Section 4 for details about the output export_key usage.
+   See Section 5 for details about the output export_key usage.
 
    Upon completion of this function, the client MUST send "record" to
    the server.
 
-   The server then directly stores the "record" object as the credential
-   file for each client.  Note that the values "oprf_seed" and
-   "server_private_key" from the server's setup phase must also be
+4.4.4.  Finalize Registration
+
+   The server stores the "record" object as the credential file for each
+   client along with the associated "credential_identifier" and
+   "client_identity" (if different).  Note that the values "oprf_seed"
+   and "server_private_key" from the server's setup phase must also be
    persisted.
 
-4.  Online Authenticated Key Exchange
+5.  Online Authenticated Key Exchange
 
    After registration, the client and server run the authenticated key
    exchange stage of the OPAQUE protocol.  This stage is composed of a
    concurrent OPRF and key exchange flow.  The key exchange protocol is
    authenticated using the client and server credentials established
-   during registration; see Section 3.  The type of keys MUST be
+   during registration; see Section 4.  The type of keys MUST be
    suitable for the key exchange protocol.  For example, if the key
-   exchange protocol is 3DH, as described in Section 4.2.2, then the
+   exchange protocol is 3DH, as described in Section 5.2.2, then the
    private and public keys must be Diffie-Hellman keys.  In the end, the
    client proves its knowledge of the password, and both client and
    server agree on a mutually authenticated shared secret key.
 
    OPAQUE produces two outputs: a session secret and an export key.  The
    export key may be used for additional application-specific purposes,
-   as outlined in Section 6.4.  The output "export_key" MUST NOT be used
-   in any way before the HMAC value in the envelope is validated.  See
-   Section 6.3 for more details about this requirement.
+   as outlined in Section 7.4.  The output "export_key" MUST NOT be used
+   in any way before the MAC value in the envelope is validated.  See
+   Section 7.3 for more details about this requirement.
 
-4.1.  Credential Retrieval
+5.1.  Credential Retrieval
 
    The online AKE stage of the protocol requires clients to obtain and
    decrypt their credentials from the server-stored envelope.  This
@@ -695,7 +933,7 @@ Steps:
    The rest of this section describes these credential retrieval
    functions in more detail.
 
-4.1.1.  Credential Retrieval Messages
+5.1.1.  Credential Retrieval Messages
 
    struct {
        SerializedElement data;
@@ -705,8 +943,8 @@ Steps:
 
    struct {
        SerializedElement data;
-       opaque masking_nonce[32];
-       opaque masked_response[Npk + Nsk + Nh + 33];
+       opaque masking_nonce[Nn];
+       opaque masked_response[Npk + Ne];
    } CredentialResponse;
 
    data  A serialized OPRF group element.
@@ -717,9 +955,9 @@ Steps:
    masked_response  An encrypted form of the server's public key and the
       client's "Envelope" structure
 
-4.1.2.  Credential Retrieval Functions
+5.1.2.  Credential Retrieval Functions
 
-4.1.2.1.  CreateCredentialRequest
+5.1.2.1.  CreateCredentialRequest
 
    CreateCredentialRequest(password)
 
@@ -735,7 +973,7 @@ Steps:
    2. Create CredentialRequest request with M
    3. Output (request, blind)
 
-4.1.2.2.  CreateCredentialResponse
+5.1.2.2.  CreateCredentialResponse
 
    There are two scenarios to handle for the construction of a
    CredentialResponse object: either the record for the client exists
@@ -765,7 +1003,7 @@ Steps:
 2. Z = Evaluate(oprf_key, request.data)
 3. masking_nonce = random(32)
 4. credential_response_pad = Expand(record.masking_key,
-     concat(masking_nonce, "CredentialResponsePad"), Npk + Nsk + Nh + 33)
+     concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
 5. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
 6. Create CredentialResponse response with (Z, masking_nonce, masked_response)
 7. Output response
@@ -774,25 +1012,22 @@ Steps:
    CreateCredentialResponse function where the record argument is
    configured so that: - record.masking_key is set to a random byte
    string of length Nh, and - record.envelope is set to the byte string
-   consisting only of zeros, of length Nsk + Nh + 33
+   consisting only of zeros, of length Ne
 
    Note that the responses output by either scenario are
    indistinguishable to an adversary that is unable to guess the
    registered password for the client corresponding to
    credential_identifier.
 
-4.1.2.3.  RecoverCredentials
+5.1.2.3.  RecoverCredentials
 
-RecoverCredentials(password, blind, response)
-
-Parameters:
-- params, the MHF parameters established out of band
-- Nx, the output size of the Extract function
+RecoverCredentials(password, blind, response, creds)
 
 Input:
 - password, an opaque byte string containing the client's password
 - blind, an OPRF scalar value
 - response, a CredentialResponse structure
+- creds, a Credentials structure
 
 Output:
 - client_private_key, the client's private key for the AKE protocol
@@ -804,29 +1039,17 @@ Steps:
 2. prk = Extract("", Harden(y, params))
 3. masking_key = Expand(prk, "MaskingKey", Nh)
 4. credential_response_pad = Expand(masking_key,
-     concat(response.masking_nonce, "CredentialResponsePad"), Npk + Nsk + Nh + 33)
+     concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
 5. concat(server_public_key, envelope) = xor(credential_response_pad, response.masked_response)
-6. contents = envelope.contents
-7. envelope_nonce = contents.nonce
-8. pseudorandom_pad =
-    Expand(prk, concat(envelope_nonce, "Pad"), len(contents.encrypted_creds))
-9. auth_key = Expand(prk, concat(envelope_nonce, "AuthKey"), Nh)
-10. export_key = Expand(prk, concat(envelope_nonce, "ExportKey"), Nh)
-11. Create CleartextCredentials cleartext_creds with server_public_key
-   and custom identifiers creds.client_identity and creds.server_identity if mode is
-   custom_identifier
-12. expected_tag = MAC(auth_key, concat(contents, cleartext_creds))
-13. If !ct_equal(envelope.auth_tag, expected_tag),
-    raise DecryptionError
-14. secret_creds = xor(contents.encrypted_creds, pseudorandom_pad)
-15. Output (secret_creds.client_private_key, server_public_key, export_key)
+6. client_private_key, export_key = RecoverEnvelope(prk, server_public_key, creds, envelope)
+7. Output (client_private_key, response.server_public_key, export_key)
 
-4.2.  AKE Instantiations
+5.2.  AKE Instantiations
 
    This section describes instantiations of OPAQUE using 3-message AKEs
    which satisfies the forward secrecy and KCI properties discussed in
-   Section 6.  As shown in [OPAQUE], OPAQUE cannot use less than three
-   messages so the 3-message instantiations presented here are optimal
+   Section 7.  As shown in [OPAQUE], OPAQUE cannot use less than three
+   messages, so the 3-message instantiations presented here are optimal
    in terms of number of messages.  On the other hand, there is no
    impediment to using OPAQUE with protocols with more than 3 messages
    as in the case of IKEv2 (or the underlying SIGMA-R protocol [SIGMA]).
@@ -854,7 +1077,7 @@ Steps:
    by OPAQUE-3DH, and then provides a detailed specification for OPAQUE-
    3DH, including its wire format messages.
 
-4.2.1.  Key Schedule Utility Functions
+5.2.1.  Key Schedule Utility Functions
 
    The key derivation procedures for OPAQUE-3DH makes use of the
    functions below, re-purposed from TLS 1.3 [RFC8446].
@@ -875,10 +1098,10 @@ Steps:
 
    Note that the Label parameter is not a NULL-terminated string.
 
-4.2.2.  OPAQUE-3DH Instantiation
+5.2.2.  OPAQUE-3DH Instantiation
 
    OPAQUE-3DH is implemented using a suitable prime order group.  All
-   operations in the key derivation steps in Section 4.2.2.2 are
+   operations in the key derivation steps in Section 5.2.2.2 are
    performed in this group and represented here using multiplicative
    notation.  The output of OPAQUE-3DH is a session secret "session_key"
    and export key "export_key".
@@ -887,21 +1110,21 @@ Steps:
    element and scalar, respectively, in the associated prime order
    group.
 
-4.2.2.1.  OPAQUE-3DH Messages
+5.2.2.1.  OPAQUE-3DH Messages
 
    The three messages for OPAQUE-3DH are described below.
 
    struct {
      CredentialRequest request;
-     uint8 client_nonce[32];
+     uint8 client_nonce[Nn];
      opaque client_info<0..2^16-1>;
      uint8 client_keyshare[Npk];
    } KE1;
 
    request  A "CredentialRequest" generated according to
-      Section 4.1.2.1.
+      Section 5.1.2.1.
 
-   client_nonce  A fresh 32-byte randomly generated nonce.
+   client_nonce  A fresh randomly generated nonce of length "Nn".
 
    client_info  Optional application-specific information to exchange
       during the protocol.
@@ -912,7 +1135,7 @@ Steps:
    struct {
      struct {
        CredentialResponse response;
-       uint8 server_nonce[32];
+       uint8 server_nonce[Nn];
        uint8 server_keyshare[Npk];
      } inner_ke2;
      opaque enc_server_info<0..2^16-1>;
@@ -920,9 +1143,9 @@ Steps:
    } KE2;
 
    response  A "CredentialResponse" generated according to
-      Section 4.1.2.2.
+      Section 5.1.2.2.
 
-   server_nonce  A fresh 32-byte randomly generated nonce.
+   server_nonce  A fresh randomly generated nonce of length "Nn".
 
    server_keyshare  Server ephemeral key share of fixed size Npk, where
       Npk depends on the corresponding prime order group.
@@ -941,7 +1164,7 @@ Steps:
    mac  An authentication tag computed over the handshake transcript
       computed using Km3, defined below.
 
-4.2.2.2.  OPAQUE-3DH Key Schedule
+5.2.2.2.  OPAQUE-3DH Key Schedule
 
    OPAQUE-3DH requires MAC keys "server_mac_key" and "client_mac_key"
    and encryption key "handshake_encrypt_key".  Additionally, OPAQUE-3DH
@@ -974,7 +1197,7 @@ Extract("", IKM)
                      I2OSP(len(server_identity), 2), server_identity,
                      KE2.inner_ke2)
 
-   See Section 6.2 for more information about identities client_identity
+   See Section 7.2 for more information about identities client_identity
    and server_identity.
 
    Let "epkS" and "eskS" be "server_keyshare" and the corresponding
@@ -988,16 +1211,16 @@ Extract("", IKM)
 
    IKM = concat(epkU^eskS, epkU^skS, pkU^eskS)
 
-4.2.2.3.  OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
+5.2.2.3.  OPAQUE-3DH Encryption and Key Confirmation {#3dh-core}
 
    Clients and servers use keys Km2 and Km3 in computing KE2.mac and
    KE3.mac, respectively.  These values are computed as follows:
 
-   *  KE2.mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info)),
-      where preamble is as defined in Section 4.2.2.2.
+   *  KE2.mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info))),
+      where preamble is as defined in Section 5.2.2.2.
 
    *  KE3.mac = MAC(Km3, Hash(concat(preamble, KE2.enc_server_info,
-      KE2.mac)), where preamble is as defined in Section 4.2.2.2.
+      KE2.mac))), where preamble is as defined in Section 5.2.2.2.
 
    The server application info, an opaque byte string "server_info", is
    encrypted using a technique similar to that used for secret
@@ -1008,7 +1231,7 @@ Extract("", IKM)
    info_pad = Expand(Ke2, "encryption pad", len(server_info))
    enc_server_info = xor(info_pad, server_info)
 
-5.  Configurations
+6.  Configurations
 
    An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF,
    EnvelopeMode, Group) such that the following conditions are met:
@@ -1028,12 +1251,27 @@ Extract("", IKM)
       [I-D.irtf-cfrg-argon2], scrypt [RFC7914], and PBKDF2 [RFC2898]
       with fixed parameter choices.
 
-   *  EnvelopeMode value is as defined in Section 3.3, and is one of
+   *  EnvelopeMode value is as defined in Section 3, and is one of
       "base" or "custom_identifier".
 
    *  The Group mode identifies the group used in the OPAQUE-3DH AKE.
       This SHOULD match that of the OPRF.  For example, if the OPRF is
       OPRF(ristretto255, SHA-512), then Group SHOULD be ristretto255.
+
+   To recover a public key from a private key, OPAQUE-3DH implements
+   "RecoverPublicKey(private_key)" as follows:
+
+   RecoverPublicKey(private_key)
+
+   Input:
+   - private_key, a scalar in the group interpreted as the private key
+
+   Output:
+   - public_key, a group element used as public key
+
+   Steps:
+   1. public_key = private_key * G
+   3. Output public_key
 
    Absent an application-specific profile, the following configurations
    are RECOMMENDED:
@@ -1051,7 +1289,7 @@ Extract("", IKM)
    used, this means Npk, Nsk <= 255 * Nx, where Nx is the output size of
    the underlying hash function.  See [RFC5869] for details.
 
-6.  Security Considerations
+7.  Security Considerations
 
    OPAQUE is defined and proven as the composition of two
    functionalities: an OPRF and an AKE protocol.  It can be seen as a
@@ -1088,7 +1326,7 @@ Extract("", IKM)
    protocols for use in OPAQUE is to provide forward secrecy (against
    active attackers).
 
-6.1.  Related Analysis
+7.1.  Related Analysis
 
    Jarecki et al.  [OPAQUE] proved the security of OPAQUE in a strong
    aPAKE model that ensures security against pre-computation attacks and
@@ -1116,7 +1354,7 @@ Extract("", IKM)
    computation attacks or presented a proof of aPAKE security (not even
    in a weak model).
 
-6.2.  Identities
+7.2.  Identities
 
    AKE protocols generate keys that need to be uniquely and verifiably
    bound to a pair of identities.  In the case of OPAQUE, those
@@ -1162,22 +1400,22 @@ Extract("", IKM)
    unspecified (and using client_public_key and server_public_key
    instead) is acceptable.
 
-6.3.  Envelope Encryption
+7.3.  Envelope Encryption
 
    The analysis of OPAQUE from [OPAQUE] requires the authenticated
-   encryption scheme used to produce envelope to have a special property
-   called random key-robustness (or key-committing).  This specification
-   enforces this property by utilizing encrypt-then-HMAC in the
-   construction of the envelope.  There is no option to use another
-   authenticated-encryption scheme with this specification.  (Deviating
-   from the key-robustness requirement may open the protocol to attacks,
-   e.g., [LGR20].)  We remark that export_key for authentication or
-   encryption requires no special properties from the authentication or
-   encryption schemes as long as export_key is used only after the
-   envelope is validated, i.e., after the HMAC in RecoverCredentials
-   passes verification.
+   encryption scheme used to produce the envelope in the external mode
+   to have a special property called random key-robustness (or key-
+   committing).  This specification enforces this property by utilizing
+   encrypt-then-MAC in the construction of the envelope.  There is no
+   option to use another authenticated-encryption scheme with this
+   specification.  (Deviating from the key-robustness requirement may
+   open the protocol to attacks, e.g., [LGR20].)  We remark that
+   export_key for authentication or encryption requires no special
+   properties from the authentication or encryption schemes as long as
+   export_key is used only after the envelope is validated, i.e., after
+   the MAC in RecoverCredentials passes verification.
 
-6.4.  Export Key Usage
+7.4.  Export Key Usage
 
    The export key can be used (separately from the OPAQUE protocol) to
    provide confidentiality and integrity to other data which only the
@@ -1186,7 +1424,7 @@ Extract("", IKM)
    to access, then this export key can be used to encrypt these secrets
    so that they remain hidden from the server.
 
-6.5.  Static Diffie-Hellman Oracles
+7.5.  Static Diffie-Hellman Oracles
 
    While one can expect the practical security of the OPRF function
    (namely, the hardness of computing the function without knowing the
@@ -1199,7 +1437,7 @@ Extract("", IKM)
    impractical as they translate into an infeasible number of failed
    authentication attempts directed at individual users.
 
-6.6.  Input Validation
+7.6.  Input Validation
 
    Both client and server MUST validate the other party's public key(s)
    used for the execution of OPAQUE.  This includes the keys shared
@@ -1213,14 +1451,14 @@ Extract("", IKM)
    is not the point at infinity.  Additionally, validation MUST ensure
    the Diffie-Hellman shared secret is not the point at infinity.
 
-6.7.  OPRF Hardening
+7.7.  OPRF Hardening
 
    Hardening the output of the OPRF greatly increases the cost of an
    offline attack upon the compromise of the password file at the
    server.  Applications SHOULD select parameters that balance cost and
    complexity.
 
-6.8.  Preventing Client Enumeration
+7.8.  Preventing Client Enumeration
 
    Client enumeration refers to attacks where the attacker tries to
    learn extra information about the behavior of clients that have
@@ -1233,7 +1471,7 @@ Extract("", IKM)
    Preventing the first type of attack requires the server to act with
    unregistered client identities in a way that is indistinguishable
    from its behavior with existing registered clients.  This is achieved
-   in Section 4.1.2.2 for an unregistered client by simulating a
+   in Section 5.1.2.2 for an unregistered client by simulating a
    CredentialResponse for unregistered clients through the sampling of a
    random masking_key value and relying on the semantic security
    provided by the XOR-based pad over the envelope.
@@ -1244,7 +1482,7 @@ Extract("", IKM)
 
    Preventing the second type of attack requires the server to supply a
    credential_identifier value for a given client identity, consistently
-   between the Section 3.5.2 and Section 4.1.2.2 steps.  Note that
+   between the Section 4.4.2 and Section 5.1.2.2 steps.  Note that
    credential_identifier can be set to client_identity, for simplicity.
 
    In the event of a server compromise that results in a re-registration
@@ -1254,12 +1492,16 @@ Extract("", IKM)
    only leaked upon password rotation after the exposure of the
    credential files.
 
+   Applications must use the same envelope mode when using this
+   prevention throughout its lifecycle.  The envelope size varies from
+   one to another, and a switch in envelope mode could then be detected.
+
    Finally, note that server implementations may choose to forego the
    construction of a simulated credential response message for an
    unregistered client if these client enumeration attacks can be
    mitigated through other application-specific means.
 
-6.9.  Password Salt and Storage Implications
+7.9.  Password Salt and Storage Implications
 
    In OPAQUE, the OPRF key acts as the secret salt value that ensures
    the infeasibility of pre-computation attacks.  No extra salt value is
@@ -1278,13 +1520,13 @@ Extract("", IKM)
    the server are possible to implement, e.g., detecting repeated
    passwords.
 
-7.  IANA Considerations
+8.  IANA Considerations
 
    This document makes no IANA requests.
 
-8.  References
+9.  References
 
-8.1.  Normative References
+9.1.  Normative References
 
    [RFC2104]  Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-
               Hashing for Message Authentication", RFC 2104,
@@ -1305,7 +1547,7 @@ Extract("", IKM)
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://datatracker.ietf.org/doc/html/rfc8174>.
 
-8.2.  Informative References
+9.2.  Informative References
 
    [AuCPace]  Haase, B. and B. Labrique, "AuCPace: Efficient verifier-
               based PAKE protocol tailored for the IIoT",
@@ -1348,9 +1590,8 @@ Extract("", IKM)
               Faz-Hernandez, A., Scott, S., Sullivan, N., Wahby, R. S.,
               and C. A. Wood, "Hashing to Elliptic Curves", Work in
               Progress, Internet-Draft, draft-irtf-cfrg-hash-to-curve-
-              10, 11 October 2020,
-              <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-
-              hash-to-curve-10.txt>.
+              11, 13 April 2021, <https://datatracker.ietf.org/doc/html/
+              draft-irtf-cfrg-hash-to-curve-11.txt>.
 
    [I-D.irtf-cfrg-voprf]
               Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A.
@@ -1401,13 +1642,6 @@ Extract("", IKM)
               Key Derivation Function (HKDF)", RFC 5869,
               DOI 10.17487/RFC5869, May 2010,
               <https://datatracker.ietf.org/doc/html/rfc5869>.
-
-   [RFC7250]  Wouters, P., Ed., Tschofenig, H., Ed., Gilmore, J.,
-              Weiler, S., and T. Kivinen, "Using Raw Public Keys in
-              Transport Layer Security (TLS) and Datagram Transport
-              Layer Security (DTLS)", RFC 7250, DOI 10.17487/RFC7250,
-              June 2014,
-              <https://datatracker.ietf.org/doc/html/rfc7250>.
 
    [RFC7914]  Percival, C. and S. Josefsson, "The scrypt Password-Based
               Key Derivation Function", RFC 7914, DOI 10.17487/RFC7914,
@@ -1462,7 +1696,7 @@ Appendix B.  Alternate AKE Instantiations
 
    OPAQUE may also be instantiated with any post-quantum (PQ) AKE
    protocol that has the message flow above and security properties (KCI
-   resistance and forward secrecy) outlined in Section 6.  Note that
+   resistance and forward secrecy) outlined in Section 7.  Note that
    such an instantiation is not quantum-safe unless the OPRF is quantum-
    safe.  However, an OPAQUE instantiation where the AKE is quantum-
    safe, but the OPRF is not, would still ensure the confidentiality of
