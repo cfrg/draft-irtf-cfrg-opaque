@@ -217,7 +217,7 @@ def test_3DH():
                 if mode == envelope_mode_internal:
                     inputs["client_public_key"] = to_hex(pkU_bytes)
                 intermediates["envelope"] = to_hex(record.envU.serialize())
-                intermediates["prk"] = to_hex(core.registration_rwdU)
+                intermediates["random_pwd"] = to_hex(core.registration_rwdU)
                 intermediates["masking_key"] = to_hex(core.masking_key)
                 intermediates["auth_key"] = to_hex(core.auth_key)
                 intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)

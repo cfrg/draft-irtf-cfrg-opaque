@@ -16,6 +16,9 @@ config_keys = [
     "Nh",
     "Npk",
     "Nsk",
+    "Nm",
+    "Nx",
+    "Nok",
 ]
 
 input_keys = [
@@ -46,7 +49,7 @@ input_keys = [
 intermediate_keys = [
     "client_public_key",
     "auth_key",
-    "prk",
+    "random_pwd",
     "pseudorandom_pad",
     "envelope",
     "handshake_secret",

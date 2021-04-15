@@ -72,12 +72,12 @@ def to_hex(octet_string):
 #
 # struct {
 #    uint16 length = Length;
-#    opaque label<8..255> = "OPAQUE " + Label;
+#    opaque label<8..255> = "OPAQUE-" + Label;
 #    opaque context<0..255> = Context;
 # } HkdfLabel;
 def hkdf_expand_label(config, secret, label, context, length):
     def build_label(length, label, context):
-        return I2OSP(length, 2) + encode_vector_len(_as_bytes("OPAQUE ") + label, 1) + encode_vector_len(context, 1)
+        return I2OSP(length, 2) + encode_vector_len(_as_bytes("OPAQUE-") + label, 1) + encode_vector_len(context, 1)
     hkdf_label = build_label(length, label, context)
     return hkdf_expand(config, secret, hkdf_label, length)
 
