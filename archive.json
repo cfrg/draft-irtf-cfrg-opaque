@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-15T01:03:36.307833+00:00",
+  "timestamp": "2021-04-18T01:05:21.343211+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -2231,15 +2231,15 @@
       "id": "MDU6SXNzdWU3NDM5MjA4NzQ=",
       "title": "note regarding omitting skU from envelope and deriving it from rwd instead",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/84",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "stef",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "in the source there's a commented out part `## Envelope considerations` which mentions that not even `skU` needs to be included in the credentials wrapped in the envelope, instead skU can be derived from `rwd`. there's a note that this part should be \"brought back after updating\". if this is indeed the case, do not forget to change \r\n> Applications MUST include skU in secret_credentials\r\nin the {#protocol-messages} section.",
       "createdAt": "2020-11-16T15:18:02Z",
-      "updatedAt": "2021-03-01T22:33:55Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-15T15:00:33Z",
+      "closedAt": "2021-04-15T13:26:43Z",
       "comments": [
         {
           "author": "chris-wood",
@@ -2292,14 +2292,14 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Hello,\r\n\r\ncan't rwdu be used as input to h2c's HashToScalar and serve as a private key? (This is how I understood OPAQUE the first time I read about it - as an alternative to a secret key used for the envelope)",
           "createdAt": "2020-12-06T01:26:05Z",
           "updatedAt": "2020-12-06T12:45:21Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "With the latest advancements here, I'd like to bring this back up.\r\n\r\nConsideration to support RSA in the Sigma setup (or anything other that hasn't defined a secure deterministic key pair generation) made this a blocker.\r\n\r\nSince the 'main' AKE now is 3DH and that the group used for 3DH[ is set to be the same as the one used in the OPRF](https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/104#issuecomment-772114793), we can leverage hashing _rwdu_ to the field for the secret key (e.g. hash-to-scalar() in hash-to-curve terminology). This would nicely lower the complexity and size of the envelope construction.\r\n\r\nI'm thinking about something like this:\r\nRegistration:\r\n```\r\nClient:\r\n1. N = Unblind(blind, response.data)\r\n2. y = Finalize(pwdU, N, \"OPAQUEXX\")\r\n3. nonce = random(32)\r\n4. rwdU = HKDF-Extract(nonce, Harden(y, params))\r\n5. sku, pku = DeriveKeysFromSeed( rwdu )\r\r\n6. authKey = HKDF-Expand( rwdu, \"AuthKey\")\r\n7. authTag = Hmac ( authkey, nonce || pku || pks )\r\n8. envU = envelope(nonce, authTag)\r\n\r\nC -> S : pku, envU\r\n```\r\n\r\nThe envelope does not contain encrypted secret material anymore.\r\n\r\nThen during authentication:\r\n```\r\nC -> S : oprf request, AKE request\r\nS -> C : oprf response, AKE response, pks, envU\r\n```\r\n\r\nThe client then does the same steps as during registration and checks the tag. Upon successful verification, uses sku, pku, and pks to proceed with the AKE.\n\nThis works for AKEs accepting a `DeriveKeysFromSeed` function, which derives a key pair from a seed.\nIn the case of 3DH over the groups supported in OPRF, this would be the hash-to-curve `HashToScalar()` function (+ a DST).\n\nThe envelope would be reduced to this\n```\nenvelope {\n    nonce\n    authTag\n}\n```",
           "createdAt": "2021-02-03T19:45:24Z",
           "updatedAt": "2021-02-07T23:18:01Z"
@@ -2341,7 +2341,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "I'm sorry, it seems the Github app has some issues, my comments keep disappearing. Here is my original comment:\r\n\r\n# \r\n\r\nThe draft has the following comment\r\n\r\n> It is possible to dispense with encryption in the construction of envelope to\r\n> obtain a shorter envelope (resulting in less storage at the server and less\r\n> communication from server to client). The idea is to derive client_private_key from prk.\r\n> However, for cases where client_private_key is not a random string of a given length, we\r\n> define a more general procedure. Namely, what is derived from prk is a random\r\n> seed used as an input to a key generation procedure that generates the pair\r\n> (client_private_key, client_public_key). In this case, secret_credentials is empty and cleartext_credentials\r\n> contains server_public_key. The random key generation seed is defined as\r\n> HKDF-Expand(KdKey; info=\"KG seed\", L)\r\n> where L is the required seed length. We note that in this encryption-less\r\n> scheme, the authentication still needs to be random-key robust which HMAC\r\n> satisfies.\r\n\r\nThis is where my suggestion came from, reducing the envelope to only keep the nonce and authentication tag, so the client can verify before continuing the AKE.\r\n",
           "createdAt": "2021-02-15T21:17:56Z",
           "updatedAt": "2021-02-15T21:17:56Z"
@@ -2355,7 +2355,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Ok, I'm switching to a computer, this bug is really annoying, I'm terribly sorry.\r\n_(original message)_\r\n#\r\nIf it's possible to have no envelope at all and still keep the same level of security, that would be ideal (and I would love that!).\r\n\r\nThe 'client's trace' would be very loosely coupled, with the client not knowing if it got the right OPRF evaluation. On registration, the public key the client sends back to the server would not be authenticated.",
           "createdAt": "2021-02-15T21:31:59Z",
           "updatedAt": "2021-02-15T21:31:59Z"
@@ -2376,14 +2376,14 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Since we have no encryption, is the nonce even necessary? We could do the following, but I'm not sure we'd loose a security property:\r\n```\r\nprk = HKDF-Extract(hardened, nil)\r\nskc, pkc = deriveKeyPair(prk)\r\nauthKey = HKDF-Expand(prk, \"AuthKey\", Nh)\r\nauthTag = hmac( authKey, pkc || pks )\r\nenvelope = authTag\r\n```\r\n\r\nIf we went _envelope-less_:\r\n\r\nIn the AKE, the client computes `ikm` using the `skc` and `pks` long-term values. So one can assume that this is sufficient to proof possession of the right AKE mac keys, and thus verify KE2-mac and produce KE3-mac.",
           "createdAt": "2021-02-15T21:41:48Z",
           "updatedAt": "2021-02-15T23:50:53Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "@chris-wood what do you think?\r\n\r\nIf we went _envelope-less_, would the AKE macs be sufficient proofs that the client derived the right key pair?",
           "createdAt": "2021-02-15T21:51:35Z",
           "updatedAt": "2021-02-15T21:51:35Z"
@@ -2411,7 +2411,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "I confirm, this suggestion is thought in the 3DH setup, as the document is now focused on 3DH.\r\n\r\nI can agree that this situation may look like the joke you're thinking about, but I hope you're not taking any offense that we're making these suggestions that _make sense_. You're the expert here, you know best :)\r\n\r\nRegarding the server key caching, building OPAQUE on it would indeed go against the very usefulness of aPAKEs, like you already mentioned in other comments. But it would be very useful to store the public key as a configuration parameter like the others (group and hash identifiers, etc.)\r\n\r\nIn the case we keep the envelope, would the nonce still be necessary, and the authentication tag suffice?",
           "createdAt": "2021-02-15T22:52:20Z",
           "updatedAt": "2021-02-15T22:52:20Z"
@@ -2432,7 +2432,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "I was more thinking about the regular case, where we don't cache anything, and the user only knows their password. \r\n\r\nLike in this previous comment\r\n\r\n> Since we have no encryption, is the nonce even necessary? We could do the following, but I'm not sure we'd loose a security property:\r\n> ```prk = HKDF-Extract(hardened, nil)\r\n> skc, pkc = deriveKeyPair(prk)\r\n> authKey = HKDF-Expand(prk, \"AuthKey\", Nh)\r\n> authTag = hmac( authKey, pkc || pks )\r\n> envelope = authTag",
           "createdAt": "2021-02-15T23:49:45Z",
           "updatedAt": "2021-02-15T23:51:01Z"
@@ -2446,14 +2446,14 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Doesn't the server need the client's pkc? (i.e. with the envelope)",
           "createdAt": "2021-02-16T00:49:25Z",
           "updatedAt": "2021-02-16T00:56:20Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "I see. Only at registration, actually. During login, the client doesn't need its public key.",
           "createdAt": "2021-02-16T00:58:35Z",
           "updatedAt": "2021-02-16T01:01:11Z"
@@ -2467,7 +2467,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Since we already rely on hash-to-curve for the OPRF, why could rely on its hash-to-field for the scalar",
           "createdAt": "2021-02-18T23:43:31Z",
           "updatedAt": "2021-02-18T23:43:31Z"
@@ -2481,7 +2481,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "In #104, I understand that the group in 3DH must match what we use for OPRF, which is defined using prime-order groups. I'm confused.",
           "createdAt": "2021-02-19T00:02:01Z",
           "updatedAt": "2021-02-19T00:02:01Z"
@@ -2495,7 +2495,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "I see. I was still fixed on using 3DH.\r\n\r\n> The envelope is empty (and thus consumes no bytes on the wire).\r\n\r\nSee above\r\n\r\n> Interestingly, your suggestion of getting rid of the whole envelope and building on the AKE authentication may work with 3DH (one would need to prove it). In the case of SIGMA, if enc_server_info is empty, the protocol breaks completely. It allows for an offline dictionary attack after a single session with the attacker acting as man in the middle between server and client.\r\n> \r\n> However, I do not think that assuming the client has the server's public key would be the common case (indeed, one of the main advantages of PAKEs is that you do not assume PKI or any form of trusted server's public key). In this case, the server sends its public key to the client which must be authenticated by the client. This will require an HMAC computed on pkU. So deriving skU directly from prk would not obviate the envelope, it will be the same as now except for contents.encrypted_creds being empty (hence also pseudorandom_pad being omitted).\r\n\r\nMy takeaway is:\r\n- > getting rid of the whole envelope and building on the AKE authentication may work with 3DH (one would need to prove it)\r\n\r\nand we don't have that prove, yet.\r\n\r\n- > the server sends its public key to the client which must be authenticated by the client. This will require an HMAC computed on pkU\r\n\r\nSo we still need an envelope, that would just be the authentication tag.",
           "createdAt": "2021-02-19T00:39:20Z",
           "updatedAt": "2021-02-19T00:39:20Z"
@@ -2509,7 +2509,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "> My understanding is that the main motivation for this third envelope mode is to reduce the size of the envelope, right? If it is a strictly better solution than the current proposal with \"base mode\", then I think we should aim to replace the existing \"base mode\" with one which incorporates these envelope optimizations, rather than introduce a third mode.\r\n\r\nTotally aligned with you, here. I was also thinking that it would be an interesting candidate to replace the base mode. The philosophy would then be\r\n\"Base mode envelope is for KeyGenFromSeed() compatible setups and doesn't store any secrets. Custom mode envelope offers encrypted secrets storage, that can be used for setups without a KeyGenFromSetup() function.\"\r\n\r\nOther than reducing the size of the envelope, it slightly reduces the complexity of building the envelope and saves some calls to hashing.\r\n\r\n> Also, would there be an analogous version of this which supports custom identifiers but also with a smaller envelope size?\r\n\r\nDo you have an example in mind?\r\n\r\n> How important is it that we minimize the size of the envelope / omit sending pkS across the wire, if it comes at the cost of dealing with extra assumptions that could end up being a footgun for the wrapping application?\r\n\r\nAgreed that we need to be sure what we're doing here :)",
           "createdAt": "2021-02-20T13:32:56Z",
           "updatedAt": "2021-02-20T13:32:56Z"
@@ -2530,7 +2530,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "As discussed with @kevinlewi this justifies the need to keep the nonce in the envelope.",
           "createdAt": "2021-02-21T02:34:57Z",
           "updatedAt": "2021-02-21T02:34:57Z"
@@ -2541,6 +2541,20 @@
           "body": "It is true that in the seed mode you depend more on the quality of the OPRF key created on the server side. But in the base mode you depend entirely on the client randomness (if the client creates the key, which is what I expect to be the common case) and this will in many cases be of less quality than the server's.  For seed mode, the client should choose a random nonce that would be part of the seed derivation. While it is a public value, it still helps to randomize on top of the server's OPRF key. Also, this nonce will help against the case of a server that reuses the OPRF key with more than one user. Even if two users have the same password, the different nonces will produce different seeds.\r\n\r\nAre we now involving the account name, say, user@server.com, in the derivation of (what we used to call) rwd?\r\nShould we? Is there a well defined (deterministic and repeatable) identity string like that?\r\n\r\nOn the point of servers reusing the OPRF key with different users, there needs to be a HUGE warning in the RFC not to do that.   Btw, one of the mitigation of enumeration attacks uses a prf with userid name as input to derive the OPRF keys, so it ensures different oprf keys for different users.  ",
           "createdAt": "2021-03-01T22:33:55Z",
           "updatedAt": "2021-03-01T22:33:55Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Fixed in #154.",
+          "createdAt": "2021-04-15T13:26:43Z",
+          "updatedAt": "2021-04-15T15:00:33Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "You mean #154 :-)",
+          "createdAt": "2021-04-15T14:51:13Z",
+          "updatedAt": "2021-04-15T14:51:13Z"
         }
       ]
     },
@@ -4289,7 +4303,7 @@
       "id": "MDU6SXNzdWU4MTI5ODEyMTI=",
       "title": "Consider renaming Test Vector sections",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/153",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
@@ -4298,8 +4312,8 @@
       ],
       "body": "Rather than calling these \"OPAQUE-3DH Test Vector 1, 2, 3, etc.\", should we give them more descriptive names based on the configuration? We already reference the fact that it is 3DH here.\r\n\r\n_Originally posted by @chris-wood in https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/151#discussion_r579872996_",
       "createdAt": "2021-02-21T23:32:40Z",
-      "updatedAt": "2021-04-14T19:34:57Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-16T13:37:47Z",
+      "closedAt": "2021-04-16T13:37:47Z",
       "comments": [
         {
           "author": "chris-wood",
@@ -4307,6 +4321,13 @@
           "body": "@kevinlewi do you have a suggestion for the naming convention? The [name is computed in the formatting script](https://github.com/cfrg/draft-irtf-cfrg-opaque/blob/master/poc/format_test_vectors.py#L126), so it should be pretty simple to change. :-) ",
           "createdAt": "2021-03-01T02:42:13Z",
           "updatedAt": "2021-03-01T02:42:13Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closing absent a better suggestion! We can always revisit this later.",
+          "createdAt": "2021-04-16T13:37:47Z",
+          "updatedAt": "2021-04-16T13:37:47Z"
         }
       ]
     },
@@ -4315,19 +4336,19 @@
       "id": "MDU6SXNzdWU4MjI3NzU0MzU=",
       "title": "Agree on a consistent format for all \"magic string\" constants",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/157",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Here is a list of all of the constant strings currently specified in the protocol:\r\n\r\nStrings relating to envelope construction:\r\n- \"Pad\"\r\n- \"AuthKey\"\r\n- \"ExportKey\"\r\n\r\nStrings relating to the AKE section:\r\n- \"3DH\"\r\n- \"client mac\"\r\n- \"handshake secret\"\r\n- \"server mac\"\r\n- \"handshake enc\"\r\n- \"encryption pad\"\r\n- \"session secret\"\r\n- \"OPAQUE \"\r\n\r\nStrings coming from the VOPRF draft (out of scope for this draft, but here for reference):\r\n- \"VOPRF06-HashToGroup-\"\r\n- \"VOPRF06-Finalize-\"\r\n\r\nCan we agree on a convention for all of these strings?\r\n\r\nHere's my proposal: I say we change all of them (except for the VOPRF ones obviously) to look like \"AuthKey\", \"HandshakeSecret\", \"SessionSecret\", and to remove the space at the end of \"OPAQUE \".",
       "createdAt": "2021-03-05T05:59:58Z",
-      "updatedAt": "2021-04-14T00:01:16Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-16T14:39:18Z",
+      "closedAt": "2021-04-16T14:39:18Z",
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "+1 for CamelCase and space deletion",
           "createdAt": "2021-03-05T07:57:19Z",
           "updatedAt": "2021-03-05T07:57:19Z"
@@ -4341,17 +4362,31 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
-          "body": "For OPAQUE defined strings, how about this:\r\n\r\nEnvelope construction:\r\n- \"OPAQUE-HashToScalar\"\r\n- \"Pad\"\r\n- \"AuthKey\"\r\n- \"ExportKey\"\r\n- \"MaskingKey\"\r\n- \"PrivateKey\"\r\n- \"OprfKey\"\r\n- \"CredentialResponsePad\"\r\n\r\nStrings relating to the AKE section:\r\n- \"3DH\"\r\n- \"OPAQUE-\" _(note the dash in lieu of the space, I believe this will lead to fewer implementation mishaps)_\r\n- \"ClientMac\"\r\n- \"ServerMac\"\r\n- \"SessionSecret\"\r\n- \"EncryptionPad\"\r\n- \"HandshakeEnc\"\r\n- \"HandshakeSecret\"",
+          "authorAssociation": "COLLABORATOR",
+          "body": "For OPAQUE defined strings, how about this:\r\n\r\nEnvelope construction:\r\n- \"OPAQUE-HashToScalar\"\r\n- \"Pad\"\r\n- \"AuthKey\"\r\n- \"ExportKey\"\r\n- \"MaskingKey\"\r\n- \"PrivateKey\"\r\n- \"OprfKey\"\r\n- \"CredentialResponsePad\"\r\n\r\nStrings relating to the AKE section:\r\n- \"3DH\"\r\n- \"OPAQUE-\" _(note the dash in lieu of the space, I believe this will lead to fewer implementation mishaps)_\r\n- \"ClientMAC\"\r\n- \"ServerMAC\"\r\n- \"SessionKey\"\r\n- \"EncryptionPad\"\r\n- \"HandshakeKey\"\r\n- \"HandshakeSecret\"\r\n\r\n_EDIT: updated_",
           "createdAt": "2021-04-08T13:26:27Z",
-          "updatedAt": "2021-04-08T13:26:27Z"
+          "updatedAt": "2021-04-16T14:13:22Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Currently, the list of HashTo* DST's used are:\r\n\r\n| Designation | Value  | Used in | Defined in|\r\n| ------------- | ------------- | ------------- | ------------- |\r\n| ku h2s | nil | CreateRegistrationResponse(), CreateCredentialResponse() | / |\r\n| skc h2s | \"OPAQUE-HashToScalar\" | DeriveAkeKeyPair() | OPAQUE  |\r\n| password h2c | ? | VOPRF/Blind() | [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n| masking key h2s | ? | VOPRF/DeriveKeyPair()| [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n| oprf finalize | ? | VOPRF/Finalize() | [VOPRF](https://github.com/cfrg/draft-irtf-cfrg-voprf) |\r\n\r\n(\"?\" for now as they are still being discussed in [#236](https://github.com/cfrg/draft-irtf-cfrg-voprf/issues/236) and [#244](https://github.com/cfrg/draft-irtf-cfrg-voprf/issues/244).)\r\n\r\nIt could be useful to have them all listed in a section of the document and refer to them by constants in the functions where they are used.",
           "createdAt": "2021-04-14T00:01:15Z",
           "updatedAt": "2021-04-14T00:01:15Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@bytemare, @kevinlewi: I think we can close this now that #174 landed with the right strings. Strings used in the OPRF functions can be resolved in that document (as needed).",
+          "createdAt": "2021-04-16T13:36:52Z",
+          "updatedAt": "2021-04-16T13:36:52Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I updated the list above, for reference. I think we can close",
+          "createdAt": "2021-04-16T14:13:47Z",
+          "updatedAt": "2021-04-16T14:13:47Z"
         }
       ]
     },
@@ -4376,7 +4411,7 @@
       "id": "MDU6SXNzdWU4MjgyNDcwOTE=",
       "title": "Test vector section should include configuration values for KDF, MAC, etc.",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/159",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
@@ -4385,8 +4420,8 @@
       ],
       "body": "This includes specifying `Nm`, `Nx`, etc. values in addition to the KDF and MAC used.",
       "createdAt": "2021-03-10T19:43:25Z",
-      "updatedAt": "2021-04-14T19:34:57Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-16T13:37:56Z",
+      "closedAt": "2021-04-16T13:37:56Z",
       "comments": []
     },
     {
@@ -4394,7 +4429,7 @@
       "id": "MDU6SXNzdWU4Mjg5MjUyMTQ=",
       "title": "Replace instances of \"HMAC\" with \"MAC\" in main text",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/160",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
@@ -4403,9 +4438,17 @@
       ],
       "body": "After https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/155, some references to \"HMAC\" were left -- these should be updated to just refer to MAC",
       "createdAt": "2021-03-11T08:37:33Z",
-      "updatedAt": "2021-04-14T19:34:57Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2021-04-15T15:18:04Z",
+      "closedAt": "2021-04-15T15:18:04Z",
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This was fixed in #154.",
+          "createdAt": "2021-04-15T15:18:04Z",
+          "updatedAt": "2021-04-15T15:18:04Z"
+        }
+      ]
     },
     {
       "number": 161,
@@ -4496,7 +4539,7 @@
       "id": "MDU6SXNzdWU4NDAxMTk4MjA=",
       "title": "Expand input name",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/165",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
@@ -4505,8 +4548,8 @@
       ],
       "body": "We currently use `prk` as the input to `Expand()` calls for alignment with HKDF, but this deviates from the original paper which used `rwd`. The latter might be too easily confused with `pwd`, so how about we clarify and call it `randomized_pwd`? That would also be more in line with other naming conventions used in the doc, where we spell things out rather than use acronyms. \r\n\r\n@hugokraw, what do you think?",
       "createdAt": "2021-03-24T20:00:11Z",
-      "updatedAt": "2021-04-14T19:34:58Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-15T23:49:09Z",
+      "closedAt": "2021-04-15T23:49:09Z",
       "comments": [
         {
           "author": "hugokraw",
@@ -4526,10 +4569,12 @@
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
-      "labels": [],
+      "labels": [
+        "next-version"
+      ],
       "body": "In https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/22, we added the option for a server to be able to issue a \"fake\" credential response in the absence of a password file for a registered user. The current draft also describes how this response should be constructed. Should we also include test vectors for this functionality?",
       "createdAt": "2021-03-24T21:12:48Z",
-      "updatedAt": "2021-03-24T21:12:48Z",
+      "updatedAt": "2021-04-15T15:38:44Z",
       "closedAt": null,
       "comments": []
     },
@@ -4538,7 +4583,7 @@
       "id": "MDU6SXNzdWU4NDAyMDkxNDg=",
       "title": "Include primitive parameters in test vectors",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/167",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
@@ -4547,9 +4592,17 @@
       ],
       "body": "See [this comment](https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/164#pullrequestreview-620267851)!",
       "createdAt": "2021-03-24T22:02:45Z",
-      "updatedAt": "2021-04-14T19:35:12Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2021-04-15T15:20:49Z",
+      "closedAt": "2021-04-15T15:20:49Z",
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Dupe of #159.",
+          "createdAt": "2021-04-15T15:20:49Z",
+          "updatedAt": "2021-04-15T15:20:49Z"
+        }
+      ]
     },
     {
       "number": 169,
@@ -4565,9 +4618,17 @@
       ],
       "body": "In the 3DH instantiation, the fields `client_info` and `server_info` are marked as optional and application-specific. \r\n\r\n```\r\nclient_info\r\nOptional application-specific information to exchange during the protocol.\r\n\r\nenc_server_info\r\nOptional application-specific information to exchange during the protocol encrypted under key Ke2, defined below.\r\n```\r\n\r\nThe request here is to highlight in the document what are the possible use cases of these fields, and to remark the relevance of having these fields vs not having them at all.\r\n \r\n",
       "createdAt": "2021-04-01T19:16:52Z",
-      "updatedAt": "2021-04-14T19:35:05Z",
+      "updatedAt": "2021-04-15T21:17:52Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "(not answering the question, but FTR: #172 adds that client_info is authenticated under the KE3 mac )",
+          "createdAt": "2021-04-15T21:17:52Z",
+          "updatedAt": "2021-04-15T21:17:52Z"
+        }
+      ]
     },
     {
       "number": 171,
@@ -10606,35 +10667,37 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NTgzNDIzNTEy",
       "title": "New Envelope mode proposal including private key derivation from OPRF output",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/154",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "bytemare",
-      "authorAssociation": "CONTRIBUTOR",
+      "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "After discussions with @chris-wood and @kevinlewi and the thread in #84, this PR is a first sketch of a proposal to address these discussions.\r\n\r\nProposal of new envelope modes\r\n\r\n1. **Drop Base/CustomIdentifiers**\r\nCleartextCredentials always contain pks, idu and ids. If not supplied by the client, idu and ids MUST default to the public keys.\r\n2. Introduce two new modes\r\n    a. **Internal mode**\r\n    The client keys are generated internally from a seed. (also called \"seed mode\", \"encryption-less mode\", etc. in different issues and conversations). No encrypted creds in the envelope. Applications are not expected to know how to deal with key generation.\r\n    b. **External mode**\r\n    The client keys are provided by the application, and OPAQUE encrypts the private key into the encrypted creds in the envelope.\r\n\r\nIsolating the Envelope description and mode, as well as the rearrangements, are my own suggestions and not part of the discussions.",
       "createdAt": "2021-03-02T23:51:54Z",
-      "updatedAt": "2021-04-14T23:48:43Z",
+      "updatedAt": "2021-04-15T13:25:48Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "master",
       "headRefOid": "1886ef63567c4e97a16d0a462f6198c70d548c35",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2021-04-15T13:25:47Z",
+      "mergedAt": "2021-04-15T13:25:47Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "694282530704ea47a98cd8fc65c274fd93d5aa40"
+      },
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Line 302-306 would need to be adapted as well:\r\n\r\n> OPAQUE consists of two stages: registration and authenticated key exchange.\r\n> In the first stage, a client registers its password with the server and stores\r\n> its encrypted credentials on the server. In the second stage, a client obtains\r\n> those credentials, recovers them using the client's password, and subsequently uses\r\n> them as input to an AKE protocol.",
           "createdAt": "2021-03-07T14:53:24Z",
           "updatedAt": "2021-03-07T14:53:24Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Latest changes include:\r\n- Moving envelope mode and nonce out of the inner envelope up into the envelope. The inner envelope is now purely independent from one mode to the other and use it as they see fit. E.g. the internal mode uses a \"nil\" envelope.\r\n- In case no custom identifiers are used, the client didn't have access to its public key. The internal mode could get it for the cost of a scalar multiplication, but the external mode wouldn't be covered. Sending it to the client in the CredentialResponse covers both modes. Integrated with CleartextCredentials it's authenticated under the mac.\r\n- Introduced `Nn` to abstract nonce length, to not have magic numbers laying around in the document",
           "createdAt": "2021-03-11T14:55:53Z",
           "updatedAt": "2021-04-12T01:01:30Z"
@@ -10647,7 +10710,7 @@
             "abbreviatedOid": "21bb6d2"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-03T00:23:40Z",
@@ -10735,7 +10798,7 @@
             "abbreviatedOid": "21bb6d2"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-04T01:33:48Z",
@@ -10755,7 +10818,7 @@
             "abbreviatedOid": "21bb6d2"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-04T01:35:02Z",
@@ -10775,7 +10838,7 @@
             "abbreviatedOid": "21bb6d2"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-04T01:40:48Z",
@@ -10851,7 +10914,7 @@
             "abbreviatedOid": "21bb6d2"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-05T21:24:01Z",
@@ -10891,7 +10954,7 @@
             "abbreviatedOid": "cffa6f3"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-11T10:35:10Z",
@@ -11051,7 +11114,7 @@
             "abbreviatedOid": "4e17ff3"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T00:19:33Z",
@@ -11071,7 +11134,7 @@
             "abbreviatedOid": "4e17ff3"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T00:27:22Z",
@@ -11091,7 +11154,7 @@
             "abbreviatedOid": "7cb2481"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T00:31:32Z",
@@ -11111,7 +11174,7 @@
             "abbreviatedOid": "7cb2481"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T00:42:53Z",
@@ -11131,7 +11194,7 @@
             "abbreviatedOid": "7cb2481"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T00:57:59Z",
@@ -11151,7 +11214,7 @@
             "abbreviatedOid": "7cb2481"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T01:01:11Z",
@@ -11211,7 +11274,7 @@
             "abbreviatedOid": "12b4cf7"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T02:25:49Z",
@@ -11231,7 +11294,7 @@
             "abbreviatedOid": "9195e95"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T02:33:11Z",
@@ -11251,7 +11314,7 @@
             "abbreviatedOid": "9598a45"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T02:42:12Z",
@@ -11271,7 +11334,7 @@
             "abbreviatedOid": "ad77e8a"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-25T22:19:33Z",
@@ -11291,7 +11354,7 @@
             "abbreviatedOid": "6da4b38"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-29T01:22:07Z",
@@ -11517,7 +11580,7 @@
             "abbreviatedOid": "6da4b38"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:30:24Z",
@@ -11537,7 +11600,7 @@
             "abbreviatedOid": "6da4b38"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:31:27Z",
@@ -11557,7 +11620,7 @@
             "abbreviatedOid": "6da4b38"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:33:16Z",
@@ -11577,7 +11640,7 @@
             "abbreviatedOid": "6da4b38"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:34:27Z",
@@ -11597,7 +11660,7 @@
             "abbreviatedOid": "02936f1"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:40:42Z",
@@ -11617,7 +11680,7 @@
             "abbreviatedOid": "b115431"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T17:56:33Z",
@@ -11637,7 +11700,7 @@
             "abbreviatedOid": "f017dc9"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T19:17:07Z",
@@ -11657,7 +11720,7 @@
             "abbreviatedOid": "f017dc9"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T19:18:55Z",
@@ -11677,7 +11740,7 @@
             "abbreviatedOid": "83548ce"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T20:57:27Z",
@@ -11697,7 +11760,7 @@
             "abbreviatedOid": "83548ce"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T21:02:27Z",
@@ -11737,7 +11800,7 @@
             "abbreviatedOid": "952bd69"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-01T22:29:15Z",
@@ -11757,7 +11820,7 @@
             "abbreviatedOid": "004e9af"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-02T11:38:13Z",
@@ -11817,7 +11880,7 @@
             "abbreviatedOid": "004e9af"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-04T08:49:44Z",
@@ -11837,7 +11900,7 @@
             "abbreviatedOid": "004e9af"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-08T13:45:55Z",
@@ -11857,7 +11920,7 @@
             "abbreviatedOid": "647fbee"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-12T01:18:02Z",
@@ -11877,7 +11940,7 @@
             "abbreviatedOid": "c8085ef"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-13T21:38:28Z",
@@ -11903,7 +11966,7 @@
             "abbreviatedOid": "c8085ef"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-13T23:21:41Z",
@@ -12027,7 +12090,7 @@
             "abbreviatedOid": "ee4cd5a"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-14T23:34:30Z",
@@ -12047,7 +12110,7 @@
             "abbreviatedOid": "ee4cd5a"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-14T23:38:14Z",
@@ -12067,7 +12130,7 @@
             "abbreviatedOid": "ee4cd5a"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-14T23:41:11Z",
@@ -13601,31 +13664,33 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NjA2NjU1NDI2",
       "title": "Implement internal and external mode.",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/168",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Implements #154. Starting as a draft while we work through interop.",
       "createdAt": "2021-04-01T01:10:02Z",
-      "updatedAt": "2021-04-13T00:11:15Z",
+      "updatedAt": "2021-04-15T17:20:06Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "caw/internal-external",
       "headRefOid": "09e8fc5634873ed6349ca178b19545d63749b707",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2021-04-15T13:26:30Z",
+      "mergedAt": "2021-04-15T13:26:30Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "7c3e8d5652b0cd10f981bdd52cce51a97b730a44"
+      },
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
-          "body": "Something quite peculiar: P384 and P512 in the internal mode only have a public key in the registration upload vectors that doesn't correspond to either the client public key vector (that is false anyway) and the recovered public key from the password.\r\n\r\nIn all other vectors, the public key in the registration upload is correct.",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Something quite peculiar: P384 and P512 in the internal mode only have a public key in the registration upload vectors that doesn't correspond to either the client public key vector (that is false anyway) and the recovered public key from the password.\r\n\r\nIn all other vectors, the public key in the registration upload is correct.\r\n\r\nEdit: that was because I wasn't using the right seed expansion length for these two groups.",
           "createdAt": "2021-04-06T21:50:59Z",
-          "updatedAt": "2021-04-06T21:50:59Z"
+          "updatedAt": "2021-04-15T17:20:06Z"
         }
       ],
       "reviews": [
@@ -13675,7 +13740,7 @@
             "abbreviatedOid": "5131d32"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "CHANGES_REQUESTED",
           "body": "",
           "createdAt": "2021-04-06T16:28:49Z",
@@ -13701,7 +13766,7 @@
             "abbreviatedOid": "5131d32"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-04-06T21:46:31Z",
@@ -13774,24 +13839,332 @@
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/172",
       "state": "OPEN",
       "author": "bytemare",
-      "authorAssociation": "CONTRIBUTOR",
+      "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "- Added protocol compilation at login\r\n- interface for main API\r\n- high level composition of credential recovery and AKE\r\n- Write out various functions\r\n- Introduce RandomPrivateKey() to create a fresh key for EDH\r\n- Move to CamelCase and space-less magic strings\r\n- Clean-up leftover mishaps",
       "createdAt": "2021-04-12T00:15:55Z",
-      "updatedAt": "2021-04-12T00:23:42Z",
+      "updatedAt": "2021-04-16T14:40:38Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "ake-rewrite",
-      "headRefOid": "9ec64139c67beca4c0288506956ac6556fd5b001",
+      "headRefOid": "cb32b1b834cdd3dc8c35b9661ba002e52c28de4f",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM2OTQ4NzAx",
+          "commit": {
+            "abbreviatedOid": "9ec6413"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "First pass complete. Looking good!",
+          "createdAt": "2021-04-15T17:26:53Z",
+          "updatedAt": "2021-04-15T18:18:46Z",
+          "comments": [
+            {
+              "originalPosition": 29,
+              "body": "```suggestion\r\n```",
+              "createdAt": "2021-04-15T17:26:53Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 19,
+              "body": "Do we need the \"OPAQUE\" prefix for these functions? This is part of the OPAQUE spec, so that seems implied. Perhaps just `ClientInit`, `ServerInit`, `ClientFinish`, and `ServerFinish`?",
+              "createdAt": "2021-04-15T17:28:23Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 32,
+              "body": "```suggestion\r\nThe `ke1`, `ke2`, and `ke3` output values are the protocol messages sent between client and server.\r\n```",
+              "createdAt": "2021-04-15T17:59:04Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 34,
+              "body": "The function names in this paragraph seem outdated?",
+              "createdAt": "2021-04-15T18:00:14Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 37,
+              "body": "Since these are internal values, perhaps we can hide them under a \"client_state\" and \"server_state\" structure? Otherwise, APIs might be tempted to export them for applications to use.",
+              "createdAt": "2021-04-15T18:00:56Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 101,
+              "body": "As above, I would recommend folding all this into a \"state\" or \"context\" object.",
+              "createdAt": "2021-04-15T18:06:47Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 114,
+              "body": "```suggestion\r\n- server_identity, the optional encoded server identity, which is set to its public key if nil\r\n```",
+              "createdAt": "2021-04-15T18:07:04Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 134,
+              "body": "```suggestion\r\nServers MUST NOT use `session_key` unless `OPAQUEServerFinalize` returns `true`.\r\n```",
+              "createdAt": "2021-04-15T18:07:48Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 140,
+              "body": "Make this a state/context object, too?",
+              "createdAt": "2021-04-15T18:08:07Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 197,
+              "body": "Should we reference the dependencies section, where this is specified?",
+              "createdAt": "2021-04-15T18:09:10Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 330,
+              "body": "Maybe we can add \"GenerateKeyPair\" to the AKE dependency? For example:\r\n\r\n```\r\nGenerateKeyPair(): Return a randomly generate private and public key pair. This\r\ncan be implemented by generating a random private key `sk` and then computing\r\n`pk = RecoverPublicKey(sk)`.\r\n```",
+              "createdAt": "2021-04-15T18:11:11Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 331,
+              "body": "`ephemeral_client_secret_key` is undefined?",
+              "createdAt": "2021-04-15T18:11:18Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 213,
+              "body": "The \"AKE\" prefix is missing here. I think it reads better without it, so maybe we drop \"AKE\" elsewhere?",
+              "createdAt": "2021-04-15T18:12:20Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 446,
+              "body": "```suggestion\r\n```\r\n\r\nThis should just go in the AKE dependency section, I think. (See my comment above about GenerateKeyPair.)",
+              "createdAt": "2021-04-15T18:16:35Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            },
+            {
+              "originalPosition": 449,
+              "body": "Can we use the same function for both client and server here? In my implementation, that's what I do.",
+              "createdAt": "2021-04-15T18:16:53Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM3MTc5NjAy",
+          "commit": {
+            "abbreviatedOid": "1800f32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-15T22:33:31Z",
+          "updatedAt": "2021-04-15T22:33:31Z",
+          "comments": [
+            {
+              "originalPosition": 19,
+              "body": "No, and I wanted to discuss that. I like your suggestions, let's do it this way.",
+              "createdAt": "2021-04-15T22:33:31Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM3MTgxMDQy",
+          "commit": {
+            "abbreviatedOid": "1800f32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-15T22:36:41Z",
+          "updatedAt": "2021-04-15T22:36:41Z",
+          "comments": [
+            {
+              "originalPosition": 213,
+              "body": "Yes, let's drop it",
+              "createdAt": "2021-04-15T22:36:41Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM3MjA0ODkx",
+          "commit": {
+            "abbreviatedOid": "1800f32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-15T23:02:21Z",
+          "updatedAt": "2021-04-15T23:02:22Z",
+          "comments": [
+            {
+              "originalPosition": 197,
+              "body": "Maybe this phrase is not even necessary, we could drop it",
+              "createdAt": "2021-04-15T23:02:21Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM3MjIwNTg5",
+          "commit": {
+            "abbreviatedOid": "1800f32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-15T23:41:56Z",
+          "updatedAt": "2021-04-15T23:41:56Z",
+          "comments": [
+            {
+              "originalPosition": 331,
+              "body": "it's `client_secret`, of course \ud83e\udd26 ",
+              "createdAt": "2021-04-15T23:41:56Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM3MjIxMDg1",
+          "commit": {
+            "abbreviatedOid": "1800f32"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-15T23:43:14Z",
+          "updatedAt": "2021-04-15T23:43:14Z",
+          "comments": [
+            {
+              "originalPosition": 446,
+              "body": "Will do after rebase",
+              "createdAt": "2021-04-15T23:43:14Z",
+              "updatedAt": "2021-04-16T14:33:17Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 174,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE2MTU2NDQ1",
+      "title": "Apply various editorial changes.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/174",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Fixes #165, #159, and #157.",
+      "createdAt": "2021-04-15T15:38:30Z",
+      "updatedAt": "2021-04-15T23:49:09Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "7c3e8d5652b0cd10f981bdd52cce51a97b730a44",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/editorial-changes",
+      "headRefOid": "65d72ae0222dd8777d20e8e97aa8dfea8a549684",
+      "closedAt": "2021-04-15T23:49:09Z",
+      "mergedAt": "2021-04-15T23:49:09Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082"
+      },
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Vectors check out \u2705 ",
+          "createdAt": "2021-04-15T22:26:25Z",
+          "updatedAt": "2021-04-15T22:26:25Z"
+        }
+      ],
       "reviews": []
+    },
+    {
+      "number": 175,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE3MTk5NDQ5",
+      "title": "Clarify hash function requirements.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/175",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #158.",
+      "createdAt": "2021-04-16T23:59:06Z",
+      "updatedAt": "2021-04-16T23:59:58Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/hash-dependencies",
+      "headRefOid": "a21e56a0079ba8c27f2c6768b7c5479bf99d2161",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM4MTQzMTE5",
+          "commit": {
+            "abbreviatedOid": "a21e56a"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-16T23:59:44Z",
+          "updatedAt": "2021-04-16T23:59:45Z",
+          "comments": [
+            {
+              "originalPosition": 296,
+              "body": "This is the main change.",
+              "createdAt": "2021-04-16T23:59:44Z",
+              "updatedAt": "2021-04-16T23:59:45Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM4MTQzMTU3",
+          "commit": {
+            "abbreviatedOid": "a21e56a"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-16T23:59:58Z",
+          "updatedAt": "2021-04-16T23:59:58Z",
+          "comments": [
+            {
+              "originalPosition": 253,
+              "body": "This is the second part of this change.",
+              "createdAt": "2021-04-16T23:59:58Z",
+              "updatedAt": "2021-04-16T23:59:58Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
