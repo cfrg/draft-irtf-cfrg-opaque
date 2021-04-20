@@ -514,7 +514,7 @@ Output:
 - envelope, the client's `Envelope` structure
 - client_public_key, the client's AKE public key
 - masking_key, a key used by the server to preserve the confidentiality of the envelope during login
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. envelope_nonce = random(Nn)
@@ -541,7 +541,7 @@ Input:
 
 Output:
 - client_private_key, The encoded client private key for the AKE protocol
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. auth_key = Expand(random_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -870,7 +870,7 @@ Input:
 
 Output:
 - record, a RegistrationUpload structure
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. y = Finalize(password, blind, response.data)
@@ -902,8 +902,9 @@ public keys must be Diffie-Hellman keys. In the end, the client proves its
 knowledge of the password, and both client and server agree on a mutually authenticated
 shared secret key.
 
-OPAQUE produces two outputs: a session secret and an export key. The export key may be used
-for additional application-specific purposes, as outlined in {{export-key-usage}}.
+OPAQUE produces two outputs: a session secret and an export key. The export key is only 
+available to the client, and may be used for additional application-specific purposes, 
+as outlined in {{export-key-usage}}.
 The output `export_key` MUST NOT be used in any way before the MAC value in the
 envelope is validated. See {{envelope-encryption}} for more details about this requirement.
 
@@ -1071,8 +1072,8 @@ which is insufficient for OPAQUE security).
 The output of the authentication phase is a session secret `session_key` and export
 key `export_key`. Applications can use `session_key` to derive additional keying material
 as needed. Key derivation and other details of the protocol are specified by the AKE scheme.
-We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate credential_request
-and credential_response, respectively, for binding between the underlying OPRF protocol
+We note that by the results in {{OPAQUE}}, KE2 and KE3 must authenticate `credential_request`
+and `credential_response`, respectively, for binding between the underlying OPRF protocol
 messages and the KE session.
 
 We use the parameters Npk and Nsk to denote the size of the public and private keys used
@@ -1112,7 +1113,8 @@ Note that the Label parameter is not a NULL-terminated string.
 OPAQUE-3DH is implemented using a suitable prime order group. All operations in
 the key derivation steps in {{derive-3dh}} are performed in this group and
 represented here using multiplicative notation. The output of OPAQUE-3DH is a
-session secret `session_key` and export key `export_key`.
+session secret `session_key` and export key `export_key`, where `export_key` is 
+only available to the client.
 
 The parameters Npk and Nsk are set to be equal to the size of an element and
 scalar, respectively, in the associated prime order group.
