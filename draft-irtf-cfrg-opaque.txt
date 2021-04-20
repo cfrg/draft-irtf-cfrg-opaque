@@ -472,11 +472,7 @@ Table of Contents
       -  DeriveKeyPair(seed): Derive a private and public key pair
          deterministically from a seed.
 
-      -  SerializedElement: A serialized OPRF group element, a byte
-         array of fixed length.
-
-      -  SerializedScalar: A serialized OPRF scalar, a byte array of
-         fixed length.
+      -  Noe: The size of a serialized OPRF group element.
 
       -  Nok: The size of an OPRF private key.
 
@@ -927,13 +923,13 @@ Steps:
 4.3.  Registration Messages
 
    struct {
-       SerializedElement data;
+       opaque data[Noe];
    } RegistrationRequest;
 
    data  A serialized OPRF group element.
 
    struct {
-       SerializedElement data;
+       opaque data[Noe];
        opaque server_public_key[Npk];
    } RegistrationResponse;
 
@@ -1086,13 +1082,13 @@ Steps:
 5.1.1.  Credential Retrieval Messages
 
    struct {
-       SerializedElement data;
+       opaque data[Noe];
    } CredentialRequest;
 
    data  A serialized OPRF group element.
 
    struct {
-       SerializedElement data;
+       opaque data[Noe];
        opaque masking_nonce[Nn];
        opaque masked_response[Npk + Ne];
    } CredentialResponse;
