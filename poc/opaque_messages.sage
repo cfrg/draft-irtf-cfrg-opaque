@@ -97,23 +97,25 @@ class InnerEnvelope(object):
 # struct {
 #   EnvelopeMode mode;
 #   opaque nonce[Nn];
-#   opaque auth_tag[Nm];
 #   InnerEnvelope inner_env;
+#   opaque auth_tag[Nm];
 # } Envelope;
 def deserialize_envelope(config, data):
 
-    if len(data) < 35:
-        raise Exception("Insufficient bytes")
+    # TODO(caw): put Nm in the config
+    inner_length = 0
+    if config.mode == envelope_mode_external:
+        inner_length = config.Nsk
+    Nm = config.hash().digest_size
+    if len(data) != 1 + 32 + inner_length + Nm:
+         raise Exception("Invalid envelope length")
+
     mode = OS2IP(data[0:1])
     nonce = data[1:33]
-    Nm = config.hash().digest_size
-    if len(data) < 33+Nm:
-        raise Exception("Invalid inner envelope encoding", len(data), 33+Nm)
+    inner_env, offset = deserialize_inner_envelope(config, data[33:])
+    auth_tag = data[33+offset:]
 
-    # TODO(caw): put Nm in the config
-    auth_tag = data[33:33+Nm]
-    inner_env, offset = deserialize_inner_envelope(config, data[33+Nm:])
-    return Envelope(mode, nonce, auth_tag, inner_env), 33+Nm+offset
+    return Envelope(mode, nonce, inner_env, auth_tag), 33+Nm+offset
 
     # contents, offset = deserialize_inner_envelope(config, data)
     # Nh = config.hash().digest_size
@@ -123,14 +125,14 @@ def deserialize_envelope(config, data):
     # return Envelope(contents, auth_tag), offset+Nh
 
 class Envelope(object):
-    def __init__(self, mode, nonce, auth_tag, inner_env):
+    def __init__(self, mode, nonce, inner_env, auth_tag):
         self.mode = mode
         self.nonce = nonce
-        self.auth_tag = auth_tag
         self.inner_env = inner_env
+        self.auth_tag = auth_tag
 
     def serialize(self):
-        return I2OSP(self.mode, 1) + self.nonce + self.auth_tag + self.inner_env.serialize()
+        return I2OSP(self.mode, 1) + self.nonce + self.inner_env.serialize() + self.auth_tag
 
     def __eq__(self, other):
         if isinstance(other, Envelope):
