@@ -95,6 +95,7 @@ class InnerEnvelope(object):
             return self.encrypted_creds
 
 # struct {
+#   EnvelopeMode mode;
 #   opaque nonce[Nn];
 #   InnerEnvelope inner_env;
 #   opaque auth_tag[Nm];
@@ -106,14 +107,15 @@ def deserialize_envelope(config, data):
     if config.mode == envelope_mode_external:
         inner_length = config.Nsk
     Nm = config.hash().digest_size
-    if len(data) != 32 + inner_length + Nm:
+    if len(data) != 1 + 32 + inner_length + Nm:
          raise Exception("Invalid envelope length")
 
-    nonce = data[:32]
-    inner_env, offset = deserialize_inner_envelope(config, data[32:])
-    auth_tag = data[32+offset:]
+    mode = OS2IP(data[0:1])
+    nonce = data[1:33]
+    inner_env, offset = deserialize_inner_envelope(config, data[33:])
+    auth_tag = data[33+offset:]
 
-    return Envelope(nonce, inner_env, auth_tag), 32+offset+Nm
+    return Envelope(mode, nonce, inner_env, auth_tag), 33+Nm+offset
 
     # contents, offset = deserialize_inner_envelope(config, data)
     # Nh = config.hash().digest_size
@@ -123,13 +125,14 @@ def deserialize_envelope(config, data):
     # return Envelope(contents, auth_tag), offset+Nh
 
 class Envelope(object):
-    def __init__(self, nonce, inner_env, auth_tag):
+    def __init__(self, mode, nonce, inner_env, auth_tag):
+        self.mode = mode
         self.nonce = nonce
         self.inner_env = inner_env
         self.auth_tag = auth_tag
 
     def serialize(self):
-        return self.nonce + self.inner_env.serialize() + self.auth_tag
+        return I2OSP(self.mode, 1) + self.nonce + self.inner_env.serialize() + self.auth_tag
 
     def __eq__(self, other):
         if isinstance(other, Envelope):
@@ -245,9 +248,9 @@ def deserialize_credential_response(config, msg_bytes):
     data = msg_bytes[0:length]
     masking_nonce = msg_bytes[length:length+32]
 
-    Nm = config.hash().digest_size
+    Nh = config.hash().digest_size
     Npk = config.Npk
-    Ne = Nm + 32
+    Ne = Nh + 33
     if config.mode == envelope_mode_external:
         Ne = Ne + config.Nsk
     masked_response = msg_bytes[length+32:length+32+Npk+Ne]
