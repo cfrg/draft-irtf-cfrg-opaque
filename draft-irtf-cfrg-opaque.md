@@ -790,7 +790,7 @@ server_public_key
 struct {
     opaque client_public_key[Npk];
     opaque masking_key[Nh];
-    Envelope envelope;
+    Envelope envelope[Ne];
 } RegistrationUpload;
 ~~~
 
