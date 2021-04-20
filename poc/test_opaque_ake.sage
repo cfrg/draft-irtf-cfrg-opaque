@@ -196,7 +196,6 @@ def test_3DH():
                 inputs["password"] = to_hex(pwdU)
                 if mode == envelope_mode_external:
                     inputs["client_private_key"] = to_hex(skU_bytes)
-                    inputs["client_public_key"] = to_hex(pkU_bytes)
                 inputs["server_private_key"] = to_hex(skS_bytes)
                 inputs["server_public_key"] = to_hex(pkS_bytes)
                 inputs["client_info"] = to_hex(info1)
@@ -214,8 +213,7 @@ def test_3DH():
                 inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
 
                 # Intermediate computations
-                if mode == envelope_mode_internal:
-                    inputs["client_public_key"] = to_hex(pkU_bytes)
+                intermediates["client_public_key"] = to_hex(pkU_bytes)
                 intermediates["envelope"] = to_hex(record.envU.serialize())
                 intermediates["random_pwd"] = to_hex(core.registration_rwdU)
                 intermediates["masking_key"] = to_hex(core.masking_key)
