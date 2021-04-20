@@ -5,10 +5,10 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                                   K. Lewi
-Expires: 18 October 2021                                   Novi Research
+Expires: 22 October 2021                                   Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           16 April 2021
+                                                           20 April 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 18 October 2021.
+   This Internet-Draft will expire on 22 October 2021.
 
 Copyright Notice
 
@@ -1398,8 +1398,8 @@ Extract("", IKM)
       functions.  If an extensible output function such as SHAKE128
       [FIPS202] is used then the output length "Nh" MUST be chosen to
       align with the target security level of the OPAQUE configuration.
-      For example, if the security parameter is 128-bits, then "Nh"
-      SHOULD be at least 32 bytes.
+      For example, if the target security parameter for the
+      configuration is 128-bits, then "Nh" SHOULD be at least 32 bytes.
 
    *  The MHF has fixed parameters, chosen by the application, and
       implements the interface in Section 2.  Examples include Argon2
