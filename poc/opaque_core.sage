@@ -105,8 +105,8 @@ class OPAQUECore(object):
 
         inner_env, client_public_key = self.build_inner_envelope(random_pwd, envelope_nonce, creds.skU)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, creds.idS, creds.idU)
-        auth_tag = self.config.mac.mac(auth_key, I2OSP(self.config.mode, 1) + envelope_nonce + inner_env.serialize() + cleartext_creds.serialize())
-        envelope = Envelope(self.config.mode, envelope_nonce, inner_env, auth_tag)
+        auth_tag = self.config.mac.mac(auth_key, envelope_nonce + inner_env.serialize() + cleartext_creds.serialize())
+        envelope = Envelope(envelope_nonce, inner_env, auth_tag)
 
         self.auth_key = auth_key
         self.envelope_nonce = envelope.nonce
@@ -138,9 +138,9 @@ class OPAQUECore(object):
         Z, _, _ = oprf_context.evaluate(request.data)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-        Nh = self.config.hash().digest_size
+        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nh + 33
+        Ne = Nm + 32
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)
@@ -175,7 +175,7 @@ class OPAQUECore(object):
         
         secret_creds, client_public_key = self.recover_keys(random_pwd, envelope.nonce, envelope.inner_env)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
-        expected_tag = self.config.mac.mac(auth_key, I2OSP(self.config.mode, 1) + envelope.nonce + envelope.inner_env.serialize() + cleartext_creds.serialize())
+        expected_tag = self.config.mac.mac(auth_key, envelope.nonce + envelope.inner_env.serialize() + cleartext_creds.serialize())
         if expected_tag != envelope.auth_tag:
             raise Exception("Invalid tag")
 
@@ -187,9 +187,9 @@ class OPAQUECore(object):
     def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind)
         masking_key = self.derive_masking_key(random_pwd)
-        Nh = self.config.hash().digest_size
+        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nh + 33
+        Ne = Nm + 32
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, response.masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)
