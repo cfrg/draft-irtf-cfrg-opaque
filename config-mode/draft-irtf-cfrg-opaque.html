@@ -2121,7 +2121,7 @@ struct {
 </pre><a href="#section-3.1-2" class="pilcrow">¶</a>
 </div>
 <p id="section-3.1-3">nonce : A unique nonce of length <code>Nn</code> used to protect this Envelope.<a href="#section-3.1-3" class="pilcrow">¶</a></p>
-<p id="section-3.1-4">auth_tag : Authentication tag protecting the contents of the envelope, covering <code>EnvelopeMode</code>, envelope nonce, 
+<p id="section-3.1-4">auth_tag : Authentication tag protecting the contents of the envelope, covering the envelope nonce, 
 <code>InnerEnvelope</code> and <code>CleartextCredentials</code>.<a href="#section-3.1-4" class="pilcrow">¶</a></p>
 <p id="section-3.1-5">inner_env : A mode dependent <code>InnerEnvelope</code> structure. See <a href="#envelope-modes" class="xref">Section 3.3</a> for its specifications.<a href="#section-3.1-5" class="pilcrow">¶</a></p>
 <p id="section-3.1-6">The size of the serialized envelope is denoted <code>Ne</code> and varies based on the mode. The exact value for <code>Ne</code> is 
@@ -2188,7 +2188,7 @@ Steps:
 2. export_key = Expand(random_pwd, concat(envelope.nonce, "ExportKey", Nh)
 3. client_private_key, client_public_key = RecoverKeys(random_pwd, envelope.nonce, envelope.inner_env)
 4. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, creds.server_identity, creds.client_identity)
-5. expected_tag = MAC(auth_key, concat(envelope_nonce, inner_env, cleartext_creds))
+5. expected_tag = MAC(auth_key, concat(envelope.nonce, inner_env, cleartext_creds))
 6. If !ct_equal(envelope.auth_tag, expected_tag),
      raise MacError
 7. Output (client_private_key, export_key)
