@@ -1276,7 +1276,7 @@ such that the following conditions are met:
   and SHA-256 and SHA-512 for the Hash functions. If an extensible output function
   such as SHAKE128 {{FIPS202}} is used then the output length `Nh` MUST be chosen
   to align with the target security level of the OPAQUE configuration. For example,
-  if the security parameter is 128-bits, then `Nh` SHOULD be at least 32 bytes.
+  if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
 - The MHF has fixed parameters, chosen by the application, and implements the
   interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
   scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
