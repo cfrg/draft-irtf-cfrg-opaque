@@ -347,9 +347,7 @@ OPAQUE relies on the following protocols and primitives:
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
     random scalar `r`, and evaluation output `Z`, yielding output `y`.
   - DeriveKeyPair(seed): Derive a private and public key pair deterministically from a seed.
-  - SerializedElement: A serialized OPRF group element, a byte array of fixed
-    length.
-  - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.
+  - Noe: The size of a serialized OPRF group element.
   - Nok: The size of an OPRF private key.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
@@ -766,7 +764,7 @@ Upon completion, S stores C's credentials for later use.
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
 } RegistrationRequest;
 ~~~
 
@@ -775,7 +773,7 @@ data
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
     opaque server_public_key[Npk];
 } RegistrationResponse;
 ~~~
@@ -934,7 +932,7 @@ more detail.
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
 } CredentialRequest;
 ~~~
 
@@ -943,7 +941,7 @@ data
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
     opaque masking_nonce[Nn];
     opaque masked_response[Npk + Ne];
 } CredentialResponse;
