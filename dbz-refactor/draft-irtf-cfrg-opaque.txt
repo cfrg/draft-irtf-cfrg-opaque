@@ -1249,8 +1249,6 @@ Steps:
    struct {
        uint8 expected_client_mac[Nm];
        uint8 session_key[Nx];
-       KE1 ke1;
-       KE2 ke2;
    } ServerState;
 
    Section 5.2.3 and Section 5.2.4 specify the inner working of these
@@ -1380,9 +1378,6 @@ Steps:
    authentication are computed using the following function.
 
 DeriveKeys(ikm, preamble)
-
-Parameters:
-- Nx, the output size of the Extract function
 
 Input:
 - ikm, input key material
