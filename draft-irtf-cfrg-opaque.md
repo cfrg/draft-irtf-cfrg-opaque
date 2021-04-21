@@ -1288,7 +1288,7 @@ Input:
 - client_info, optional application-specific information to exchange during the protocol
 
 Output:
-- KE1, a KE1 message structure
+- ke1, a KE1 message structure
 - blind, the OPRF blinding scalar
 - client_secret, the client's Diffie-Hellman secret share for the session
 
