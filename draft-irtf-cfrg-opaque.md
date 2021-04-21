@@ -1072,7 +1072,7 @@ full forward security (without it, forward secrecy is only achieved against eave
 which is insufficient for OPAQUE security). These messages are computed and exchanged with
 the following application APIs:
 
-- ke1, client_state = ClientInit(client_identity, password, client_info)
+- ke1 = ClientInit(client_identity, password, client_info)
 - ke2, client_info = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
 - ke3, server_info, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
 - session_key, export_key = ServerFinish(ke3)
