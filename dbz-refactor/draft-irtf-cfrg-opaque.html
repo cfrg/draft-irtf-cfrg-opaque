@@ -2832,7 +2832,7 @@ full forward security (without it, forward secrecy is only achieved against eave
 which is insufficient for OPAQUE security). These messages are computed and exchanged with
 the following application APIs:<a href="#section-5.2-2" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-5.2-3.1">ke1, client_state = ClientInit(client_identity, password, client_info)<a href="#section-5.2-3.1" class="pilcrow">¶</a>
+<li class="normal" id="section-5.2-3.1">ke1 = ClientInit(client_identity, password, client_info)<a href="#section-5.2-3.1" class="pilcrow">¶</a>
 </li>
           <li class="normal" id="section-5.2-3.2">ke2, client_info = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)<a href="#section-5.2-3.2" class="pilcrow">¶</a>
 </li>
