@@ -405,7 +405,6 @@ OPAQUE allows applications to either provide custom client private and public ke
 to generate them internally, making the application oblivious to the client's private key. Each public
 and private key value is an opaque byte string, specific to the AKE protocol in which OPAQUE is instantiated.
 
-
 These two options are defined as the `internal` and `external` modes.  See {{envelope-modes}} for their
 specifications.
 
