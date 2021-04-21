@@ -106,7 +106,7 @@ class OPAQUECore(object):
         inner_env, client_public_key = self.build_inner_envelope(random_pwd, envelope_nonce, creds.skU)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, creds.idS, creds.idU)
         auth_tag = self.config.mac.mac(auth_key, I2OSP(self.config.mode, 1) + envelope_nonce + inner_env.serialize() + cleartext_creds.serialize())
-        envelope = Envelope(self.config.mode, envelope_nonce, inner_env, auth_tag)
+        envelope = Envelope(self.config.mode, envelope_nonce, auth_tag, inner_env)
 
         self.auth_key = auth_key
         self.envelope_nonce = envelope.nonce
