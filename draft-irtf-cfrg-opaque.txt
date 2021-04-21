@@ -797,7 +797,7 @@ Output:
 - client_public_key, The encoded client public key for the AKE protocol
 
 Steps:
-1. seed = Expand(random_pwd, concat(nonce, "PrivateKey"), Nh)
+1. seed = Expand(random_pwd, concat(nonce, "PrivateKey"), Nsk)
 2. client_private_key, client_public_key = DeriveAkeKeyPair(seed)
 4. Output (client_private_key, client_public_key)
 
@@ -990,10 +990,11 @@ Output:
 - oprf_key, the per-client OPRF key known only to the server
 
 Steps:
-1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
-2. Z = Evaluate(oprf_key, request.data)
-3. Create RegistrationResponse response with (Z, server_public_key)
-4. Output (response, oprf_key)
+1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(ikm)
+3. Z = Evaluate(oprf_key, request.data)
+4. Create RegistrationResponse response with (Z, server_public_key)
+5. Output (response, oprf_key)
 
 4.4.3.  FinalizeRequest
 
@@ -1148,14 +1149,15 @@ Output:
 - response, a CredentialResponse structure
 
 Steps:
-1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
-2. Z = Evaluate(oprf_key, request.data)
-3. masking_nonce = random(32)
-4. credential_response_pad = Expand(record.masking_key,
+1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(ikm)
+3. Z = Evaluate(oprf_key, request.data)
+4. masking_nonce = random(32)
+5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
-5. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
-6. Create CredentialResponse response with (Z, masking_nonce, masked_response)
-7. Output response
+6. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
+7. Create CredentialResponse response with (Z, masking_nonce, masked_response)
+8. Output response
 
    In the case of a record that does not exist, the server invokes the
    CreateCredentialResponse function where the record argument is
@@ -1393,7 +1395,11 @@ Extract("", IKM)
    *  The KDF, MAC, and Hash functions implement the interfaces in
       Section 2.  Examples include HKDF [RFC5869] for the KDF, HMAC
       [RFC2104] for the MAC, and SHA-256 and SHA-512 for the Hash
-      functions.
+      functions.  If an extensible output function such as SHAKE128
+      [FIPS202] is used then the output length "Nh" MUST be chosen to
+      align with the target security level of the OPAQUE configuration.
+      For example, if the target security parameter for the
+      configuration is 128-bits, then "Nh" SHOULD be at least 32 bytes.
 
    *  The MHF has fixed parameters, chosen by the application, and
       implements the interface in Section 2.  Examples include Argon2
@@ -1401,26 +1407,11 @@ Extract("", IKM)
       with fixed parameter choices.
 
    *  EnvelopeMode value is as defined in Section 3, and is one of
-      "base" or "custom_identifier".
+      "external" or "internal".
 
    *  The Group mode identifies the group used in the OPAQUE-3DH AKE.
       This SHOULD match that of the OPRF.  For example, if the OPRF is
       OPRF(ristretto255, SHA-512), then Group SHOULD be ristretto255.
-
-   To recover a public key from a private key, OPAQUE-3DH implements
-   "RecoverPublicKey(private_key)" as follows:
-
-   RecoverPublicKey(private_key)
-
-   Input:
-   - private_key, a scalar in the group interpreted as the private key
-
-   Output:
-   - public_key, a group element used as public key
-
-   Steps:
-   1. public_key = private_key * G
-   3. Output public_key
 
    Absent an application-specific profile, the following configurations
    are RECOMMENDED:
@@ -1432,11 +1423,17 @@ Extract("", IKM)
       Scrypt(32768,8,1), P-256
 
    Future configurations may specify different combinations of dependent
-   algorithms, with the following consideration.  The size of AKE public
-   and private keys -- "Npk" and "Nsk", respectively -- must adhere to
-   an output length limitations of the KDF Expand function.  If HKDF is
-   used, this means Npk, Nsk <= 255 * Nx, where Nx is the output size of
-   the underlying hash function.  See [RFC5869] for details.
+   algorithms, with the following considerations:
+
+   1.  The size of AKE public and private keys -- "Npk" and "Nsk",
+       respectively -- must adhere to an output length limitations of
+       the KDF Expand function.  If HKDF is used, this means Npk, Nsk <=
+       255 * Nx, where Nx is the output size of the underlying hash
+       function.  See [RFC5869] for details.
+
+   2.  The output size of the Hash function SHOULD be long enough to
+       produce a key for MAC of suitable length.  For example, if MAC is
+       HMAC-SHA256, then "Nh" could be the 32 bytes.
 
 7.  Security Considerations
 
@@ -1724,6 +1721,12 @@ Extract("", IKM)
 
    [Cheon06]  Cheon, J.H., "Security analysis of the strong Diffie-
               Hellman problem", Euroctypt 2006 , 2006.
+
+   [FIPS202]  National Institute of Standards and Technology (NIST),
+              "SHA-3 Standard: Permutation-Based Hash and Extendable-
+              Output Functions", August 2015,
+              <https://nvlpubs.nist.gov/nistpubs/FIPS/
+              NIST.FIPS.202.pdf>.
 
    [FK00]     Ford, W. and B.S. Kaliski, Jr, "Server-assisted generation
               of a strong secret from a password", WETICE , 2000.
