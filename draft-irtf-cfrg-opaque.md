@@ -1280,7 +1280,7 @@ State:
 Input:
 - client_identity, the optional encoded client identity, which is nil if not specified
 - password, an opaque byte string containing the client's password
-- client_info, optional application-specific information to exchange during the protocol
+- client_info, the optional client_info sent unencrypted to the server, only authenticated with client_mac in KE3
 
 Output:
 - ke1, a KE1 message structure
@@ -1333,7 +1333,7 @@ State:
 
 Input:
 - credential_request, a CredentialRequest structure
-- client_info, the optional client_info to send to the server. Note that it will not be encrypted, and only authenticated
+- client_info, the optional client_info sent unencrypted to the server, only authenticated with client_mac in KE3
 
 Output:
 - ke1, a KE1 structure
@@ -1358,7 +1358,7 @@ Input:
 - server_identity, the optional encoded server identity, which is set to its public key if not specified
 - server_public_key, the server's public key
 - ke1, a KE1 message structure
-- ke1, a KE2 message structure
+- ke2, a KE2 message structure
 
 Output:
 - ke3, a KE3 structure
@@ -1393,8 +1393,8 @@ Input:
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key
 
 Output:
-- KE2, a KE2 structure
-- client_info, optional and unauthenticated application-specific information sent by the client
+- ke2, a KE2 structure
+- client_info, the optional client_info sent unencrypted to the server, only authenticated with client_mac in KE3
 
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record, credential_identifier, oprf_seed)
@@ -1445,7 +1445,7 @@ Input:
 
 Output:
 - KE2, A KE2 structure
-- client_info, optional and unauthenticated application-specific information sent by the client
+- client_info, the optional client_info sent unencrypted to the server, only authenticated with client_mac in KE3
 
 Steps:
 1. server_nonce = random(Nn)
