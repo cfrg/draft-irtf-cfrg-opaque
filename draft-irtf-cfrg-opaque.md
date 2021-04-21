@@ -87,6 +87,14 @@ protocols"
     seriesinfo: WETICE
     date: 2000
 
+  FIPS202:
+    title: "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions"
+    target: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+    date: Aug, 2015
+    author:
+      -
+        org: National Institute of Standards and Technology (NIST)
+
   GMR06:
     title: "A method for making password-based key exchange resilient to server compromise"
     author:
@@ -347,9 +355,7 @@ OPAQUE relies on the following protocols and primitives:
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
     random scalar `r`, and evaluation output `Z`, yielding output `y`.
   - DeriveKeyPair(seed): Derive a private and public key pair deterministically from a seed.
-  - SerializedElement: A serialized OPRF group element, a byte array of fixed
-    length.
-  - SerializedScalar: A serialized OPRF scalar, a byte array of fixed length.
+  - Noe: The size of a serialized OPRF group element.
   - Nok: The size of an OPRF private key.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
@@ -399,7 +405,8 @@ OPAQUE allows applications to either provide custom client private and public ke
 to generate them internally, making the application oblivious to the client's private key. Each public
 and private key value is an opaque byte string, specific to the AKE protocol in which OPAQUE is instantiated.
 
-These two options are defined as the `Internal` and `External` modes.  See {{envelope-modes}} for their
+
+These two options are defined as the `internal` and `external` modes.  See {{envelope-modes}} for their
 specifications.
 
 Applications may pin key material to identities if desired. If no identity is given for a party,
@@ -411,7 +418,7 @@ are hereby considered:
 - server_public_key: The encoded server public key for the AKE protocol.
 - client_identity: The client identity. This is an application-specific value, e.g., an e-mail address or
   normal account name. If not specified, it defaults to the client's public key.
-- server_identity: The server identity. This is typically a domain name, e.g., example.com.  If not
+- server_identity: The server identity. This is typically a domain name, e.g., example.com. If not
   specified, it defaults to the server's public key.
   See {{identities}} for information about this identity.
 
@@ -467,18 +474,15 @@ whose structure is determined by the mode. Future modes MAY introduce alternate 
 
 ~~~
 struct {
- EnvelopeMode mode;
  opaque nonce[Nn];
  InnerEnvelope inner_env;
  opaque auth_tag[Nm];
 } Envelope;
 ~~~
 
-mode : The `EnvelopeMode` used for the `Envelope`.
-
 nonce : A unique nonce of length `Nn` used to protect this Envelope.
 
-auth_tag : Authentication tag protecting the contents of the envelope, covering `EnvelopeMode`, envelope nonce,
+auth_tag : Authentication tag protecting the contents of the envelope, covering the envelope nonce,
 `InnerEnvelope` and `CleartextCredentials`.
 
 inner_env : A mode dependent `InnerEnvelope` structure. See {{envelope-modes}} for its specifications.
@@ -522,8 +526,8 @@ Steps:
 4. masking_key = Expand(random_pwd, "MaskingKey", Nh)
 5. inner_env, client_public_key = BuildInnerEnvelope(random_pwd, envelope_nonce, client_private_key)
 6. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
-7. auth_tag = MAC(auth_key, concat(mode, envelope_nonce, inner_env, cleartext_creds))
-8. Create Envelope envelope with (mode, envelope_nonce, inner_env, auth_tag)
+7. auth_tag = MAC(auth_key, concat(envelope_nonce, inner_env, cleartext_creds))
+8. Create Envelope envelope with (envelope_nonce, inner_env, auth_tag)
 9. Output (envelope, client_public_key, masking_key, export_key)
 ~~~
 
@@ -531,9 +535,6 @@ Clients recover their `Envelope` during authentication with the `RecoverEnvelope
 
 ~~~
 RecoverEnvelope(random_pwd, server_public_key, creds, envelope)
-
-Parameter:
-- mode, the EnvelopeMode mode
 
 Input:
 - random_pwd, randomized password
@@ -550,7 +551,7 @@ Steps:
 2. export_key = Expand(random_pwd, concat(envelope.nonce, "ExportKey", Nh)
 3. client_private_key, client_public_key = RecoverKeys(random_pwd, envelope.nonce, envelope.inner_env)
 4. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, creds.server_identity, creds.client_identity)
-5. expected_tag = MAC(auth_key, concat(mode, envelope_nonce, inner_env, cleartext_creds))
+5. expected_tag = MAC(auth_key, concat(envelope.nonce, inner_env, cleartext_creds))
 6. If !ct_equal(envelope.auth_tag, expected_tag),
      raise MacError
 7. Output (client_private_key, export_key)
@@ -575,15 +576,18 @@ Each `EnvelopeMode` defines its own `InnerEnvelope` structure and must implement
 - `client_private_key, client_public_key = RecoverKeys(random_pwd, nonce, inner_env)`: recover and return the
   client's private and public keys for the AKE protocol.
 
-The implementation of this interface for both `internal` and `external` modes is in {{internal-mode}}
+The implementations of this interface for both `internal` and `external` modes are in {{internal-mode}}
 and {{external-mode}}, respectively.
+
+The size of the envelope may vary between modes. If applications implement {{preventing-client-enumeration}}, they
+MUST use the same envelope mode throughout their lifecycle in order to avoid activity leaks due to mode switching.
 
 ### Internal mode {#internal-mode}
 
 In this mode, the client's private and public keys are deterministically derived from the OPRF output.
 
 With the internal key mode the `EnvelopeMode` value MUST be `internal` and the `InnerEnvelope` is empty,
-and the size `Ne` of the serialized `Envelope` is 1 + Nn + Nm.
+and the size `Ne` of the serialized `Envelope` is Nn + Nm.
 
 To generate the private key OPAQUE-3DH implements `DeriveAkeKeyPair(seed)` as follows:
 
@@ -641,7 +645,7 @@ Output:
 - client_public_key, The encoded client public key for the AKE protocol
 
 Steps:
-1. seed = Expand(random_pwd, concat(nonce, "PrivateKey"), Nh)
+1. seed = Expand(random_pwd, concat(nonce, "PrivateKey"), Nsk)
 2. client_private_key, client_public_key = DeriveAkeKeyPair(seed)
 4. Output (client_private_key, client_public_key)
 ~~~
@@ -656,7 +660,7 @@ import both and thus spare a scalar multiplication at registration. In this case
 `FinalizeRequest()`, `CreateEnvelope()`, and `BuildInnerEnvelope()` must be adapted accordingly.
 
 With the external key mode the `EnvelopeMode` value MUST be `external`, and the size `Ne` of the serialized
-`Envelope` is 1 + Nn + Nm + Nsk.
+`Envelope` is Nn + Nm + Nsk.
 
 An encryption key is generated from the hardened OPRF output and used to encrypt the client's private key,
 which is then stored encrypted in the `InnerEnvelope`. This encryption must follow the requirements in
@@ -768,7 +772,7 @@ Upon completion, S stores C's credentials for later use.
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
 } RegistrationRequest;
 ~~~
 
@@ -777,7 +781,7 @@ data
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
     opaque server_public_key[Npk];
 } RegistrationResponse;
 ~~~
@@ -842,10 +846,11 @@ Output:
 - oprf_key, the per-client OPRF key known only to the server
 
 Steps:
-1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
-2. Z = Evaluate(oprf_key, request.data)
-3. Create RegistrationResponse response with (Z, server_public_key)
-4. Output (response, oprf_key)
+1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(ikm)
+3. Z = Evaluate(oprf_key, request.data)
+4. Create RegistrationResponse response with (Z, server_public_key)
+5. Output (response, oprf_key)
 ~~~
 
 ### FinalizeRequest {#finalize-request}
@@ -854,7 +859,7 @@ To create the user record used for further authentication, the client executes t
 internal key mode, the `client_private_key` is nil.
 
 Depending on the mode, implementations are free to leave out the `client_private_key` parameter (`internal` mode),
-or to additionally include `client_public_key`. See {#envelope-creation-recovery} for more details.
+or to additionally include `client_public_key` (`external` mode). See {#envelope-creation-recovery} for more details.
 
 ~~~
 FinalizeRequest(client_private_key, password, blind, response)
@@ -935,7 +940,7 @@ more detail.
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
 } CredentialRequest;
 ~~~
 
@@ -944,7 +949,7 @@ data
 
 ~~~
 struct {
-    SerializedElement data;
+    opaque data[Noe];
     opaque masking_nonce[Nn];
     opaque masked_response[Npk + Ne];
 } CredentialResponse;
@@ -1005,14 +1010,15 @@ Output:
 - response, a CredentialResponse structure
 
 Steps:
-1. (oprf_key, _) = DeriveKeyPair(Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok))
-2. Z = Evaluate(oprf_key, request.data)
-3. masking_nonce = random(32)
-4. credential_response_pad = Expand(record.masking_key,
+1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(ikm)
+3. Z = Evaluate(oprf_key, request.data)
+4. masking_nonce = random(32)
+5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
-5. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
-6. Create CredentialResponse response with (Z, masking_nonce, masked_response)
-7. Output response
+6. masked_response = xor(credential_response_pad, concat(server_public_key, record.envelope))
+7. Create CredentialResponse response with (Z, masking_nonce, masked_response)
+8. Output response
 ~~~
 
 In the case of a record that does not exist, the server invokes the CreateCredentialResponse
@@ -1545,42 +1551,34 @@ such that the following conditions are met:
   OPRF(P-256, SHA-256).
 - The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
   Examples include HKDF {{RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
-  and SHA-256 and SHA-512 for the Hash functions.
+  and SHA-256 and SHA-512 for the Hash functions. If an extensible output function
+  such as SHAKE128 {{FIPS202}} is used then the output length `Nh` MUST be chosen
+  to align with the target security level of the OPAQUE configuration. For example,
+  if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
 - The MHF has fixed parameters, chosen by the application, and implements the
   interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
   scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
 - EnvelopeMode value is as defined in {{client-credential-storage}}, and is one of
-  `base` or `custom_identifier`.
+  `internal` or `external`.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
   then Group SHOULD be ristretto255.
 
-To recover a public key from a private key, OPAQUE-3DH implements `RecoverPublicKey(private_key)` as follows:
-
-~~~
-RecoverPublicKey(private_key)
-
-Input:
-- private_key, a scalar in the group interpreted as the private key
-
-Output:
-- public_key, a group element used as public key
-
-Steps:
-1. public_key = private_key * G
-3. Output public_key
-~~~
-
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256
+- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), internal, ristretto255
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), internal, P-256
 
 Future configurations may specify different combinations of dependent algorithms,
-with the following consideration. The size of AKE public and private keys -- `Npk`
-and `Nsk`, respectively -- must adhere to an output length limitations of the KDF
-Expand function. If HKDF is used, this means Npk, Nsk <= 255 * Nx, where Nx is the
-output size of the underlying hash function. See {{RFC5869}} for details.
+with the following considerations:
+
+1. The size of AKE public and private keys -- `Npk` and `Nsk`, respectively -- must adhere
+to an output length limitations of the KDF Expand function. If HKDF is used, this means
+Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
+See {{RFC5869}} for details.
+1. The output size of the Hash function SHOULD be long enough to produce a key for
+MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be the
+32 bytes.
 
 # Security Considerations {#security-considerations}
 
@@ -1733,39 +1731,7 @@ Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the password file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
 
-<!-- TODO(caw): bring this back after updating later -->
-
-<!-- ## Envelope considerations
-
-It is possible to dispense with encryption in the construction of an envelope to
-obtain a shorter envelope (resulting in less storage at the server and less
-communication from server to client). The idea is to derive client_private_key from prk.
-However, for cases where client_private_key is not a random string of a given length, we
-define a more general procedure. Namely, what is derived from prk is a random
-seed used as an input to a key generation procedure that generates the pair
-(client_private_key, client_public_key). In this case, secret_credentials is empty and cleartext_credentials
-contains server_public_key. The random key generation seed is defined as
-Expand(KdKey; info="KG seed", L)
-where L is the required seed length. We note that in this encryption-less
-scheme, the authentication still needs to be random-key robust which HMAC
-satisfies. -->
-
-<!--
-Mention advantage of avoidable equivocable encryption? Still needs equivocable
-authentication, but that one gets by modeling HMAC as programmable RO - check.
--->
-
-<!-- To further minimize storage space, the server can derive per-client OPRF keys
-oprf_key from a single global secret key, and it can use the same pair
-(server_private_key,server_public_key) for all clients. In this case, the per-client OPAQUE storage
-consists of client_public_key and HMAC(Khmac; server_public_key), a total of 64-byte overhead with a
-256-bit curve and hash. envelope communicated to the client is of the same length,
-consisting of server_public_key and HMAC(Khmac; server_public_key). -->
-
-<!-- Can provide AuCPace paper (sec 7.7) as reference to importance of small
-envelope (for settings where storage and/or communication is expensive) -->
-
-## Preventing Client Enumeration
+## Preventing Client Enumeration {#preventing-client-enumeration}
 
 Client enumeration refers to attacks where the attacker tries to learn
 extra information about the behavior of clients that have registered with
@@ -1947,27 +1913,25 @@ Nok: 32
 ### Input Values
 
 ~~~
-oprf_seed: bfead7c9c144dfc753a81ab1014d15d0f856b84c4350f5b186e04bf643
-c0a34d9e5a36d3b73969c2e29aacf48cbab386d445c0eafc487cbd13d3c57a42db94d
-6
+oprf_seed: 742e9fef85465fcd6255c3a4ad79d81afebe2dbea03800e0e8acb163cd
+0d70df019c03fd0d2a1bf6e7d3819bdfd951e09ca2797206357821f38202d535483b2
+d
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: fd983947a06fcc2bfd95db338d0eccf17315cfe5f265135009b0b
-531821a4648
-masking_nonce: e0d73bb71e3e3a4f3c229cb20c16d58782a2faf7558c1ae6218756
-5dca52b4be
-client_public_key: 26ddd7202e766f52c451d5ee1d63627721728bba1068cb51cd
-4daf2e1182b443
+envelope_nonce: 8666a1908af1b98d3477e9f2c4bbc1479ba5e771ffc789ba91034
+0c47dbb80b1
+masking_nonce: c251cdb2648daef50733ba9cbb54182a4ffce66e3432a30af14110
+ad2ff6a5a6
 server_private_key: 3af5aec325791592eee4a8860522f8444c8e71ac33af5186a
 9706137886dce08
 server_public_key: 4c6dff3083c068b8ca6fec4dbaabc16b5fdac5d98832f25a5b
 78624cbd10b371
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 47c9bd01ee99d5fc8523f2f04eb9bc9762b35f062ca10e4527b12d3
-4e746739a
-client_nonce: dcd67b6e215503d403c720b3759cfe5b110329637ed35c407eac20e
-2d2244f1e
+server_nonce: 4ae0582e6e95da0cb1e512169e9fce0e2847803c2c031609b1e6ce1
+f57eb0800
+client_nonce: 39a2f02421058e0c2e0197e655691c853b92730b7db822994bf5111
+8463151eb
 server_keyshare: ca372e52516d51c19763ad5eb1a5b60dafb68c264dcf6bcc692f
 667a71c5a617
 client_keyshare: 4c415eebd7a9bb5f921cbcfc5863e48c9e79fd2ecc1788e2b616
@@ -1980,33 +1944,35 @@ blind_registration: 8bcb0b70dac18de24eef12e737d6b28724d3e37774e0b092f
 9f70b255defaf04
 blind_login: f3a0829898a89239dce29ccc98ec8b449a34b255ba1e6f944829d18e
 0d589b0f
-oprf_key: 6f2bb9a7c4b2fa6a04e74d12051ed70dfeb5c9b0aae450e432d4bd7d2dc
-3e304
+oprf_key: 278bec6ccacf9405e6d19664885d2bb09688a75d2e414180e46b959f884
+3ce09
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: d5cd6ade44ad9ccbdda17af5500264ccbe972321cc61bd3c585404a3eaf
-cbb353d093cd005322a3838a17bf1ae25178a522fe32e9aaddf760a22878e59471cd5
-random_pwd: e38282f4e1e1925d76cb50a5cd6f5890baae6773ab13af3240236bd22
-ca8daa4d08d5b352c0713528efbd6903fb9ed9ef2ce0050b7c1f13716601ef6bb0180
-8c
-envelope: 01fd983947a06fcc2bfd95db338d0eccf17315cfe5f265135009b0b5318
-21a46487e953a0820db6704c7479f3536216642a9b8337114ea8add2c1a07f98a72e5
-4edde4652bb14b228a6a4c9826c21244deb4f31cc93e5f02a076c2f6caec11d90b
-handshake_secret: 8d14aeb31594b3792e64609046b1b0f93f76c70dd4d7cc04661
-24280f163fbd50a65b62e9c18a2963558ada58bb2f1cfaec7e16a5be850db60b31bf9
-78841e4a
-handshake_encrypt_key: e8de218b0b785bfc5daeaf43d7706ee107fda2e0365772
-b72bb88ec3148bc968bcae10f0c1be3505808ee6c5a6ac7367557cb3283c161000576
-83651d785292c
-server_mac_key: 6fdb48e6ad1eae27761c87d4d5c612075533d54e7e88fcde261e9
-9060a98170786049102d60abce8be296133f24d8e27cf2afb9c4d7640b2086bbe60aa
-cfbbe2
-client_mac_key: 2429c743ee3e9fbb2c75c5f8bbec36555d5dde35e8ee05d2f3b29
-f78aa71a6e95ec625abf092dbc4305ff2a5fe6543598f41f12a198e50070d7db89c55
-fc9a91
+client_public_key: fc590b941b57164fcb8b24aab13bbbe3cdb1f863ff07f28ea0
+2f453326abd661
+auth_key: 1a75e7bef85e85bcf69a2edd7fba6427fa7948c7b7c47f6c8da503cba87
+afc53829b7d14803b6fef1b17ff7b02154445ff5f43d7fda1f23bc8afae4db0b9e479
+random_pwd: 35fa70546c5e11e4fe2c23b1d90e73e0fd88f420f6ea6e7dcf1eb652b
+0007082419bb7dcee519c3a437953c1670eeb54bfa4822cbea56375dd5ceb2b515bb9
+c5
+envelope: 8666a1908af1b98d3477e9f2c4bbc1479ba5e771ffc789ba910340c47db
+b80b191bb31570031e67898c35802d7cec763e33d089f5b9cfee3ba38f388ea03697c
+22409d01b8b1f21f4a14afe5934f1b1235c54ddce341fb25b97f70bc9f83c66e
+handshake_secret: 5aa4ccdefa0a5558be538d5876555bd3ef8f9c002f320897bbf
+061578d51b1e747b30faa840f5afcf4ead7647761564731e8924ae19fd11b19293290
+873744c4
+handshake_encrypt_key: 2c81279aa9836e7f1db8ac30573dcaa42e0e5ad0cd9cb5
+608e25e5c35aeb92cab86fe296d72f2a52a7e7e80cf15b8e8fcaef62cf0562b266276
+d895068eee568
+server_mac_key: 16ffffef65e867bc00ed9f6e1c54ee5f989c6ef146002970535fc
+3ed74515d58fbb02d52d53c5254e0016dc232addabc3492ac3889826d7c2ac708800c
+0bc8d7
+client_mac_key: 5fb53657dbb564c40806803067622894ca092b7b80b1ca7653e2e
+6fdfd4de791971d237bcf361485cd9df75473fd5b15951d12b9eff686645d83c5c79a
+5485d2
 ~~~
 
 ### Output Values
@@ -2014,37 +1980,37 @@ fc9a91
 ~~~
 registration_request: 24bbcabb15452642f709cb8567eff38f4cda6044aca3356
 87a62b8453d849c18
-registration_response: b8a5418b9b076e107c2712cf28db8ac9c57c35035264ce
-965c386da25fa199214c6dff3083c068b8ca6fec4dbaabc16b5fdac5d98832f25a5b7
+registration_response: f248ea5e6a095656954e0fefd002db5ed1b8c507b6e1c4
+e83899128592a32b7f4c6dff3083c068b8ca6fec4dbaabc16b5fdac5d98832f25a5b7
 8624cbd10b371
-registration_upload: 26ddd7202e766f52c451d5ee1d63627721728bba1068cb51
-cd4daf2e1182b44354db0d4cd9011e5c6921be4b256e6d7a45fa444669ae7d0ddfeb4
-8e6d8c2bde03a2336e7745c6f65c26a14ab31a84a187b4ac0175d6f71c2f16aa322aa
-21422001fd983947a06fcc2bfd95db338d0eccf17315cfe5f265135009b0b531821a4
-6487e953a0820db6704c7479f3536216642a9b8337114ea8add2c1a07f98a72e54edd
-e4652bb14b228a6a4c9826c21244deb4f31cc93e5f02a076c2f6caec11d90b
+registration_upload: fc590b941b57164fcb8b24aab13bbbe3cdb1f863ff07f28e
+a02f453326abd661295a317a3ae7b930e174d0a22cd1d41436ca7dff2fd617cfd9749
+d7d4dafa2eaa079366a7b7564070810f3f8378f5ad8153b148c1000d28182a1914737
+44d5708666a1908af1b98d3477e9f2c4bbc1479ba5e771ffc789ba910340c47dbb80b
+191bb31570031e67898c35802d7cec763e33d089f5b9cfee3ba38f388ea03697c2240
+9d01b8b1f21f4a14afe5934f1b1235c54ddce341fb25b97f70bc9f83c66e
 KE1: 0e8eeeb2ca0dbf5f690cfe0b76783d7667245f399b874a989f168fdd3e572663
-dcd67b6e215503d403c720b3759cfe5b110329637ed35c407eac20e2d2244f1e00096
+39a2f02421058e0c2e0197e655691c853b92730b7db822994bf51118463151eb00096
 8656c6c6f20626f624c415eebd7a9bb5f921cbcfc5863e48c9e79fd2ecc1788e2b616
 bea0853f627a
-KE2: 30b2601f611a4750de42b91ad66eea012275913f84c7a79e672ed35f5eb5a262
-e0d73bb71e3e3a4f3c229cb20c16d58782a2faf7558c1ae62187565dca52b4be64fdc
-90aa45f1866029e8cfcc0e3ee78d0f0b6ef9fc75c7f402114021ab2ff660e744e79c3
-344d3e63a658286be5670922d78916980a0f6a01308041095b45cfe502f47a740fe8a
-9c59056cf8031f2a129cdb89e3a7e92841a0db1613413e3f3770212515da6ea71057b
-0df6b9ec1040def820e6db5d286f51c35790bc75896cf847c9bd01ee99d5fc8523f2f
-04eb9bc9762b35f062ca10e4527b12d34e746739aca372e52516d51c19763ad5eb1a5
-b60dafb68c264dcf6bcc692f667a71c5a617000f403c5c4cbb5223d593c5d97afadeb
-6f50e9bd1d88559edc8f903d06f65e0a288f5be7083db883334339c13df6823c8bead
-ffd8d5f57db4fb87a33483fd00ce39f705043d5d31d86594117078217150
-KE3: 5896a9ff6931c4da50ff2ec9ca4c78786e0deb85586bec1dc6b523bf30f9554c
-468f5853c650f06c0166851292eadcaf9b41318370e6a579eadae112b400c3a9
-export_key: 799db11929dd086fd7eddbb79ca0b9092f16d73970c064a4666b05987
-a74aabe7c7ac2072f9d1d16fe0d7c6f4dacea70add4055ffe37f969532bf3882a1ad7
-b9
-session_key: 1c4a81af4c07a2ffe79449c64092627e939a45d6e6421868ec9b5e35
-6aca28770448ddf6a66402417c7c1748a4c6be36ab56d8f38453192792e8258599752
-589
+KE2: 8e389adf96ab62db667fcb4094d421d87c229ce169961cf29fbeebd06060c01d
+c251cdb2648daef50733ba9cbb54182a4ffce66e3432a30af14110ad2ff6a5a622895
+ee67cbf70dc03bb25017629046bbdbb720be09293e9d6c4e2b014add5d2572d108a48
+06316c12b354563541c9cb08dcbd78d60911c2462aedc9bc303bbcac628e4529e1fad
+b8fee948a03a926b213348c475581d29a7d467714002f4b4758e07ed816c87eeba910
+60daf480ed3970f26f51fa089d276e10c83dac85ccf04ae0582e6e95da0cb1e512169
+e9fce0e2847803c2c031609b1e6ce1f57eb0800ca372e52516d51c19763ad5eb1a5b6
+0dafb68c264dcf6bcc692f667a71c5a617000f21aab7df3c8d38b4f1b5978bba79680
+ee2dc920b1ae3adab8579429e63a3567ebdc761dc837c7e25e07ecb384b93d83eb871
+2056ed9577af44c5d9c6844f394fa6f6ad6dded64e9e4fa50e671f91bb
+KE3: 8ed88961132e40fadf382fd41ba8c623fee59a7cd9fca0a20961ea5f0522c475
+026ad5cf97df9367f8cd2132fdc4c2c0f8ac089042a18722823f473aa6d319d6
+export_key: 0c21f31e984ec3d88504413675cfcf9a8c101b2f06949615258259de1
+12154a592857ea9811432502c6c720aa0b79c91940885d0c05520de6c33b247f7a85a
+c5
+session_key: e2ea35c5ee315aedbec943552a51ed5e867cf0b7167a1a296cd4a8a8
+e0684e20d5e0b621d6305c723f843fb08141f2e92b48fad58fda6bf22f515a79d1849
+273
 ~~~
 
 ## OPAQUE-3DH Test Vector 2
@@ -2072,27 +2038,25 @@ Nok: 32
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 17bbc99a766f5e444c81f66fb758906fb5dc8e1137421036e33962d17c
-6613e203fa626027dce0bbe098d7741778d505941ee1aa242ab6a4559bf7c8812d8d3
-1
+oprf_seed: a56a5b20e36fc977b708e93825ab3cf57e3f66881a4f5b5d0b8757d1a9
+f9a0620f8604c6a513f177a9aa0869416ba582fa05bda4216863cef7489ea7e5e76f9
+7
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: ba7ad869c776c3d231b661f87eb120597eb8b782012c10b4d324f
-79f3835e6d2
-masking_nonce: 8512c18364fed55ce3c7c6f075891ef643481c1646ca1e5077b030
-b448a1ef75
-client_public_key: 34171a08ef7cd0196763640692499e3b34afa7b2953cf25ee7
-2ebdd695584f6d
+envelope_nonce: 544eacd17c712c0929f63fef32682f7305879d91ffafe01250792
+20fe9ceaa1f
+masking_nonce: 86b9d93e976317c45244087d0609f3442c8ab8423db1fbcc9dd17b
+239e12cbfe
 server_private_key: de2e98f422bf7b99be19f7da7cac62f1599d35a225ec63401
 49a0aaff3102003
 server_public_key: a4084c7296b1a3d5a5e4a24358750489575acfd8fcfa6e7874
 92b98265a5e651
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: f3ad91ddd72efef5649f91cae1f45a1f6a9f060865218d0e602505a
-f8b5ba0c0
-client_nonce: 0ef406e04380f16717ca817d01be3ad2609e661d57272332dd1dd62
-9d9e66a41
+server_nonce: 63e9650c6a1f16cb9162cd9f66f5e76383ece5304c649dffb3c79db
+205a21ab4
+client_nonce: 57a46ae7fc6dd0bb8132a780a892a35f3c47092b2b699c7464e57c9
+d944b9b56
 server_keyshare: 80d9b21c255bf04113a6d339fff579c68475e516c0c98f625a90
 f6532a310f13
 client_keyshare: 746987c9ba92c3636d92fa7afc0379009ed54a7fb2db3cf7e4c4
@@ -2105,33 +2069,35 @@ blind_registration: c4d002aa4cfcf281657cf36fe562bc60d9133e0e72a74432f
 685b2b6a4b42a0c
 blind_login: 614bb578f29cc677ea9e7aea3e4839413997e020f9377b63c1358415
 2d81b40d
-oprf_key: 18816ecf365e4abae0152bc83cce64df36536071b2c2d0480cd6dd64753
-1560c
+oprf_key: 02a956b69fe1c36c4037d3e3a262c2cade16d0cd9beda719362fffeb08f
+3ce05
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 3cad66ff5300572c2f6e6d7a3f5e961ed6aff6e1612bcf9f8e3daeba189
-6d84a4c87e27c847d357a7ed150ac5ebc9df74145ae1e30c4d81bc0ab630d23a4e665
-random_pwd: a4edd6b08169aedb3c60312f27aec6d440c37cc45b764e81a5ef7a37a
-38bfee91bc91443a76442ffd03aac9dc5ba8b67d94909c07d6e44eb4e77bc9ece358c
-34
-envelope: 01ba7ad869c776c3d231b661f87eb120597eb8b782012c10b4d324f79f3
-835e6d2fe5d34c6bba628d46f6572663e8d8527e74492f8ed38ae0584406872e1aaa7
-d94ab51a9956162f8f973405d2b045b140b112b23b81129114ff3f74f32d19d0ac
-handshake_secret: dbc99d48e496e56782d594f3532b6eeca1df32ff8719e5dc6aa
-e6bbe9bbac01f468d5bf2bc9b24fa5e9dcc3830152d167a7538e26b3e9aa634a69d1c
-9092b7e0
-handshake_encrypt_key: 4f82bb4c76d9afbb071569463e7dc6e53cf9362ccf5a9b
-a90a0477eec96a90758749e54b3dbdfb94f9d3c1232ceb297e54262a497dea2a71274
-9c120ffb0d627
-server_mac_key: b4b714afb8e87aa6f963a1baed33a0d8c2ef9ab24054483c78d75
-389059cc75fe5a301564efe01ea62265f9f6dfce1753776986c287fc99b9a315058d6
-53a54d
-client_mac_key: bb4e9be7e2fa0c72570e05362706ad840942b7133994d85bfb08f
-963bb1ec5294c778573998a8f467ceee001d41c003121c2fe2117201956164e41825c
-95025c
+client_public_key: faae2e48a6ea40be4ff9db74bab612e23b73ffeaaa0b8c2e4e
+478b9617b9d427
+auth_key: 639e872cffee1b15c0865d5724a7867c03debd0fc1632db741c82a43d4d
+709af050376ce11f6a03a0078d5282dbdb57d00c5a8ab3d00ab44123a03acbed54042
+random_pwd: 3c6e74a2462fbebdd60bae6170490c3fa5b41efb168dba122c95cfcf4
+f1a6d6d3ac38c54069250166d563c531d03ae7a0d42bf8712826311ed5912ccf296c3
+ec
+envelope: 544eacd17c712c0929f63fef32682f7305879d91ffafe0125079220fe9c
+eaa1f17cf057cb7282463507e76e62c784d05a51433b5a525b87112edfe0e2e9ba711
+f5d67e4fce86857f5b080a0ff22ef87b3625143a8e2ff3d663779af6b57070a3
+handshake_secret: f1878bba9e9ce0e18f9946e20975516e7e423dd4f0095ab7ade
+3a2ec2ecfe34c87530334d0128b12cb5a0b09ffd28c428b6f3d9db80f8ce9e432a495
+3720c3b5
+handshake_encrypt_key: e49783e9e36928c19e79525e0c1a75c943af1eb58b163b
+7ceeca84d7798140d1593e7c2880f58d45b4aada983d26311cbdfde095e85780b36c2
+2b39af027e27f
+server_mac_key: b0990276d041d5bdf44742a975aa965d1ed2b8248ff6c761469e1
+a743ce14b799203fd558003889dd65a550c6d7b75b9c2852a3fa6e8833def9e04c6f2
+a09b72
+client_mac_key: 2dc37ba96a471a5491ce39e55b4b4fc327ace9715e6abf067a1bc
+b3ad1b0807a1abb83c70c7df9ce176c1179a789e4aeae30e549f186e97faa05b8dcb6
+c136c8
 ~~~
 
 ### Output Values
@@ -2139,37 +2105,37 @@ client_mac_key: bb4e9be7e2fa0c72570e05362706ad840942b7133994d85bfb08f
 ~~~
 registration_request: fa8c0e0144f7b9cd1de1bfcf78104f94d63c0f90398c9df
 ceee06ab5593ec500
-registration_response: fa981e659bd41b0628391094fe5ea5abeb00783ce2a7ee
-1b4c358d4d24f6977ea4084c7296b1a3d5a5e4a24358750489575acfd8fcfa6e78749
+registration_response: 74251c702a9249ee51fefc06cd67092dafbd9463ddf1db
+33a40b22a76bd12516a4084c7296b1a3d5a5e4a24358750489575acfd8fcfa6e78749
 2b98265a5e651
-registration_upload: 34171a08ef7cd0196763640692499e3b34afa7b2953cf25e
-e72ebdd695584f6db5b9238d19c191a75d913050df790a67967afa4b11cc08365683d
-fb186dc2f40f4d71b9135153d2ce1c7142e04b513c6ce2c8e70c781db5f923b5c2857
-b44f9901ba7ad869c776c3d231b661f87eb120597eb8b782012c10b4d324f79f3835e
-6d2fe5d34c6bba628d46f6572663e8d8527e74492f8ed38ae0584406872e1aaa7d94a
-b51a9956162f8f973405d2b045b140b112b23b81129114ff3f74f32d19d0ac
+registration_upload: faae2e48a6ea40be4ff9db74bab612e23b73ffeaaa0b8c2e
+4e478b9617b9d427e3ea49ba88c0acad89294f70a48e5748a8b39343b585f4131d7c6
+10eca44561d0ea05771d75dcc9437baad69bf99e17a8b55a48c54ea3ca4d2c70f77c7
+f4efe9544eacd17c712c0929f63fef32682f7305879d91ffafe0125079220fe9ceaa1
+f17cf057cb7282463507e76e62c784d05a51433b5a525b87112edfe0e2e9ba711f5d6
+7e4fce86857f5b080a0ff22ef87b3625143a8e2ff3d663779af6b57070a3
 KE1: dedef709c5faf24970b4fa77480a2c640dc8c6b7a53ae78a2dbf3fc75134a250
-0ef406e04380f16717ca817d01be3ad2609e661d57272332dd1dd629d9e66a4100096
+57a46ae7fc6dd0bb8132a780a892a35f3c47092b2b699c7464e57c9d944b9b5600096
 8656c6c6f20626f62746987c9ba92c3636d92fa7afc0379009ed54a7fb2db3cf7e4c4
 07d4ed2c6e35
-KE2: 3016b07983d802f40fa5120c50c6d3ecb5ddb028b3b936c5e332f9c8faa9866a
-8512c18364fed55ce3c7c6f075891ef643481c1646ca1e5077b030b448a1ef7578195
-104963a178dede59ce0d6d0d62135b7c15359a0afd2c9a4ff3848981e283e63ab7481
-09487a0b8d3d67e119a567110feb5e9f7698f3a3bcd627cdcd30e9c4b5c27586a178e
-dce88bf35430564cedf513014e3951e198ba8514d34ff55115d381d175917fe1bebb5
-0b70afc6beaa75f005e2213bfb4347f6b2ca1b8f4ca670f3ad91ddd72efef5649f91c
-ae1f45a1f6a9f060865218d0e602505af8b5ba0c080d9b21c255bf04113a6d339fff5
-79c68475e516c0c98f625a90f6532a310f13000f35c15c6e5a6d330b679a2da7caa29
-bc0d595f270925a9d2f831014766a18c99747b2a9f981a6524a697ab8831a348596d4
-efdf9b960e3d55c6aa2ddbc4dec8abb0da15ff5a93163b1aa249c490a9fc
-KE3: 78b842800a114956d6377990ede93ff8c94788f85d1c8a55ddcf212a7070c357
-8e626eccd19c89b620fbd6b76d29ad49157685b29381fcba3c02b91eee8f484e
-export_key: 4efaeae7b7bf50100f371fdc0e05b8570d68993e02b3505d15bf1dd6f
-223a3f7e4d1d7fba4c798c44a5858e6cc005bb45b9792272aca6f1757aab7e466af15
-a4
-session_key: d1d304aac1f0c00903aaaedc4871357bd20aaea87bcdf6f7bc4b6812
-9d6606f6947d6d2d31e52a48fc4ab093f4f2d4f84810b0d7135ca0f61e58ec9eeef51
-fae
+KE2: 669e1d98e5e42ecf5d9dd92967a8be5566500f514c9a1c5afcb190910cbf230b
+86b9d93e976317c45244087d0609f3442c8ab8423db1fbcc9dd17b239e12cbfe398ce
+96af33af774668f023a9f2f6c768d8f0c5aa5716d2391b4da38f4ad78a2615ec4bb07
+2bd2478f72052c719d1d12e511e720aa8cc60b29ce44e5f979984509c3d1febebf9b7
+d038d2c1efa5897d300775d2be771c2465947c67b0ab4d8afd242b038aef619327831
+cc3fe59c6a4619565d498a4bb87328f0a13d518fab5563e9650c6a1f16cb9162cd9f6
+6f5e76383ece5304c649dffb3c79db205a21ab480d9b21c255bf04113a6d339fff579
+c68475e516c0c98f625a90f6532a310f13000f3faae4f07b1385147c966ca2724e1c4
+1078966e79d2711cfc968c7f809d37d0a58ac73a5e91d6a25b1bb9fb8e97bf703f7f3
+b5f22048f3676e7be35861306803cfde699bd2de547dad2e604e8e9bb0
+KE3: 9235a317b05924aac30d94ba93cb089efe52c8c4a9c78a81aeda81f3115540d4
+3c9e0955a89827ffd3ecd7b820a6fd7813242481f968a807a8a1c61a4cf886a7
+export_key: fb8a3972fd3259c3bfd30207cf231e1f3cc0823e4aa0bd0e33ad514f3
+c10ebffe6195f682c506068f530f6fb1b567169eaf2d7b16dc7aa37d27b08ae35c835
+8f
+session_key: 810e89a9d5969a65ef999c80ed7ae7f10578f26aa6534e36df5298f6
+fde464d18dc6be0345ee98c533dff1ba59da44742023e2e1c50589101db1fda48e71b
+0a7
 ~~~
 
 ## OPAQUE-3DH Test Vector 3
@@ -2197,27 +2163,25 @@ Nok: 32
 
 ~~~
 server_identity: 626f62
-oprf_seed: 97ea31bdd1d5e3fed83edfcaaab3b9902c2b7f056052c2642ccfc967a9
-046a1073560f9431e34f7b13371c786e58901fa95cde5a711253f04ff051551a3c569
+oprf_seed: 0aa156c855ab4b734584a12c84c3bd06618f73c133a96d42d518b6d31c
+411a35e62d79ae8d143acae339e16932a5e0de327483e74e7245d9f317eeca467799f
 9
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: e0b04ec3631529259a8be900e29c8e43285adc9f927037cbed373
-2816b27dc57
-masking_nonce: 7324f2a4dd0ce6634d624c80cf59fe7223f3491d1df9946ae3de11
-9e96bfa3e8
-client_public_key: 765d5df731918e800322d3eeccfc57017c1e3a4b0936e88e87
-0eb98d2e13d73c
+envelope_nonce: 71fc1907dfb0c614cfa7d5ebbf7906bcfbecdf36b335af81cf5f0
+7a15c477fcb
+masking_nonce: 69b1e47c6282deedb059db28468b13263613e70c8622ee3bd7cf45
+492fd26374
 server_private_key: be81db28eb1e147561c478a3f84cbf77037f010272fd51abc
 ff08ac9537e750b
 server_public_key: 5ab8bfa5e626d2249e0aa9e9546cd2f9e30bb1e6f568334ef3
 f459678b0e0d25
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: afcea4cd164f343d834c732e988a6838f1ac6aed81db29f76ded48a
-19eff407b
-client_nonce: e8d25ee0b8862672b0961f14f26a22ce00d7e904c3ba10dbdd5540b
-70214ac23
+server_nonce: e76f52a29ae142f939a5c2541c3460c29f0b17013e1fabba1d5031b
+f52e29098
+client_nonce: 5ff66026afef630e907fb4f6b3b29865edf017f2610bc1a5c84690a
+bbcb6fc91
 server_keyshare: a6d76012999541f1ec0c014ec1606f2bd2a517e51f731d595469
 51d9699e1739
 client_keyshare: 2e8a05799d3c524ede0482f39e047df99d9a53dc2dc30e8947eb
@@ -2230,33 +2194,35 @@ blind_registration: 27fa7b2a6d920c76cf03fb57bdeacc2ec39330fd6e7f9e5db
 dfcb571e271a60f
 blind_login: a4e7b12d5b712efcac9ba734d54c2b24bff0ef6310404b5c05d60d7c
 8451bd0c
-oprf_key: c2808f2798ae846c91708200a7795652abadab1bc0d56b23a0dafd8cfc1
-efe09
+oprf_key: 69be59dc8e13384a752b47c43790541ec43c6c2df7defbf31d47dc0909f
+11a01
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: c652d82e2380815d8b5cb761f6dbed0f555095dda856b7ee40b54d74dd3
-6e811033b9033b804f25c20a35f04dc6ae43e8a6a769546d1b43af78fcd14926e38c8
-random_pwd: 3c807e0a74ee313d0022d14119bf4b1ad0d203a39356359c6b6d9478d
-e39c7e473f52c1bb81bd4e1abacf5d5aefaa3ef3893878cc8b6c5f7bbfb93109cea3c
-58
-envelope: 01e0b04ec3631529259a8be900e29c8e43285adc9f927037cbed3732816
-b27dc578187330e32162c317cffe190e01df69d3a8f917f7a629aeba90612207341c6
-0649bb339f52fac3c468142c17f204e50e4ae3119b8fa499bfc1bd5ef4678fcdc1
-handshake_secret: 8506047549f8e32bcd3006616dde3aa168f58777c3373b4fe5e
-7ff80d5b7b344e548aaeda6be42aa66a939880eea55d875f3c30c85e286c88ad1fd88
-abbbbc66
-handshake_encrypt_key: 6069795df834374579952f6fc1b02f61e66b1dbb7fd88a
-1f3c4b2e35b9e1269cb41f36e7903afc66884b62514f670671e9f410cd09d025b9930
-e8169951a874a
-server_mac_key: 4e9e87b6a1c5cf321aa2c1daf806056a08ab8a1d29b9d76d48deb
-f1ad0da72501689765dc59bf1c7d7b70fee0be17533526c11c4af88e764f5d12673a1
-967089
-client_mac_key: e31d14242b626a061ca32060b45d5c5f03ace645017f9cb8988f1
-36f69e3f8202fffee46a3360d1ccc514db16ef267efbd171c900ecced2ff23752ad01
-6bad79
+client_public_key: da2635d28af0f54fd7569b3e17acdcbc4faa59846c6ee84f9b
+cb2f2124618052
+auth_key: 818442397be62b9bdc62946dbfa62c003b940505ca470f74721046d38ed
+741715fd5daf53711a33f5084de95257e03cf2228084454b8380d745e5e5c4d5809a5
+random_pwd: 4835a6bae73d6569c0fdffdfda7a15e9aedaa757862f208d556bb6da2
+30ba826fbf2b361cd2f4f0b30b310a056beb3cd0756c43cc9e8009537d46bccd14168
+11
+envelope: 71fc1907dfb0c614cfa7d5ebbf7906bcfbecdf36b335af81cf5f07a15c4
+77fcbf1f27e63cf8b78e7d9320acbdb2fafca9465bdca29bc63f2b3d0b489b8bce76c
+352c59c1653776dc08433ef3ad08fcff82b9c00ed1962abeec74690a136bf7b9
+handshake_secret: 4636d3183f8edaeb510c01372e5b66c831fe2f3f1e7ba1e9271
+1c0db9b846e6a1abc1f4f674f503681985a5ff157036bb6324c032f40e9ac822fa327
+df87b4ef
+handshake_encrypt_key: 5a266023671bc664d0c1c91dae37af48cfe3a9bc6a6b94
+57bceae2536cf3a92ad825dd8af8aa99c02c9173ffe8bee26fd4bcebf4f5cd9ee8ebb
+4f8a35da79b1b
+server_mac_key: 1e434947a3ffb6703837cc4600a41c6b7926b45aa605d9ab8b23c
+fe698c7f9ac8e8198cfc27bccaef752b649e896ffe34bdfda872958a6ee796538cfca
+490e04
+client_mac_key: 51e8d4fb2fed00f670816f9f3e78df88fe99364f4849fe7bcec92
+c99bab9ae95baba4d3fca3cc29435f2ed093c57b26a292bfa02156c2b3cb5bb7d6707
+411150
 ~~~
 
 ### Output Values
@@ -2264,37 +2230,37 @@ client_mac_key: e31d14242b626a061ca32060b45d5c5f03ace645017f9cb8988f1
 ~~~
 registration_request: fa39a478c220a89929613f9e65c9a4617da96b62509c42b
 39d7e3606ed2e8031
-registration_response: 0ebe2561e52d4bc260f65f85e80e33046d32ab8542fe0d
-4562152681f25154535ab8bfa5e626d2249e0aa9e9546cd2f9e30bb1e6f568334ef3f
+registration_response: f220077326466e5f511d2a77e3eeadf8f2ae2c3ff62a2d
+3a7edf73174fd1bf2d5ab8bfa5e626d2249e0aa9e9546cd2f9e30bb1e6f568334ef3f
 459678b0e0d25
-registration_upload: 765d5df731918e800322d3eeccfc57017c1e3a4b0936e88e
-870eb98d2e13d73cfb478b87b88403d626e5e185b9a5554efafc940fbe3cd99d24879
-10ba2cd7858bf570fdb4c37da6186491b9cf318c675f640b1feb24d6a1e98631c8384
-9fff0601e0b04ec3631529259a8be900e29c8e43285adc9f927037cbed3732816b27d
-c578187330e32162c317cffe190e01df69d3a8f917f7a629aeba90612207341c60649
-bb339f52fac3c468142c17f204e50e4ae3119b8fa499bfc1bd5ef4678fcdc1
+registration_upload: da2635d28af0f54fd7569b3e17acdcbc4faa59846c6ee84f
+9bcb2f2124618052b8d7f5e1e180ea1d075e1e0fce90c5a900c85818efd828dff2672
+f18546281f9ea89ba4c7ea125009201c6b5bfe51d1af5b7803c70a0658d7661d39cf7
+fa654e71fc1907dfb0c614cfa7d5ebbf7906bcfbecdf36b335af81cf5f07a15c477fc
+bf1f27e63cf8b78e7d9320acbdb2fafca9465bdca29bc63f2b3d0b489b8bce76c352c
+59c1653776dc08433ef3ad08fcff82b9c00ed1962abeec74690a136bf7b9
 KE1: 96f9f35ebc0ca71607fd2cfcd465e285eeeabdec61151b39b2b4fb735538aa0c
-e8d25ee0b8862672b0961f14f26a22ce00d7e904c3ba10dbdd5540b70214ac2300096
+5ff66026afef630e907fb4f6b3b29865edf017f2610bc1a5c84690abbcb6fc9100096
 8656c6c6f20626f622e8a05799d3c524ede0482f39e047df99d9a53dc2dc30e8947eb
 5da98b8c4354
-KE2: 54432c8df1dc89461e51134d439dd6a87fb01ad7e592f76957148eea28f11c7c
-7324f2a4dd0ce6634d624c80cf59fe7223f3491d1df9946ae3de119e96bfa3e8a665d
-ec9b0c3383ef1cdbe7959273c2186f62a187274feaa7b367d79da9acd4b0a47824c58
-e5dacd808464d2fdc8c2647d53531046f93d98632fe8f80689ad88d0a1a498b5935cd
-165b321415ccbd78d5d7b2c5c0fa7fbd3ecfdf36d752917beffd68fdf4a447ed54317
-f21d1932d130748658688c8729a525c80afc262f24e826afcea4cd164f343d834c732
-e988a6838f1ac6aed81db29f76ded48a19eff407ba6d76012999541f1ec0c014ec160
-6f2bd2a517e51f731d59546951d9699e1739000fb38718768c890545beda8b7343c6f
-e8a9631ad768fad45468bea6d529d15aca048063b36fa344d05b8d77b1dd0f468dbf7
-90cd9faff0a97bc198fea0ac545c63f8a4b44a2a6bedfbf180144a73d356
-KE3: a7f6db1c110ef54b74f7adea48b523166d7fa202843e7f014a892737ec4a363c
-67c68f28922e6f47eb44163854464f74b434cc1e23c607cd0acf18514a5b176a
-export_key: 16eb0197312137180134701d6292de4a15a9483837b1ce18da2a894d5
-b238ee46096352adad9ecfd57f0d99029b898e63b87846577827625798bd2197eca1a
-dc
-session_key: ea6a3fdba848c6173405a7a36fa0c816dd9d4deb22f59b1dfde8baa0
-2bc65280d4fc05eb520e22094c3622775fa3b794b4a6df43ec993789de0f10f775661
-e7f
+KE2: b68cb1c073c6cb522a3fc756ad86f77b7e7cbd8dd88a4c3c71bcee92f2be3d62
+69b1e47c6282deedb059db28468b13263613e70c8622ee3bd7cf45492fd2637425434
+a1689d49d81a80c47b806aeb0ab7abbeebae498243dab78ae23571084a91a15acaf30
+08a5d4e4b39a480b9b25b5d8c54b7b6d51190044d9fb42d4b0bc333da43132b6dd1cf
+635f0122c9d68b6aec0c12be2ff729f9a54cffa7274584a7fee50ce93494a88da9298
+9bcd4ba8472330e2a280d18c084254e4c1437d0c50d3e76f52a29ae142f939a5c2541
+c3460c29f0b17013e1fabba1d5031bf52e29098a6d76012999541f1ec0c014ec1606f
+2bd2a517e51f731d59546951d9699e1739000f438dbafcde6103bff348369d4fe5231
+5555756ac2a5f541809ad04ce1f309556637215bb9e1e0da68234cfa1ffb2f044ad77
+d55e52ab3c343c4cf0acc7e4a8693fb9231fca119b578654d9f5cef451
+KE3: 73ed38bbc097808236815854954e1409110f9b7e889388f80ef48059af440db5
+367b236f3474c3bb01c2405887df68e6110e3ae3d84ee79af469e8581e5dcb7d
+export_key: e24d83b8551918e5b2d4434f41d790a5ed76a462c02b79d6c05f1549d
+173b299def4a61b9d9777dd73a13d8b7e433d35d01a1d3752d890cf981fb792e2d4ab
+49
+session_key: a4f7cadf344e1b7318639cbf6cd9dfde3304768a159e7b903f761639
+8df67d1243a54d58da06d03a4c308149cd0fd57af1739bdf019070e95e9b5e0c7f038
+7ce
 ~~~
 
 ## OPAQUE-3DH Test Vector 4
@@ -2323,27 +2289,25 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: c6bcbee1c4e989a92b4b9109f8c94ad030d6e173b8494c9168f33ef33f
-5a6a84b07abde3f7cb7e6328356992ccb61d257481542fbf895d5acc712ea35917037
-e
+oprf_seed: 24feed512ecde9d011cc5e6041b80fb51d0f51ec1a7eefdc5b0f97b2a6
+9619b58a6fec3cda72bdb2694df86bd6cc9654dc2bf6dbae92495072eea299b8ca83a
+b
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 1cac0433fb8401510f0088e25bfef8637449502f0d1d3c9f71ad9
-859903e127e
-masking_nonce: c19108540008b5369e2684b41a960485db96c2838cd5a67e0fbc5d
-8374a70677
-client_public_key: fa0ccb4f9dfb731a8b7b0f528ff187cf069c5f038330c18d6f
-a0e42cfca13b7b
+envelope_nonce: e0fda4c4137b843017f1a6c153618193c9a3738b248e5d70e05ec
+0e427547a0b
+masking_nonce: bb81552840671b61eb7808f39f0a682194bad9b9d967bf42b146d1
+282c6f4228
 server_private_key: d49399dc3bc1022938dfb0e79db523d4e4e41f494c3898eac
 652bf95f6efa108
 server_public_key: fc5638262d8f6ba5848b70dbe22394d6c346edcd2f889cce50
 017dc037001c63
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 2ff0892217ed2a91d1dcc46e7414611c6420093493aecf5aad4f968
-55dbc9236
-client_nonce: 1b6c097062f852eb0c7e3590102500de469d58b701ff1bb8ce22f38
-525b0d4b0
+server_nonce: 8d9060c2c5a36659a4fa54ab5a1a026c75fc0bfa84888edaacf186b
+b74e8ddc1
+client_nonce: d2f496e81ca3cf64dfdc58448f3957e91e41e4ba191b4b1b58a5b10
+d1be80ec4
 server_keyshare: 6a398e50c4e395ee52ef332d6c2c0a77187e2e0b3564617eb66d
 2878c41e6c47
 client_keyshare: 14b434e33a39d7d9fd6dbe3638925edd7a0344a312a22971754b
@@ -2356,33 +2320,35 @@ blind_registration: 89ae863bc6f3e8b59bbd1354548220e81cd0ffb6f9e4ec217
 3870ae6107f8d03
 blind_login: 07e41ecdb9ef83429e58098b8f30a6b49d414ad5e6073d177a1f0b69
 cf537f05
-oprf_key: 382053015e784e15f2c7daee26a78dfeeb54db4c04929d12086879a00c2
-1620c
+oprf_key: e505ca3f71a562711a756229c552eb7c076ea0c0bd38b34be3a6f11c2ba
+08e0a
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: c947b5f74efa75416d063d72d23c83baac08ab67383d3c75504b378eb71
-510152e9f9ab23cd670b0755691bcc060701af2827f0fa61e215fd34a863f898682a2
-random_pwd: 07077daf7020d80dce16b0ea96a1ecb43c7726208867922eaddb6f48a
-8ddd5c8e109cc46fd5c20baa99d3d9dd0b595bb72bc9a414d1870132339a75624abe9
-db
-envelope: 011cac0433fb8401510f0088e25bfef8637449502f0d1d3c9f71ad98599
-03e127e2c5124b935c2307b3d5f0837c1b5e7c9a5123dc13bbf39e36653bf743e478e
-1dc8e301963aedd5d947cff09401379f0e4dcb24386851ed168c699b8ea191742e
-handshake_secret: 5d34457cdf4157e4f9739899321ebe7c2ce6d62a1d4975f093e
-33a004e018861c4e7b75ba695296d59b22cc4b5c64fc919a38fbcfbeb1025f5f0e565
-1538c8d9
-handshake_encrypt_key: f7365851481ac5a066288df7e5f3b757f1d1b5239de6f0
-1700ac8f468c1b3b33f5bcb20377fad2ba16b5b43dbe7b37f2f7b07b5cb27606712c3
-705aa79b6e67b
-server_mac_key: cecbc91b656a4e0691aa2b85d4a57bc02dd0ee0aab2e804e58835
-99316b0d3174b9bdf8beb4d12922275376c9decc7009c9c9d152e5553078b5fbed290
-a2353e
-client_mac_key: 0eb340f679a9832b4412e8ce1d75f36a696302d475278d95e9950
-006723efee77daa56d723f1fa533b4c48ab257bd8be6fa31c284ccce42584eeff45a4
-00898f
+client_public_key: c02f74c429a2627df08dbdff7a07884ce66b55681c7c6b8341
+05d5d0eb34f76e
+auth_key: 878309a5ba5c954e54c44b8b4c4638e5f9b0fe9d62a6ad9ee63878246bb
+a78b596a856530de5f3d9c50660a4e9f319ca8216844bce952efbaa588abce4ed8700
+random_pwd: c9743befddb0f389072098e1433851da63d2dccd101cd2afc48f81bff
+a681c1dc116c5577d8fae1c711ab3f4befe68128f2fd4510bbe941ad883debbc2cde0
+32
+envelope: e0fda4c4137b843017f1a6c153618193c9a3738b248e5d70e05ec0e4275
+47a0b718dfbcfc6d3720df9fad97f033d671ed6c73601a7de78e33734cd6da61dd8bf
+c84b90ac9c6cfe8ca5768fa20f22c322cb047155537018d7b195e10f6b7e6d6f
+handshake_secret: 02d22c1b010c0005074199f7fb2a66d9b98ad01004146b7625d
+36e332bb009d1bd34f1d0484be0aa8993dbfa282beb54566722b13acb912c1856e944
+c2c12f2d
+handshake_encrypt_key: bbd95f5458bffa3eca18743c64db6c17481d5b81bdc5ba
+fc25d11139bfc9b9666ed1040f90dbd3f9a012c3e28f518598d63e2f85c485213132c
+e4ab60c3c32a7
+server_mac_key: 276ae722fe4c85f726b18c3f21804ccb6deb2a1461883e2c2327e
+2a5f5944b4668effe89fd6ece77d3af45c4d151596354e402212f7274a1639ab92da0
+709042
+client_mac_key: 8a671fcd69c0e2be043d2ff4fddc873eea113d10ec6501bf0b67e
+e80aece6b1ef93372581cb92e9abe2c03413bfb82e80308942e89e6f8908301b71948
+c6f9e8
 ~~~
 
 ### Output Values
@@ -2390,37 +2356,37 @@ client_mac_key: 0eb340f679a9832b4412e8ce1d75f36a696302d475278d95e9950
 ~~~
 registration_request: 307ff12c023cb5ce33a04efd497252442fa899505732b4c
 322b02d1e7a655f21
-registration_response: cc7af005ccfba2ee197d5edce3b38518af6d161de20986
-170b281ff64b7aa528fc5638262d8f6ba5848b70dbe22394d6c346edcd2f889cce500
+registration_response: 6002f3f23b637b19097545b4fc5ee52dd8ad8829e44124
+3cbf47b996f416dc7efc5638262d8f6ba5848b70dbe22394d6c346edcd2f889cce500
 17dc037001c63
-registration_upload: fa0ccb4f9dfb731a8b7b0f528ff187cf069c5f038330c18d
-6fa0e42cfca13b7b2d43a942e982ba6288fc65b433292e773a443d72a8b123c98fb56
-ef77100303500a7046ba7640ff2f3fedb8550dde2c33d1e8da4018617a5dbbf9af421
-11a80b011cac0433fb8401510f0088e25bfef8637449502f0d1d3c9f71ad9859903e1
-27e2c5124b935c2307b3d5f0837c1b5e7c9a5123dc13bbf39e36653bf743e478e1dc8
-e301963aedd5d947cff09401379f0e4dcb24386851ed168c699b8ea191742e
+registration_upload: c02f74c429a2627df08dbdff7a07884ce66b55681c7c6b83
+4105d5d0eb34f76e27cc6b06fc7e6b1427224895505e021bee3982c059cd28f0586a6
+7f8bbac26cbf3dbffa04455f5dac150322e41c3090967d6a059b3fa326c737de4d133
+f1dae0e0fda4c4137b843017f1a6c153618193c9a3738b248e5d70e05ec0e427547a0
+b718dfbcfc6d3720df9fad97f033d671ed6c73601a7de78e33734cd6da61dd8bfc84b
+90ac9c6cfe8ca5768fa20f22c322cb047155537018d7b195e10f6b7e6d6f
 KE1: e6fb9b013986abe5f6e9586a0110395a97ad695dde622d58470adb0a0cdcb37e
-1b6c097062f852eb0c7e3590102500de469d58b701ff1bb8ce22f38525b0d4b000096
+d2f496e81ca3cf64dfdc58448f3957e91e41e4ba191b4b1b58a5b10d1be80ec400096
 8656c6c6f20626f6214b434e33a39d7d9fd6dbe3638925edd7a0344a312a22971754b
 d075d8347342
-KE2: 60070d254d903396a1233774ed46fb608da274af693748b3a544a2115b49e337
-c19108540008b5369e2684b41a960485db96c2838cd5a67e0fbc5d8374a706773df3a
-cf278ada3fdbc9fa19be522f9e388160e98beca7924ad7c0f0c059a64b7ae658e2e01
-b69421ab1403be40c20724b867f9c8bdbf18090c34a3c0dc3103a955e13933de69fda
-e3fd556b3979cd65df3f12d52e338af59ae6e71c6a029dff2308ab685cf68617a8fe3
-2aa23531f57b9ec375d76fd08be46a9ac93a16378604ed2ff0892217ed2a91d1dcc46
-e7414611c6420093493aecf5aad4f96855dbc92366a398e50c4e395ee52ef332d6c2c
-0a77187e2e0b3564617eb66d2878c41e6c47000fd9de9b0125b1b25a5932008997de4
-2a58e8b5d3462c6cbf34717a0caca90d06d8155e74b8bf2ebedf9c85cc566db3963a1
-2677512796e27d9a61ef37e1ff520954393b37cd411848305c1a9a653d55
-KE3: ad6343c3c639476a8dae9785058e336913d107529427a94a6a97eee855389533
-f0ff8b3180c8e34416b850313bd2fa05b41295efd789b0b20848c4e460152b66
-export_key: 55c96e7876d45ab8316f16e69a701d9b5207698e0fd25938459ee7575
-85f44c366891db77c6a81385fd615fdc60a25e07bc82b77adc7f6aa7ea93f28dfccac
-04
-session_key: a3015313be0b65f900db0898f218ddb2ac31969cbb8c97ff1aa60b7a
-d418a86323291b8d2c212c089140de2ce34ed3ddc4bd8ddf5eca1fabf25c8f13faffd
-fe2
+KE2: e6772d617a3d3d15e24d493add0df2d0f897caf847acebd5f333e765c02d7538
+bb81552840671b61eb7808f39f0a682194bad9b9d967bf42b146d1282c6f4228cc490
+d3ef96d9a74fd60e3a639e13e951fba0e44dbf27454047341d9bb251cde23a6631061
+21a8d06650a1f54ef0125846133ddefb97c93205f72389ce75f21bc62d20a95af5db6
+284b4cc5ae6c80f140d0926aab74ab5b3f77cbb3fc3ac9e6c6f36da1b0b896d836196
+29cb967daaec66807bd1a12afde65764b209f06fe13b8d9060c2c5a36659a4fa54ab5
+a1a026c75fc0bfa84888edaacf186bb74e8ddc16a398e50c4e395ee52ef332d6c2c0a
+77187e2e0b3564617eb66d2878c41e6c47000f05bc7a379dd8886b8d7cbbd5e481487
+b9486a2ff7e5c6a79534dc1a76ca0909fdd9906a1f00efebadfded761b0b346e6e054
+6c42df94f119d2b08398a7e14c37e60a93fbaca95113a1364c47b977e4
+KE3: 250019842f03b241c583e99dd18697717ca2a9c0b6067d004e42ab609c0faf8d
+63b811168583d54f0382a2dabfbe3ec122785f3db9e7ae36c1cac952ab09ebbe
+export_key: 2adda9423cc03ff8b86fb86acd1e73c0453eef8eede85b25176d034bc
+c0530914781e431691ab9a017e9a232446dc74ab6f3113c9424a4f2ee423150414bd8
+0b
+session_key: faed13a74738f10a1304b2180b0ac184f4ebd9862fda7797263687c7
+323ed1cd8f3a7a12697e4f292b87922ec2c78612b0ff96e3fcf9c0c75c09e5c03fd6f
+78c
 ~~~
 
 ## OPAQUE-3DH Test Vector 5
@@ -2447,27 +2413,25 @@ Nok: 56
 ### Input Values
 
 ~~~
-oprf_seed: 984147d390fce162e579fcd1078239f5f176175a852ea782eb33fce2ce
-bf1678d40c978351c71d6b5fa094606ecd41e3332a33200139f26766c29171f2af0a8
-d
+oprf_seed: 65201e84cb473529c734275cbd46e64eb751b44cda6825be4ccf3f928f
+43593aca1223e037abd8ff6c2f1f090648d21a38faffff21566a2215ffe958c6db8cc
+5
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 8c5bc152ec81f7800a37278a2cbc28db27a31c010d5a432d29c47
-24a0ebf8013
-masking_nonce: c3d6f63314f7f51388e73d46009b810bac4240ba6dcc195cacb2e0
-adaba7f2b2
-client_public_key: aa4034b20383a45939c4ceaded40d26fc5d3946f8cf5b5dbd0
-25efdd09ba524f43119023f6afba89309c2e9775cbf93107b9980b70131f04
+envelope_nonce: 6fa7a0d40a9e372b4509f30d6b3ad12abeaa0eb7fee8d23cd32fb
+e4cae415e05
+masking_nonce: 351119e1f1c26d82aca6c5ac664dda4b9b4f2297b88c4b3398901f
+26e36f2281
 server_private_key: 4b642526ef9910289315b71f7a977f7b265e46a6aea42c40b
 78bd2f1281617519f3f790c8d0f42eacce68456c259202c352f233ae2dc6506
 server_public_key: 7a9e44dda0839cf2fd0461eccb8fc704c39e3da227ceb4baaa
 3e421385fd2194903385345e6ac39e2a9911b6e624b0928051af9a6834ce57
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: a075927398a68dabf2efee8989a2ca510e0c28228aaa933b25aa665
-f96afa685
-client_nonce: 025f7cdb2636ab76a4f36d7c05c8d7f2a4564c3220674ef53e7a375
-a4949b6ee
+server_nonce: 98f0cf3cd83036f6a0cc0174f30081c1e348b7ea65c7d1c06801c44
+22c9629bb
+client_nonce: de437a0feefd2d44f5437dccb88b8ff0aa5799e602093380e4afb67
+e6ba61926
 server_keyshare: b0fd650f0efdf4cec17e85b9cca2fa7ac7f1ff76ca94ed07e8ac
 65afd6304ef8102bf24376fc5b064edb55fe02027d7fef41d05db3652db0
 client_keyshare: de9bfa627cb161dd7098c8a582f5fb3a38641e8df3d6e7c40dff
@@ -2480,33 +2444,35 @@ blind_registration: 26abc79daa9fcc06f6d3acf12df82de919be4937f28f531b1
 4ac96b844320e7a66810c2d9391cbb877348301ab59a3a91b4a2129198aa12b
 blind_login: 5ea7839f2ac8cf1c5fa92703d4cff61ba2e896e126d371f6380ca417
 57f6458b93b049e1b0d73ab5b8d914b08dff3e52e62ea889638dac21
-oprf_key: ef79d27180aa9c0bfbdcc5f87c1966579318aaee2bd060ba0745fd5ddff
-262bfdc57a9bd6037e78a32ea3c3db7e8d8e765a83adf97741004
+oprf_key: 09e2812f37d4a6f7c25e163d262437d8cdac3af0e622556cad242524860
+c485fe7f100c657f106fb032d172495408875795879d108a41002
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: be36a895580d28c07c67f79f3fb2745e6f84f80e65b9f60d13d4933eb36
-0fcfc47827dce0f4faed7a074c41f241f36123605139f6c84a7f1f52261729835d7e6
-random_pwd: 0b533dfa0e7237fd2bfa2a9399847c2c8df71e082802afa7ef900b07f
-d0b7de096680efba2cdeaa33d093c5883ff13d980317042157b5f4c62d87bf120ad4e
-04
-envelope: 018c5bc152ec81f7800a37278a2cbc28db27a31c010d5a432d29c4724a0
-ebf8013b64327147858db2970016df90a297314fd60df8f4992636ab10bebe0db231f
-ae980da61ea953ff10aaf7b008dd82440bf133a34b4638c375c9b34d17b3d46d7d
-handshake_secret: 95bfd0442f4ce40eb8fae90f81f20632a6814d0842b86966577
-81bae1a9f8f9b4438015e0cb60873334d78375bee353cd9563e7af6dbd9054a1957e5
-1aa7b234
-handshake_encrypt_key: cc44176efb15c5b86d9446ef2e05ab468b9823451b7a92
-ea269bd17695ab6bc9ef846404569cc47f52ad189ec6e22db28c604541c9970876f5b
-9a493fd18dcee
-server_mac_key: f73ce584eb468d3891f54a3213803d2829fd98f7e4f8159bf1998
-964238dc75209d67f854217cc42dfe750c36a2af735be7bf314100543c9d79162ae00
-93a0f7
-client_mac_key: 0c4fee2abef82c9811acfa3390bc3ff153192bdb2caff8580724c
-2599edaf65392d3681e2127eb2d4674f791e4132f63d899d88701ab2ef7e702cbb3b6
-ad3bd8
+client_public_key: 8acf06c641a80a8ac8aa759e8af0d4e493ebc818e09e2b1334
+0cf64f9c8ba186290b790be7b2ef9f1e5382e06f745dcfb12b83f5480f6f33
+auth_key: 437bb2e1cae6d2f3e8e7e93171a778e8d900a5e9aac6b5fa1a18fd2c57e
+2586d526f28ca1659af245e40d745e339bad31f5fca37decd56bfb6bf596b630ba7e6
+random_pwd: 6d37af437e8f56cf880826f256e8c300b4833bab211be54d67c550566
+8394cca7b295d77c82c3b78cac222760cf940f82af6d333ef3d451254cfccaccb54ef
+b6
+envelope: 6fa7a0d40a9e372b4509f30d6b3ad12abeaa0eb7fee8d23cd32fbe4cae4
+15e05c7f3f081c29d75998e060c2d13a96407404a4ce5831e05504cdfe437af2b89a3
+1add3bb5b3816654be042042ed3e3c4576a0ffa784f4ef0077a768f8c6be1061
+handshake_secret: e529e0bb5ec6388e3c5f05dcd253363993bb4f9cb853ea44a28
+9154f3301e65b97854d918eae1346bb009f2a78263913a885fb3252bf85107b6bfe66
+6361a794
+handshake_encrypt_key: ebae046872aff58b6896ec1fd34bb9a0c2f41b1f2f9c6f
+bb40366799c92db9aa76bd45d756afbf0e9a1acdd732c8df4896e3f1c1f819e420eda
+3089aa9bed021
+server_mac_key: c26ca93043c03d967bf65290f5642905e547450165a296b06e03e
+67256b6dc0a1ee0ee46f8dda972831bec729098cd9585356f90eaf8c82eedd2637d9e
+97a99c
+client_mac_key: 89a236821d5904aa9a7b469412a7300240ff216543ff6f3388ef4
+e0adcacf54d94156d6b1b9a132fc4e3e7dc798c6d42f44836bb36b3f15677143a304e
+6b67c0
 ~~~
 
 ### Output Values
@@ -2514,42 +2480,42 @@ ad3bd8
 ~~~
 registration_request: a2c1e08d638fa00bdd13a4a2ec5a3e2d9f31c7c4784188d
 441b6a709f47e2196911ce68a8add9ee7dd6e488cd1a00b0301766dd02af2aa3c
-registration_response: 229711a8c95f01c2ce8bb9a242c81e96f2be6a255bc4d5
-dcbd069790f53917645261446d3131351c7b1ad39c6f928edc2ffabab242bd5eaa7a9
+registration_response: b2db49e6b6da10ec29712ab17923276795863f7e579cb2
+1df4506c0195f19a0bb04d585b23d77e1cd9c2846cf80960e8426e7b1ef46d1c927a9
 e44dda0839cf2fd0461eccb8fc704c39e3da227ceb4baaa3e421385fd219490338534
 5e6ac39e2a9911b6e624b0928051af9a6834ce57
-registration_upload: aa4034b20383a45939c4ceaded40d26fc5d3946f8cf5b5db
-d025efdd09ba524f43119023f6afba89309c2e9775cbf93107b9980b70131f04798ab
-fe92048e98dda6418771dae2eba7f285a2b54620b1a94f9e46212d1b4f3d9c951bcc3
-43f8cb4b797a9790eb856df0afe0f76523ffa356eaccc7b868f3eb018c5bc152ec81f
-7800a37278a2cbc28db27a31c010d5a432d29c4724a0ebf8013b64327147858db2970
-016df90a297314fd60df8f4992636ab10bebe0db231fae980da61ea953ff10aaf7b00
-8dd82440bf133a34b4638c375c9b34d17b3d46d7d
+registration_upload: 8acf06c641a80a8ac8aa759e8af0d4e493ebc818e09e2b13
+340cf64f9c8ba186290b790be7b2ef9f1e5382e06f745dcfb12b83f5480f6f33af675
+dde2b3155281564986ec4fbc66f0c95031af063d0cd0ce2c86a70538a18f3ea806a86
+6e2c09c62dc3baf5022bfafece77029ad03bf23f4e8567fa28ebb86fa7a0d40a9e372
+b4509f30d6b3ad12abeaa0eb7fee8d23cd32fbe4cae415e05c7f3f081c29d75998e06
+0c2d13a96407404a4ce5831e05504cdfe437af2b89a31add3bb5b3816654be042042e
+d3e3c4576a0ffa784f4ef0077a768f8c6be1061
 KE1: 08d74cf75888a3c22b52d9ba2070f43e699a1439c8a312178e1605bbe7479731
-9ab7898faf4f2c33d19679a257bca53e27a7c295b50b0d87025f7cdb2636ab76a4f36
-d7c05c8d7f2a4564c3220674ef53e7a375a4949b6ee000968656c6c6f20626f62de9b
+9ab7898faf4f2c33d19679a257bca53e27a7c295b50b0d87de437a0feefd2d44f5437
+dccb88b8ff0aa5799e602093380e4afb67e6ba61926000968656c6c6f20626f62de9b
 fa627cb161dd7098c8a582f5fb3a38641e8df3d6e7c40dffec1adff5f0d148716cf15
 cd11a04b80b11cc12a1056493b23ee23267704c
-KE2: fcc882bd97a82c5123c68db84c7396caff56654439a696001a77388a78312846
-000671630b97b11b1764d74141ba3410c84dfe1286a9bf55c3d6f63314f7f51388e73
-d46009b810bac4240ba6dcc195cacb2e0adaba7f2b221caddbb5aa9ace0754d5e01c1
-fa978fe91906f7aa78485a90c590c0fa695494bd2e03a774511c42985a0a26c4e4c33
-848699e6859f003ac132c3665364eb962f33aaaa24e627be29b0e048e45cd974733ef
-fb07379a6612d55a518abbb1c375ef581887328cc293f52b1f798c85cc2a4d8856f6d
-cfcffd4dc009d1609e9497c4e8519f2ccde98a9a1cc93c023c79af7bfb50fa4c1d2e6
-e6fda075927398a68dabf2efee8989a2ca510e0c28228aaa933b25aa665f96afa685b
-0fd650f0efdf4cec17e85b9cca2fa7ac7f1ff76ca94ed07e8ac65afd6304ef8102bf2
-4376fc5b064edb55fe02027d7fef41d05db3652db0000fd97e630556151b0784eee8a
-b2b0f217fb717ef32420532c4fdfc23a0bc9b01dc7da933b3ac15ebdf0a40c33852f9
-71fd09b229cc8268f4a0281ff3521d403705a1d87784a9e3452b8cbfede39da1b2
-KE3: 5bab5f2e3930391314221bfa59e155b8b6cfbec90fe28db67e178017c2ea0c18
-3cb12d3ac11384ba63b0e205e92575d59f67fdb0ec14c4340367e63ab2d5badd
-export_key: 52f0d2f3851ae167decf6ad7f069041e337e7da5578af1145fe37be6f
-c813f157e2c539ff590ee9ce20665bf1fd939448e3f3b81e052e1ef0ed7473cd3638e
-15
-session_key: b0cf0800f56e32914cf3b99576a1666d5cf9fee42cb8e2ed81b8a27c
-2fb620f25b85dee9d2307632a873c0e7b9868225d79d17fa0b1a91b10f02d63f32d95
-116
+KE2: 12a116c33943a114d30b83f324336e2729db77b0f7f2c6eb9f2abb41379b2b21
+3a0f34d7b1ea901d9aaf37bd94671a24c4d67248612094c2351119e1f1c26d82aca6c
+5ac664dda4b9b4f2297b88c4b3398901f26e36f2281d014892c96941735ca1bd0ff7b
+ae9b792ef966eeab875c469025868b3f32909f05224887e1fa831682c389ff37c3a25
+509b13a03ce1067450b0b822760a1367ff2ac130de48373372a55e406a115cc54df15
+a88936e9de235f0fa840bb0811ca3e2e3a60708a0c8796d2472308f833a15b5722533
+ff2277e8b074be7835efc1275a91b7e5e8a793a8d997eee34bbda44d9a050b5a0dcd2
+4c98f0cf3cd83036f6a0cc0174f30081c1e348b7ea65c7d1c06801c4422c9629bbb0f
+d650f0efdf4cec17e85b9cca2fa7ac7f1ff76ca94ed07e8ac65afd6304ef8102bf243
+76fc5b064edb55fe02027d7fef41d05db3652db0000f821531fa0460312822f9ca231
+d11459acd046a4c0a15ace9152a78b172f87dae424464ce01dfcd666d62ae8076d6b3
+7200b0cd0e0002735fe54bcdf51400db735a5dfb51db85cbde013a83a40bed91
+KE3: 6381da16617abdf1f4763b419dfff127b5d63935bf61da3021ce0a078f3a3d79
+fbbd629eec0d07fdd41b736a12b0d123ebb2b696b1f0c3ca8ba801f5f483c1d5
+export_key: a37ece9bdbd54b7726151773463e32b9726535c1c54da437b3cca2fed
+0036d648a7d89bc3a033da3e5b60a475d7aa9e30ac273fa13083a29f14299c7ff4d4b
+4f
+session_key: a7b0c0a8a17b49f441851bc0359e6a25dbcb33c1ffff2f58b2bde9d9
+6588f4c15b274bfca661eef8396fd63740c9cc311c68df066a8e5ee4c7aa13cd9d5af
+e4d
 ~~~
 
 ## OPAQUE-3DH Test Vector 6
@@ -2577,27 +2543,25 @@ Nok: 56
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 678bb71adc6ce4152ad06da8ae657506ccd1e2ad96b0c39c4b605f0f8c
-3e4aa2999b5e3a666de7ec0228df414967a86e4726ab9147a727ea20cad949b08ed71
-d
+oprf_seed: e746bc4488f1e92d3d7408da44020bd8036c037c1c34392921fde79ff0
+5e49b174ae5e21c3b5ba4d062310e0fc83f8b9ec9d0752e90a589a0b898d021bc7cd9
+8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: f404a1864d451bea2b9d709c9aea33073380f615b8604aee07836
-a221e543df2
-masking_nonce: 848d40bf6eec1a9fb493f2c1539b20ff17e4ec005ea7e1ed3a0ad3
-1fe831be7d
-client_public_key: 885d2b7a48657cebcf339eed9a751af3e850cb7940456c0e82
-0ec4d4d86248658fb1a8a525431c0bb020a435c4c3871f9a8bf5ab28b6772b
+envelope_nonce: 70b213ecd4180769d4b6d25b8cdd3b31acc1eb5d43e8cc8837f6c
+36b162faf64
+masking_nonce: b38d8d48c60b596332b642fe735d180236e4a9dfe0be4a4de55811
+83a7b88d0a
 server_private_key: f0a17b7f6b056dfcfbee5bd7db70a99bbabf1ebe98b192e93
 cedceb9c0164e95b891bd8bc81721b8ea31835d6f9687a36c94592a6d591e3d
 server_public_key: 741b6d4ed36766c6996f8017ca9bd6fa5f83f648f2f17d1230
 316ebd2b419ae2f0fbb21e308c1dfa0d745b702c2b375227b601859da5eb92
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: df4742a529a27baf9032ca3f58a015c7c2bd976b060a1c6a9527b81
-3a4647c16
-client_nonce: 8d24004230da11429b7eae731dc1b7eebcabfa5896298c78154e42e
-f6f39ed70
+server_nonce: a6428f56c288ae8b6c241c1c8d505098e387770e2cad14d56e90afb
+4fb698443
+client_nonce: d876e076a0b5d4406a66457cd119dde678a35885ac514e004f35c91
+b81e45004
 server_keyshare: 5cc2a00d1b42d14ac07e05dca2dbc20661a4f30909137bc3274a
 25c3fb4310fc9c61d76fc6576c8ed1c9816719433acc81722a2a5e23357b
 client_keyshare: ee784169a2abed53764292f2e7385c5dd99ee21d09a4df244057
@@ -2610,33 +2574,35 @@ blind_registration: 2de1be6961f0700496e71df806ebd5322aa0926b2f8f1d3fa
 1fea402f3c90b04601274050a3c6f467387c2f48878823949820d4fad44da19
 blind_login: ab0cb69c311b71343843ea041bae30e2bde41b548b8fbd8b77ceb623
 25f25986ce21cef85c92e3399433661eeeb9c1150a9cc64c3fb53001
-oprf_key: 2350f086363fcb8925413d2c8025bdccf6d9e4e454c4c0a928b52158321
-a57d913be3a705e3ea4bd47be0fd06f736e81cf3ab1dcf8ec932a
+oprf_key: ccf33e8f976c53f77efeb6a9d84c3962b0b7652c6b2a6a433563ad89e5a
+b7878830f681616db09b4b287d41ecdb0cf9975d02d2ddbad4638
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: d078e629e6b2828d90720f1c78e4bf3202e4f3628ab762436360506cb49
-0359703899e700ad2e6fd06bff58f4a61fc1090b27950fda5c4a93baf189ea03d813b
-random_pwd: 146329d87909e6aeeae66858882b30d8a489f0975bb015208b1e22d07
-ec12b7da0062905b8ba77f78bfdfc870df7ae07d8a8bb6f09104a1ef878f120f5f7f1
-48
-envelope: 01f404a1864d451bea2b9d709c9aea33073380f615b8604aee07836a221
-e543df21a84a28d80095ca5889575a09840702fdfa93fd31b67e718b282339f9709a3
-673d5d78331ab239f0ac0f6071d224ce85c7ef886d8b35e3225ed9b3248856a3e7
-handshake_secret: 351c13580b15738c70f088937b5465951a16ac94610c78884f0
-208c9d87c7a1f1510f2bd6001aa0001779346474f4f4ce30050ab25d70034ada4185e
-19d9077a
-handshake_encrypt_key: 4484e07efb92c4949561b0fd1c6d015a0d3d95d2027ec5
-d4f8ec3aaaae78772d862ccdb6c651a962fc117fef03bcb6db3facbb190b798f9c1bb
-b9dfc3360c6a1
-server_mac_key: 2de27bb4dd9279bd991e5d81b6467051c5c1d08010e683d58882b
-cab7183d852a26aee42a2addb2bd74b51d973cd661e1dba89e1b688f0009aed348613
-f2a893
-client_mac_key: fc3fd2739c3ae340d0d6f04699eafae14e008c4441a1e0aeb6eef
-d6f43523693015ecfef11395c1d6c7fc4c4e5cf580428acd092a3e6e6612a4cfbefa1
-cb1788
+client_public_key: 54e716093b7750f0883a8a83e21f81a96d71e2251e33e95c72
+a6846e83d5c0a46f06b67894e3d515ccbfa754f0402c209d4a4894cccde8d3
+auth_key: 2b743b9a09d0018b40f2b46ee21f233e1e2950295d5c0ae5f2dbbdc3457
+39ae1c94557e3d5eabf9d347e1c9bbc204afe4414446f79c1d7365b37959c0384f78d
+random_pwd: 25df0ab5d5bd5558c80c2ba8e5ef46d9f7c2d09cd8e00bbe903489648
+8992b832df0a8c36358f0d804f513b46676cd53d35c15f84afad608d0c47927dd5cdc
+45
+envelope: 70b213ecd4180769d4b6d25b8cdd3b31acc1eb5d43e8cc8837f6c36b162
+faf64f474a20be9376782b7d411afb5991aa8fa0bdf11ed3118441abc1b3454944318
+172b73ddb9862b259271786e418bbf942dfa80325c4a85328c4b8243dcfe9240
+handshake_secret: 1a48aff16b838035ccbe201aa9bb2f5b44e16685e4c3f5c429b
+3a97c71bc82b464c55fe225092a87bb2625f3e1b5b1a7dafa3003d01b77368e3cb91a
+68aeae9e
+handshake_encrypt_key: ea5ec250a8545b3b085bf8511e1a2f0ffdf2e1adcc5c5e
+fcbbced68f1f524926cfa520ea44b27e3f9de4b589178960f0207153b7c150979e8d5
+db3369392425b
+server_mac_key: 6eec19e9ffa9f8abe7abc3d06804ed88858bfc5e5469d10cfe799
+19740cb3d07b1b4d168df9e263da2f8eae1571e27a98229c975db5169dfe773843e10
+0d3659
+client_mac_key: e2ff0acd7b036edc523026690c2d9987723b4863e29ebb4a424fb
+9c8869d42415e38f768e88a771f9b647be2e5154b3590d93d73436e2b65ed6948da59
+a5f58e
 ~~~
 
 ### Output Values
@@ -2644,42 +2610,42 @@ cb1788
 ~~~
 registration_request: 66660fc08075380d7c2d4728ed1a7b550647e8231d6d29e
 60d3d1fa8fa3132c8dc445fa9c94de42e5f12e29de958e5daea84eba6a6410042
-registration_response: fac659c2deda634cc44db51c4247fe256b669ed72b585c
-aa174a41624b9b330fe7817c30e7bb5076367311c6861d6491169e7f35fecd84c4741
+registration_response: 0ef017c4624022914f9cb6f019f486c8a99d600c9a278f
+a283ceb46108b5356bb2493a8dddf394c4ef061d3ce4ec5abdd2ba49dcdc584669741
 b6d4ed36766c6996f8017ca9bd6fa5f83f648f2f17d1230316ebd2b419ae2f0fbb21e
 308c1dfa0d745b702c2b375227b601859da5eb92
-registration_upload: 885d2b7a48657cebcf339eed9a751af3e850cb7940456c0e
-820ec4d4d86248658fb1a8a525431c0bb020a435c4c3871f9a8bf5ab28b6772ba4d34
-decb9ee66a16ce4bd3e957426ddf74eeb968a592d277d85d8b7b16f7071ae5f8bffef
-93bc9b6c2ebb54f0184703c86a1a7869fc2d2a6fe4c651fbeb5e8701f404a1864d451
-bea2b9d709c9aea33073380f615b8604aee07836a221e543df21a84a28d80095ca588
-9575a09840702fdfa93fd31b67e718b282339f9709a3673d5d78331ab239f0ac0f607
-1d224ce85c7ef886d8b35e3225ed9b3248856a3e7
+registration_upload: 54e716093b7750f0883a8a83e21f81a96d71e2251e33e95c
+72a6846e83d5c0a46f06b67894e3d515ccbfa754f0402c209d4a4894cccde8d3f7e22
+4d986ded23243216b4d69ea479f0f25d2cfd42f72bb6b64b1ddebd26335af3aa51c4a
+c6fb6cf1b5dab00240f6ecffb8286db865b8ebab69f38608a8d1ca70b213ecd418076
+9d4b6d25b8cdd3b31acc1eb5d43e8cc8837f6c36b162faf64f474a20be9376782b7d4
+11afb5991aa8fa0bdf11ed3118441abc1b3454944318172b73ddb9862b259271786e4
+18bbf942dfa80325c4a85328c4b8243dcfe9240
 KE1: 1c83acd948f714989a2276ef0c3bb16d5b637942e6d642da9826fbcba741291f
-0b093b8c94888ff0ab621f90344f5b8b72159e2eb80651c18d24004230da11429b7ea
-e731dc1b7eebcabfa5896298c78154e42ef6f39ed70000968656c6c6f20626f62ee78
+0b093b8c94888ff0ab621f90344f5b8b72159e2eb80651c1d876e076a0b5d4406a664
+57cd119dde678a35885ac514e004f35c91b81e45004000968656c6c6f20626f62ee78
 4169a2abed53764292f2e7385c5dd99ee21d09a4df24405706a59abb6d91f3ed3dd8c
 6649807d11cb59ddfa23fad081ddda04ea49075
-KE2: 18be8c4eee276a67d1e8142139ed0a04ec1bfcc9d77c2dfc7c298b4b39c43e56
-6214415af7a0cf040cec20a80f77556883b8ca62687143f0848d40bf6eec1a9fb493f
-2c1539b20ff17e4ec005ea7e1ed3a0ad31fe831be7d048d69a3dfcac9ce4a7d5de24b
-b28dbf65c17ce5b85a357da32e191de0514e6419c73617ab0734f94ff538669a32750
-d0c973c77d51decd3972b0f7ec12db6ccc52b89a46e9ca83152f23b68f54abf4c5c3c
-c21e00d36120191fd90fc3accc17ecd8bf191a51457bb54ab8723d526a134085073dd
-e24b4c1116173a47c58b821075d53cc393a3241c1ec79e7c57044eb64edd1891d08d2
-7975df4742a529a27baf9032ca3f58a015c7c2bd976b060a1c6a9527b813a4647c165
-cc2a00d1b42d14ac07e05dca2dbc20661a4f30909137bc3274a25c3fb4310fc9c61d7
-6fc6576c8ed1c9816719433acc81722a2a5e23357b000f8e3fce3e8d2c8776a610ab0
-158d89338b9142d436938d6dff6f87ea9b2f472233304562665bb327fa01b21354294
-8c4c0f1aa362f25e4f3bf6ba7672d2faaba3f13c7cfdabdaa24109c0aabc360047
-KE3: 6615c557196d5cde693390ac640f854111eeb4437b885097f58293b76ace5702
-1af095330a5ba2b3cfb67c5fb9750094ca3a3239d92129163d8058f1b28fb2da
-export_key: 2ffbf8c6ddbcbfa22940ff48a9feaeed82587a50f87b6b596146352c3
-bab3a375281969878eb6508acdc10db762972f3282b19e326fd027bf8619964132684
-f2
-session_key: 2e358adaac72388a27e1605ffd0a298e7378d1a6b6095839800c71e7
-fe780b6adf7f9e5456addc5e5193b5bd4d93435e9841f51922bf2db31a56dab39b59c
-896
+KE2: 9648820917d61a921f3d61cdc4393b4b37953eb61f5bb14c89c588a60f8eb04f
+19ca9f0f24d9435be5a4e6c80fba0223b784ab911a89d6cfb38d8d48c60b596332b64
+2fe735d180236e4a9dfe0be4a4de5581183a7b88d0a3edc579ea2e2f7cb96d8805e6a
+7e65fbdf8c8f1aed255de4f8500fd48ed18d18a065534b698c929dcbf5a6e7fbf1a17
+4d3aa3f10f591bd3ba6e965ca384aee663831ee4dc513e6433125e5bbc30daeac2ba9
+06c5fb94c46953647a5af342ae70e56cf7bb993ae102a02bd9d7ff6e4f8e2852f4c0c
+7f237f1843fee46b7d05732e2a2c5a610906b1fa92c7b0126dd71b4fad76f18efd8d5
+c2a6428f56c288ae8b6c241c1c8d505098e387770e2cad14d56e90afb4fb6984435cc
+2a00d1b42d14ac07e05dca2dbc20661a4f30909137bc3274a25c3fb4310fc9c61d76f
+c6576c8ed1c9816719433acc81722a2a5e23357b000f4004247ed37e56617dc42c4ae
+bf505f69ee4c55c7201b00443aa5804e8f633348fb9e809e557820ee7f38baf234883
+8c9ba2314b46225360ca90795605df432bc052b9c4e949d3a5d70ebf11152736
+KE3: c8d11c384c80d5fb6c48cc183979b98999b98fd1cbed35e14ce2d8d0513d8c86
+67ca596a08ff5aa64c1d972c549524f16c360b47ced92df97565464b105a8a89
+export_key: 79721acfac8b93b43ab2215894a1998464a2c1a3d0ee483dd68a3cb23
+b32f94f9ede9c28b67cbab27f2537ba730d06a0072c1b8424fcc004c5d32464054ff1
+f1
+session_key: 567d42c15dd0df338d99830983556e7bb0eeb3da9eea82d751a4abcd
+2ec85702cde3a3f788da0c07ef7d4fb0df2dd8a31843197afeeeb17b47b76c1ae6998
+546
 ~~~
 
 ## OPAQUE-3DH Test Vector 7
@@ -2707,27 +2673,25 @@ Nok: 56
 
 ~~~
 server_identity: 626f62
-oprf_seed: 8fbcfc2de3f719d8024dfe535e5cffc282fc07de765b3ef1765f12bbc3
-4f2044c4b43b4ed161b0df9b2f3401c170520230f8c6a8b8a6ca1c3ca5d221f0195a2
-5
+oprf_seed: fcf17f9786dfbc52a8f742fb8b1cb652456b32798a2ad24d5263369778
+5f67bdd46e0d298588bc519fe7322173492ea18c70b8820307dacc49a5cfa8b6f3c16
+6
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 295b55df5f2772972deefa9aa5e1818aca2b6884441fe218c3f42
-c688c60ebde
-masking_nonce: e076b54449a0cd8931fdd681640ac78371ae99ffaf807fc8465999
-3d83cef2f7
-client_public_key: 007028cdff6bd7b7d7ff0acca54df2db10bae24466b8ceeaa5
-919e86163184d241497e789adf131728b5466e420e9bcd3cfa8b8b10ab9716
+envelope_nonce: d22db39cc17bdb78dd4a8dc735729d86463a70fdd1b5ed0caa30d
+ab9affc8f4b
+masking_nonce: a9a890967724f9e07a41176a24f48ee1055352361b43191ff48381
+65a0b720d7
 server_private_key: 8cd37bf60927fafeca73ed8093538a994b1a8bd463666faa0
 68e5ff9e00d588446b7d6cdc09ae8df069b30987a2cdd39286e0481e87ae227
 server_public_key: 684e5378dc98d8e9d61e9dc02b77471318a1b15eb26272dd04
 ef823fc5c55e19163c714071efcab7ec06ccce8e6b9eba74ca92444be54f3c
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 1539c0816c15560ecf7df207d5be21808d91c2770bff7aa1cade908
-acc52c825
-client_nonce: ca91932c8c4bae4d748205baac8865f38c821c7df0a8e8d11b493de
-2411e6ad1
+server_nonce: 428dbb3cbba70b9c57c0f07f3b8123208a55dd70610043e09a55405
+39b8a16d4
+client_nonce: a4513606402e5974dbdf5b8665e23d672c661c7cb41a6ab0760d9b6
+01d63fc56
 server_keyshare: 80f64e52526682c9d332c4cb517bb261e21b86bc7199223b962c
 3d2906f90bbf3252a02bf2889a01d0cfcd6390b8567854107e38abb21033
 client_keyshare: d0cecdcb40e68a8f2a3c472d1fb7f0d96ce9effb7b71281a588d
@@ -2740,33 +2704,35 @@ blind_registration: 4f0db672264527a8115f176c53709a4f94d1cca39c557ee10
 3479baef585ba8017f7659cdd0b804c0938525199d88853b52ccfc7604bc233
 blind_login: 39ba35e36db24404602da8a616e7ad8f72142cdb97a5689edb98ed34
 24fa5c8584423c6b047121fc36fcec934c8ad24a98c86d0078b8f534
-oprf_key: 2159d6f5861ef7adc2875cee526f5429fe4cd87cf700241e89b8da50c3e
-a6dbf4b0ec80625e1ae3ded3557c7bdf035edaa680ba0c1728434
+oprf_key: e3850aaf3eb60a1f5132bd519116bd688deca6ff724d969a79dae6c00ac
+a0b2c36782bcbe8c9ecf45456d8a7e6fe47052e272222583e8914
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 835df9440ffce55bb9b39242be1afc767eb9a212ca0e02f2e449d1ffdcb
-a622579e2b8ff403c0ee70dbf40e9bf2dee41f26a4f5c3bf1c7572dafcd0e1e3aaf57
-random_pwd: 2c4c598ae710b9697a078154d629566525e1afb52a91cd03b25430d05
-7cfe2d313bdefe541f743e36a4e73cdad9a3406ea67e1b2c78c852d29bbb4488fca10
-78
-envelope: 01295b55df5f2772972deefa9aa5e1818aca2b6884441fe218c3f42c688
-c60ebdee3d3eaca83716caefe173bd984cd9144df785ec73ac049ca6164a50c9f78c9
-5fa6c7a5d2542c47c7a720ce4870d0dde4b72297641011b0675332c0ddab475817
-handshake_secret: f628cfb5e79b6c48e5581cfd09a72cd047f386665ebcd4e8ad1
-54056d5f864de90d09e04995b144e557bb6310391f6460908983e576ef89361f04a09
-c9b75692
-handshake_encrypt_key: 87e0a15f9f232f6358653163980bd9d45fae70360cf73d
-971764a4c27f3d38d1711a2156865f2e63c74a774a91c1831f3b177b9d30054fd5375
-6358e74d44435
-server_mac_key: 9dc8c91c4e6c7250bce2122948e32dd3162d6b726f44e519aa4d8
-6a9b3001a58c52b595638eb37eea072bdbed7573cbe6ad1c7d342f8d6421bcf361474
-724abf
-client_mac_key: d6cc3f7a30b387fb7699c8000628655f456d1342baf462f43613d
-e38826c31e84e8eb62d989bebdc07a6af9ce0ca0bd12afbb674965ccad2214a63ff1e
-c68cd0
+client_public_key: 4ea97e037e16ed56fb4e656babe96c0d2878e8f8c7df22af69
+7d1b86f48c2656acd0d704e65ee373a323e99b91f8c86083c35553400557fb
+auth_key: efcfa214a3d22311e937640ba0d3c87b645a3b192eeebb185d1f72c64c3
+240e9351e9a43e88f549304d16ce6fc97c2df5dba8917db2784e2f1c5d3264abe5eb5
+random_pwd: 753af6ab0d59b14f9586165ddad15ed21b3c4c86c50e16526c75aca7e
+59e0b1c8815b2293dcb1119e6304bad1fd55816926384d20f535772814aed908ef5aa
+92
+envelope: d22db39cc17bdb78dd4a8dc735729d86463a70fdd1b5ed0caa30dab9aff
+c8f4b2fdc2f69da42641a12a4a55513d16698e315b4e5b9e88fee981fd06d4fb5724b
+dc4f774194c19915ea4e49c088feb6795e5455e03d15283474c5e92b2f8c34a7
+handshake_secret: 6b3e21f59491ee74bb1ff2ea372fb93893dbd273b166c07396c
+faa35a5c9104613f24097fcc6b42e29deb0cc4351e9d589f6aa27d315dd73a677b8fa
+2f95c311
+handshake_encrypt_key: 37396c441ed78a3178de3a611d0409be3a795a46eac34d
+202dea76cc7b2afb47ffba4d9747a2067828adc4a576c22c5582e0085973f6df97c31
+3f39ca385e81f
+server_mac_key: ec39518a836b44defcf67e427a83e6b405763792fedbb655163c9
+29872a6429cb4b0f16d4ac73c00bc59459098c6b4eb05b5906e0714f5eba0c9db063a
+7e2f21
+client_mac_key: 1df5c5591f0898e84b742c8950066fc7b95aa4ba89961d509e1c3
+ee4e4e392c5d961d15bd0c25ed8ce6ef04bf3680a45af033cc23522a7a7c70dc3ba23
+777386
 ~~~
 
 ### Output Values
@@ -2774,42 +2740,42 @@ c68cd0
 ~~~
 registration_request: 8a8f12abe7f223895549fd121f9d6124424273b7524e033
 f610261caf6ff83eb92d848318e7574c06ccee189b8b447b0fd26a348942d787c
-registration_response: 66facc294d245e52a1886ebaec1098b7e837102c05d93c
-b50b7561fb78e35d452352f90f3101d4e17ebb1f9006d89cac326edb6866d0a282684
+registration_response: 32de5be4e8b0de81d2e062d09fb68ef32f9a8eaa16e349
+bf08769d3c6d8ff50137a5673c2aa51a11181eef6985d865fe6046de2544280a48684
 e5378dc98d8e9d61e9dc02b77471318a1b15eb26272dd04ef823fc5c55e19163c7140
 71efcab7ec06ccce8e6b9eba74ca92444be54f3c
-registration_upload: 007028cdff6bd7b7d7ff0acca54df2db10bae24466b8ceea
-a5919e86163184d241497e789adf131728b5466e420e9bcd3cfa8b8b10ab9716e4377
-f59bc11c57777dd997cc27d2c2009b36d7e5b2fa6249d19cb1611c0402ccf4e6888fa
-5b35d14a9a8ec7d29da69b6845678ed75ba40ae87793149e265bab01295b55df5f277
-2972deefa9aa5e1818aca2b6884441fe218c3f42c688c60ebdee3d3eaca83716caefe
-173bd984cd9144df785ec73ac049ca6164a50c9f78c95fa6c7a5d2542c47c7a720ce4
-870d0dde4b72297641011b0675332c0ddab475817
+registration_upload: 4ea97e037e16ed56fb4e656babe96c0d2878e8f8c7df22af
+697d1b86f48c2656acd0d704e65ee373a323e99b91f8c86083c35553400557fba2acd
+646b30d54efe82c8d1d77ac576d6ca79ec639cb933d08a5e17415cdba346ea65d5007
+74d196ed5a9aa948c60d42434ec8b6dbfd53e45a69b6f26808d7a1d22db39cc17bdb7
+8dd4a8dc735729d86463a70fdd1b5ed0caa30dab9affc8f4b2fdc2f69da42641a12a4
+a55513d16698e315b4e5b9e88fee981fd06d4fb5724bdc4f774194c19915ea4e49c08
+8feb6795e5455e03d15283474c5e92b2f8c34a7
 KE1: 442b8d7585abe08bbb6b03b3d73c7f5d81cba60845258a4174e7b8d25a6d7238
-8ec7814b7f0a0559fff29ac97c329f2c7b0844c3adb1c6baca91932c8c4bae4d74820
-5baac8865f38c821c7df0a8e8d11b493de2411e6ad1000968656c6c6f20626f62d0ce
+8ec7814b7f0a0559fff29ac97c329f2c7b0844c3adb1c6baa4513606402e5974dbdf5
+b8665e23d672c661c7cb41a6ab0760d9b601d63fc56000968656c6c6f20626f62d0ce
 cdcb40e68a8f2a3c472d1fb7f0d96ce9effb7b71281a588df2ca0666ce00126e14b9a
 28bbe73ada49d059f7794e5da6be7e7bf0eee12
-KE2: 8ed5355bc5902ae5721cf67fef7b252a54f0caa4a1dd8e9c6511dd3e54ce6261
-6a02423cd3d50d93c5cecef100d44d956f546b0ffdc8f8e1e076b54449a0cd8931fdd
-681640ac78371ae99ffaf807fc84659993d83cef2f70032fd5c8d40bf8591ab82ada3
-2aeb32d431acb7f6ea3723fe0b7a927bbab081140c9366945f0749f2ac48f09c5dc26
-d72b9d0193be6d851c8c210b7d3f4303f8b24f28a9dbda1c03b6a91007769f0ce111b
-6142693b1a4e833486a277a565abe850a2d247d0647f6352a7f6fb9dc6dfdd361f72a
-f974b5f1bcdd89ff66e9c308dc935b1e53ec0485f6da1e0a7826191a2597667208a7d
-14a71539c0816c15560ecf7df207d5be21808d91c2770bff7aa1cade908acc52c8258
-0f64e52526682c9d332c4cb517bb261e21b86bc7199223b962c3d2906f90bbf3252a0
-2bf2889a01d0cfcd6390b8567854107e38abb21033000f34b0265bc5477bfacf351cd
-4d3f1dc75c872860e6e8c708fd8e7133818de1eb42a0d88e6aeeb4ab89c61d9cea514
-883d7b76a7a9557a1dcdc0153bfad795323086a7291c114e36c7c8f4acd9d74684
-KE3: 9026638375df03b7b2bbc958d21e2cfa083d7b26ca8ab9afcd1aeed9e3bb5af1
-99ff7d30e452c413452b8ca1001a9c0d9ed22023ae5f2fbaf63d54aa74089623
-export_key: dd16d1c369b80642d2c2ce9b840ff5e908cf8b1ae3e648ea63a2932f1
-d9cedb9e2ad4cfce507749b058d41a87db7e5e734ff2b93bd022fae1e4d578f0fac00
-dd
-session_key: bbdb08f0a9617e2fe42fc2b17f8bda899f344f8fadd2e88f575bf96d
-3f7113e693a93b012078b9117b5342aadcdeb9eb407d048a3276fcba220f8f1ee41ea
-14d
+KE2: a4f4dd02673817e95878ec1f4f82c28a66007835228f0f6a8f058b4478540597
+99b944bb6c786c4189d2e39f01830e3b4b1393852a4bbd5ea9a890967724f9e07a411
+76a24f48ee1055352361b43191ff4838165a0b720d76ae54041e5a8d33a4697245221
+52c85449d98e1d0d101dd6785fa9056b7555157fc984f554c7d5818c8f3e575792c9b
+d6ec60389e739bc796c28cc40e9d9dd0bf646fa9f2e40d24b7e1837855f51b6a9b847
+4774234ec3d075b758fb7ba4f2c5b35fac38ba90c29879b59642d7fff141eb4660149
+cf4d97c2a6e91cbdc32180c5efded354140c8206e2cab7212d02f1e59096df649c8b1
+a3428dbb3cbba70b9c57c0f07f3b8123208a55dd70610043e09a5540539b8a16d480f
+64e52526682c9d332c4cb517bb261e21b86bc7199223b962c3d2906f90bbf3252a02b
+f2889a01d0cfcd6390b8567854107e38abb21033000f4f9d0734a52d240411a55d2f7
+5d3583af49d1d18e34a850b5fc0e4d7eae5ca018ecdc94b48116cf28a2e59e625d439
+1c1a002e5bc81858d04c6244c42b5fef37e0138d28db5cf60abf2fff417925d9
+KE3: 67b9f0dcb0e11e95c037eece077aab9433d01efd02770713d381204015967d8c
+d02e0378d34f0b75eaab4f203338b9a367ebce51aa8cf4b90001e2306e4ceefe
+export_key: 630284374814ec5afd99bdd97b3ae1477b3ea5d44dc3d3e8c27fb6dba
+1b3428004c606c931c9065279d200a717599bb71fbf3878febd17818ae757dcccceac
+ed
+session_key: c8b30fc6467053be8cfc284eaca239f134765a9de75a53ef7dd3c577
+65241d11038d764a2b5e2159071af17cac5d8a34c5f3258ddb786a17d66a3ef3aeb79
+c37
 ~~~
 
 ## OPAQUE-3DH Test Vector 8
@@ -2838,27 +2804,25 @@ Nok: 56
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 49b8c1f51565a8e13d999efdd7b14449a6f9721cb647ddbb204cd3af8e
-87f045d4420a6247f8b542e13ca8c56f60e8ee7a7fed33c52bee2d90f264b8ef6f23b
+oprf_seed: c83287390cee4a4182f33702ec2e3a0456b17947c38b5b7fbe66197a6e
+306fdcefd5811ea808be7f9888b854ea66277b0d50d4280fea86d3786b9851a1f8592
 8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: cc4953767930a1fb41e2390eb08b62566bc5aee08a9ffabab317f
-d2fc8aa7705
-masking_nonce: 51037845a74668ccea5d44d449aba360b66e9bf7b27e07e2bc894e
-533b685e6c
-client_public_key: 74caab810cc8f86ed7d855a2132d199eb3fddb7f7fd99f75ff
-8cc43bdd9611809c25eaf309c72346c5ecfe3ba2de165eb88514ceff2c0ebb
+envelope_nonce: b28151ad15a70190f1ef9ffc374d5e7bf2613bfd7cad3c799c8e3
+c6b84428f4a
+masking_nonce: 643e359407c96c657223f4f11299eac8134426088b359989b7035a
+b5bd887977
 server_private_key: 0fb0bff035e9b9cbae6cfca36aa4827ccbac66177b64fabef
 a67263087c0cb4e0d9cf547979e753c22548e3174abb5ac630d97dcd4af9830
 server_public_key: 8071f74545bebb75f9b82ce1ee0949e7ed1ab5dedbb0e5444b
 a7ffe82aab916bc5ca6a11fd5fe1479e553040a8b724b6305c3f4289f3f39a
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 94239b19b247044d7c1aa253a07c8f110872737d9d7ce582e442c1b
-689db651e
-client_nonce: 377ffa058bc9dcd71399ad32a9dd8ddd38844f9fda75ece13b74fc0
-ea7e5b1b0
+server_nonce: 630a312ee7f60d8edb74fd2dfa507c06f590f408c3a9475cb6b5aa4
+5b24f9c93
+client_nonce: a2a4707538bac521518a0cbc015647bcfda01a6f1e8b5417580794c
+1c6c70dbc
 server_keyshare: d410d142e679aee86adbe57da4801741034120c59fa942ef44c1
 9ffcf4a4d65200d5e17e7d287220037ab038ee08f96c9dee6db68f02cf18
 client_keyshare: f2a67ee95170c51833a88419529748e55dd13e23ffed8fefdc1d
@@ -2871,33 +2835,35 @@ blind_registration: efd50ea4c9248eb1f1e96143a8a41c1a1ee2cfebb2f07ff75
 5a6d9fcf090696cd8b70a6ef67bd77ed5d38cf293669c6073cb4da3add7972f
 blind_login: 7e134fa5223d965deb53441a7ab139fd35c83736b6eb89aae524dc5a
 9fe6e16af18a4d33b1c9953fc1a7219dd6f81eac8b915a75e5fa3505
-oprf_key: f403d602afdc4411e56ff199440347e179698ab4be62017a4acb7cb3276
-1fd61dc8a5b367666e07f7e5dc1ccc22b74da5b49321b4617260e
+oprf_key: b8ceebb377f67041df499a6d6a6c9a0af0d7e8bebda52f32a6fce036c39
+75acb72923c0e90ecf04992fe8b785fdcd1c1b3423f471e9ad60a
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 0f6ec79c4fe52fb8dac66e985f18e4465604cc882f11b316dc3010add8a
-6667601580c606181e75d58096a372f01078f3072cbb84b9ff26e06e2e0fdd9e5d9cf
-random_pwd: dd59b31571f4f2d7f0de1493f3223f94f715b34ef55394bb9aeb398c2
-0c9fd5e08fa75e644c6da0c3dc04fc7f8d66a562b4d5d3294e9c05846878dcf9c96b6
-d3
-envelope: 01cc4953767930a1fb41e2390eb08b62566bc5aee08a9ffabab317fd2fc
-8aa7705f01e35d315214ee90397b42028521dd2b1f51ece157dec74b52911a46de07a
-d7dec6f38a4bf29a393f9a7ee2298002171af54aa19d3766513df8d8a5328a6fc6
-handshake_secret: 65ea436916705f148d70be267aeb9cb61d33c2a04abc1199eb5
-016ab900b76f3670971cad1e023bc8426e3107221205b34b7f8d00e9fc221690e1b62
-593ed6d8
-handshake_encrypt_key: d0c8bc2d0fa76d045be42a74d8a067e8104437552ed59f
-31a44b3e0130a128da08367ff1336f3633ccbc43399988681c2320bbcd1a853923573
-e913ff18be6f1
-server_mac_key: 790a4f55b73ace5e7074699e819f89141e80281fa99c631241cce
-9e6424d5615333c214a98ed9287c88f143a5526ecf88b589c1c4246b260298105da67
-6f1610
-client_mac_key: b8b95f39a5bca27f5945c6450929dcdb9f5d353646f99334902a3
-551a83dfb1fe97c05ddc5dfea277fb5949fa9fffbb337a187992aa6cadd72cbdecedb
-792b44
+client_public_key: f4f395d76e9224d12e247a0879c6bbd615e7553609f8a13fb1
+b70f633842c4c88e46e3513465a7a0ff9c432753efd7967ca7cd61c6fa88eb
+auth_key: 60e11086f9957e99d4645f102a7ff64e8d0c60453744208507e7450de3f
+ca3517c63f63b1700fec78080411ee7757f93ebc307c481e4cb62c258764795760459
+random_pwd: de4b971c05b4e0f3d314cb28cae8c88d6635f9ff62acf2f902cc00327
+3690135127aac95d6b5f3d29cf4f8b7517dafccc3e11169af0235d91d6b3954033508
+9e
+envelope: b28151ad15a70190f1ef9ffc374d5e7bf2613bfd7cad3c799c8e3c6b844
+28f4ad6e8f2344e1ddda2cc65d7ba2678ed4fee228b625986507a45621c73b984a087
+94d67feefc8b3824fd59e8d7b2f5dba5bbe9974830b16736f1c7f52cb25d4de6
+handshake_secret: 5e50ce5f3bec9ccf233df157bd52586a6ace319506f19ec0347
+d3ef0e1fc3866ed6f517016947390adca6989132da8df13209b38da041020fa5514ec
+81143324
+handshake_encrypt_key: 1d20447ce07f4a2e34b013844cd076952fa3fcfa585053
+a49fc40fa4faa368fdda8b256572df4a355baf7e9f1768e588dd07371ef36aec4252c
+3f9987c08be43
+server_mac_key: 9a14daac64d9a7be43a00082fbadc9b335e4d10bc480922c1fa39
+413302cb92c98e5458119cb5d65e5c8ba67e7f80d4bd1c673a441e703c581bc115c9d
+11ad13
+client_mac_key: 6f795c660901f9b628ff4d725c0a052cd164e4f47aef8afa10ba0
+c96ef73f3480adf342b4e46f82cd3feacd66979621f59e73cd4c0a9989d45d4332278
+32a29e
 ~~~
 
 ### Output Values
@@ -2905,42 +2871,42 @@ client_mac_key: b8b95f39a5bca27f5945c6450929dcdb9f5d353646f99334902a3
 ~~~
 registration_request: e499c1ea1a644df877a01f23ddc5dccbf3add4407605f67
 dcc55f29c2ccec5daf9bc231dd62aa61cf2c9fdeaf59b3ed7a8f33af59ba20914
-registration_response: 60111ab5a2f7656419c37f83bb4229517d2da9b33bd70a
-cc34fe6acefaf917213ef8d1fcd617313f40b1a8b65f0ea680cf380be20b4fc55d807
+registration_response: 36010b9034b51344522680891043cc5409fd194bb2db2c
+57def547ceb668052d80a37528a6bd0b7a3db533f22e75164dc25454829d13ab90807
 1f74545bebb75f9b82ce1ee0949e7ed1ab5dedbb0e5444ba7ffe82aab916bc5ca6a11
 fd5fe1479e553040a8b724b6305c3f4289f3f39a
-registration_upload: 74caab810cc8f86ed7d855a2132d199eb3fddb7f7fd99f75
-ff8cc43bdd9611809c25eaf309c72346c5ecfe3ba2de165eb88514ceff2c0ebb16d25
-a53024038860e0e72e88ab84c6eefb8a223bc4b318b0533ffa85228ed2ee797ecba44
-662b8bb0903783b70b294ef9a292683f80b9f54d19c2ab86a927f201cc4953767930a
-1fb41e2390eb08b62566bc5aee08a9ffabab317fd2fc8aa7705f01e35d315214ee903
-97b42028521dd2b1f51ece157dec74b52911a46de07ad7dec6f38a4bf29a393f9a7ee
-2298002171af54aa19d3766513df8d8a5328a6fc6
+registration_upload: f4f395d76e9224d12e247a0879c6bbd615e7553609f8a13f
+b1b70f633842c4c88e46e3513465a7a0ff9c432753efd7967ca7cd61c6fa88ebde25c
+47ecd52cf15255ed63e54aa82f80b1e02568e36e26d104251f76d92c11c0f39025f89
+edacef5d98c6fe1475e3d21d5ef4e1a545d21bc7d1d4084afece5fb28151ad15a7019
+0f1ef9ffc374d5e7bf2613bfd7cad3c799c8e3c6b84428f4ad6e8f2344e1ddda2cc65
+d7ba2678ed4fee228b625986507a45621c73b984a08794d67feefc8b3824fd59e8d7b
+2f5dba5bbe9974830b16736f1c7f52cb25d4de6
 KE1: 501e3dc8509cecfa36efadeba5efd0e4f66988ff9575c821b0128af06a2f5ebb
-d77362f2a9e63b5a76cf5a636bad31b7a86f6c6803a2c995377ffa058bc9dcd71399a
-d32a9dd8ddd38844f9fda75ece13b74fc0ea7e5b1b0000968656c6c6f20626f62f2a6
+d77362f2a9e63b5a76cf5a636bad31b7a86f6c6803a2c995a2a4707538bac521518a0
+cbc015647bcfda01a6f1e8b5417580794c1c6c70dbc000968656c6c6f20626f62f2a6
 7ee95170c51833a88419529748e55dd13e23ffed8fefdc1d2b7c939b6371630031299
 800b01a99f83129aa986369e4a188220d056f0b
-KE2: 9a1dbc6905bfabaccdc42725a87da35b242e3864b0cd9033cb0f68a6b95f7816
-4fbae51981e01ea4a241c90cf08ada79ca02af4aa9d1d21a51037845a74668ccea5d4
-4d449aba360b66e9bf7b27e07e2bc894e533b685e6c880bd69c2aa9b242ce153c4d30
-17d00e3e8e2e2c08f45c303e5bfe60a5ad5a38ad9de7e3ed726f5e9d12155017ef0df
-58b79da6175b2572546b0baa03efec628fecea8f668db1a3c93a04ce5467cbc5fedd4
-82509935a7bd2f61d14078003bb30fbf559cf7a653a5417c464d2e0363cab7fd521bb
-6e680aaff9453b121b6bae1fed16d546fb8f8147a0330c3f889d20ab4cfe88aac83c0
-1b5a94239b19b247044d7c1aa253a07c8f110872737d9d7ce582e442c1b689db651ed
-410d142e679aee86adbe57da4801741034120c59fa942ef44c19ffcf4a4d65200d5e1
-7e7d287220037ab038ee08f96c9dee6db68f02cf18000fe11b82ecc4cc65c43a37f0b
-0599bb20ac52f53695e85d1212a5edafdaee7b794540ea1de2da2074185de29f997e7
-a0987561b7440c24fd13a1bc45a2ce77537c69cc1de121e7b0f3bd3ae352b70e8b
-KE3: c2b80ba6946d97e4d68f3a3a791f63a6c7506f4088f409280eca28831477d59b
-d69f6ceab16f144f5e73f7815143aec8889218cfed4b6e9d97527e4c79965e99
-export_key: 52be427fb5ef5b3f71770df9d2874f03378b7b28b6d8abbdca29478f5
-7396d5628da5479eda2bad6ea453a3feb6296af0984114096e468fac1cf867153e817
-04
-session_key: 8d28a8c78d5d9a2e4f6a599d29c1ec3ce6ce3e40fa6384715abb8a90
-39cd2dc5edd44124933575b691deb995c3a6d0053289bc307cae368245b6cb9575bdf
-f92
+KE2: ca332d5b03e176a4815c1fb5b083fd5ec97e317c1ca105681aa2fd0aae254705
+4338fa6e66b9fd1425d1bb3c01e7b9d6788b57e954478a78643e359407c96c657223f
+4f11299eac8134426088b359989b7035ab5bd887977db1b7007a459dca3fa16be3faa
+f9ec0946c4d82f986807c9716107dd392e0d663593763743931ab4b6bdc95103e94f2
+85c20366d7469e72f68e3cd6e555ff58de290905000d75d45850ebdddd8d28d004004
+c01685d86619aad4a82610e07661c92f00095c01dc942def11f21020b849095058a2b
+ea4f3b64ef842b11abf6847cc8a77efa711c4ddbaae86b05a6cf9684ac3a6e9ef4aef
+b0630a312ee7f60d8edb74fd2dfa507c06f590f408c3a9475cb6b5aa45b24f9c93d41
+0d142e679aee86adbe57da4801741034120c59fa942ef44c19ffcf4a4d65200d5e17e
+7d287220037ab038ee08f96c9dee6db68f02cf18000f7d16b0ebba22d4a749d705b0d
+862eed7e563647d2132ed2f505eb5adc72079751fa0e3ae96a6c3d7b4b442379247e5
+8f2a066636684c7aef8c6feb49f8aeeae1f8ba80a02f89b9ebbbdef5184fb245
+KE3: be832bec0fae28db1a9182a6e2859557db61a69972ac3a1eb54c1dde3857c9f8
+059506ebe86892b3476d945ca0b99694cf6372be0f0b1a667c0c0176c84d5110
+export_key: 9c4792bbfc3e8a36f63170721b0bd3c64522cecd1b967419807cf1fde
+f4d8091f462d21001b145be89e3626cd08d9659f1e3e794ecff878e1ac50df96cba91
+1c
+session_key: 11d4b5b5e3ac2dcfa5317c10476e66f7ec080b14c2e372ebf9a4fdb3
+bc4b8bed32218cc3d4f33e626562c184bc74c778763809b8c8b46d124604085aa109f
+d81
 ~~~
 
 ## OPAQUE-3DH Test Vector 9
@@ -2967,26 +2933,24 @@ Nok: 32
 ### Input Values
 
 ~~~
-oprf_seed: f307c5d82351b7b435b4bedb45cb44c9ff4dfc6265dd15b01ae9c96e44
-d48e08
+oprf_seed: 905fabf46e46db14631a2fcab8dcfa10336d02d6acf3b3cbe9ec7d515d
+06aa29
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: bf6b3d57278ed63f8aa93c9825d67578b96249024557adb16d7bf
-ff14864f06f
-masking_nonce: 546b05b5eeb45facb700a4592267d60413a40481607bf77c1c00ea
-f7c08fd4f3
-client_public_key: 02233b7419c00347ed642d6052c2f7bca2d0f9e3b19941ed72
-c622ce7805ef975c
+envelope_nonce: 05cd6f5ee8819fa6a06fbec168e97ba94400f6caf751ddb193d1e
+08612495e1c
+masking_nonce: 28436e5e68992ae5adb26e32b9cf6386a5c767286e2d8f47face36
+4b33630bb1
 server_private_key: b3c9b3d78588213957ea3a5dfd0f1fe3cda63dff3137c9597
 47ec1d27852fce5
 server_public_key: 02e175463b7aa67dac8a3e0b4b3f4aa259d2fc56dfad40398c
 7100af2939f672bf
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 7a13c68ad1ad916ea6756211d2d94485f0497b696cfbc1bb43793af
-a92d62ba8
-client_nonce: 086703ac7ba5d45ee2d9d3ae89d057f4b536aa107881da5ddf9623c
-ab48fa3df
+server_nonce: efb8d5b8f8be0833d049c440526b3d726dff1f52d79c1f3d9c20777
+76611a701
+client_nonce: 235dc25fce43d6ba14c2102f70a820d7bc94fe338e50ce7b87c213a
+ae8ac491d
 server_keyshare: 03651207f3887f92cfec56edd9b9df0047c1d6b7bfc55b3650a9
 579d44f435b092
 client_keyshare: 03285470567bccdd3755aa8d00261e1ce65aa120e15571cc9772
@@ -2999,28 +2963,29 @@ blind_registration: f9e066cf04a050c4fd762bff10c1b9bd5d37afc6f3644f854
 5b9a09a6d7a3074
 blind_login: 79e775b7220c673c782e351691bea8206a6b6856c044df390ab56839
 64fc7aac
-oprf_key: 8bebb7b70edcc6564250fb4631015d770d0a4ebeb0ec9bd8a479a6525cd
-2f99b
+oprf_key: 341a6cc463b4a1026829a4b95965caa766716ad30e59f76804feb386a79
+637f7
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: d456412d12115cb3d7452bdb544da52b9ee727c0cac132b6833557f7cfd
-d8a89
-random_pwd: 8a388c47c20342320a922d8c1f3be7f49ee8702f2de4fff6cab6806b2
-4244e20
-envelope: 01bf6b3d57278ed63f8aa93c9825d67578b96249024557adb16d7bfff14
-864f06f8fb8a1aacde50277fcb228945865b2618a8e12bd70ac75201ff1f1c22b3c96
-1c
-handshake_secret: 8ba84d8f456af15591dcfcd8128754103296bfd09d6eb354cfb
-cbefeec91af6f
-handshake_encrypt_key: e47a974ab2b1ccaeaadf58053ce180f0bbb80ba2e440a3
-ed06d47abccd218852
-server_mac_key: 80d1a5c7a4fc7b50303861fe5944795b94e70b2c0aa8d92d9f543
-1be293421b6
-client_mac_key: 77f38fec694bcad26a63b03df58c5aeacfcda874118ae2ed567ce
-6404f4a46d0
+client_public_key: 027fbf92992fc4d0a84df05584a13538cc3eab90023598d5ab
+df324e1b2fd552d4
+auth_key: 14d4491f603d91ca10d3d47d83a94f137caf5abe4994da09d6bb3ac26e0
+6cb11
+random_pwd: ef12509c1e84a31942964ef427cf002cb15a21b1696fa878e400ad48c
+f670871
+envelope: 05cd6f5ee8819fa6a06fbec168e97ba94400f6caf751ddb193d1e086124
+95e1c480173d117c32e9e7c892dcbc1c82c7b7a4aee572804ee0a84bc28ad6968cfd6
+handshake_secret: 60692c0af1c9fd45c409a48e1c26990afb7fb8626c45ae3755b
+3f8339d981234
+handshake_encrypt_key: 1f5ff7cdd3db21e3d1e4da45c59d1ae81865ecf6a8c22c
+1c1d66294fca7d37fa
+server_mac_key: 0b2e11d3d3ab52a73618652b7de250846bdbf93a55410713186fd
+a99a9f06f31
+client_mac_key: 22aa0814590fef9d704b12d81b6c9049e11c1ac22af73456b8513
+3d5936f69ba
 ~~~
 
 ### Output Values
@@ -3028,32 +2993,32 @@ client_mac_key: 77f38fec694bcad26a63b03df58c5aeacfcda874118ae2ed567ce
 ~~~
 registration_request: 03761c2597a039a535c3180bd3fb6ea9830baa50376dafa
 6e98bb41be2aaae0e91
-registration_response: 02950335f24119aadd206c5ec40a50972687d87b4d5a52
-62c81b54c9b0083a352b02e175463b7aa67dac8a3e0b4b3f4aa259d2fc56dfad40398
+registration_response: 02c946642077b6ddd15484271d9dcc7972e8ab3f58591d
+23987916113def94f56d02e175463b7aa67dac8a3e0b4b3f4aa259d2fc56dfad40398
 c7100af2939f672bf
-registration_upload: 02233b7419c00347ed642d6052c2f7bca2d0f9e3b19941ed
-72c622ce7805ef975c10227380620ee798bf1a29b1f4e8234c2d062bd172619c839f8
-779459141f0f301bf6b3d57278ed63f8aa93c9825d67578b96249024557adb16d7bff
-f14864f06f8fb8a1aacde50277fcb228945865b2618a8e12bd70ac75201ff1f1c22b3
-c961c
+registration_upload: 027fbf92992fc4d0a84df05584a13538cc3eab90023598d5
+abdf324e1b2fd552d4ca99d7ac54ff2bcc33382e93f6907b5d9bad5910d828e229273
+e3a466ff3cd0105cd6f5ee8819fa6a06fbec168e97ba94400f6caf751ddb193d1e086
+12495e1c480173d117c32e9e7c892dcbc1c82c7b7a4aee572804ee0a84bc28ad6968c
+fd6
 KE1: 021922b40d051877d0f03ccf2831eede9b328e22c8b173d5f28091af0b92421f
-54086703ac7ba5d45ee2d9d3ae89d057f4b536aa107881da5ddf9623cab48fa3df000
+54235dc25fce43d6ba14c2102f70a820d7bc94fe338e50ce7b87c213aae8ac491d000
 968656c6c6f20626f6203285470567bccdd3755aa8d00261e1ce65aa120e15571cc97
 72789a361b4cafaf
-KE2: 036222560ea388fe3af0bae182590dee7c093d846dff14f4d3c7cb4dd6f82e1f
-3d546b05b5eeb45facb700a4592267d60413a40481607bf77c1c00eaf7c08fd4f352f
-a81cbdafb7dbc08b384b8e1caea78ac1df4b5427882bdc442e451c73e8044d3008f74
-6ddf5e6d983afdf254061b4494f57f81636dd2a6f554ed63379324079e9449de51a86
-84939adf89958222530d5d005450a87db63e99470ff7c458e7148037a13c68ad1ad91
-6ea6756211d2d94485f0497b696cfbc1bb43793afa92d62ba803651207f3887f92cfe
-c56edd9b9df0047c1d6b7bfc55b3650a9579d44f435b092000f68c494a7be166869da
-8d1ef21155df2f9e7738ff196e24370681e8b354e694236f2fb3c4f305a1572b0a02d
-d59e5d7
-KE3: 5dde86b4f57a6b84f5e80984e40268330b335d07aa8dc049262605c3178a3566
-export_key: bc577c2c356b55e57e503283053ec2639a76a66a5b1d23c770a272c26
-ac8c92b
-session_key: fe16c1827dca05e2b24550b700e23cd16c0827e55a47cdeba71e4cf4
-f33d81c6
+KE2: 029ed36af05abffe09456e52d314bdeea2164e2bb2aec1cb61a5926b1fd5be10
+0f28436e5e68992ae5adb26e32b9cf6386a5c767286e2d8f47face364b33630bb1f80
+58408e74f5087f31769cfb7559aa0055c4670b314daf4561bb0c75c98958cff9c78ac
+43f00f80a41195b2d6b65af89b7dd201e2a68fbab7fe2b23de9b5b03f2bebcd741b5c
+7a00dfab208604332f01ab83362a719e116e3787d32ed7b0ac70befb8d5b8f8be0833
+d049c440526b3d726dff1f52d79c1f3d9c2077776611a70103651207f3887f92cfec5
+6edd9b9df0047c1d6b7bfc55b3650a9579d44f435b092000fbf0c5c207f13db0fed46
+9051dc6715bc3e6d36e2f9250477f68cbf0c8bc310e93a43c68593cd0d4fde7ee549a
+9db2c
+KE3: ea1a8662f77659e3ccf1e8b2faeb52c0fbb01695f2170f85bd5149067d5d89e4
+export_key: 41aa121b811247a937175d82a0c8ca83934c602d626044045338b75a9
+9bec010
+session_key: dd81071126c5e726d6b74b8f7292fba40b9d246b1ae3784286ff8ee1
+8fa8eef6
 ~~~
 
 ## OPAQUE-3DH Test Vector 10
@@ -3081,26 +3046,24 @@ Nok: 32
 
 ~~~
 client_identity: 616c696365
-oprf_seed: f97e928774b1c073b8d8baa15ed3f55a4b594282b6574b0b92947fe41d
-b94083
+oprf_seed: 495c602585da4a0a7d5a7ec0fe210c4a302dfa390aed91df5ece90ca62
+7021a6
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 75146119fd60218284ec5619dca38622b6306cbc94199f0d73403
-2d9dd695fa5
-masking_nonce: 6457376888a3b208c3939efad855c27e65e4e0b975299c1c9cc72a
-00e2f8f965
-client_public_key: 03bc9f3c3a5c62f644d1da5c46cfa8c04ac3ad1bfc7850b6c8
-01994bdd97e003cd
+envelope_nonce: 5be1ecad2663abe434005576728bd3fdde3ba389403d4a85b1ef8
+8526bf0d3c1
+masking_nonce: cf46ab432f92c8b33e3cfda3d7a0ae96d913298fe04176f2d32978
+8f3a7532c0
 server_private_key: 2bc92534ac475d6a3649f3e9cdf20a7e882066be571714f5d
 b073555bc1bfebf
 server_public_key: 0206964a921521c993120098916f5000b21104a59f22ff90ea
 4452ca976a671554
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 7ce023cfe4ece242fc81a497eab602181fc34dc1deea4db9937b645
-c423decd7
-client_nonce: b3be89a095eed67689fa6f3801003820900acd77339a44d0d448997
-19bfe9dc2
+server_nonce: 8ed3b3131fba9fe6ab89d44804548ca533fe47790df21090fa2d37a
+f0bf4d3c2
+client_nonce: c09eeae5942a28b7688429057f27a0122c873ebf2bd43d7075c035d
+b38149360
 server_keyshare: 036d85072a9cda8438f67dd81042861349f697c06ad4efb068dc
 eb58c98986409c
 client_keyshare: 031e7dcb77fdba4b7e7b1625e43dae84733b28eaf2b4fbd7df14
@@ -3113,28 +3076,29 @@ blind_registration: ef54a703503046d8272eaea47cfa963b696f07af04cbc6545
 ca16de56540574f
 blind_login: 0bf837aaa273530dc66aa53bb9adb4f0ed499871eb81ae8c1af769a5
 6d4fc42b
-oprf_key: 21a4552e78caee39bcc24f9311fdd17476f0aa225ecfe3bc15fb3a9f4b1
-05972
+oprf_key: 4fb4173659f22d389616aeeccf2172676140aaaf61b584151376839f473
+6559f
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: b6aaa4194f65f871eb9178a49dad31b6e51e2ae31fae1f300ad6145761d
-4bdaf
-random_pwd: 7643b2d69c79c0114be7c73f04e133dd9209d5253e39544d2573eb590
-5db1b45
-envelope: 0175146119fd60218284ec5619dca38622b6306cbc94199f0d734032d9d
-d695fa5c9eef9157a653f3e53293afeea3f9ae875f19293635f44a890f02d2a9fa4b8
-24
-handshake_secret: 461aa21a5f7927897eb7dc6ba177ce6b0d423980a474e2c5ed1
-68f90f54cc6da
-handshake_encrypt_key: 47d9923555e5c093b36f90b328c4fc210a49a2932246bf
-720c3118f851c68aa5
-server_mac_key: 326f3ca6c08c03aa9627be89e3e213b2c9035a88ea5a8ca426eba
-27bc074676a
-client_mac_key: a4acb35f82af807e35f39228c8a6832d4e45fa3dd45a6d229110b
-0a86bf984a3
+client_public_key: 035ca8846dd4d5d6b7c8e1e4b64d8c31e807206abfdedf7988
+c75fe758f9e57af6
+auth_key: 1ac948ed1d2055cdbac5f5315c5ccca0a3092ac02ed15a6285a44093318
+e6fb6
+random_pwd: ae0d17a3fc03e64fb34b8d76cc3ea400de8c351e1b63fab1821ce4ca1
+2c8ec89
+envelope: 5be1ecad2663abe434005576728bd3fdde3ba389403d4a85b1ef88526bf
+0d3c132bf56eafbc8f02fe63d4f0d0d47d613a5097b00a1307807a7669ae4c0ff3020
+handshake_secret: 9c3cbb17f1327223652f8ae4ae1a309756cdab49db1e580f961
+4946e7574c276
+handshake_encrypt_key: 996050f663b933215b5b172a498668fd7fb6149dec95d2
+c888323c30bee50322
+server_mac_key: ca794079c7b180d286d1d40eff650c1d2221e794fe6a3f1be0d0b
+798376da1bd
+client_mac_key: f6c2277ad545461d98207f765d9054b6553e1e485af32509862a7
+423bb562574
 ~~~
 
 ### Output Values
@@ -3142,32 +3106,32 @@ client_mac_key: a4acb35f82af807e35f39228c8a6832d4e45fa3dd45a6d229110b
 ~~~
 registration_request: 02cd04a4a3c6b37f6013d848e1c63c204c4593377e9a14c
 68e95097b615d29c129
-registration_response: 03b4d8bfbd74ba3ce70803bcd5e9c4e1073ce2f8b7e432
-d14b137b39622a9fbcf70206964a921521c993120098916f5000b21104a59f22ff90e
+registration_response: 035d0f454e840db9132b7a2f6fe76cc5def100980a4e2c
+4679ecd7570cdb3ff9130206964a921521c993120098916f5000b21104a59f22ff90e
 a4452ca976a671554
-registration_upload: 03bc9f3c3a5c62f644d1da5c46cfa8c04ac3ad1bfc7850b6
-c801994bdd97e003cd58d2c51461e7de9ba86719ada65ace60eee50e2c4ed5035e14a
-cb0247f50127d0175146119fd60218284ec5619dca38622b6306cbc94199f0d734032
-d9dd695fa5c9eef9157a653f3e53293afeea3f9ae875f19293635f44a890f02d2a9fa
-4b824
+registration_upload: 035ca8846dd4d5d6b7c8e1e4b64d8c31e807206abfdedf79
+88c75fe758f9e57af64ea73e4418ef9723ef034a934e46d730fa7b1262c1ddfc3d948
+20d1b94ee562c5be1ecad2663abe434005576728bd3fdde3ba389403d4a85b1ef8852
+6bf0d3c132bf56eafbc8f02fe63d4f0d0d47d613a5097b00a1307807a7669ae4c0ff3
+020
 KE1: 02e747d027881e63565ce0a611dae6da50c2a8b349010a52f5c936169be1e0f9
-36b3be89a095eed67689fa6f3801003820900acd77339a44d0d44899719bfe9dc2000
+36c09eeae5942a28b7688429057f27a0122c873ebf2bd43d7075c035db38149360000
 968656c6c6f20626f62031e7dcb77fdba4b7e7b1625e43dae84733b28eaf2b4fbd7df
 141b1ee353748b44
-KE2: 02fa26857b5e7c578c948310e6c949ebee6557c543fed74c96214f0c474ea3e8
-376457376888a3b208c3939efad855c27e65e4e0b975299c1c9cc72a00e2f8f965f48
-55deb32a329765c7eeda37cba6d71107045def71f29efcbd5b07dcedeb2f367f143db
-fa17a496068bd09a2415a7e70ff9eb97aca1e3668c3e3cdae5aef0f463729ace61110
-ae4c73b2e90900fe042ee00d8d0d61cee1e2d6ef5480db9d25e216d7ce023cfe4ece2
-42fc81a497eab602181fc34dc1deea4db9937b645c423decd7036d85072a9cda8438f
-67dd81042861349f697c06ad4efb068dceb58c98986409c000f4bf2306d0a3fdcf91a
-c0389985284c7ffdbb62da74e3e7bb5a2813c793986ae88aded9e2c83085333a4e140
-cce5bbe
-KE3: 927cf4f077629ee0f163222ea0fca42877625b096143534970469b8e269f7421
-export_key: 727cc9e9dac17741c9a3d3812d4d3cf28646338c4f7fc37d0161a7595
-8245ba4
-session_key: a9c8713d3a21a2e6bcbff63d3ae58d18fec8fbe158d5cdeb6e4fc122
-443de3be
+KE2: 0230a7333bfaed91b1b9d77a358e0170bcf6a724b86093cade8e9ece3b8fc1e2
+d5cf46ab432f92c8b33e3cfda3d7a0ae96d913298fe04176f2d329788f3a7532c0285
+b2784ebc8671cc40476a510ad2e66677c7b9d4bf6567d1894a7cf675d7b2a6ca5bcba
+4c7e72a3e4332c19bdb1723a0baf30fa6b1148d59c5435a62ceee612f304e641e5fcc
+ffbc04439fafb309fa3752bc7ae75c12f8b36236dff14122d0de48ed3b3131fba9fe6
+ab89d44804548ca533fe47790df21090fa2d37af0bf4d3c2036d85072a9cda8438f67
+dd81042861349f697c06ad4efb068dceb58c98986409c000fb19a2d2d0bf4e8430bb5
+2f6c2d7b85d68e898136150b9ae2956e255e695e4961a083899544eda5ea46b4d140a
+65d63
+KE3: bd99950902484701d9f1745d7b077ced27b99874427fbdb10d7587c23d0c2a93
+export_key: 61be82caed6a587831e0331d780edf2ab14072af6e37e15c0df3bfec4
+ae16717
+session_key: 1e81b6ab25c0b121501fe5685bc87b0a2c75d3675a9926ccd8d12a63
+c48f8b54
 ~~~
 
 ## OPAQUE-3DH Test Vector 11
@@ -3195,26 +3159,24 @@ Nok: 32
 
 ~~~
 server_identity: 626f62
-oprf_seed: 5c131606e2b5c6390b0a723bdf6ca48725aafa0fc6cfaaa1413f3e08aa
-2f6603
+oprf_seed: 175797d0e357bdd8fb9e2b955dce987da4b76163b7999839f325ce9e80
+cdb61e
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 653b941fffdbe027919fc5b2008e79339560965f6515adcc454cf
-30c0c50e79c
-masking_nonce: 0bfe2ecba770496e9a7f7986df7fe29c74ea8151f97c000ac63e67
-9ae9c46894
-client_public_key: 039052b3c840a745dbf2e9ce7045a710bac4e7914210a4aeb3
-33433e74f655286d
+envelope_nonce: 57b84bcdeea2c24a6aac67c8039f3feb281a9e086bbc0d60704ff
+8eddf0ab763
+masking_nonce: 406d08b87de905db5c2f180d8c19e3dfe101cb65439ebe95014175
+e674e4ea22
 server_private_key: b0b4f35c14eb2477c52e1ffe177f193a485cccf5018abbf87
 5b8e81c5ade0df0
 server_public_key: 02e8d79aa24bcd2bea4e9bb7362b004daa0bb6be442d8557e5
 59ae18b6bf7bb5b2
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 780425ac34b00ec2e58a7e241fc438d114f04c7460aa245477608ff
-b11144ebf
-client_nonce: 28bc6b153e6d421d200f6a16a23ce6832e40153a1d4a06352af5818
-3f867dc20
+server_nonce: c4462b8b0836513506553a5ec7acf694b3f7e813abb07ff6585385f
+567bc9f8d
+client_nonce: 33eb48bccc705b7199ad301b0f752eb7858178306f2bc042a1513e8
+d1c9421cf
 server_keyshare: 0222d4232635f4ee3706759740d7a0d8fb6a4068f2fbd34be7cf
 065f9989b637cd
 client_keyshare: 026ab0dc783fb12c9427dd0bcb4d95f5b5212f092406dd581bd3
@@ -3227,28 +3189,29 @@ blind_registration: b0d53a6f8da29c3cf4f8695135d645424c747bec642bc9137
 5ff142da4687427
 blind_login: 4d73591be8483a1a38e40c13a04b0f2180dda3c36e3d43c3a8f12715
 8d010945
-oprf_key: 6444eda70914cf4b8421bc23bd8109d09ae65c7c82121a749d36086b3bf
-d1aaa
+oprf_key: 5c80cadffa219bbbee1bcde00af085ea5a72ef17df6cda9d273c85d6a29
+6ef83
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: eed32fdec65be63ec80f88879dac9ee3605650c96ffef2ff6452cdca1f9
-ac8e9
-random_pwd: 3c9c52ce589002046a9ce6274211895a8fe95e55cd789c697c953d8c5
-9208df9
-envelope: 01653b941fffdbe027919fc5b2008e79339560965f6515adcc454cf30c0
-c50e79cbf3b1072fc618d5d1fde2dd564c49074f9eabd4270c2f4dae7694f634d4b2d
-ed
-handshake_secret: c7de4e3d6a516914a103719a22c27f3a0ef450af336e66fc74d
-7412964f1ffe3
-handshake_encrypt_key: 6010732758a8ca8617be602d93fa79cc189aedf3df9881
-fa68bb3a89e263e5e3
-server_mac_key: 49079691ac47ea62b586f6256a9e089193224f29c8bd58581b105
-8cf5318ddaa
-client_mac_key: 913be998cc5471e91df4af265758e2c2bb0c9c737e61859bcae7a
-4d75b2c1d6a
+client_public_key: 039c5479a5355a1a4cc2b684c23c4afc4a3072d5bcf7c32ed1
+c1c2810dd28e4691
+auth_key: be00f535bd08f9389325e3c13600316e25149ea44b39634a7f0fca4724f
+11c60
+random_pwd: ec9e3681a05ae0efdf2964fb9dcc05f1b7d2502f7389d502e6ece4fc9
+2813ca7
+envelope: 57b84bcdeea2c24a6aac67c8039f3feb281a9e086bbc0d60704ff8eddf0
+ab763b6160be7d90dc55a398a40b84653853df9d63994bd5cac69be9eed0a2a5bc437
+handshake_secret: 62c5bf5423ad294c47cfdd81428607bc403fdc235d1e42ec6b7
+d7816a2453353
+handshake_encrypt_key: f73616c4f0f12ef711db68a9d41a68a416dd688e407708
+9cbb32ccf1aabba869
+server_mac_key: 6aaf2d780e5fdd1df438762384307bf9a452c75ad9c415a2d4c55
+6b310f7ae2a
+client_mac_key: 4721be38eab409f9eeea0c46611e7e304294e19fe95007969dd2d
+109c7ccab50
 ~~~
 
 ### Output Values
@@ -3256,32 +3219,32 @@ client_mac_key: 913be998cc5471e91df4af265758e2c2bb0c9c737e61859bcae7a
 ~~~
 registration_request: 026aa49819f2c29b9543cefa0850db7fd36352c6ad8f47b
 631b5b621266b670f7b
-registration_response: 025189ffbda989b70a5bb66d3a307c19bea923cc8baa02
-5818b6a0365c21a8c8c302e8d79aa24bcd2bea4e9bb7362b004daa0bb6be442d8557e
+registration_response: 02b098eace2136e9cd155c6ed812ff1ef2a02e58c207f1
+34fbfd7885c9cb6cd41702e8d79aa24bcd2bea4e9bb7362b004daa0bb6be442d8557e
 559ae18b6bf7bb5b2
-registration_upload: 039052b3c840a745dbf2e9ce7045a710bac4e7914210a4ae
-b333433e74f655286d2a5518c5cece2a941de4684d9ee0e76a00b7e1898d5b181d81e
-77dbb2705c6f701653b941fffdbe027919fc5b2008e79339560965f6515adcc454cf3
-0c0c50e79cbf3b1072fc618d5d1fde2dd564c49074f9eabd4270c2f4dae7694f634d4
-b2ded
+registration_upload: 039c5479a5355a1a4cc2b684c23c4afc4a3072d5bcf7c32e
+d1c1c2810dd28e46913b2aafeedd35e19ad1154b1aeb1dd4a9fd3446315bc1fb2386b
+19a76ad89397757b84bcdeea2c24a6aac67c8039f3feb281a9e086bbc0d60704ff8ed
+df0ab763b6160be7d90dc55a398a40b84653853df9d63994bd5cac69be9eed0a2a5bc
+437
 KE1: 0223c6f12f3c763bdfea59c13d8f1e055b02277625aa06cb3d839e03a60268d7
-c128bc6b153e6d421d200f6a16a23ce6832e40153a1d4a06352af58183f867dc20000
+c133eb48bccc705b7199ad301b0f752eb7858178306f2bc042a1513e8d1c9421cf000
 968656c6c6f20626f62026ab0dc783fb12c9427dd0bcb4d95f5b5212f092406dd581b
 d337c73468953226
-KE2: 021451552feac39dc48a18f0a6dd62ed7049e9a29cbf617f2d82b8304da11436
-d60bfe2ecba770496e9a7f7986df7fe29c74ea8151f97c000ac63e679ae9c46894cd9
-c8a74852a47698bfc51a576fba0e29c7340c6923e4dcc02a731c2b94af578591260e7
-7ec71317a1278dc640a0a82d123c53d50b9ed530778d2e5962f1e141f1057b176cea2
-1ca30d2ef187204eab3c016e9e5870770e79b53a11f9a49f3cc3260780425ac34b00e
-c2e58a7e241fc438d114f04c7460aa245477608ffb11144ebf0222d4232635f4ee370
-6759740d7a0d8fb6a4068f2fbd34be7cf065f9989b637cd000f0f194c2aca9adddf7e
-ccfe7a10cd6db4d9b3073ef7ca0889e20280cd205c66b61465695b54a6e89d047c106
-0e21f0f
-KE3: 3e03fe128ce8a582b4616a303967a58c347d062eb2b53e723e000c6f3ff7b928
-export_key: 0bfe2c1dded650abc40fb507bccb7418839f25c7ea9c5c2d0a189b5bd
-56e5371
-session_key: d6efbf6db34a11b061d452ab70e45edf84ce18d32ee6320720226865
-8509b980
+KE2: 0319988bfff2348275355fb52f8dd9d6124b48b01acf3061e966e5fed1525c1f
+e8406d08b87de905db5c2f180d8c19e3dfe101cb65439ebe95014175e674e4ea2271f
+e8da153070f4a0c9b5718a9964cd923b71a3429256e51b0620ea046cdc31f4ef46126
+c3c70df01a8882c76ec7c7c5887b56ac34e07eae6f04035e762321f328946c39585cb
+437af4d05a3127c29f76029016fee30e3fea109d37d115ec0c8a8c4462b8b08365135
+06553a5ec7acf694b3f7e813abb07ff6585385f567bc9f8d0222d4232635f4ee37067
+59740d7a0d8fb6a4068f2fbd34be7cf065f9989b637cd000f0b5636eefdcefe7233af
+806299818c2a44ae8f7d48014e53a527da084625c038017c722af2f2977c06e35ae56
+c4861
+KE3: 41cfc5dc40ec4769a79f85481ed653761d5dc34ece259769f9c37178e518d09c
+export_key: 4a0e03801a5319d6b49889932f3243dd53af107ea62f97a71ad599c8a
+c706817
+session_key: a3af739fda39b4dba14299acff5e0fdb8ba81fd5a0985bef8616489c
+04febbcf
 ~~~
 
 ## OPAQUE-3DH Test Vector 12
@@ -3310,26 +3273,24 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 507116149f5e6dd2125ef83f5a08a7be2c676c50509ddd01cd9172cc40
-628f08
+oprf_seed: 38e304ba9266d57c104819e1e632c8e591beabfdf82ec8affe8a784494
+0fe6dc
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 0cd8ce020f60241ade2c82c75d3d134c9ecb18fceee70ab3c3791
-a8f282271b0
-masking_nonce: efec5e5f0a3e4e02fe60afa0241b344c546bad4c6cddc711ce14de
-32361b71f8
-client_public_key: 02bb781f4ea2d5ced91a6bb0145e995156b2631e06515e73dd
-98fedf77c6cffd15
+envelope_nonce: 87a7dc333305a083b16058ef96547f336ba2573fa80f1e8e23bd1
+6a1e1eee318
+masking_nonce: 2db02dee1aad2e5dd4ce5c774e3920b37864332327596e90c2f08a
+8600ccd808
 server_private_key: f7493200a8a605644334de4987fb60d9aaec15b54fc65ef1e
 10520556b439390
 server_public_key: 021ab46fc27c946b526793af1134d77102e4f9579df6904360
 4d75a3e087187a9f
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 2daeb9d50c537add080fa2a5fb078b69d10009ffd0b72d7abcd08cf
-03b7bb04a
-client_nonce: 5306696c0f051315946cefd704cad68adf113ad5690e87c8172d64c
-7d73bc3e8
+server_nonce: b6c2b60aa662ee2bcb656a6ec957cdc7da3fe1a483ec25ce0dbf37e
+84221084e
+client_nonce: b2d7255d0310819018ad15b8d2aef7b1e4157257793a9f013a745f5
+bf746d25d
 server_keyshare: 029ad3943fb8e838ed49e4d64e5f0b84e120f175f30115009f18
 f009f7e35081b9
 client_keyshare: 033b64a07786c37f90b1abc757bf074c18326773bc296ec69f38
@@ -3342,28 +3303,29 @@ blind_registration: 9572d3a8a106f875023c9722b2de94efaa02c8e46a9e48f3e
 2ee00241f9a75f4
 blind_login: 735d573abb787b251879b77de4df554c91e25e117919a9db2af19b32
 ce0d501d
-oprf_key: a7c8552c443c1985594f2f943e3f5db454e70681cfbeb41d96e6d5b9be2
-a238f
+oprf_key: 34658adc3ca15e8e386f9ae77c1c54c10e933aa19552c1ea0c6e4f510fe
+ee9c2
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 3d1c84c2f273780271bceadef6816a91b13423076fca9cb836309cb5bb7
-28398
-random_pwd: 82ac39fc97084bb8fb6b4d9debd389b0a6cfcc3502454067699154a9a
-2a81760
-envelope: 010cd8ce020f60241ade2c82c75d3d134c9ecb18fceee70ab3c3791a8f2
-82271b094253e1282c8d5bbbd703e8826b7004ad9cc138b6d3c2c08f6e01f06abb621
-3f
-handshake_secret: 69ce3865356ce43056dd03099c5ae88c9e22ec6729de70ff6b1
-e2954ca0ace83
-handshake_encrypt_key: 8e32450c6fc06240660a104767870e5aaba359361ac80f
-e17422a686523c710c
-server_mac_key: 705118a1b996be64806c93d69d16a3b362a55dfce924ed072547c
-1dd5221691f
-client_mac_key: 20410f2eba57ecf24d9202baac3fdfce92c8e8c9314a18f42a09a
-718562f8d35
+client_public_key: 037943e73f0373f5c97cb5c76c184703a6bc0e1aed5f395d31
+d71b5e4f04fd89d1
+auth_key: 26622b4db0c76cbfc0bf7c9ee76d6ed86a31b9b932db8488d80467e45c9
+d0398
+random_pwd: f43032fc410e3d9d10a7115917dd822b38230fcba20f5ba8951aae99c
+6656cc4
+envelope: 87a7dc333305a083b16058ef96547f336ba2573fa80f1e8e23bd16a1e1e
+ee318bcd4ee4f2da82bf15d561c6b634b30bad1c0f607e52c36abf05c7014548a56b7
+handshake_secret: cf08ea5a5be05b618d4be2be5265b578d56cb8d5529a13711d7
+9b1ff62b1c272
+handshake_encrypt_key: ca562639a50c0452158ae680142edadd676b58fccf248b
+59ad562ca169dfb5ab
+server_mac_key: 30c5a18bea1f4b51795feafe8fe5bc01f8b6a0cf05ad49e21ec53
+9b08bcd8678
+client_mac_key: d0f5fae0edfe32275558f39c501f1894a21756af34747e4185147
+8a4ed6fee64
 ~~~
 
 ### Output Values
@@ -3371,32 +3333,32 @@ client_mac_key: 20410f2eba57ecf24d9202baac3fdfce92c8e8c9314a18f42a09a
 ~~~
 registration_request: 03a120f6f2a0b858f546d1e2b60f810ad0ed8511ef0791d
 c26d8413fe13b0181fe
-registration_response: 02ee9431937fc152e6491d25e52c26588711565239c4bf
-e907bec194a9a44e482d021ab46fc27c946b526793af1134d77102e4f9579df690436
+registration_response: 02cacf40860569ada20c73c914608d28ea21dd23b4ec05
+62015fe9e4dcaed97260021ab46fc27c946b526793af1134d77102e4f9579df690436
 04d75a3e087187a9f
-registration_upload: 02bb781f4ea2d5ced91a6bb0145e995156b2631e06515e73
-dd98fedf77c6cffd156245b3bc0a6728923f6fe1ecf32692b5a04e01f6c25b2b7e020
-cf41855a88990010cd8ce020f60241ade2c82c75d3d134c9ecb18fceee70ab3c3791a
-8f282271b094253e1282c8d5bbbd703e8826b7004ad9cc138b6d3c2c08f6e01f06abb
-6213f
+registration_upload: 037943e73f0373f5c97cb5c76c184703a6bc0e1aed5f395d
+31d71b5e4f04fd89d19ec225ec7318a5427afa5f712a058bf0533856e6211c020f1db
+8e427d0a6a0d787a7dc333305a083b16058ef96547f336ba2573fa80f1e8e23bd16a1
+e1eee318bcd4ee4f2da82bf15d561c6b634b30bad1c0f607e52c36abf05c7014548a5
+6b7
 KE1: 03edd5c0afa7257bbaeacab64837430929df9b36bc2784e47577e071a7abd9f2
-ef5306696c0f051315946cefd704cad68adf113ad5690e87c8172d64c7d73bc3e8000
+efb2d7255d0310819018ad15b8d2aef7b1e4157257793a9f013a745f5bf746d25d000
 968656c6c6f20626f62033b64a07786c37f90b1abc757bf074c18326773bc296ec69f
 38c111e4274a4071
-KE2: 028d0211e461c8533b6c5fabb666448fb88a2d823a46abe7723558943b8e34f4
-94efec5e5f0a3e4e02fe60afa0241b344c546bad4c6cddc711ce14de32361b71f8ed1
-10d1c92715c0302bcde42a5daac7ef3a01db0f505eefd7528626fcb4f0aaa1bfbec79
-c77c861bb21fc3617c2339265eacc86662e893294808b09094582e8ad46d6fde65205
-877aaefba45c1429ef5e0b8dfd71a14752b7b416b8b61b4644068a22daeb9d50c537a
-dd080fa2a5fb078b69d10009ffd0b72d7abcd08cf03b7bb04a029ad3943fb8e838ed4
-9e4d64e5f0b84e120f175f30115009f18f009f7e35081b9000fbf20491174bf973a42
-50b033d8620a350c05f6211a508f8c61eed647dafdb88e7cf2666a27d02004cfc3619
-9e15899
-KE3: 1aceeafc58f2353b0a5b5ea59eea456b5ce8948c06691d871563426862825c38
-export_key: dff0526f3f072e7545f80cf5bf0ee358c32157c1b2b2b4444d742fa4d
-c4cf4de
-session_key: d1ce220131129ee428475687129a632a69977c85320850b02f292767
-9d2e7f41
+KE2: 037d50ee1b2ccecdb4e5af839c83821e6fe76b1c1ef3667ad989ee744fc5cfc5
+2b2db02dee1aad2e5dd4ce5c774e3920b37864332327596e90c2f08a8600ccd80889f
+09b1179a14399ddaaa5c32997dab1fa94f7fe13fbefe2d7f35ca7dc64fce224627c89
+2755fdb8d6653a23f4be6b7ec4e27a657a32bdb8cbd2ce2ea45f99efe028921fbf4ec
+2dcc22696dac34e6007b717b2818c398a132f81c672141e07b958b6c2b60aa662ee2b
+cb656a6ec957cdc7da3fe1a483ec25ce0dbf37e84221084e029ad3943fb8e838ed49e
+4d64e5f0b84e120f175f30115009f18f009f7e35081b9000f4a77469d6258c1b2da1d
+2cf0f774282e99598e5b1a2286321ab756ecbc66ab726aad7e3f993b39b7fd4b26cd7
+af41f
+KE3: a1f9a49c0b075bcb0cb1c719222aefa0fab28e0aa7608b1793f044a362a90988
+export_key: 89c31c71cffc0e859a316ec7768a90421ba0822063baf97cdfcf690bd
+938e7a8
+session_key: 10551b389b16396040c063c996682ed489b3f072afe6ab915e173ce9
+c0bf27c5
 ~~~
 
 ## OPAQUE-3DH Test Vector 13
@@ -3423,27 +3385,25 @@ Nok: 48
 ### Input Values
 
 ~~~
-oprf_seed: 64fd84d5f8fcea3709931a487564a2f716823d394143985a208765960a
-dd842d10c817e65a14df4f8c85bc27ad85ba3d72aa6c11b2ba449cfdffeb7ffdb8a4d
-5
+oprf_seed: 74971db14194423692b6cfcc5b4654a11a6fe597d3d04298cae983150a
+0ee9247ece874b489b2364af3e344e455160ed52e3f9b044c782614a81cbf347f6766
+8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d200018890c9ded8dca3616076dfaeb4438f8017fff11e4e6e0dd
-38cc7044ca8
-masking_nonce: ac28079019f6dfff918b48794de756812c3e57cd5702ce0122de14
-26bc06dce1
-client_public_key: 02cb3cd435fdd8989ee4404a02da56b4c4db6cb7ec75b01222
-fe20d8e974225de9a2a8e2394d8a18a07da7137de56dccba
+envelope_nonce: e0a72615819d906412c2c4d78807129bfa232157d79e407dd7016
+b96c98a85ee
+masking_nonce: 6898e459ad72e22a55ea1671326375ae1219e449960e3bd2132d8b
+a01de78937
 server_private_key: 6b61028c0ce57aa6729d935ef02e2dd607cb7efcf4ae3bbac
 5ec43774e65a9980f648a5af772f5e7337fbeefbee276ca
 server_public_key: 023713c6af0a60612224a7ec8f87af0a8bf8586a42104a617a
 b725ce73dc9fdb7aacbd21405bd0f7f6738504492c98b3e3
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 914f717d50ba6995acf49bfeb2a65df826662815eda89bfd0a5808d
-f54532a93
-client_nonce: 6de3019ac382feea58f3891a5b6904e5e5639ddffce90d464bbdc55
-5c166bf20
+server_nonce: 429cfafd959d1e7d9c1ad2030058a09133dbb1a5c19372908c76b20
+b53545699
+client_nonce: b14febdbec2243dccb863cfd8fccfbf4b6187d1999cea128c2194d8
+d1f5d972a
 server_keyshare: 03196d22794e67e69232db19e4032d2f2daa09828c4ef71e5a4f
 296a0edecaa5bf564c97a7e8c96a4977975a44eed2b37c
 client_keyshare: 037e9c1e7bbf41bff8ca6fabb630db2db73a92e57c6260f39d40
@@ -3456,33 +3416,35 @@ blind_registration: cfa46891dfa664a785675b2c95bbc2412ceae9d69a1860383
 45f8ff704bc925f6818500615a825a9a6b5646a4e4f11b2
 blind_login: ebd2fec41edafcba833ccaac567c14d2fa01f55b33a2fbbb37118f2f
 5603b1298346e02cbdf55c95ef9b1aadda5ef281
-oprf_key: 7b49acf448f4b632933292843333cecddb7282b4eae653de0288b8a1825
-afa82daf5045d01c6ae4b3420b097a7e9e8b0
+oprf_key: f7694137578cde2d019dbbb44a1c618ae061dc7d1b2ac1de0a5c0540f6d
+1fed22ead08b8cbccd2fa87778212bd42ab41
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 3e54f0ff9f75a178307b6901e0b00586a8b8f2b2609b6768de1cc41ffb6
-b52faa838e1f5948ee71da57cc77b2b18168d59bbe8a6fe6a387df1481ffb54db9ec2
-random_pwd: a9d7e2a20047043d77420835afa6e3bba33d7a2b5742643edb90f521c
-98f6b31ddbd294c46b6ee1b5f04dd63f07def643cc8594b8967633c06a29aa0451852
-e3
-envelope: 01d200018890c9ded8dca3616076dfaeb4438f8017fff11e4e6e0dd38cc
-7044ca85e59d271547a9390ccabb7ffdfaf9bb71bede37928167a6d7fe143960207fd
-1392ffcde6344b78e33c6cd8a791b277ac46c9eeb6a3b6def3eb7ef876bb95e6c6
-handshake_secret: 6e774c45518b231ade7ac1060ac02045c87eed88ffa0e72748d
-b5358c4c6dd6c0ae4cc5c62d05480b073ddef21cc83173b595a327c03ef13b5e4fb2b
-419b44db
-handshake_encrypt_key: 55a7d56beb10caf1062c8551a131f17723a03380dc1c1d
-a491383993c57968c2edeef266ab3b3c6090f74d9d74429bacfc4a3ed290c75168a87
-df9451a7d9312
-server_mac_key: c2bab0d9156c3d4d68f85c624f76c4962cd646f32554876b498ce
-97c87c8000a1f933000b06acb8a7b23db339c8075acb32cca92a5c7cd33f44b4338d3
-97efe0
-client_mac_key: 94eff03cb9e6f18bc49ca6a17c21e9599cd8dbc0b0282d5b214e7
-4b523c2b09cc42e2d13d3f6b69bb34a3a117eb9d4dcbd71329ac298ede546f4a5d929
-d7dbc9
+client_public_key: 02eb8306b6a0e8c08c3c5a090ffa8aa7bfed7f38a12d440028
+61c06049fd6ac497161fac289e5af451404dc46b7505eb78
+auth_key: e6a6af2e91ac66780aec7711f8348d2169464f89fac4574e2b033ea885b
+71d8c843bca925a7947f366b6d67b8c8f00c15e989a2017f15ec726bc2198a0f7327a
+random_pwd: 4d91f1fe8d7aec2d2d8d0750a13f2b5b11b81d08679cb464335c50fcd
+ce6ef79e31181a39cbe02f8f6524d40efe909fc775855463aa8d1aaad18817d621293
+b7
+envelope: e0a72615819d906412c2c4d78807129bfa232157d79e407dd7016b96c98
+a85ee0d7472311b85819740906b91ba0bf762ed43fd5cb301ff9751c48b012b022803
+7387db29db9f0cbaae73bd0177256f7c4ecac0450cf294412712b9ff3299dc3f
+handshake_secret: 139ff4680f1622c69a3071c732e5ef767a5d3978de6d51e9df6
+502021d27a922dc14d232bbca6bf0d295f5e1340f46057f908c082bc671dc436e113a
+2928d2d2
+handshake_encrypt_key: 7159d167b449300a814786da9a7ff9d27c191eed5bad4d
+f224cc41db730f6aa419197291d06c8c7ce82d4b071da0114565251f19c6413e9e33d
+f948cae876859
+server_mac_key: 6d90ea5763794c62ddfa1804638d4cee40a8f9f15e0f9fd7c0f1e
+bbf9823d34bba87ffa2e5cc09a6b882790e33dba130969f4b05ed8cc441194b9718a4
+aa4547
+client_mac_key: 3616f1020983abfcddfcc861e0d41e7c1a5b2ea0632443537e44a
+7bfd00e73fd20130008ee78d14a088b948304016034914fef21869cf77ec52c447014
+c85e62
 ~~~
 
 ### Output Values
@@ -3490,42 +3452,42 @@ d7dbc9
 ~~~
 registration_request: 032a1ed9cba49c4f38f62e77ca295b8dd95d4d928aeb7ec
 db24e28d927909e4624e4ef5df6b729071abb6e557b809d5ae8
-registration_response: 02eb9de42a66d8c5d1c109dad18785dc7dd3c49e1c0d2b
-a43a5c41566ce4002c8c721e67fa7cf86c09ab7cc57fad4905c2023713c6af0a60612
+registration_response: 036703f46fedac95e50de78671e96b6dbc4e175dd5ec87
+ab414bf6a448dd4d5a2884b7b980bb25d6454c7a626904c9805e023713c6af0a60612
 224a7ec8f87af0a8bf8586a42104a617ab725ce73dc9fdb7aacbd21405bd0f7f67385
 04492c98b3e3
-registration_upload: 02cb3cd435fdd8989ee4404a02da56b4c4db6cb7ec75b012
-22fe20d8e974225de9a2a8e2394d8a18a07da7137de56dccba413ee985f32cc097947
-eb537c2c81f8ba21309d0599e1e530c8b76b55ab440a8a88a6608aee6cdea6fec14f1
-8d83236ef7ff4e614521749970ec3cf0b2e3b70301d200018890c9ded8dca3616076d
-faeb4438f8017fff11e4e6e0dd38cc7044ca85e59d271547a9390ccabb7ffdfaf9bb7
-1bede37928167a6d7fe143960207fd1392ffcde6344b78e33c6cd8a791b277ac46c9e
-eb6a3b6def3eb7ef876bb95e6c6
+registration_upload: 02eb8306b6a0e8c08c3c5a090ffa8aa7bfed7f38a12d4400
+2861c06049fd6ac497161fac289e5af451404dc46b7505eb78f7d03ccfc61e23b0c35
+9f5bf3d9bb7999f2171ffc07a588edb52b7148cb6eb80433e17e954e43375490dbd8e
+9157b9f7de996a8a4306f6059a3c8d1bd4b82e48e0a72615819d906412c2c4d788071
+29bfa232157d79e407dd7016b96c98a85ee0d7472311b85819740906b91ba0bf762ed
+43fd5cb301ff9751c48b012b0228037387db29db9f0cbaae73bd0177256f7c4ecac04
+50cf294412712b9ff3299dc3f
 KE1: 036bb3b9d78c508490de49427658685d8a74bdb5acb7ca4fcfb6fa5488911b86
-8e746c08a1260d828fc5fa7e4232a2e58f6de3019ac382feea58f3891a5b6904e5e56
-39ddffce90d464bbdc555c166bf20000968656c6c6f20626f62037e9c1e7bbf41bff8
+8e746c08a1260d828fc5fa7e4232a2e58fb14febdbec2243dccb863cfd8fccfbf4b61
+87d1999cea128c2194d8d1f5d972a000968656c6c6f20626f62037e9c1e7bbf41bff8
 ca6fabb630db2db73a92e57c6260f39d4024c619f8b4f2807473ec0f715d83e88ad62
 b88ff3828f2
-KE2: 02e95f8f3532a2492ae5a2b53af4118c4e1f6111458930cc598d3b9f16b9f89b
-6322ba6cb88921b5dc7775978dc18d9775ac28079019f6dfff918b48794de756812c3
-e57cd5702ce0122de1426bc06dce11950c6603f0a86fe1acdda2dc4340b22abada9b4
-2874dda4d9d49aaaa8652b8de2aca44589a2839b5d12738d5c6788d7ab6337f5684bf
-eeef00dfe116dcb28d6aeae74c9b265c4bda399e6715ff9afc9d49dc72c1d3ba8abed
-e7fc6178d9e9613bff9f13e37554f14cfa566df63c4cd6cede5d7b50f7f2278591785
-4e5e6dcdf02e9f7e6981eccc08feb6bdf332161328016914f717d50ba6995acf49bfe
-b2a65df826662815eda89bfd0a5808df54532a9303196d22794e67e69232db19e4032
-d2f2daa09828c4ef71e5a4f296a0edecaa5bf564c97a7e8c96a4977975a44eed2b37c
-000fc03cde3311081459e1c1d9dea684edfb4f581124aac8b1002ab1e996e5488c6ac
-cd4630b430d89d2074a5597c1758c2fa430c2e16c5eead15b06202be4d83db66246b3
-e41b5dd28991d930c69ff584
-KE3: ad7ae9779231cb3a9f6dccf057e5651ec996c19c49b52627feff7159a0dba987
-f4e913c556ed8e964ec72f8c76b9b9ae74089f5074888af58dec40716124e462
-export_key: 555a95fecad212bb712c6b969296b4afc6b3263989e08f3f3922ab062
-a230a364fb49d501acffbb1b6ed4d74ab162825d76473b3c48483ee6597f067023ded
-fd
-session_key: cbdc7e2977e1cce8a379522133c9199068d58450fdef475af577c754
-2e437bb2d1b6716980acab3abcd019764a942f675bbfe5113d8e9e739b559d081dec5
-b2f
+KE2: 03a154f884c2c050e3bce40cea3d1e70fcf7f0e7a220df5fbf90664f574a5436
+378118f2c4172a661895761eb25360de506898e459ad72e22a55ea1671326375ae121
+9e449960e3bd2132d8ba01de7893762ab4a4472bb882b2aa522b975d9d45846aed0d4
+40a1ce7362099ef8ac73a747275eaefe9c76b7aaceb01419380c8794db8e3a5564c64
+978ae977a0e88aeeda533ae8c1b018add1113f0e23c2c731aea142337797c3b428b55
+bfeab814bd1da9252857f4750e1e4905f9c26480c8295c3020fe35b13a3b182a44550
+bacaf6ad7f7b3b5277fa8c706ef7a5b1aa2e8d6bd4b429cfafd959d1e7d9c1ad20300
+58a09133dbb1a5c19372908c76b20b5354569903196d22794e67e69232db19e4032d2
+f2daa09828c4ef71e5a4f296a0edecaa5bf564c97a7e8c96a4977975a44eed2b37c00
+0f65f188b725dfbe8c8e78d937c18a0df7e9878ecd06649fbfb6022c4f7e699c69913
+be706c96843e476098534e3778f3e3f63ddc462c7fafc6aa634e5e9cd9f5c4dcc03a1
+5eb5f17461c71d115117a7
+KE3: 4dcd04e2621fa0ca5805710f4724c2a87f98ce7914ba44956564a535e94ba8eb
+a7486abd90e0c03c762404542c3490e1da46746939b7b7078aba4a6ed114fae5
+export_key: abb396dc2c8784fe5bc9cc87f2f08afda5bfc67d4c6808531c3c2149c
+f7c6d566455abb8b0d68a120e382b909db8da7f30cb290f1ee8ca2a0ba197f132425f
+5b
+session_key: a2a8e1b5b47385849c7155b3f7c5779ef1a9dfe1e395a79c7c280e79
+8a4cdd5842c6b087141f6c73f34205c5291e15434f33317294b3e58de0c99f5312c4e
+ff3
 ~~~
 
 ## OPAQUE-3DH Test Vector 14
@@ -3553,27 +3515,25 @@ Nok: 48
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 21af5a255bddcb7fd77a1890a0e6450a5a3325771010618ad7f3178868
-401b36b047baa867c42ebd1e22cf134eed26d9a936857f5888674e92eda06a56319b6
+oprf_seed: f2c9733ca0f6efc142089ef53375e122aac5a1371b4a4786d19e38d25d
+1568bdceac6b36278e7f00c886ffae8c746ee553c65eac5496de30d0d45ba9f5378ba
 7
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d88b32b7072ca2662ae01a9795a64519a3b5eb0831561766e1fb8
-ec4d0679c6e
-masking_nonce: 9c512a91bc58a3af3234aa0897b7291894b21a611cb25f1163afaa
-4521a5f592
-client_public_key: 032df2328e2cf48c09b61363155b1ed55af08e4f9421c01834
-7039b5ed40f9c37819b8142b16c43e5559ee117bd90a6abe
+envelope_nonce: 2c16cabec268c29024e56bcd6df0572fe4f5781e7f98cf21ea50b
+d5fa44df936
+masking_nonce: 0187dd4fcda9129cd7c610c2ad423e4c8db6dbe57981f90a6cffe1
+2fb734b8f3
 server_private_key: f5acc7b0dbee75bcd8bb50363ec640038177f06904f2476ad
 5274e2f9d258659e80b0fbd20e4761b22298eba98ae9dc5
 server_public_key: 03ca37ed36b0b311e3241e6e96f49a44edaa971419d91fcabf
 fbca0184afabd92827344da8379abfa84480d9ba3f9e4a99
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 09113651219b317ddd5e1cffd7f9029b3ca3c35a2f4078887298fd2
-34e472190
-client_nonce: 54d9ac67fc9db77029f8b9ae045c5ce7a7ea95b30bbaca24577c440
-7ca73c328
+server_nonce: b30cc8c0dd8ec73fdca6ef3f7acbcbbf53549b9899a58d29dbefce2
+07d1d8aea
+client_nonce: 58dde8981e4d4698102b86b4ab8f78ca40dfcc0fb78b35d9c719b24
+98b177490
 server_keyshare: 037b55471c1bb3a246d0030fda68aa80a79786fa060c0b56e7bc
 7d0000886e3d661be0afcaa0cf69519eb528a11af48a9c
 client_keyshare: 021323ffcdb6e9971cb3d0516ac4f70f48c50ce81c897b4c3459
@@ -3586,33 +3546,35 @@ blind_registration: 92e4dc9cd7f7aebfb1d3d2b8c7fa7904503aef20c694a01d3
 e1154fe98e7232be9eaec5789a012a559367b1f99654ddf
 blind_login: 79c86b934061f894227b23a69eb0b53f168a4a2230ef6a7d703ac4cd
 5b5e0fe438b3000884019316267eae9b424f8126
-oprf_key: 79d361ee76c711eb6830615cbf5fe785f5d9e6f42e220259d7c73822549
-f844c32634c552a5e9be974ce95e3ae685dbf
+oprf_key: eb7254fc1567e17a3baaef4c1bfd11142237bb86e2f270abe7818c3c954
+269dfaf3c9807e1a4485e604730f66fe39bee
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: f64cf3fd895617592cfc1e1e315de1e0c1895a106478c21f029e5b380de
-398ab3382666b331533ffb43af165a97cd939ec72e2984b0b10077d0c9a59341f926c
-random_pwd: fed625de9850cfbea89ed978c4465a135d6f3188acd6b5d8a10b5ff90
-c2554fa882d6b3cf64e9fd0de48631c468c4b678c176b286be66869ed632336b3fe32
-62
-envelope: 01d88b32b7072ca2662ae01a9795a64519a3b5eb0831561766e1fb8ec4d
-0679c6e109954c4b94350865f37f43831a8a2e8ae919300ff47e30584603deb5e14ab
-dbde0c3a1e1680d02109818e8063646e5c18c06b6ce2f624257b3fa7953382e8e2
-handshake_secret: 2259066a669f31bf641ccbadc233b1f0e9c9634562148aa874d
-c868eac35314cb8369c3368c6cac565a6120bfa20b3bbb0598b15f56eeceab4560880
-e2b823c6
-handshake_encrypt_key: 8832a8103d9e8fd02ddd2bb7e7cb2ec4649b7e78159008
-9c698ada98117b1d39f45579c7c69307fe9fd3fe62b845334bf586315e7a655f57110
-9db165633fbee
-server_mac_key: 53c5d51bb68a78c667fb741044d3cbfd40727fb1b90dde6c64ccf
-00e49c7632650e889c268207ff5406352fff24f1435d03af2f9137e88b193488d0fd8
-66c0d2
-client_mac_key: 56a9720a3e00d18a7e5d8867aa39ac4ac729c8efb135a5a55bedf
-8fa6238471f781b12ef7883178455099e82ac6dd0ea500994a869d388dc6eb1fc7b1e
-47e78e
+client_public_key: 0312b7e4bd6bdd4c9d310a0f48de7706e055d4cd2586868754
+bfd9e6ef63ba225ec22ec4cab7614567d0984f8abfcb344f
+auth_key: 83e58b6c66380c190ebffd3d12290198f86e0336a1cb0a1eec7251e8bc7
+869e1cc5848cd06da805447f44b375d446485b934f58b2b2d6ffb7fa2aba7c491b240
+random_pwd: 1fe74c8b634e79350d7f1edea4db58ca887bb43c487c09b28aa02a373
+8946cf9c94f3c4082eeb4a72ae59a9da3430ad338f1f7902df882f5352a6ba56f3248
+a2
+envelope: 2c16cabec268c29024e56bcd6df0572fe4f5781e7f98cf21ea50bd5fa44
+df93687d869c8aa81232ee635b39f8c801250826d61eddc99591eb22f2edb71933fb9
+276d9d87acd98c7e61bc15a55741b40cd4aec8503a52c79341793e75a725ac36
+handshake_secret: 823650e75cb7991add611b57207d4cc6ebd2ade404aa97d2231
+ef419304c48b736b104e1cf53392a97dd63bd0c6fb54aa6c9fae3ca1fc4367a32d7f9
+c736d443
+handshake_encrypt_key: cbc1a496d5c9bc658e878118f484e4c6e3f2af0423d51c
+ab66f23447ca542443af957c11d7c9f95dbdab496a4ab4c9c9bee0060bbc14e1754a3
+b856ef5357595
+server_mac_key: e61ea8cb31668e218a43884bcf33dc305845aa49fb3f501a2b13a
+1812b0aa39f786094ac875b9a565a557befb6c5695d9f54cefcd6d00c548f7e9e924b
+f4d558
+client_mac_key: c00a9e4370c9ce1ac0f8aa892d08c741b7a8109963173a273f3a7
+62a36691bf445c24e56a6689016cd9b01287c2560dfc6d28b6e4a5882b64b0cf39e83
+587cd6
 ~~~
 
 ### Output Values
@@ -3620,42 +3582,42 @@ client_mac_key: 56a9720a3e00d18a7e5d8867aa39ac4ac729c8efb135a5a55bedf
 ~~~
 registration_request: 03c11a1b33c831ff085bea647c06bb354083adeaf4e7c25
 d4ef17e90a25e590b275d412a48b83c064f75a6fd383e4730a1
-registration_response: 024da9d21aa805664a24b6701b9383f3619f27235e112e
-9e1c4530625e725010d1688907c6d31709ea8a7305bf8b21c80903ca37ed36b0b311e
+registration_response: 02236e626e644a84a73826cb21f7d8d1c484bce5275a11
+9483e04679c24041f4ba5677d0a5b310114b70b748a017d4915b03ca37ed36b0b311e
 3241e6e96f49a44edaa971419d91fcabffbca0184afabd92827344da8379abfa84480
 d9ba3f9e4a99
-registration_upload: 032df2328e2cf48c09b61363155b1ed55af08e4f9421c018
-347039b5ed40f9c37819b8142b16c43e5559ee117bd90a6abe0b7f6216c188de739e9
-157e4cc31b2cee627a71039e729ed5e86fddd4e13eee0be1c31d0bc146abdd99fbb70
-01c6b116d6f57baab1d71efff4bbac6f427be32f01d88b32b7072ca2662ae01a9795a
-64519a3b5eb0831561766e1fb8ec4d0679c6e109954c4b94350865f37f43831a8a2e8
-ae919300ff47e30584603deb5e14abdbde0c3a1e1680d02109818e8063646e5c18c06
-b6ce2f624257b3fa7953382e8e2
+registration_upload: 0312b7e4bd6bdd4c9d310a0f48de7706e055d4cd25868687
+54bfd9e6ef63ba225ec22ec4cab7614567d0984f8abfcb344f46058dc34e0a54617f4
+af0f0324ab87d90c4d135b863712d5d9c99bd7c4af78239024f157e8abf6d5c3a5604
+c392c4f00f68c64ed148a498c0817b50d9e570b52c16cabec268c29024e56bcd6df05
+72fe4f5781e7f98cf21ea50bd5fa44df93687d869c8aa81232ee635b39f8c80125082
+6d61eddc99591eb22f2edb71933fb9276d9d87acd98c7e61bc15a55741b40cd4aec85
+03a52c79341793e75a725ac36
 KE1: 03569da14f7d483ae405bdbd365b7bc7cd11968aa5c105d6fdf21d83cbc77050
-7be9fb3aea6709f4a37e940900bccb4ca854d9ac67fc9db77029f8b9ae045c5ce7a7e
-a95b30bbaca24577c4407ca73c328000968656c6c6f20626f62021323ffcdb6e9971c
+7be9fb3aea6709f4a37e940900bccb4ca858dde8981e4d4698102b86b4ab8f78ca40d
+fcc0fb78b35d9c719b2498b177490000968656c6c6f20626f62021323ffcdb6e9971c
 b3d0516ac4f70f48c50ce81c897b4c3459ab5aa664a410e20012f6a3eefc000449912
 82868648a0f
-KE2: 0384d52d58a968a9460e5437b0ad6240bc463804d5a1a15560d44d7109158631
-7148d8f39233af6dec892618596f491ed29c512a91bc58a3af3234aa0897b7291894b
-21a611cb25f1163afaa4521a5f5923b68d3a3a108432ffa6a88f25442aa376f9f4444
-aefd7cebe6c216172a38f1020d9410974d68acabbb7695584040b504f80fa075cef85
-8afac82feb8b3743c8238894a0e585810b52563fb0496325b29ca4943d15692cbbc8e
-5c6c11eef981282db17e1e929d60b997fada13dcd6d4b1f5737b8ed0160f7159b6396
-7292a791604df60d81a5214e9d62f3ac783c864e70a8e09113651219b317ddd5e1cff
-d7f9029b3ca3c35a2f4078887298fd234e472190037b55471c1bb3a246d0030fda68a
-a80a79786fa060c0b56e7bc7d0000886e3d661be0afcaa0cf69519eb528a11af48a9c
-000f8f9c340550faf760d5e9450173628f55f8b85c2c852e4b63554a09231d9d5b3e3
-5f895a0039999d18c2a4f0875a4dca6790e68a3176f780566c9501ff42a2943a68723
-6ef2d3c6f0e49b6d15cd503f
-KE3: b7c0a2832703350c2ba88e929e40141d9abc90ceb60b3f70c316462a79c07fad
-dc04046d93edcde254620864d5ddb1ab770056e7cb23fcce976b289139025bda
-export_key: 2f28c50fcdd0db5c250ac33c6bd5a8cd16e840c66006cc61e68848a5a
-2946b966e02cd9d29505e6a98d3698920d455ba93c0455f3d2513ed10461016106f38
-33
-session_key: 5a5b5312716f694bb3909727d1f6e9dca998f2ec86ae3cd8aa7644a7
-dc66a80c239a3e1b8c44daa24cae995ad655aff25d3851afae5aeb341e6fa0a94f544
-ad9
+KE2: 034640f67fb019e6b05b7b971b8c4ce5f880a37980cf8dcd41f33e14d1dd3e3f
+77905d36f0a5b8603fa0f902790663f05b0187dd4fcda9129cd7c610c2ad423e4c8db
+6dbe57981f90a6cffe12fb734b8f3de3f0c538f99a4db705bbce51924e73a8bc72156
+5b7614ca5e868edf6f7311eb6bb95dae4e1075f084adc8a5d9ce27c33994a4dbec93a
+132639f0f7f3741584acfde6784fb7f0f508fed7cf95f47d289dd7db56ca34229cd75
+e784e7b96c902ed72fbb765e3841530091a92914cbcd4fb6b6d27be1675020dc7b1f3
+2a63ca39503497664188181304a517c7b895b8c6beab30cc8c0dd8ec73fdca6ef3f7a
+cbcbbf53549b9899a58d29dbefce207d1d8aea037b55471c1bb3a246d0030fda68aa8
+0a79786fa060c0b56e7bc7d0000886e3d661be0afcaa0cf69519eb528a11af48a9c00
+0f8cb203375040b50f17ccc2e2892c65947fab7b3e48acf41ecf3000dfe14ee82afb1
+0105ef39b948557f9b4a605c0000c88b6ec7f57539852a20107b31c59d6187e219a9f
+12562ea2c7cf160f80b8da
+KE3: cae1bee288cf84692eeade74beeb4f26ff28ed4f2cf169009d7a5da46625729c
+d1a04cecdb071de7e713021bba36e458bf983a073bb384f21cb2945b8c7c2c11
+export_key: 86a607fe49f25d207d0b442fa507af46e1e6b61ca54ffb96d083c8795
+70601f3c84238f596d907f17846242074a1d987cc21962439e66bd1d80c099bf24872
+4c
+session_key: 05904b3181b41ff422d378513267035acc49b52de83d42a7b3a0ddf7
+e679c85ebeca7be972b7d40bd1e7b74b69bbec98e3787cf3782ae3d5fa93ffd5f5f04
+c29
 ~~~
 
 ## OPAQUE-3DH Test Vector 15
@@ -3683,27 +3645,25 @@ Nok: 48
 
 ~~~
 server_identity: 626f62
-oprf_seed: 6660ced4175da69ac9714f1619f5ded53bacd80eb17e74dabc1d09a289
-b05741f43614b0e0cce7f9f29b0391a42eec1d742c950b45e9156341b4263928460c8
-c
+oprf_seed: 4f4a50bc5855620717cd58bc15eb0135ecb389e8bd2fbbb5d13952a2dc
+3a80414acd98387424f266249529db0cf0eed4c0042782977d634d52e6f325df2c90b
+8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 9665505a2890da67bc6427cd24322305f89ced3021509b55f4808
-916de12f095
-masking_nonce: 8c492f60b98778df07701c5902cedfb045c2514cfb6abf274c6b6a
-3a3507c28a
-client_public_key: 02edeaf3593fb8ea4c97adc000da40e64e99e509e88358db5a
-343a0732b5dd3b10beb3b274a0cc0a8ec1bad4802b173260
+envelope_nonce: 192a6fab69c63ebe8ecf8d70fce467406b1fa3da7a2847cb16da6
+0da572a4fcd
+masking_nonce: 1c28eee4dc5a8aa0672ad2c1e2b44e76eff34204c853d6aa871b6c
+b0301a6131
 server_private_key: 8099b50c7ed9444176251781b6a8575de7491bec330164821
 b9b2a108e3ef8964622075015ac9ea0f8380dcce04b4c71
 server_public_key: 03aa179347ce8e27d2122b8c2c43315635e5489dfe1a50ab77
 186e4710cc489638b097b3302b550da04f5d76adfa826688
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: c0f702ef8774fb1f10b8e2ae5da6f71992f2b7a760f370b21bac5c1
-01566a3ad
-client_nonce: 622742728975878e515c0bc051bbb3aba95ae8386b580ee99eedc75
-39377cfa8
+server_nonce: 746e77bed504789e01eea8d7072c42993cc441ac772b48bee863bdf
+3c8474185
+client_nonce: 5f6b96ca9564cbcc5faf99dc270aa4315cb2400f1d16fdc4c696646
+4a3587423
 server_keyshare: 03ed7dcbc8318a00c1f42c2b75682d0beb532636c2e03c524bb5
 bf5af735812003bdc0d076ca0dc9aa7ea97273c7088f78
 client_keyshare: 038d4077ad0d00842d0d621527f8225c405f80049752378a4e11
@@ -3716,33 +3676,35 @@ blind_registration: 2df429f90cf65d49d89d9289512729491e70dbcfef197f2df
 475d05175e75fb25791f11a8f5484eb790492839c0c38ea
 blind_login: 2d90c0799597e99c926ae54b2fce5ca13daa8cabbd4da53324fbd205
 54f2c56460442edb7d6ee76b64ab68d0a8f5b1cb
-oprf_key: 93b78c4e7a68d719a2e2c37987ab3fab5c95239a44479a1a4a014a52142
-3e15c136614b253b32c1137bcbd4026761003
+oprf_key: 6375cce6eb4630cfcee344b9fee2a78d8f57235e056db4f20865f30a1df
+a4b8e22fe23fbdd86021a35d99884b4d2bc48
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 2604c2a2f78c9b931e6929fe3308b862a94e34077b959847ccf63c3cc5b
-6056ce3735362b1ec9a1efeafb595a1951e766563482202fe670dd2840a5db9374056
-random_pwd: aad58f2b4bed1392c4a8db48c918a4ee47d0c1d96eafb49e076b6a644
-c4afb89ee4a34231a06b3aff49927f6c18d79719ce98cd33d10ebe678ae66e219cb1b
-fd
-envelope: 019665505a2890da67bc6427cd24322305f89ced3021509b55f4808916d
-e12f0956e55d9c8fdb621843bcd6d00ac9559f1c7db82fd5d3379cff8884143ee0aea
-336bc918255d7381e2167c826167faeee1a005eb02cc0dbf0f65332cc7a4d96a2f
-handshake_secret: 145312aa3875ae83d968165ea8c5c9e1e80e5b9f2feb648c7da
-93d5640b3c0286ee987b2698adec284ed676a0205b6a751c0078c88d2f19eec36c1a5
-711c869f
-handshake_encrypt_key: 6098768a99c8300c6b7c22b89a9645bbe51d291cf08bc4
-56fee837eeebbd7fd6225dd229430fd24593f3560dd1754fc462d648e3b72d0644ef8
-980c8932e65fc
-server_mac_key: ab8ac8909154881798b3e9bcb49d4ccc1365954547d549a8e6749
-4d809b6b9906d7212b1f198397a06a68b7717fbfcb9254b07e3fc98b60ad2314ba120
-554207
-client_mac_key: adb19e90f8968bc81f5cd71d830a2dd4483a655ca57505e0b0fab
-c4ac72a18caa137a20a1e358405ca8641b95b26cf2f7251716b609e96be79aada81ab
-85a434
+client_public_key: 03974c19156784d3d4a644e055b9268968f01411b69713d2fa
+8644d4177bc27afb68720cca5bf83a32151028608e7ea44e
+auth_key: 3904e62579158ef43260aa7a293b664dfabcc2ba38c5682b225ea9f4298
+011a17f52c3a93cd6d1253f8b393ec2a97302857a06b8996a6efd09332a03a44ca762
+random_pwd: 6e54093fee0828d8c2c8f1a10b009f5ac003dee4e63bb96fde6d6a676
+8e2cdd67ae3971d0b9c00d81ba2c5a0d10fbf378b1d8f531031e60b1ebc11d1a72ad9
+4e
+envelope: 192a6fab69c63ebe8ecf8d70fce467406b1fa3da7a2847cb16da60da572
+a4fcdfcff1705ab162df4f07d7f7c8498233edca7cf428e93be1330b889bc5ff720a2
+055d42ed4c1f8bd770ff14bda8474b1708a08864fe34353a9671f483c53d712d
+handshake_secret: 0f656ede44531c04405642322a69c00ccd1c7134ea6c036d415
+bc4f7e59354805eea819f691f50f7a85a3a98334e4089b297807b0af255aca40d02c5
+6d42da8a
+handshake_encrypt_key: e71a469fd326ce755d71ae9c551c631a3661e275c13cd8
+ed537c30f764a522feeb4533cab1218c421f8115b9d37311fdd436c704ad29c2b36ac
+3c5a2cf25b799
+server_mac_key: 5a31c0956bf4c6d701ccd363a72e3c76aaf40f8ccd038a52f5d7d
+6d93be1ad686a06b805dc36880c0d3892fd0150ecea032f33dc6851726fc87188002a
+9cafc9
+client_mac_key: 3e9ab52762a7f42f1dc2ad251d99a0b16e95cac5720215a79da83
+5fbb46e1874673fddc7ac95469eb2d2f842bc51ac8a481db3a50cc824e08c6c84c496
+50440f
 ~~~
 
 ### Output Values
@@ -3750,42 +3712,42 @@ c4ac72a18caa137a20a1e358405ca8641b95b26cf2f7251716b609e96be79aada81ab
 ~~~
 registration_request: 0399b76973449a299bd2ad6be1ca983c8a1eccc7e05a36c
 a120a30a8807d96bd4b98d076ddbd99e36adfd30b0886fe42f9
-registration_response: 029a796089c10fde2d0cb9ab510d2e47f579fb99b7d3de
-1eeb7e1cf3c2ccf7a8f487e4df863865b24ecf0c7f56d13518c603aa179347ce8e27d
+registration_response: 03110bc47c51a03c5b1c1d6ae58b4dc9a09754f4a50ec4
+7b74413f1d295850251bc9a2d66fe4b0c385ea0d902f09c6bd9503aa179347ce8e27d
 2122b8c2c43315635e5489dfe1a50ab77186e4710cc489638b097b3302b550da04f5d
 76adfa826688
-registration_upload: 02edeaf3593fb8ea4c97adc000da40e64e99e509e88358db
-5a343a0732b5dd3b10beb3b274a0cc0a8ec1bad4802b1732603d327661f234f53c5a1
-eb18c4c6fd95c65ba093889df8de909e0558781d9b888dfa02cd2e201aacdb35f9605
-5f35a318e4c4761ac4dacbe5559dafd082be4f66019665505a2890da67bc6427cd243
-22305f89ced3021509b55f4808916de12f0956e55d9c8fdb621843bcd6d00ac9559f1
-c7db82fd5d3379cff8884143ee0aea336bc918255d7381e2167c826167faeee1a005e
-b02cc0dbf0f65332cc7a4d96a2f
+registration_upload: 03974c19156784d3d4a644e055b9268968f01411b69713d2
+fa8644d4177bc27afb68720cca5bf83a32151028608e7ea44e0e19428a75e642bc27e
+8f0d6f571adafbd711e5ac355a4ad5c6baf7d5c77486914b088af3ffba2d8e558cc04
+72c43d139826506d6db4966174053e47ae1385fe192a6fab69c63ebe8ecf8d70fce46
+7406b1fa3da7a2847cb16da60da572a4fcdfcff1705ab162df4f07d7f7c8498233edc
+a7cf428e93be1330b889bc5ff720a2055d42ed4c1f8bd770ff14bda8474b1708a0886
+4fe34353a9671f483c53d712d
 KE1: 03bb6ba53426efb2307df620440d09e1b503d3d2135dd0c845b59f135ab39bb3
-00aad505641fdbc2725c31d221feb82d9a622742728975878e515c0bc051bbb3aba95
-ae8386b580ee99eedc7539377cfa8000968656c6c6f20626f62038d4077ad0d00842d
+00aad505641fdbc2725c31d221feb82d9a5f6b96ca9564cbcc5faf99dc270aa4315cb
+2400f1d16fdc4c6966464a3587423000968656c6c6f20626f62038d4077ad0d00842d
 0d621527f8225c405f80049752378a4e111b3dcd52857d35f464202f22a17d717d5a3
 be3455a93f9
-KE2: 02d1bbf9b9202a1a6ce683e2d52bbeecc0356409b8a29c35640a95439a7f5b8f
-7eafbb8383bcf97b3eba66198707d20f048c492f60b98778df07701c5902cedfb045c
-2514cfb6abf274c6b6a3a3507c28ad0020bb19f3cf0a1a079da218ef5e177f8468f68
-10bf50a71479c7d154d21df4251989bc0dc04dc6574ceaa1d8c5d08348eba425a74f0
-769c5a00fd84572427e97777327a05c4b38f22350a86c9cd5680b2858b16990ac9d05
-ab5b0e76b140bd1791a760133db0b9f9d107feb4149a3bdaf0bab01340ca3311a1a1d
-cc4b3f691313990723163f9a19ecea4712fd3423403d6c0f702ef8774fb1f10b8e2ae
-5da6f71992f2b7a760f370b21bac5c101566a3ad03ed7dcbc8318a00c1f42c2b75682
-d0beb532636c2e03c524bb5bf5af735812003bdc0d076ca0dc9aa7ea97273c7088f78
-000fc4444047532a7a6c8ade4d6f21f127cb6de9b84c8ebb7433ebad73f548a5d37d2
-69d8ec1f027f83a3190625d0218752d6ac94ee1a1ab0b0db444af249016178edd2444
-d6bb7b64869ea43200a72463
-KE3: 8d13ea60cdef42dfc593409d2e23c4ce6fd67ee5df9d3f58527cd112226b4ff9
-94833136f5889baabbbdf6dc9cd2351311689ae36a22e179bdd2428bc2a52222
-export_key: 2024bc7fcf1ea9a122cb00e3054a6ab3170716848ba23974f0f09b1dc
-9a853e08be27353027222511db107fa727ca87b399bd4da5083fdbd80beb1affe72e7
-a2
-session_key: 9f4c1db650b3f25e646d69fc93c1ef179e74a12689121f57aaaa6a84
-c2d8a11ea8148827ac6023f026de00523fff2026b41b4445fa514569b64e02bfae8cf
-338
+KE2: 02227706f534072c3f226d7a4966d269ae144053fd2f742872ca735a18c6f7a8
+94970f8f7e7994c48b5560d052cd031a811c28eee4dc5a8aa0672ad2c1e2b44e76eff
+34204c853d6aa871b6cb0301a6131803b5593566ff7e6f6d1bcf66fcd2b9434da46f1
+22c48ad1b572e429a42f52cd99efa0c68317f1388ae7e4768f51d5a9344c9b666a957
+cb423499e23d608f64340e5fdcdd17b4f57c31c25ea7622704167c1d48f22d2850595
+9693695dfee8448919232ca16891a652012310445b1c898adcb61a45f6fc52ba43728
+658b42933a9e081b2db2680340a394af4260aadce74746e77bed504789e01eea8d707
+2c42993cc441ac772b48bee863bdf3c847418503ed7dcbc8318a00c1f42c2b75682d0
+beb532636c2e03c524bb5bf5af735812003bdc0d076ca0dc9aa7ea97273c7088f7800
+0f94775571e22b0853586ac799accd84ad2d6df2564f863174b5b1ffedee9f1da97a7
+37bf07d79b6b4fe70ae2d2fc5564fb1eeeefa77e16e79b742dcf9ac8a522c32b60d50
+0e8b0cb8b4f0fba2fc98d1
+KE3: b3ac230466de10dc41d54c81388d1f9838f51ac0f4fd5ce4aee615abf2062a06
+8d28df47d2e23b73a8887a1a92f9a231b987adf61c3bb7dfc60fa61fcd9b5c9d
+export_key: 5714a0cf6cc025b58cab8040a7bb98f4385005b541ed69f81eb6a785c
+0fc0511c04361960cad7d59d500853d83814680b7d132284c63e7f989278c971b3666
+37
+session_key: 29cbed3b09b6698d3200af71141f41eae98204871b6aba32a6ee251b
+5a717ee0e7357cbc953a4cc84527692cd5c6b55eed0efd4c58bbbbab96f918fa86513
+0af
 ~~~
 
 ## OPAQUE-3DH Test Vector 16
@@ -3814,27 +3776,25 @@ Nok: 48
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: f0b95a14b47b905d6cd52f098d0d3a67aff33478422fbfe9e11a94cf81
-3462aebd29e9fc95bbe5435cd38a02df86bb078ed177cf6a1ba1edbc8938c218edf68
-b
+oprf_seed: c499773ddae9c66609907aac17deb5a49151d1e35eb3ace672d9a14099
+35a0a3c5cd8a3f2d62c0aeeb129a9f6f23ca047fcd174d024a3e09bfee5d289e3e7ae
+7
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 0c51a4308e8a66c975ebb84dbdb698c5e8c4472c611d79dc7bc0c
-461c20cb06d
-masking_nonce: ed0f3a3a52eb00cdc4f32cd7c10c7c90c235a0bbd834c75c6e733b
-f3c7118217
-client_public_key: 038f06a17eb11f657cbe57c009e104eb3a5725e4ca0b17ffbf
-6803a3727a25795781ae8eb4dada7846ce5bf0e21f4e58ce
+envelope_nonce: b44c5f1556ef94eb39e98a4bd6c577d1a358ef47499cbd04afe01
+07d5b8f735d
+masking_nonce: 37536f84cf5221ee0b12c2210796863298bb5f5e514eca7218c813
+7cf3667e93
 server_private_key: c6c4dfa3a822d8f670e5aa46e733baaec9f93d5e14ad9ab99
 dfcbcb2ad157a8aef1f3fec3f24bbc392c9755271e8792c
 server_public_key: 028cde89b6908e81425fa8a597e3103021475346a146b1f1dd
 ab47f09c76ed3b78a251cf390bdc086924bebd471063abec
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: bc245f4410d5f7f904d2900b862bc88d15fbc31e65d711baf4da7d8
-c5fd44d45
-client_nonce: 381c83e3bc66d454d665b9783ac46ec8933b9d80d3bd0284e78650f
-1c0369c92
+server_nonce: 2e93f8e38ac1f0b6f63ee3fd49c9f9fc5a6dd609f99fa882035a719
+922606c94
+client_nonce: da20da83714ffa4374cebbf80a1784aa99932be7e28f245c8082964
+d463b7307
 server_keyshare: 030d570f50898367457561b3a5c707852633b4f9404cc45b4058
 f52f5da1ebf67cb737bfe5c272bfeb65efe6bf7255116f
 client_keyshare: 0246ba00038cfa5105659e8c250d10618a2c7f9d09d174663bc5
@@ -3847,33 +3807,35 @@ blind_registration: a1bde3dbb840b3924c5ceba5bdb181a51679ed98960e4cee2
 7f330d5d3dccebf40596dc7e8b057938841423f8b336f13
 blind_login: 6f1aa3fb05702631e213b4bbbe8fe5176fff25526ed5b1772ba61649
 52c3c2da8017fdf337f81f5cbd0ec805923a3360
-oprf_key: 94d29ea72cc1ce16bcd67dabefcc1ac0c57a29bef4968018317a24f96c0
-3a6bc96bd576003bba8bd433e3506140d0b84
+oprf_key: ec0719f55f9c6cf83a522edbe9e77ea6e5ecf05aa47b61dbf557bf68e32
+750be2fee9ec4af77789fcbd36b8eb184ad8a
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: c14f6f97d2662fed50057bbca9bf34bc1b7acff3ad983bd74fc169d4b02
-7b51a3afdcdef99a2f263cf6e19467f3b0305b87cfae3e9e9b6d090b5aa656177b8ef
-random_pwd: 6343bdd53cc3cc41dbe3fd528847b0de3ec0d4f59d4c0b49e9590f484
-8c720ceca2771fabc5f4f4d7f55f23182f40b21838400bb4943e7151391fe7312e415
-7c
-envelope: 010c51a4308e8a66c975ebb84dbdb698c5e8c4472c611d79dc7bc0c461c
-20cb06d6d55b017826bce8540a03603f6520da1078d0619988329c7b01f15e90930eb
-41dd59a73bc46740ad92c33fef245d6241777f045919d9f8c83a0970c0670bfc22
-handshake_secret: 39fa743ddd5958e7e6a6777977cb6fc9c9098482ec5af2f1f6e
-116be359beb85aa29070a0e7ee98c5b11c561101a706bf78338999b9a8e5bf17d9059
-b9c9c05f
-handshake_encrypt_key: 4fa0c7ff76418bd75e71b044102b54afeb98cc686773f0
-53c1118fe0ccbeb25eff6be2b14bb3227fa6396de088ca3d2ef9324f8b3ae92a619ae
-96aa6860f769f
-server_mac_key: d64a5d355f575899e4f01558f0abb7f300891c2c514605c238473
-e4724c297e2edce3a32cb8495dfc90ac5cd3594d44620b35571beeafdd4cc1761c20b
-eb38cb
-client_mac_key: e368ef9cfdbd2bf0c701f0e7ae9b72555a9d69e376d77f0db37a8
-c10f637899177c424646141c00d34f4d4d31fc04401a53122515f2182c71971af8adc
-e4f316
+client_public_key: 0336614c5bace0cf9af6f26927f1faaf80a0d25bab4900f09a
+5184fc0ca1237a930cadf2d8a8067f5aafb543458d0624a2
+auth_key: d1c8604f6640f866faa42feebeeb6cbdf8b71e25cfb557d3e620bd7c9c6
+fbbdf339c59d4a79d3933f1e9717de75fe1c2826b824b4f9995ada82465fa5566e739
+random_pwd: 62e80f1d423b9e205c0c4a50ba82acbb47ceda91fdf8f393022408e3b
+0ed5ad1898f1f4adeae735e5a604655ea5e54c6ee9d101ba5092178c6e4bfac1b3f6a
+d7
+envelope: b44c5f1556ef94eb39e98a4bd6c577d1a358ef47499cbd04afe0107d5b8
+f735de2b05e4e65e980472024f5eb21610e351e0b93ebd53f568952df8d0fc46b3930
+4d8325e07e015e837075069e688f992dc18d5fc6fc9c319b46e045a2cf14c94d
+handshake_secret: 1a2476123213277fe45816a382f3778c43b8708c72b0d484612
+2f7253709f00a0f8ad5a09ab0a49c00226e57672773952503d1cb4a1f66c80cabaf27
+7f942c88
+handshake_encrypt_key: edb125ac6d4eb2196018a14c48b414bca4c81770ab1ba3
+30797996541b7fc69a58972d4476b5cebcd8ea740c444928815655f302cc1ca7f2659
+735a9167bd000
+server_mac_key: 3cf11d42670c7501d736f068150b1437201a946ec4d2984134973
+ccb115b22e77e540a18dc16503bcad6481aa094138c1608aeced0c54e098357b691ce
+4a67ed
+client_mac_key: 0211085d242e9aea094bbf425fad1ab84a1c8de569b1d4d3655ed
+5ec30b5d13d58822737c6c26757f3931b91883e80d90e19320a70c94acec2c2300d3b
+50d13a
 ~~~
 
 ### Output Values
@@ -3881,42 +3843,42 @@ e4f316
 ~~~
 registration_request: 03f8569ce50a023ad6518281322157e79e1207a96bb9214
 95ccde8cf48eaf27895245a7b8f4b3b5c43ba54963a19cc488e
-registration_response: 024a14c0bf76525a53aee9386b7e61802892225174b7fc
-401a37d21c99d390d64fa1c8c7a4be79eb28798863cbe7645ad7028cde89b6908e814
+registration_response: 036ca8729b0e16cab3d51bb3fe7306bb42b84a62306303
+50bb3a79ad9d7f4e323daaf64412af306b7beacfe375cd33ef93028cde89b6908e814
 25fa8a597e3103021475346a146b1f1ddab47f09c76ed3b78a251cf390bdc086924be
 bd471063abec
-registration_upload: 038f06a17eb11f657cbe57c009e104eb3a5725e4ca0b17ff
-bf6803a3727a25795781ae8eb4dada7846ce5bf0e21f4e58ce33fadec85b9e88214c9
-b4cbcfa3ad77dbf8d4e13e3764324573bca4e8d0d88de9551c5f34a6cdda34c7925f2
-826d6450c0d0d45858d43785e2c107b9694a3971010c51a4308e8a66c975ebb84dbdb
-698c5e8c4472c611d79dc7bc0c461c20cb06d6d55b017826bce8540a03603f6520da1
-078d0619988329c7b01f15e90930eb41dd59a73bc46740ad92c33fef245d6241777f0
-45919d9f8c83a0970c0670bfc22
+registration_upload: 0336614c5bace0cf9af6f26927f1faaf80a0d25bab4900f0
+9a5184fc0ca1237a930cadf2d8a8067f5aafb543458d0624a2f74bc0626af89763a22
+8dfdbff05ed82dd10778f5dcb1067847508ed61888ce17338a0bd0c3af5a410c0e4bd
+25b8c0388b718f8dd194a7a39e83dd454d7da809b44c5f1556ef94eb39e98a4bd6c57
+7d1a358ef47499cbd04afe0107d5b8f735de2b05e4e65e980472024f5eb21610e351e
+0b93ebd53f568952df8d0fc46b39304d8325e07e015e837075069e688f992dc18d5fc
+6fc9c319b46e045a2cf14c94d
 KE1: 0255b2107d1a2192eb54c25c98bb7a95e581d7d23a38e1fceac9f8ce99f568a4
-fad6c9bbc5abe4ff08f8b22e31bdfd6971381c83e3bc66d454d665b9783ac46ec8933
-b9d80d3bd0284e78650f1c0369c92000968656c6c6f20626f620246ba00038cfa5105
+fad6c9bbc5abe4ff08f8b22e31bdfd6971da20da83714ffa4374cebbf80a1784aa999
+32be7e28f245c8082964d463b7307000968656c6c6f20626f620246ba00038cfa5105
 659e8c250d10618a2c7f9d09d174663bc5689e4778f7054534d9a4200a447510023af
 3ad3c61ece7
-KE2: 023e5b13621deb51f74409b3e9ca9b62437be5fb8c8f5bb43a4926acb0da6806
-92e8b2c066cf4e39b6880af63e7ec304e8ed0f3a3a52eb00cdc4f32cd7c10c7c90c23
-5a0bbd834c75c6e733bf3c7118217d7082918f06b0aef647d521794abf8cb76ae8894
-7c9bb955ffc45b5637156108ac68aa04d7498c1f0e76eb2aa20acec8904baea3613b2
-fd491f1396f951c463d57c812f58486ef35325a7956191c1270c3831de1bb1b2e8276
-11d2dac1b441cbb4a62f1fd71f5b87f64359b18456bfebb3406a666ef6f3348b24785
-47830beb41a1c8a5c508390b7cc2037f2ac81a28f4eadbc245f4410d5f7f904d2900b
-862bc88d15fbc31e65d711baf4da7d8c5fd44d45030d570f50898367457561b3a5c70
-7852633b4f9404cc45b4058f52f5da1ebf67cb737bfe5c272bfeb65efe6bf7255116f
-000f7628df5446de8fbc5e2af7d1e6e15483894feecf1042861c52cf0ab3a84a56447
-1e5ed492b56f74655f36314c2f3e46e08fbd3d2c20db31eb613f0bd6f1f0be6648129
-36e54de8cdccbbad0e010d67
-KE3: fe0f274aa2e1fb7adda1e1413e1e47a2afde94e48158e5fa8f3ebdf2e14aa598
-e9f7a5d874a97877ca25e339a64b1232b1f67fc17201b569e9379f4e36af6738
-export_key: c9af34d414bdfd87a64690de8ca8f8ea5bac2c5ec05dfcec336200cf4
-c8c18687525001dc5f64f807b2a21df1dc1ab73c524f2931272246d0c26417b0ee0b3
-58
-session_key: ca9a9af4db642c7f6a4b4a008df89050c1ade5c16eb878be6c20378b
-0c0696e41d802fd481686b8ed53ee30327d8d17772fd9737d20b3354eb0833539c7ed
-d21
+KE2: 024a3f95e97f84cf2e21563ee0ef2b4a8841925eeaf2aa8667b7d31e921aceec
+a838623979c07b52c3d0305beffe631ae937536f84cf5221ee0b12c2210796863298b
+b5f5e514eca7218c8137cf3667e934c08b6759f9ecc43f94a196a0a52c791f957d45d
+af1dba738ed25ff82e16149247f68b2f91e4c7471b0587a0fb91c813bb8dad4625ab3
+6e0972d46fd34983fe20e0c3142975db3af41339b60c1965818f1d6300a0aa5ea73ac
+88d9c67eb02f7e6b49c7ee14b67a5b11b5dd0de041b1ce40447576712da7c4b72908f
+456cc9728f041ab1bcd972148556b46b023161f9a762e93f8e38ac1f0b6f63ee3fd49
+c9f9fc5a6dd609f99fa882035a719922606c94030d570f50898367457561b3a5c7078
+52633b4f9404cc45b4058f52f5da1ebf67cb737bfe5c272bfeb65efe6bf7255116f00
+0f139c9042240ed567fdd75f7f71ff8c7fd1aba880259e15e7beb67bd63e195923aad
+22365d60cbcc383cf3549a7a238fb0b8c9182131bbac51e6aba37f0bfed40d672236e
+878864713cc227baa61c55
+KE3: 0a9dc8a3dbcef4fd8ca5d9d41c108cf32c561ffc934d1defc696e5ca5dceaba1
+361aea422e78e8dad1c75ae853abdceaf44faa14d985e8c676fef8435f5247bc
+export_key: cf74b938ba7138f8b2a3c063afb68e19843c52ef212f2d047a24294fe
+f1c6be91ffebf0d292feed63c09277262c5dbd8b2cff78fd0baaf4ea807df5d06a1d1
+64
+session_key: 29410bef8ffaab26a42e1219960eccaec1451d2449753c191f5f1cdf
+05dd86f0f602e25ec035528494bff481e4e69dd58682afe69b50f9b6541aa67e0d3bb
+b09
 ~~~
 
 ## OPAQUE-3DH Test Vector 17
@@ -3943,18 +3905,15 @@ Nok: 66
 ### Input Values
 
 ~~~
-oprf_seed: aa27cacbfcc9c802558a1f285d354012fe492932a1584a12f145e3b330
-85d2bbfcfae5a2b6460ce6bc0fa16b60a56c950465401bc8182ef9b9fbc8405e0a8f0
-3
+oprf_seed: 305a9094e237708c3e47d39c713f3aa2f61d07ed54d00393faf9fdaa0e
+2c71cd98251699c38a548699423e5a7e8e39f1df55e48923c83ec0e9e53a3812c2908
+a
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d7327c552dc88d381030ff59d4627ff1c656e26654646fd555f82
-eaba0416854
-masking_nonce: 86664427c85e97b60b12bcf9b6b7ef8beedaf7b0a15289c5360036
-d99a5b7cb2
-client_public_key: 0301ce558f96c4a6dc3cee02d4d1fb2731ec3d79e26277210d
-5979add9cc0fcc319e06fb805de58d0110c5cfa3f852fb0565617ccac1e674a014eea
-7b2a62d41fdc580
+envelope_nonce: cdd24865ce49f1dbbe114898aa4d7395874a38f7a80a889f25bfe
+005cbd593a2
+masking_nonce: 979242b7ea492bd5c6a43a4c1f33e388d4126501ce096e808384c2
+b56e578107
 server_private_key: 00648b7498e2122a7a6033b6261a1696a772404fce4089c8f
 e443c9749d5cc3851c9b2766e9d2dc8026da0b90d9398e669221297e75bfdea0b8c6b
 f74fcb24894335
@@ -3963,10 +3922,10 @@ bdcde40d8a20b470c62e20ec1f86edfdc571fa90fc6b04d78a621a96676570969ee2c
 b6461e06e2cb61e
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: fe7f22c8d8ed03a6e760c01e0c2304792e47d8b521e1f5c840946b5
-31d2fc728
-client_nonce: 6891dd93df58d453428a7b999e90e4bcc80bdae720b39cfaf5155fc
-716695907
+server_nonce: b6e689634df73bf6149071db20a5b8f942758fba53e066311f14d6c
+7af7cc749
+client_nonce: b4e380951f00e5a6880972766649567141fcbdacbd212888b193a07
+f053a2446
 server_keyshare: 02016c63c8e2b3feac6366e3dcf752a8c2a287c1fb4d648aedba
 86aa0ee07d2b1133d3282584d7c66357bfcab76526f184f7ff9af506f9eec01645b99
 b6918bdda600c
@@ -3985,34 +3944,37 @@ b076cffe7d179d692a05b0c2210b6c008c1062c1e54514ef654eefc0519dd1867571c
 blind_login: 01448da2c02dab317d5175d73a1ff9d62286602e87d57a53a1c70f44
 466b3861be4f8ef48c2bb1aec2e478e341c467fd4a2638aeca63ed6c4bc48d008bca3
 f36f044
-oprf_key: 00dbed3eb63db33f89e7a317f022bd6e1b253a50912dcb744d8d1d5a4a0
-4d316bcde755198a5a0e83325fd70a2d4bc185b23d3ffbfaf87c037efb785d38b9e87
-bba6
+oprf_key: 0175846a1174e0e34a7ff324c455b2fe4d6f21c3faf84e97a107d1058cb
+7a8460507f76428024a75b1eb1181003b808176c6e3fa01508a06c48505328f7c8bce
+9461
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: c73f0753c8f142e97a0d55ffe7e88578745de97b33c8496b61678b7c246
-bd19452ba277a04d8b245cae7b263292de6029227cd7788c9306dab00fd228874e606
-random_pwd: e1a6fe9125e55cbd5f6e1e82867486d27d6b9ee70ab40fb2b126f8e62
-4459baa43b071760bb2218311114e6689c1a55c593caf4eaf71bb065e9a7bedba43a1
-8a
-envelope: 01d7327c552dc88d381030ff59d4627ff1c656e26654646fd555f82eaba
-0416854e2b4b4ed766a41334bea118dc6e72df9db77b3c0c2152d505af21c44cd33ba
-c225a684ec5b6a801e1c6e0320d51e20931c359dedc384094d6d2a392d10bcd031
-handshake_secret: db25f0aea030b62fd2513e42e584d0b4d2d673784b24ac58830
-11e60642d60835d45a27c01313970832547db9cf4417ea6c9baf7ece7f0fa2ea0bd2d
-34c4646d
-handshake_encrypt_key: 26803742fb4d5f93a12a2fb58cd733d82c49f3ab78aaac
-317651a6731917f8bd7ed79059951999446a8967c8e79fb92c59a8365ff99856f3a0f
-c6fd76e5e8eea
-server_mac_key: a6e99863a91fac997371273110a92f6ea9cd55c74b58e1bab89de
-e5bae6ef4bd0587b667f64c4e5c6a851991e60014798b3a15f0379c4aebd086963a16
-76dcc1
-client_mac_key: 677c5cf58c90aef9a99418803af5c04ffabbe7a12d54659d1bac4
-85f462a7623a5721024c161bfbae448b3b22162e66d12302ad8f1ab84df54540082f3
-8b59ea
+client_public_key: 0201e31607c0215ca990ec42aa07e449c869c8f67acd2c2a12
+987a50356d0fb0ee19867d6d00c8e188a96a196c59f4a3d0976f1e995f15bf41a824c
+9011365b993cd76
+auth_key: 72526b0a1e0beab4e0c17beff6d4f6a42946b6b6b820d03b440a2725b6e
+f28462079da9629dd353fedb75a9774122db8259690dd692d034786e58e3dc202189a
+random_pwd: 473279eb11dc3754a85460851fdba18ec5b619d83e2de4f9be4d00bce
+93a14b513ffcff3aea4c63094287b73f7d753920ccb05508b1d3cb930eaf397e8bfae
+44
+envelope: cdd24865ce49f1dbbe114898aa4d7395874a38f7a80a889f25bfe005cbd
+593a208c711b4559cded535a154ef8be0d560d3f59e2b583aa1e24f48c76a190b240c
+4cb504750d40b0ddc6ba1eeaeb1472fe027ff45cb61a4dc2d50202cfd4aa21c8
+handshake_secret: e28dd47fbb956e6ab7a94ba2332c6f6e43da77471867698e815
+8d9c6f8d7325cb5ddd6db28d62f26c8227cc809080bad6cf5e0cfc4269bf4972f0e88
+52961022
+handshake_encrypt_key: 475d94e2db45738f58a1d5c61057329e187b8a92020b5b
+81e0ae5a74da79fee6e95f320b0063e22833a86aa7869b44d0ab495b44fbaacfc8890
+5a7b43cfa5466
+server_mac_key: 47181b87ef2f454ed5850e33a2612ebf04867c5c7cc279396e359
+f527551b27f9f9ba51dcca0a9a5c84b4f13d720addbd879a60b6df6085ed5814dbe2c
+97ca3f
+client_mac_key: b338700a083d6d2da9a769c435f5dd4f75c9b4d6886d25ae97c55
+c1534a2bf40f35ddf02a7622fdf4415049a6c1618e9f19cfa5a4ade6c5009b7b4d9f2
+40cef3
 ~~~
 
 ### Output Values
@@ -4021,45 +3983,45 @@ client_mac_key: 677c5cf58c90aef9a99418803af5c04ffabbe7a12d54659d1bac4
 registration_request: 03019f508a03d6d883f28a0afa477eac4dfad2ae9052a82
 ef5736b24eab85dfc40309c5d205bb94b9a6697ac7b97b9b63e057f163905ec396db8
 fe250544bd94e90c13
-registration_response: 0200816d6f08c42dc383fef49e40922bfe0ee2e9a8cea1
-497495b1177ba4d6acc19c80f206a1aafff3851436ab9bab1b8c2b2a09ba63714451d
-24e1ec319d1543e58dd0200be1ff2041b4f0f5a8c110dfce0f002e6bcfc8fb4a36b4f
+registration_response: 0301d2cc1df63cbbd9a66ae686296272c56a2739acf8c9
+4ac402b6856fdecf8e39b60a480b9426a25039b4f61104a9a0887392d333a38235ea4
+56d6aed3a231f27fb540200be1ff2041b4f0f5a8c110dfce0f002e6bcfc8fb4a36b4f
 bdcde40d8a20b470c62e20ec1f86edfdc571fa90fc6b04d78a621a96676570969ee2c
 b6461e06e2cb61e
-registration_upload: 0301ce558f96c4a6dc3cee02d4d1fb2731ec3d79e2627721
-0d5979add9cc0fcc319e06fb805de58d0110c5cfa3f852fb0565617ccac1e674a014e
-ea7b2a62d41fdc58051c6eff7bb1c117d8c87caa850540a037bd4b2049c0700e5320b
-77beb68e82fcdf0b47375d5632a0feaf18b1f1d2d87c5218c9d0ccc83fd358232eb13
-5dfea2701d7327c552dc88d381030ff59d4627ff1c656e26654646fd555f82eaba041
-6854e2b4b4ed766a41334bea118dc6e72df9db77b3c0c2152d505af21c44cd33bac22
-5a684ec5b6a801e1c6e0320d51e20931c359dedc384094d6d2a392d10bcd031
+registration_upload: 0201e31607c0215ca990ec42aa07e449c869c8f67acd2c2a
+12987a50356d0fb0ee19867d6d00c8e188a96a196c59f4a3d0976f1e995f15bf41a82
+4c9011365b993cd7617ada4416aad2acca6216b9507aad444524d018caa68c96d4186
+85a46f42a06ff75635510901d17b5580b51655cd24bb39b0a78e93f751d6704ff4617
+e455e86cdd24865ce49f1dbbe114898aa4d7395874a38f7a80a889f25bfe005cbd593
+a208c711b4559cded535a154ef8be0d560d3f59e2b583aa1e24f48c76a190b240c4cb
+504750d40b0ddc6ba1eeaeb1472fe027ff45cb61a4dc2d50202cfd4aa21c8
 KE1: 0200001c8b7065b1f65b9e87150b85b32e6a13738dfcfe40a947a3868b0504a9
 c0b8f2d2f8261af3c4507f583ac24caee8981b3c2e7c6a81192d383aec9fb93e64203
-56891dd93df58d453428a7b999e90e4bcc80bdae720b39cfaf5155fc7166959070009
+5b4e380951f00e5a6880972766649567141fcbdacbd212888b193a07f053a24460009
 68656c6c6f20626f62030187b0369b07402c41744c664239d0f9fad568f0ea5c13e4e
 4d80c770fda054cca7fdebd3f91a803a3efe7353969e388623c224a86cc32575ef8cd
 5e0cdc3c467343
-KE2: 030131be8801d8737a75bd2cd7d234d7a74502f73ea2e121aea7e3d2097a8f10
-a36b25975b28a4cfcc56f2c446c4ad28f911d421b360dcd594f2d16005671c3475f29
-586664427c85e97b60b12bcf9b6b7ef8beedaf7b0a15289c5360036d99a5b7cb2d720
-73a2c817c526dc10ca85bfd3c585fa9c2146e81b1744cc32ea808f40e9e28777416e1
-eaf8393910dc56869a79ab8e37ea3cd58fe3d299f4dcd56cb7518c004a79d89eb455b
-23c3121cb6be14e4afd58bbb239bbcd91b2da93c436e9da47a924afe84f676dd749c6
-3e83bfa6176ae6ce72b7aec1ff8ce3c4472f6e491d670d4a7e849756aac8a48bb78ef
-3413b119872c79d2dcd3d1b94027360bf8abe0b601b04c59fe7f22c8d8ed03a6e760c
-01e0c2304792e47d8b521e1f5c840946b531d2fc72802016c63c8e2b3feac6366e3dc
-f752a8c2a287c1fb4d648aedba86aa0ee07d2b1133d3282584d7c66357bfcab76526f
-184f7ff9af506f9eec01645b99b6918bdda600c000f6c8d9c20948702a5f36b2c11df
-7d282ce80bc3ba2a667431d0c6d5772f2845e896cfa466dc0f8795c6fc929456d1499
-56b4591ad72c4ef4cc2fe61ee1a5b3c2f58c5bff67ebaeb04a3a3b73261b75d
-KE3: 82a35d6277aec37a0c87bfa4542cbcc14190571794589b863e81b8175e881c9c
-0ed26b66b3dc644f7a86d9e1844ce79d26203f74070060e79a65dc8ff989e18a
-export_key: fc198530a52b9c9f3d3ce7e01d2a9834737239e9a35e68ac0a88ded03
-6260a241971b97a79e0b0d4efb631b3a9593a615a719393062e73eeeaddbd2a1819c4
-4a
-session_key: cfa5bc203b01e66e74f0d451925d108ccd016c8c43340b31c9ce5425
-d734c2403f7d9e0342885631910bfbed9c749b3910f690b96d5289914528bc2ad7bdb
-197
+KE2: 020131009ac300ecf143c00834e2ceea178df9304e99d8771cd6bedd8f8a39b9
+11fdf97db2ad7479bb5e760810ae2bc43671c225a9c92a58d503ce61a655e07ebc4fe
+3979242b7ea492bd5c6a43a4c1f33e388d4126501ce096e808384c2b56e578107bf53
+98e4e94fed46c63b64b3843cb598d68114c0b949ac8e65f3eb0d959333833b5456bac
+e2209b10465e59a8fe86f48e7e6ebe7e8a53e16e018a11807563ab80405af11f96194
+62cc3ac8e2b736ac896c7aa6fe833f0f30c3af897aa71e474593417a2bc44dfa3163d
+2a443aa2546a422f7aa56a63d66392d5a37e78aed357f63ee3fbd052624b890718645
+a54e5f076beb699ea178757a72a6c43489038e800c0f5fb6e689634df73bf6149071d
+b20a5b8f942758fba53e066311f14d6c7af7cc74902016c63c8e2b3feac6366e3dcf7
+52a8c2a287c1fb4d648aedba86aa0ee07d2b1133d3282584d7c66357bfcab76526f18
+4f7ff9af506f9eec01645b99b6918bdda600c000f2207b5bbaba357b688fafcb028b6
+e73d2c1a285d576bcb84d308b0ca8bad892fa59f42ad54a3663a7a210d2c13976b622
+807a8c50173680b2075aa0b08c6b5ab9f2978561358bcadd0f87d391811e0
+KE3: afb54cab9cd81e4d939d71ec50e2d76694424e20cf7fef4db11f552a05074749
+6c0736298d7fd02a707a31ab84894b59dbdf86429d53e5bb5b9f3531277467fd
+export_key: 9023796f2dbfc4230f83411efdfc23b2842c955363d4af91223dc3325
+8e601e87b1d1eab0c6e90674b7ece8964ed6b2df5bebaeb233c443ccfe7c1ce0b4777
+97
+session_key: af94f0f2c0af8eb35155a80b22086d46b6d701108fce8f7c228ef3f1
+ab9c78e20b40c4f7216429fe9209a0a2f4e18860003b631dc65da19965d963a0cbc38
+b94
 ~~~
 
 ## OPAQUE-3DH Test Vector 18
@@ -4087,18 +4049,15 @@ Nok: 66
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 066e4b7a2d37327f95809fc2355eabda3a5c1dbc232c2387d365f4a9d1
-3b877abd36cea577eee9446736c839bb7cae1be923873137c354ac5d11a8bdfb5798f
-5
+oprf_seed: d99e699de0e4d1c9b6ae194712f6534fe91a80aa3fa1cccc3464dc5d9b
+93c7c94750c48364e221c8bb4d554a197ef7a93076c526df183dca28a251cd27bb317
+3
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 0c7677b8e0c0b4f066cd8e29e6bd2c4157f7b9e615e1347bc6a16
-929dce0379b
-masking_nonce: 706d029351382e0ea2a5c5aaddeffd8961fce0e68f2f9c4cc5f58e
-0f16f1c6af
-client_public_key: 03005bf295da011da57f319d97d38c8184ee18b50f471bc6b3
-2ba69c6c509f302879f6ee21d71591dc461abb7d6ab61aa820c23be2e9b5e16e45d6d
-85294ea2c3d11f5
+envelope_nonce: 0479a3b6102f8c32220c7c210959f6a9663572f47bf194fbba065
+8fb02739767
+masking_nonce: 85e13e64d885c7f538cb210a1a0ca6d97535a5a5ad65a0878f0ccc
+45e09b8639
 server_private_key: 01e58f3492c6da02dd7387bd1dc40065b23155fcc16e56ed3
 586c3c2d80245859235d872c5266668cd562a2bd7f34654235b1b9961485ae246256d
 f3935910d36507
@@ -4107,10 +4066,10 @@ server_public_key: 03000ac6fbea5abad2eff1e768bd39834b82166c06aa6021ee
 f41c5c248574db8
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 86805ba2f30e7d6017dae082f902d37323713e1dfed69da9ab30239
-bf126700e
-client_nonce: 88076cecf7314883a85dc82c0e542e0778652aad86e1ea5a02f1607
-62f49ce97
+server_nonce: fe5f8b94d1a68532e4f396faddd2ad257888fcd047eb81e9c1e72b9
+9939d9bab
+client_nonce: eaaecc78985ac4f83a8c5704a6ee4364d21843759fa5a2fdb1caf2b
+4076e6c8b
 server_keyshare: 03015da5c9a33d3168383837d8d2ae4d00f39a8a631cd126b4dc
 1b01f06c32ac86ce29440df0e45650879f65ad94a3d752f265254f7d5861046cc0165
 67f9e36b873d0
@@ -4129,34 +4088,37 @@ abccec2627d4006b698d9ba57f6e207c989448d39fe0431e60c9a9a4110596d5a16fa
 blind_login: 01e8d9b4f7c7beb31e37008156656c19382a56cc79b9aeeed48a6f9a
 8fb57640c3bff88d3ab3cc52ef969f02beaba2c6e32c2f37baaf4ee9c691833dc081e
 2a0fb70
-oprf_key: 01b5d36001c4112711d36d934a0bdd66eb99d1fef7046cb6846aae35817
-8c1c681d9a9448c0b2dc94d3ab167d3c0f21c9f62d6194ef773bd093e7ad3cc37bef0
-36b1
+oprf_key: 012a7f58149cf1080f4b9572ce6ec33e31e1e6520031e4477347a3bd3c6
+909b13e1662c472dc3bacf03bbbaf4e231eb53cbce043d79fce0fe7e64036d14d9740
+14a1
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: ccaa1b426185b2c8caa1abeb1e90019be77ee150dea243e9e79ad934af1
-46520812888f727c4400978c94c26523db5c63acba5e70e0a10b79f47b201e903f7c0
-random_pwd: 6b2e45076230b7a7d76beee657aa94ba6f7ef11ddd07b4de3c881011a
-1863b4e5d33b2094b4269f533150cb17b8c8d719ccb03e80851959b67bf3079b1a24f
-85
-envelope: 010c7677b8e0c0b4f066cd8e29e6bd2c4157f7b9e615e1347bc6a16929d
-ce0379bd3f238cff8da664e16bdf478faf68ad432e06d6dd9adb44b04c2c9e5fc71e5
-52e2e61ae7ba076c05efb0596e8eaa65e1d6a1bfe199b9824ed53b70383af28931
-handshake_secret: 5bc66b3b0f51b8078d8d4cd624b130ced75e6c613a8118491df
-6f57fc4a7ef3a3b05c2b626bb5e573eb10ec502e1e5aa6d65b2e3748c723f6573b39d
-8e5aeba8
-handshake_encrypt_key: 50c0534fa06cea2e38f4065d7e57938867edf47467471e
-88d2cdb3258ba06a3a1f84817bc870a4a10c06d41339bc3bf8750cdb7738d1abb14fe
-4329a900b6078
-server_mac_key: 9ace47eb87022db3c8b8a57c4ec5c619d0eaed1cb62533f44e5f5
-dd8e523e0a96578ca1471abd692de9bff99e5086a789a5612267987277519e5d72ff7
-c4604a
-client_mac_key: cf77e227546edfc70423910ddbd25e358817c59855f2a51b49cc6
-d5a76c9641e954187310b073b8d0f1f701922f6c65657efb206547159d4b1c6662e23
-f22f19
+client_public_key: 0301573cb98db425459d3afd17f3f0725b5e6387e4f481e916
+07d3ea2cf3103928ebe1136759a5dbdfaa36efa490e0a3d6e864efb852ab00f82e1ec
+93449b2b8eb6612
+auth_key: c30258adb8ebd21e7c46622dbc0a039c6933e29eed10a35d812cfa0a5d8
+0cf7ff511922b1d669531b9fbf5cf94f1e80b45342b1b0ead11b6afd997a508e17a8c
+random_pwd: 0be38c86dbe34895d337ff99e42e3cd8d5971be691fdb53ea62cf5680
+0be7691f1b9d9bd22a96179840169dc6ac50c9b0e5d132d2a32a0658887bf5a4cabca
+04
+envelope: 0479a3b6102f8c32220c7c210959f6a9663572f47bf194fbba0658fb027
+3976749eda3e9ebf9c695e551a995768a1b7adaeb6524ac720db1e845c42ee5e46abe
+081e52ee6b2498dcb0ae9d686eabb9b95ca7fca3335af3ca213c383f4f2c53aa
+handshake_secret: 5a73f52e1768014b84618b1cef7ae717acff1f8409c988c8f97
+acd18a4ca2b23530f103512b1e0eb8c9a7aac812a2627018466c9291e8a7d0b65512a
+9df10a5d
+handshake_encrypt_key: 0a7cf65fb2050ccad1a5025b76d799aedb4104a03c2a6e
+ecaa869d4df64969fd35c476c1fbe2ae262ec3e1e4f4ab91e3c83c72a75533e471fc5
+cd76b0b4e73ea
+server_mac_key: 0daf4018e22cbd803bf766165582a1a48298d275293219d215db2
+a741d08fcb8ba92223eb73702b0f0d86eee7b4f968ad4fde5526bee55cbcf66f0d52e
+101273
+client_mac_key: 3d827db2e992ae2f47cf2f5868cb106a677fe5fc6ef33c7403583
+c223f669f904354bf5e538d86afafad3e608daa7979e83a8d312a3beda984ae62965a
+0a2c3e
 ~~~
 
 ### Output Values
@@ -4165,45 +4127,45 @@ f22f19
 registration_request: 0200bce08f110a6634cd66b75c0721208df3d8c392f86f2
 feb9c20fb62c9a30df00b37caba143386c7880a96301814e425ba9df870cfbf19724e
 b58411604b3a618f29
-registration_response: 030032b46dd196754b6ce072434e11c5d65be6e8acc82c
-d88464a987d90ed35febfe919458d7f41a76d59c9e8e7567957b54ab4b3f3c565873a
-8bf59dc3464a33461d203000ac6fbea5abad2eff1e768bd39834b82166c06aa6021ee
+registration_response: 03001fa57a1a64468c54f26bf5f00a735d641844bae78d
+cae18bcfebb1fbc75aa39126f69062322e25850d8481468b991b5c7175c1cfc8b6c15
+8c01baca2d724156e6103000ac6fbea5abad2eff1e768bd39834b82166c06aa6021ee
 7517b040d221966b827ca6162621a938d6fda5fd8e39b3b785cb477924b8a400fd285
 f41c5c248574db8
-registration_upload: 03005bf295da011da57f319d97d38c8184ee18b50f471bc6
-b32ba69c6c509f302879f6ee21d71591dc461abb7d6ab61aa820c23be2e9b5e16e45d
-6d85294ea2c3d11f50ac207de80eda3ca80ffbd9c023edffedf6ff31c2b28b1528c5d
-c438e832af5855474911e7c57ec81efeb3cfe4238cc5b4f8e5998ecf116c6edb1095e
-f7a0ffe010c7677b8e0c0b4f066cd8e29e6bd2c4157f7b9e615e1347bc6a16929dce0
-379bd3f238cff8da664e16bdf478faf68ad432e06d6dd9adb44b04c2c9e5fc71e552e
-2e61ae7ba076c05efb0596e8eaa65e1d6a1bfe199b9824ed53b70383af28931
+registration_upload: 0301573cb98db425459d3afd17f3f0725b5e6387e4f481e9
+1607d3ea2cf3103928ebe1136759a5dbdfaa36efa490e0a3d6e864efb852ab00f82e1
+ec93449b2b8eb66124e107018da386acbc451326c56edbea1b43502e3ed6e8ee787e9
+f4eddc2c9f982697759456bb0278f092df26348a6bd0657dd168daf491397d52629ba
+987df790479a3b6102f8c32220c7c210959f6a9663572f47bf194fbba0658fb027397
+6749eda3e9ebf9c695e551a995768a1b7adaeb6524ac720db1e845c42ee5e46abe081
+e52ee6b2498dcb0ae9d686eabb9b95ca7fca3335af3ca213c383f4f2c53aa
 KE1: 0201e2974af3a0c9a479cf1589e9c7db8f3e04723123436453ec427f75974423
 4a57a91a724879c5cfe93ed919501d567a6fad6ff5763647c351ad6dd925f39cdb04d
-d88076cecf7314883a85dc82c0e542e0778652aad86e1ea5a02f160762f49ce970009
+deaaecc78985ac4f83a8c5704a6ee4364d21843759fa5a2fdb1caf2b4076e6c8b0009
 68656c6c6f20626f620301bcdfcaabb52a829a450fdeb63bf90b8c98c6b2717164f48
 e27d4c737058feb556f81fe39aed7846313ff6a6fb9c4bf1d81083974f2babdb08004
 8cc67e12f8ce2e
-KE2: 0201d0157388f4b9727f3469b0cea99fe69652aa19c920ab22f4c1e460b0f695
-2799595050c3ed292198697316c3bd230b43f7f9f0540082dfb31c0b4c420b9cbc04e
-1706d029351382e0ea2a5c5aaddeffd8961fce0e68f2f9c4cc5f58e0f16f1c6afc0be
-b4b88fdd5f750a99072f6d59a55cc66ea15337e94086e86582957389edc099d536df8
-68d2f24418fc3dc2f10ee75eb80496269a50ea612bde5ecab8721fc04e5f87082fcee
-3e16413309f8bbe96af1c8f01e505f0aba0a405de451058a3a4f589f92b27be389cc5
-d1dc284db2efea4d0707f90e1de03cc80dc3a409ecdec826ae390318466fc56a7b772
-6d0eda9947a6d5584d4662f1d3123427fbc47dd22d30748c86805ba2f30e7d6017dae
-082f902d37323713e1dfed69da9ab30239bf126700e03015da5c9a33d3168383837d8
-d2ae4d00f39a8a631cd126b4dc1b01f06c32ac86ce29440df0e45650879f65ad94a3d
-752f265254f7d5861046cc016567f9e36b873d0000fe5d5d1cc9bf0f6a69490385f1f
-1b8808df58222e17653f7f888f972367530288fe9d5e697f92cf19529db82a3280b9a
-a0e71032620bd70b2674cf03ded7be322edb417f17991e44e8bc4cad50a90dd
-KE3: 04608c3e302305a06f7be7f3e28e866da1a6cebc7d68bceee927e7ae9d251382
-362b7704c7299d674c654b98bd70e49c38dacb18448041f0fc0ce5646854e794
-export_key: 2f4bd65b77adeae02dc3a359532f9d70889299a500c9f5e82cf99dac1
-da896e19ac75f901ac4c640d550e0dcc40c08363e8e5f2317b08b9778193db351b1d3
-87
-session_key: ad44b5ef579d957710068706c514869377e135d4ab311ebfd9466186
-293d22a84ce419f069943e46a4b7475ebc2d230498d4295eea5a6e491b0828c7ef526
-c86
+KE2: 02016d358783b3f561b5bc5d38cbca8495734c6cbeff262e3fef3acd4c69d1d0
+6964a79995c8dfa1cc9f7ead66dd86fdf77121cad0683dbf1c38acb08e8445ec4d795
+a85e13e64d885c7f538cb210a1a0ca6d97535a5a5ad65a0878f0ccc45e09b86395dc8
+87d0a4b23f5cb7dd697e0df2e4ed77ac5c0cd7c6e968456ea804c0163c966975fb039
+3bb12768f57cdf3f452662c600bfcfebccdadd17e883eaa416bbf8b4dc5349610bd1a
+7fb3a9962c8e49f8323464225cd1e78be83f75e84cdbf4fcf61911d2e34bdb4074f42
+31570b7c1e9c7cb58e6e098f947a7e6bd0b6fee7337be6643ec38417595da18304277
+3fdf9bcd9f0c481ebbb938c89b260290b618a0e9604acffe5f8b94d1a68532e4f396f
+addd2ad257888fcd047eb81e9c1e72b99939d9bab03015da5c9a33d3168383837d8d2
+ae4d00f39a8a631cd126b4dc1b01f06c32ac86ce29440df0e45650879f65ad94a3d75
+2f265254f7d5861046cc016567f9e36b873d0000fca0183ebff042057c39914498ce3
+b410326541bf0e84fef04066e5cf1ad2c3ee330891079ba22ba7b287121c6bdc2fcdc
+19315c51305f783ec18d119ac44b18576cdd6051800bed51b0d31bcac1646
+KE3: 9feca74dd46696a2db37056a19f843c8b820479fba0904fec76bef89e7a75716
+5f02af8840090664a4971888f15caccb31a412d9752bf420324cfdf91c29a425
+export_key: d8a07da512901bb21f04bbe14534ab96b2ce4a1b7db6e21012690e2d7
+ff1ead69fabd9aa9088deba47956a0ddd2123b30296d3763d522feabe2ff566dc3739
+c2
+session_key: e325c5feaac94047a00f1ef4671571ec59689672dc273da5f53b74c5
+0afa01eb424e220564bab79cad9a0602b84fcec2d691c5787c775a86cb84ea061a2e0
+98c
 ~~~
 
 ## OPAQUE-3DH Test Vector 19
@@ -4231,18 +4193,15 @@ Nok: 66
 
 ~~~
 server_identity: 626f62
-oprf_seed: bbc378488a940073db6da47c38682a457e75f1f1f7f6eb348fa272e1c7
-e0ae4c69850395f312cca8ad78a997eb2ebbc35928f54c5712e08d238f2fdc2841790
-6
+oprf_seed: bb570818efa0314faa4efe34231e858ebadf6171f10aefa228380c72ab
+748ec16f0994f35e512e0de3419f61093e26b9fe4e64b10f5689a6b957fab89da8eb8
+8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: da251589508b8324b1b4866d856da541deb68376f7b3f6b5ae061
-62db187d8e8
-masking_nonce: 3780748146cfdc68ddb5f3dd9321817103c32f7aa2f17c46aaae48
-68ab74992f
-client_public_key: 030023aee719a7a6ca458f50adaeddc84bd236f99611bf40ac
-a8497ae08f78361a97fe708a0c26cf80f41493995a2c6e521be36806aee13f91075bf
-54f11542851fb3f
+envelope_nonce: 0acaa52cfdbbeecc0398c26f673f744b51dba8d106c46608a6c16
+f0fe6171f4f
+masking_nonce: 4253c5b4c6d9241b94ed4733f49f78f7955ab5abfba8604271742d
+79f6e081f6
 server_private_key: 00deb3fb5eef3871cfaef0953ac3482c88f2bb4849b6ac355
 3c3609aa005b2cb37316964371a39548566c5e4e4dfbfbe5faca38a62651e9a519143
 d04ac366bd3097
@@ -4251,10 +4210,10 @@ server_public_key: 0200c689bc30525e075588345866abebfc27a312bc2edb3222
 768f2bdbc7c7ad6
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 3f18c2ea5773248a904efd3e6a9eef4a3dcc0dd7dc15a69788bcf77
-ed4e7ff05
-client_nonce: bb3945e5edbc4b1ab96b1045446d61159342d02f575245f2c42f74d
-cf91d4052
+server_nonce: 7c99a24e361db1381c0fbd1f18d4aa927e64ae88681926c17d661ff
+2c92c84ae
+client_nonce: 171062694b99e4088b7e6694300fbfb0b6ac5e01be86e17fe22563d
+80517191d
 server_keyshare: 0300f8b6a63f05a1a6f6e3c856d512860d5700cb3ad37bc1dbf4
 ecfc4c77c3aab7bb6576f70be7b460143e577d02409524ef5fd5e82a85fec43cc2d66
 adc312fb27a1c
@@ -4273,34 +4232,37 @@ db14076aa4f7aae03e79e1345b87735b977981b0b53d33a2545b6f301e66a98d04212
 blind_login: 0029bd129200e0656181aba1c2e7d839ec26e9579970c1d4ba1db609
 28b9ac043a5b622404c46dbe17dd4304b9566fc77d5c202e5ed9689829d4d0a746d77
 66ca057
-oprf_key: 015c3118ada081a64b3407b77fa40a4279806ed886e06e5fb461b17b340
-42309f13ae8058fbd692acc580d5c35b3296c70617a73947b6f9e310c03c8b2354882
-362e
+oprf_key: 01eaadc37ccb0d4e5782f8b41bdb754ef563ad188f308b56781213723da
+32dfc5c8a2e6183f71884afcda0f32e01909cd5066a2e7b97f8e968f1846efc2c38fb
+a3f9
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 71a51e7f0827075e19c98015ad69c8af1a5cc31b3bf704c7f0bcce890bb
-6af1422d8362a8620b1fd753cd4ea013f2c0669ee91e046752e6c5b0d486bbb7e2ff2
-random_pwd: 58793f10230afa0679be4c45f968085f04227901b69a584459b227b4c
-bcdd224999e4cc30fd9f4b668e567e35c4f4a28b60a3690e169676c6868d5942c86d7
-17
-envelope: 01da251589508b8324b1b4866d856da541deb68376f7b3f6b5ae06162db
-187d8e83cf8a1e01a8af91816a14d52ca0d0de088f53169d2b5295aea3b356a012964
-ac0e463932ba1a5b810d460cf72b7e2c680d1d36058d900c0db3c6c6f6de15d497
-handshake_secret: 3c0bcdf37ba693bbf8ffc565ee7180b93bd0b931215a7667072
-1a5a0977cf1b67e3c45306d7cc5cbda149a47849aad986184e04f607e518e80e40853
-29e79f76
-handshake_encrypt_key: a70fd7bcec43532b42c636eb7a99fa49fb5f60268b50ce
-1916a3142d89b4b549e32001330e0c449811de3290a9be4c9bd1602185d700a03f6af
-d0d8fff244ef9
-server_mac_key: b23b5a7f024c80ecea0a0f53b9cb703e99088e8a87c862429ce24
-45df090baaa9fc1e50b2040edeeecb03a5f5c39e7d4da32a393df154e405ab8c96645
-03e522
-client_mac_key: 2e8e1df4f01276665c2bf99f8dd8a4ecd0ee6d037c7e415c3b24e
-a999ca432617479f5e078cdef13a4d9076053819f1956207fa4176a5f77d9edb85974
-34ef88
+client_public_key: 0201462fd934d0e58bd9705b269768f8c2c9e8ce2869367bc1
+a756000a58c2a152b9fddeb8683c77830dfe3c787da9c56f22260177064da7bc1bbf6
+2a87c7954c83f37
+auth_key: 8d1ad8d4b8e32919e5a886e454cc1816c6dc41cc6f6bf23f8f05823cfa8
+82e39e0b256bcda755d4cf53ec490229280488e589d58ee16c0cb94be39a28fe9c3c3
+random_pwd: 409301dfcfdcef67c6ef6c478b9059b1d0af6ef9b1d5d799d5871feec
+98d87ab316d5f0da2d220710ba9683771d883fbf2fc470b2ec0a8b7f549cbd4e51416
+fc
+envelope: 0acaa52cfdbbeecc0398c26f673f744b51dba8d106c46608a6c16f0fe61
+71f4f7fa8b29ef090df5cbd3cee1bbf75e8083fde5cc9c4ee3ac80b4ec177ca20e9da
+e1ffcab7f7d135874b5bcd2d98161cd6fbc1e061539ba6d8a132a598a9c9a8e7
+handshake_secret: 081749c2beb4ac011887f96e7a3e80fb441d866eedcac0436ce
+034c3fc3df81a3d902d72396244a365641bf70c8293660fe27d9879b165fc36af0dfa
+8d8d1bf0
+handshake_encrypt_key: 6a955d21c53ed84f8f5d8a429d1d36b44148d6bbb39048
+1ab0d62bb3f32625662b1920d3bbbc0aa5139631eae4abc5c69408a8da9be12998460
+021159983d886
+server_mac_key: dc3b003d8dfd8677d18a1dc6ff0a325797b017b0f87bdd657e6c8
+95c5359b63b3f296960fd05de5b8892f19220d1fb3616c64ff75c1e5b0af8ae7748c4
+462b86
+client_mac_key: 3159eafbaedb940c5bcb03e07685c59bc512b91925c5df07f39ba
+1988f915f6b26ccad16b7303d1a457dcd283b8676e5245969a13428d32540609be54f
+451414
 ~~~
 
 ### Output Values
@@ -4309,45 +4271,45 @@ a999ca432617479f5e078cdef13a4d9076053819f1956207fa4176a5f77d9edb85974
 registration_request: 0301fca4ee81d22c8e8cab4cd5e1724bae3cede81109f61
 7910beaee9771549cf0090692d4342f0045a99a0707e09e38838e611a3f19c81bba90
 12ad6c67ba55f40b1a
-registration_response: 0301c1dca7d0180691bed42305be7af6128e49e4ff1acb
-ff5b7aa314fa00aa40aef14ac3112aba9aff1940f005372c899c9025b618f58804323
-3f1bde852de506d25e50200c689bc30525e075588345866abebfc27a312bc2edb3222
+registration_response: 0200e0f5b31ef40c9ccea0d7afd3593dcaeb9270306b14
+1a59e50fc63fcbae566186fe6149dcd7c54d8d27577b71ce7fdace1344335e7c8d573
+c315a78ee1d39c735300200c689bc30525e075588345866abebfc27a312bc2edb3222
 3b95f7479534b02c139cee9475816987c9a3b12ea04984670c674f3d42f47ba7a3670
 768f2bdbc7c7ad6
-registration_upload: 030023aee719a7a6ca458f50adaeddc84bd236f99611bf40
-aca8497ae08f78361a97fe708a0c26cf80f41493995a2c6e521be36806aee13f91075
-bf54f11542851fb3fae50b968937e9e826b1ba0511150f201ebf5acc5c1587434d759
-6331efd6beb87f29d9af4506ee8dfe48ff673cdc74303ea7bd6d18267e4ee114b11a9
-603d0bf01da251589508b8324b1b4866d856da541deb68376f7b3f6b5ae06162db187
-d8e83cf8a1e01a8af91816a14d52ca0d0de088f53169d2b5295aea3b356a012964ac0
-e463932ba1a5b810d460cf72b7e2c680d1d36058d900c0db3c6c6f6de15d497
+registration_upload: 0201462fd934d0e58bd9705b269768f8c2c9e8ce2869367b
+c1a756000a58c2a152b9fddeb8683c77830dfe3c787da9c56f22260177064da7bc1bb
+f62a87c7954c83f3740cc8660cb04781249fd79be6651b311ff0a06d3f273b3516e54
+656f279c11d723fd863256431747cc6f7e1a309313da600d591c6af1a6869d8115fb0
+2ef2cc90acaa52cfdbbeecc0398c26f673f744b51dba8d106c46608a6c16f0fe6171f
+4f7fa8b29ef090df5cbd3cee1bbf75e8083fde5cc9c4ee3ac80b4ec177ca20e9dae1f
+fcab7f7d135874b5bcd2d98161cd6fbc1e061539ba6d8a132a598a9c9a8e7
 KE1: 020197ca02b425dfcae9aafd4608362a1dedd8998e6cf906191b4d888db30de6
 dbbd22fb3a1bf310cc09f781d9c6fa0bf1f1e9a79c09eaf0df596801cb9a1030f9d2c
-fbb3945e5edbc4b1ab96b1045446d61159342d02f575245f2c42f74dcf91d40520009
+f171062694b99e4088b7e6694300fbfb0b6ac5e01be86e17fe22563d80517191d0009
 68656c6c6f20626f6202018f831d92dd0355becccd11cc3904ddae5edc18d6e357ae4
 3a7dc3459335316f842771994b3b411da7ad3c8911c806b322a9fad184e8b5586926b
 e76313b87f3d9d
-KE2: 0200c074c0f19c6715650023a391442829cdbaa2c01475258ea4cc95455122cf
-e298a84d780cc492a5b619a13f137413fd4e29f67154fa53b0687af32d37e5431b7ed
-63780748146cfdc68ddb5f3dd9321817103c32f7aa2f17c46aaae4868ab74992f8f40
-c771e0d121d713b048a6e4b35becbd1adc80be698265c67170107328da820c66a71e4
-b75c47ffda0afa7e9cd42913e69d2363f4dd0a452d95969e1939ef831d85cf7dd38cc
-a751d667db9b2305879789b53deb0892156b97812552c5a0069f4f6bb8530ab675c7c
-a440f6fba89f9ffd2f9b09011aaf26bec6d6acd3648876c692518857ef97ce6dfce44
-43f04bd610127bde1a485f290cd04bc467ffb16fbde0db953f18c2ea5773248a904ef
-d3e6a9eef4a3dcc0dd7dc15a69788bcf77ed4e7ff050300f8b6a63f05a1a6f6e3c856
-d512860d5700cb3ad37bc1dbf4ecfc4c77c3aab7bb6576f70be7b460143e577d02409
-524ef5fd5e82a85fec43cc2d66adc312fb27a1c000f70ece3fc62797103154161ef8f
-321d5acbd29dd4aa237e6e45b80c5d09a2c9d41591bd6d707d7abcdf702dc326aa446
-d05e4fa6b0d5197e28aacc7ec5d81747afad15317697bd8258ae5fb157a3eca
-KE3: 580710836fd635839100d1982d716fe97bf59bf91ca3a6f28c33efacff28b3d2
-9f948c3a85238b3c8eabe11c97e8eea7921cb9ad90a19539c410ac1cbc155aed
-export_key: c821db787ee587a158ea8feea64b0748a6744d7c283e7b080dbcc0d76
-5efb33fc7f1a4171d9939c6cb0c390aa86ceec2b438d8ce50fd5b997d6a012e8b4bf2
-6a
-session_key: c3e45217eba21a656f6edda21c96d551147ef1ddc32d49f2e0f1ee44
-d223bd74b326051e86a1875577284fbc1ea917eb67e6704de434d6bc481a24e43074c
-1d8
+KE2: 0200a72979541e02127976609b78f1608fad87cac86d354ed3d4bbe82d91dace
+9c179842889bc95fb5a20edca165f069eff2f3c22de7822a2dbe9743bb6d71ad8a967
+34253c5b4c6d9241b94ed4733f49f78f7955ab5abfba8604271742d79f6e081f65f4d
+f52881e0c2e033838c0873805c522cf395e8bb32217a232016bb95a7720aea8ab69ca
+e0e867e04e08d43f29813a77f2875edc5502956f3f957098393880851a8665e823adf
+16e3ccace58729ddbb09e1428496e194011e3cf04b1a8ae19c0544ea32908fd468078
+559a7c11f41f23557af7d18c68957c189e52f17270de5a5598ea5577d9f3d2ceaf227
+194457f99e5216b571e76e98ccb97ced7cc55a10e2b59c7c99a24e361db1381c0fbd1
+f18d4aa927e64ae88681926c17d661ff2c92c84ae0300f8b6a63f05a1a6f6e3c856d5
+12860d5700cb3ad37bc1dbf4ecfc4c77c3aab7bb6576f70be7b460143e577d0240952
+4ef5fd5e82a85fec43cc2d66adc312fb27a1c000f35e2bf5d71d0d52c5f5af63c28db
+4527d27976c89b105d70e077c002e0874e2d964496dd45fe8ccaa3afa1c218d80597c
+fede110cfde1e2700a48ea6dd8203eafdd64a31434f8ebc4ae4dcd91393c3
+KE3: 7bd6a517627d8e6e00574fe7a580d5dc8e739677e31c8f7e20d391e954b6e1ff
+a88720e0e18a58b6ae98265754d5bc26bcc4192275eed73e63c8ee7637e5e4b7
+export_key: 8736dc032f7b1f4adabea5b80112b1c9811642555c31c981a4a4f22a9
+22fc87b30eb4bd55a14c90c641a57560626867b3872035b0e091ec54e85f6da32b5de
+8c
+session_key: 4899baefba121d00147c6b22119daf9764351d63e522d17b0ef70527
+3e66114959a03b6d67196b387eac018ca323470210a02489bb1952d2f48d6d238f575
+513
 ~~~
 
 ## OPAQUE-3DH Test Vector 20
@@ -4376,18 +4338,15 @@ Nok: 66
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 72e1f25fac74ebaeed0c4271e8fd1694c2547d9de077bb787bfee2d102
-92fe8b7acca98297ad5db05f185e0e28c860430fc1f75ea9bef69eb612427c9cc0465
-7
+oprf_seed: 19c407e43e6530d69c8b4d17c130c73cca97e06c7c49fc260b86b49591
+4b1d062d7310336c3c0f9a4aea20c32320ce4ee1c822971521274983a504351436139
+c
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 5b5eb16749d044d49852d8530dd83ecba0efac11f0209ae273f2e
-f5bcb01a4e6
-masking_nonce: e33da918e66832aef32dabad6cb3cc4028717995f58364887f46cb
-2666e39f8a
-client_public_key: 02008f2105ab351d57178d736cf051ab76170240a8fb824403
-83a893f11c241a28525f2b1016ad7eabfb7b4ca5e47ae20df6d7f70f03b7e7a469a02
-4dd586ae01f28fb
+envelope_nonce: 75151367a387ef7a2b9db47d5a798127220e874ecdc3eaa650ba9
+227f1a31384
+masking_nonce: 17e445558005c495a7e4bcbbb6484d5fa71c3d7e77bcaeec9357ab
+88dda23bc1
 server_private_key: 012bc7471bdb9fa3e113b809a86dcc379b782052bce3fc9f9
 62d373217b0c266b1e0932c7a0727030de9ce81d360d97fa94f7ca377aa6969e1748c
 9f8b0a3f230c50
@@ -4396,10 +4355,10 @@ f328e818165ef0f777865fc84dd96972650b007feea93c11738c499ebd5ba80b7be79
 defa6a717da56d0
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 6eb788a252f4e0f0e3ad805379ee973b90cf010feb075c736adaa5b
-e04fbd5f9
-client_nonce: 5cd5b0b3b77974fac872a88ffc7c14aff8bcf3b1e692ef60ef6d42a
-00c0d5a02
+server_nonce: b6ca115c39de7a83c73dbac4565cd39fe94a5df497692e00ccc749c
+ba7c7cb0c
+client_nonce: 7e0842d07393fe80cf1bb16de3a162b04c49032e32b3f689863afad
+3905cecc7
 server_keyshare: 030121f7821162fbe027849ad750dab6227d5633a7148e1b0910
 7d200d7fe63219f09a4e96ba8cb734b5b20941196edb471863e1785c22e950e3ee34c
 85aecc454fafb
@@ -4418,34 +4377,37 @@ d1b792e0abe00c
 blind_login: 016520486cf32cccea61ffe9fa97730d95ecfe264267499aba78d966
 19996d938cbf6dd303a0093c7b426b1c63f7d78884489fbcee764bcd720068da3134a
 af107a3
-oprf_key: 0169484985fe2d054acec6b49307d30fabb6066e18a1f848a34c7ff6bfe
-75cdfb4a77d0087b402aa1d83d5ceb27ac41cc39e1768b69184656bc93538fb22001d
-df0d
+oprf_key: 006faae0d55ec6496ec4b355439559ea028274977e5a9beae66540a2592
+63786fb6e22bf3a4d61b0382f05727eb60c3a78a90f7d3c1816de34575c44d519e7d9
+209b
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: f73b94842e90a47969d5e091b39ae58518ce8c8abfdc36a14bda95e5865
-cf262240f5f192cf0b656ba73feaf649f19ec38790840a0c87dc6b232af8b4a4d40d4
-random_pwd: 01ecd59c188b77fa6e13599f169f34ce5fd6e8c684c97fed435b0a3ca
-51a3641ca7be669823cbc29b8ea4e016a0ab128000c2114b5db2e9a04290f2a8042a5
-71
-envelope: 015b5eb16749d044d49852d8530dd83ecba0efac11f0209ae273f2ef5bc
-b01a4e6a1f686b85f3b32bd1bc0c675c58462a6e39b91cdfd05776ddd0e7568511ae7
-4b04ca690253a3e62bcd3737dc5a44cbf356d53b43fd3bc23911d7f67918202c58
-handshake_secret: c840f06d622823e803a94bc508be60b05ef4cb0ad5499fb5c7f
-07249258a9166f623dba6767afbcf80a45134b8e7af0a3cc98becfc22e2f3a1668475
-70d54513
-handshake_encrypt_key: 2ccf13ec7b54797fb659926eb7b0f51a3036e7857c53d6
-df96d5fbf4b8538b806888c7030c21dce25862e845cdb6c7f7e1fb02f7c2c5bf0a6a1
-f7932819fc528
-server_mac_key: 3c40f016ffe7dd285583a814602dbf33b1b858ee8207e8f832450
-f3dd8ee86d5b62d7453f3faeaf37c217ee2114cfdaaee8e9f2bf98b76760e144f22f3
-81f5ba
-client_mac_key: e698bc452e6f675642c867fe0d75336eca135b6e361d7f25ff75a
-295d24190dfe161b0e64f296ecf49899f1ecb68f5c60cb59b38789242e6e2df71a1b6
-764e93
+client_public_key: 03015551a0c84d565efa67945e7a1b66b9a24423c7eca093b3
+04576e72f4e34f2c54a67229fd3b304ab9d4735cb6b6ddfec734409acbf3debbc6d94
+4a5b9594a1c4c3b
+auth_key: 55ca1a64c6c4fa692beaae2b9c06d62d2d66e2aed74feac39178e85bd2c
+c5ec60ed26421a2162dd357e36d31ff2e717e99b2fd04643d45cefeff5edca9e9e975
+random_pwd: 0b62b7402c04df2417b117fa088ca4c67d6cfecbe9896f439b6a3a2d5
+9b6b4fd8c0f2d71e9ce0f4c3a2a8f38c436c180c1cb8d80214d5f68ecf71eecaf3a4f
+78
+envelope: 75151367a387ef7a2b9db47d5a798127220e874ecdc3eaa650ba9227f1a
+313845c37bb477aae14a278e1f26b194d638b629e4031eb7d9012ee3ec22f9d9d9841
+0d8e2bad50aa35c28a105beeb99e85c8933d90678fca02bcbcf4b3d1300f2e9c
+handshake_secret: 44bdfb286223899ef0491ae9f60b2df0c44d061b4fbc5bd69a1
+4014eb5d3d878af785043f76f64383f702171d7f564daaae833153bc93535fbfc5e69
+12ea477a
+handshake_encrypt_key: 6cc1cf167542c6d6bcc926cfa593cb45797207824ccd59
+9e47b0f9e1ff99719f726d0c2fc420474f3f726ce9b483ded7c09a6867cb110806fc5
+33e4ecf17f6f3
+server_mac_key: 47194a31a8d82e8c8b1e7d6de7bf4e1295851e95e457da8f4066f
+1a2185e246119c0784d082a2b33d8a0b884c2c63d48532029ebb743733e277be70d9f
+93b150
+client_mac_key: 0c20f3b7ac680310463b3d8312acb35ee34a29b88348c41acd84b
+9064ec28a2f1f533651ff0a2044a34dd02fe62493b9a6a255786004b18f3421a2df95
+0bc1bd
 ~~~
 
 ### Output Values
@@ -4454,45 +4416,45 @@ client_mac_key: e698bc452e6f675642c867fe0d75336eca135b6e361d7f25ff75a
 registration_request: 020178d37274cd1fa2512ca1d238613727201561218673a
 d3fb6a391cf6dbe028dd8d953f0e36516eec3c69ab0293b19769074c4b16ca36d06ca
 2765543e694fd8a2f5
-registration_response: 0300054abf2483681282f16f71d2cf421c7374eae6610c
-05ac3adf7119b4d3a88434a12f4f579c5c65283c833171feb72291f4c1d18c888e3dd
-b011647cf4fca46d8c40200c11aefb178441adf284549abd3bd4d21641252d611c178
+registration_response: 0300375a48fafcaebf21fc1b8a455602a1a574219aba65
+0e04a94a4235d2fd4262bfe9a16cdbd3adade1126491c13addf62308003cd28bd4972
+3ee54e9c26ac098193b0200c11aefb178441adf284549abd3bd4d21641252d611c178
 f328e818165ef0f777865fc84dd96972650b007feea93c11738c499ebd5ba80b7be79
 defa6a717da56d0
-registration_upload: 02008f2105ab351d57178d736cf051ab76170240a8fb8244
-0383a893f11c241a28525f2b1016ad7eabfb7b4ca5e47ae20df6d7f70f03b7e7a469a
-024dd586ae01f28fb946f0191ac464a02693d71aefe7f9c9752ef1b2202c41bb20066
-c8d44a7e112c7cbdab1509397d64445dc56793fa16adc129cb6859ae16bfcb37af44f
-bd566ab015b5eb16749d044d49852d8530dd83ecba0efac11f0209ae273f2ef5bcb01
-a4e6a1f686b85f3b32bd1bc0c675c58462a6e39b91cdfd05776ddd0e7568511ae74b0
-4ca690253a3e62bcd3737dc5a44cbf356d53b43fd3bc23911d7f67918202c58
+registration_upload: 03015551a0c84d565efa67945e7a1b66b9a24423c7eca093
+b304576e72f4e34f2c54a67229fd3b304ab9d4735cb6b6ddfec734409acbf3debbc6d
+944a5b9594a1c4c3b92ec18b1af071ba9eb7b6c8c322a43161d79b8d20ddfede0f013
+7c8613cee032f104adf1b57fb4c733822eec8db6d63b88a416d4ad94c5719cded3767
+73cb37875151367a387ef7a2b9db47d5a798127220e874ecdc3eaa650ba9227f1a313
+845c37bb477aae14a278e1f26b194d638b629e4031eb7d9012ee3ec22f9d9d98410d8
+e2bad50aa35c28a105beeb99e85c8933d90678fca02bcbcf4b3d1300f2e9c
 KE1: 030041daee06de56612bc011e3fc1b5b1c5eb334b6cc0cd587b5c6fd9f94271f
 dade91de48e730d2499eefc313038c54e3ff0326da0afd4f5defd0e4f88eb9fe6dde4
-f5cd5b0b3b77974fac872a88ffc7c14aff8bcf3b1e692ef60ef6d42a00c0d5a020009
+f7e0842d07393fe80cf1bb16de3a162b04c49032e32b3f689863afad3905cecc70009
 68656c6c6f20626f620301125c341b183c9ed98ad735039a5aeb7a9c99c6a90eb2dbd
 5a02ffa442393c1de1a7f11ef5a7395a3881525c7fb8674d74d842f0cbece5069f98e
 2528ec903ba7e4
-KE2: 0300ac60718da5a874ff68da621ee246890254c46d458302a2ae8cef4d026785
-6958b71b109f286d4e3f214f6d710214408344ab676391f26b5d2ebf550bad0273c7b
-be33da918e66832aef32dabad6cb3cc4028717995f58364887f46cb2666e39f8a788f
-234c04e0397743f604a2ccf8171154e53034c1effc309861becbd037fce0cab828130
-3cbcd2650d63b61aba32026717f403e1bb5cdb01b9a730d257f6bd4e7facaa4512cce
-98946f424c62b9888d92b2e997d6a829722a0200c52aa366e6a300c0c7a558b7e3cc9
-ee18d67548e84129f730415a399bffa38eda02a128dce4b22f4702ab1d21762e2e1bf
-48a7da9009f9f92cca4237ee200ece0507b379612de839cd6eb788a252f4e0f0e3ad8
-05379ee973b90cf010feb075c736adaa5be04fbd5f9030121f7821162fbe027849ad7
-50dab6227d5633a7148e1b09107d200d7fe63219f09a4e96ba8cb734b5b20941196ed
-b471863e1785c22e950e3ee34c85aecc454fafb000f7d03ca5eb8479b32375a934c9e
-54e99af7bef553fbab6a19344c2ff934dd2d195cf8b5bcd76c9f77e4a7e2dbf0142f9
-bbfab91f3860defd96fe2a2d081cfc1db884ba74b1711f79a4ee8dcd8f395f7
-KE3: f8b251df3ece47d99bb5fa7f4e4423276d325ee216c3218ffc86e57bbfa77530
-daaaeb5e969dde8bd735b41e6a7bd22527c8dda2e2885485c609f21fc1952483
-export_key: c9e232bb5650eb48df95141e529d58d8602acd1d7d749c40bb54057bc
-f477320c4f91b682f31bfbe2a430bcc789af3891eefb887aa0cc151629fda0cd73dbc
-2c
-session_key: bc9c8fa9e13c7bb14beed42a97fbfe295ec05534edbc66433debd6cb
-16e598e2d28134183a44c58db7397e033f91cae1c5578940cc81df621572554d47254
-e6b
+KE2: 02019b27ae9ca87edc2481dbeb59907452d6d317d3b9affd50b7690698145a8a
+0eb27ce0979edd431eac8583a127f49a0b908b9fee349c894a538bb0b0cbb157394fe
+a17e445558005c495a7e4bcbbb6484d5fa71c3d7e77bcaeec9357ab88dda23bc16c43
+4781e9c7af59ec127a5372989c9c082cc1c812faa6bfaec5311256ddb0164c473cea9
+6bb8224fe1c772821fac2cd290eed967b77efe07b52bca4eda868a8ff9eb845fd5c92
+43900f82ccbcc5b4c243855894f7df50f425e6ce8ab515c1acfbd7233ac0aa75da3ba
+cee07d006956d540a36387634ecfbfc1081afc4d10f7483a5ca71c87465227ab01d4b
+9c6e754757e21346feec20de6223a6fd76593062ab02bcb6ca115c39de7a83c73dbac
+4565cd39fe94a5df497692e00ccc749cba7c7cb0c030121f7821162fbe027849ad750
+dab6227d5633a7148e1b09107d200d7fe63219f09a4e96ba8cb734b5b20941196edb4
+71863e1785c22e950e3ee34c85aecc454fafb000fb14e0df67643892ed38f4d0a2eb4
+1e8614977a877a9906db90563b4de74ba13671bf5489448c68dd756e413541a0b29dd
+717161054f4207086f5d446549a67257ad49c1047e936cb213b20e26b1ec2
+KE3: 5eb1dfdcf7b3dacfedf1b3a7e9acb6b2451b6261fd2b4df6758480e997359b0e
+b47a16bd2c2689807340a25949830afcab316dab9554f189a27ff45ed737183d
+export_key: c787482aefff98e2c1823e5c4099ee8439abbf9716960a4e17ef526e0
+07338fab0ebd46b31c3ea11e1a0c87beec71a39aa7ffcd18473129990669b2e904b8a
+54
+session_key: eac72c273e341f2ea491ab2fc86318fe7b1edde424070547f81c0a77
+88a8d13b60a5be931c090c30031affafa2aabd1cf1e819709c311ea6b68b4624671c4
+08f
 ~~~
 
 ## OPAQUE-3DH Test Vector 21
@@ -4519,29 +4481,27 @@ Nok: 32
 ### Input Values
 
 ~~~
-oprf_seed: 1341938e5fe2a94110c1f7ade78c300614b72b87e2dd7db8f62bd09cb5
-8b359df8f9266dcc309ece7f65cb935c4d152e73a087c58c5a84ed5714f6722b95e9b
-5
+oprf_seed: 50ae7f936969eb0e2b745e40743d1814ac738d888e244a15b45e11a77b
+455b0621dec0255d7f599d7c5879162d75e15ef4c1f561d7cf6d4ec56fcc41118de13
+0
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 0efd4b8703d921e8c740bfd2236f616144105278b26e5ba001cf7
-136c227e83f
-masking_nonce: 4f2814cf47cdf2a45857caf576054e42e5cebf877a9125d2a752ed
-9b84eb07e1
+envelope_nonce: 29df78d9938d1c8ea71ac25e9cee08c6528655e8039fc9b84b2eb
+266fdbcf883
+masking_nonce: 7dfe1f9623f8f897893e4a59e638ec4fdffe9eeec5222b979b003e
+a0cf6982e5
 client_private_key: 2d8cc16606d110ecf2ba00464406a0975452b63a3f27ce575
 921f91146543b0a
-client_public_key: e2a529d4f403f4c1712bc609c635b5c776a4285f86a51e4c79
-787e2df91e2371
 server_private_key: 5a673fae0015e31ccb70006aa21ae18853489bcfd11c0b796
 0a3b37fc3654402
 server_public_key: 0c8f3dc121e9f9bbbe76c4f1f664d2309e669b293597322afd
 9d2f936a37f14e
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 6a5c05a8fd39bca3c36fcd0624d70713346a9b5a26927176d6eaba3
-5c4e485e5
-client_nonce: fa3a6b9f37124bb9e2aeeaaeeb93282e7bfee76c1caf580abaf61be
-18dd713fc
+server_nonce: eaadd446c0bb2a825cd871511a2580f949a369ef848e2f7e4a469b6
+70092183d
+client_nonce: 7149f9da5e311169e5fc360e6a395e9428689b9b0a70c84b5a57f64
+52e8c6e87
 server_keyshare: 34be8693c06fc0168040b3321043f40ad79648211e6604f883bd
 f23abb045813
 client_keyshare: 9698728bd0febdc164c410a6738962b955c08a36b25c89058c38
@@ -4554,34 +4514,36 @@ blind_registration: a60f751ce4fd2b8f4412cedce7bf9e19ee5800a95743d557a
 44caa494840ec06
 blind_login: 9e21bcfcc4c82070b5e27de6b540da38c9ba48d7840912dd2f860fad
 cc40d50d
-oprf_key: 6ab350e1e11e62148a6d1b01ddab5e39599cb42e97d162cd7e4fa137224
-f660d
+oprf_key: b24704a1b34a0639674ef367e2aa067c69e59b87dd80c4d60d3e47372a5
+52b05
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: f8c315001991a525d2eda5774c753d20611120b114512a824a074a2041c
-48d723905277c564458f8235ff69179248569e358740529ed1fcd72bc81e745d149b3
-random_pwd: 4cdb28f1c402fbc3292a6db5bbf13d0c6afc973de4ba0fbaf83489d83
-420f692cc0f9736a553a0b7e3321c3e497bd26064dfe18dbe522f0b18ca0be3b34823
-39
-envelope: 020efd4b8703d921e8c740bfd2236f616144105278b26e5ba001cf7136c
-227e83f89a43a91caa4367423d8f0a057a967d652c43f83e1952bc5d7b7564b688212
-f80112eeb98f389a8467f52a04beb95724396bbc4ad553dbf74b4e3b71a5e1cffef51
-449386e4d7daab43b56db390a9febba907491415cf3f303fcf2ac666ce80c
-handshake_secret: 6a91512f4e334c0b4519b3603cceb9f49927d1466ed00b18301
-d6eaeca3f188a881b32d5b399aa2ab708e1d2167d4bfce375d40eab4e2f34a041d193
-717dc15b
-handshake_encrypt_key: cb39b668784e23a4f9ca4c43027fcb1cf39826eab99a82
-a7774a643985f3dc8bf61681089bc7b5e026e0e8425ec655dbef537c5f542d7baa3dd
-c73c5a8b71316
-server_mac_key: ff51f4abb666b190e2cbd92816d8f70108e5444a60545fd44da3e
-61eeaacb966211111889cf49817dd9e2b7e24bc9db3ca2333d47bc9b9eee42afcd842
-4793e2
-client_mac_key: 70e8ef775e6324655611871b323cf03b817b9e55094749dbb509f
-00926c3d428529b19db98285114af699be10c90e4a1cb9422f01b87ad2a1f198ddd89
-9033e8
+client_public_key: e2a529d4f403f4c1712bc609c635b5c776a4285f86a51e4c79
+787e2df91e2371
+auth_key: f8810122af45f26ab56caa58311cff2078d1efd77532e73a53fdddb8a24
+96971a208494a1b7a232977386144e19058d4105c6db5ca5151bbe24a8551f179b73f
+random_pwd: fdb2397c54a4ba7a0eb645be69dc66442dd1914480853dc13ac93e958
+e225ab7091c4870486601def8525b0d080a11c32f271fcf33a62ad4f6943f265782df
+b7
+envelope: 29df78d9938d1c8ea71ac25e9cee08c6528655e8039fc9b84b2eb266fdb
+cf883583c33716c7c98ae7a264e666cde4cdf260ce7dd6e42dcfc711803b5754966e5
+56b5d9787bb508e5a75a37e33c775cdc5d4d2ea74efcba83bd8a1aec19045dac4e833
+4497f080beaf03f30157ab863dad6336118a925d4496f2c37b4e934f830
+handshake_secret: 49af45af95be00615ac85e6c14aee92932d7b72fc40e0cb2cd6
+421ab5c385d2793c18519f853e44c7574e946dc9fc3d2fabc6d2a2d83b0853e15cfff
+11b7aae3
+handshake_encrypt_key: 61931e97e656a0e153dbde9e65c8eb447dbd43d0b8d8f1
+9149af6f2c144288f276c51fca155150fc011a65ddc5bdc8a3cb86c4e35899ce34b79
+8331c92ae9cd4
+server_mac_key: 7abb36c3735b550148c5bbe776c4878faf9232c00559634e7d758
+e47b5a7c909eceebbf69b7e92083d1409852f319864dbad2c55f1277722bfcc5d8b87
+a8c88e
+client_mac_key: 8f5790bb80ee7c61264c8024d64eb9836046f822a16fd5b5d53af
+b16ca9aa75fdb01d856627e6d5a6cf9825774d7e2ca4571af531e3aae820b359d0304
+8bb810
 ~~~
 
 ### Output Values
@@ -4589,39 +4551,39 @@ client_mac_key: 70e8ef775e6324655611871b323cf03b817b9e55094749dbb509f
 ~~~
 registration_request: ac2882512f36bc4d5914964e782418271371fa9bd16878a
 5fb6c3b6d29c54422
-registration_response: f016c933be350f716a9ee0e011108df6f950a10e3ce21d
-9f3c9b72e1082bb1090c8f3dc121e9f9bbbe76c4f1f664d2309e669b293597322afd9
+registration_response: 62e8fbf751d25d8a48a9b194ffec4d57739e46c5bb6e9a
+1e6faed5b17172be780c8f3dc121e9f9bbbe76c4f1f664d2309e669b293597322afd9
 d2f936a37f14e
 registration_upload: e2a529d4f403f4c1712bc609c635b5c776a4285f86a51e4c
-79787e2df91e237156f9641574224c41eab1401057e41bd0c3aecc32c7519e5cb0669
-b20bd401ddc8ebae606b81ce4ab8fbe6322aefc84d7fa140c952cbf6b8c8c5b6d0325
-b9f599020efd4b8703d921e8c740bfd2236f616144105278b26e5ba001cf7136c227e
-83f89a43a91caa4367423d8f0a057a967d652c43f83e1952bc5d7b7564b688212f801
-12eeb98f389a8467f52a04beb95724396bbc4ad553dbf74b4e3b71a5e1cffef514493
-86e4d7daab43b56db390a9febba907491415cf3f303fcf2ac666ce80c
+79787e2df91e23715f75276ec7eeb42771c95f010e60c97359fb739ad4a90e2baf942
+601eee6909306f011610c12cefd47c6ce56ccd51627212b7ac6c20ce2adf9b00d1d40
+e9353029df78d9938d1c8ea71ac25e9cee08c6528655e8039fc9b84b2eb266fdbcf88
+3583c33716c7c98ae7a264e666cde4cdf260ce7dd6e42dcfc711803b5754966e556b5
+d9787bb508e5a75a37e33c775cdc5d4d2ea74efcba83bd8a1aec19045dac4e8334497
+f080beaf03f30157ab863dad6336118a925d4496f2c37b4e934f830
 KE1: ecb46e5c31b4044876ccb2a689efc82231d2995561841156db449c71637d145f
-fa3a6b9f37124bb9e2aeeaaeeb93282e7bfee76c1caf580abaf61be18dd713fc00096
+7149f9da5e311169e5fc360e6a395e9428689b9b0a70c84b5a57f6452e8c6e8700096
 8656c6c6f20626f629698728bd0febdc164c410a6738962b955c08a36b25c89058c38
 d4575592c12d
-KE2: 8e272f8e6cc909be18043df8a8cc14359080ff8507159d16b550b59a65401052
-4f2814cf47cdf2a45857caf576054e42e5cebf877a9125d2a752ed9b84eb07e1ecb24
-51b63ced4666267fc3f19a60ad4abb212d950438f509f3bf837ef66b25148b46529fe
-b169ebc51ba5e6b89602f0af3e93634e30a84a6b26a0aa401535c8e5106d6dc0e1efc
-379d96081055e03c91f523c3ee66ac3ebeb18615994e95fb071ea3cd51976f4dea9e3
-5ef05f950cab7346f5567163e18e2cc426407dc92e06d766667c144239ea9eeea9728
-867d2a519ceaf6f258d072a9084db945c2c2e15346a5c05a8fd39bca3c36fcd0624d7
-0713346a9b5a26927176d6eaba35c4e485e534be8693c06fc0168040b3321043f40ad
-79648211e6604f883bdf23abb045813000f6973ad59367c24246bb4a6a077d7f6b426
-88be470856e378373603bc9f67b90177a68c9ccc502a11355a07efefe7c30a72c30d6
-d877bf93b8b37288890a21efab29f604109f25aed7d4b45b12a5d3d
-KE3: 4292ac6d005d1f3d8a94fab6f146753b60ca2f7ac8e41c81ef4352450ab4effe
-e9d51bd5b0bc8b2c7f77e94cc83646bee0e7e63a4ab4a06b4d3099258d8e4343
-export_key: fd819b9424c89985787b3269f9f50616c714c3d6db04b05a574e3fd76
-bdaf71f2b162c03898dd9356bb36b776b60cb04ad3d04b0c5482253ab8895bd30c130
-1e
-session_key: f636a84fa383543091b8f36cc7a6618324cafb7d1f9b15f55aa3263a
-53d415571563bbe4f2c72675df5ca1f659783d5e4b01c60880884821097b1f236c6be
-6e8
+KE2: c2388704cd9002cac07e7ccab17ac13a5dbdb8889d55e70e9645ba6fe335fa7f
+7dfe1f9623f8f897893e4a59e638ec4fdffe9eeec5222b979b003ea0cf6982e54a69d
+1d6694d57e42cf4690910342d53a43fee96b38ee83b080e30876d40aa9c83b4630fa0
+2b9d66cabf0af458aa91e69754afbdd94c3df55b1cea9f0a1949ebaee1ca41c8d51aa
+7ecab8147a57cd6f8e8af11019281a135a14b4166a20acaf6d4224b36200eff589221
+3aef96f00affa66c2f83a2aa6db03b4e3a19b10f8ad1f6bf9768ef749ad19e3bb09c3
+f6f9fc4fa562394967475e18569135d0007a8baeaadd446c0bb2a825cd871511a2580
+f949a369ef848e2f7e4a469b670092183d34be8693c06fc0168040b3321043f40ad79
+648211e6604f883bdf23abb045813000fd53a2712069408937bd3eded4ab32707bb31
+6d6068c34aecfba104bbd67efe3b2a79db3eadbf3032b9e8c149fc9d90eb36ca3c549
+54da48eae6507d4c65ba8ccac6c35a7b26adf87c3533c4c243897
+KE3: 12f31db6d0d02df96664148e92d44e80761e5f50300a08312d8d768cb9d51171
+1d00bf1368e3f7df003efada0867b38c1fba88d2086486a7ea6a8ed034ade397
+export_key: 40d5d84b040ce9986bc8b9822d03cacc55e8f20d9b375a2878ecc8b09
+0d5697b9d6968e0d7561440f86b6afc82104c392b42b297aef3b409cbf14e0bdbf9bb
+8a
+session_key: dda604f0ad7262ec2f62f79199e6970e405edb66c1932a12435f119f
+4c5155e0a0f8a63cf0d4b40fcf33b1e3749256d281a4983064d1d497e0af521afdfa5
+3dd
 ~~~
 
 ## OPAQUE-3DH Test Vector 22
@@ -4649,29 +4611,27 @@ Nok: 32
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 71d3b6c2e09facf599c41313852cccf43e17b9b131aa00a60bfe20a662
-d4a449a5af869e5177f8ced39dd8c61d7277f8bfec9532d48fc82734afc84b14eb27a
-c
+oprf_seed: 3d75331c5060868cd0bac17772b9e9e8e7a31f229eb6318184f53400a1
+331cfca9c40a1a877712aa8adb34271ea3aacc70c928608a475acc52799de97ea1793
+b
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: dff9fd211c55a0fc6fff386654bdf94d6978128f10bb275c82a8c
-f1324a4031d
-masking_nonce: 210a81edd2090f84735d30582dc9b4a261ba68346713df2f5c6aa4
-00fa1b4e0e
+envelope_nonce: eddf5422823d76dcca80bc45402a812bf44b3cfc323be993d9458
+0b27471ecac
+masking_nonce: e187715f0d81ba0cde2794c3bf49430c9f9d54e85975c6b08d06e3
+a58f1da8be
 client_private_key: 10b3066e47db372d6cd714fd308d056c349df63a477498b28
 ad3f0e75ba47b0e
-client_public_key: 88073089dcaf094d0d5d73105a99bc5e5c68bbe5173f80ae5b
-a927c3c6a9af07
 server_private_key: b69bfaa8582bc1d07933c6354dace6674e72fb420b9c40cef
 3a5fed717de1d03
 server_public_key: 928eb99d8771526762cb6eff0ebaf085d10102934ab78d1cd9
 f4389fecd57073
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 4e3b739d79608d5149af0a7691a336e330eb8d0301326a70f9e52c3
-edaed9461
-client_nonce: 5fc61b598fbaddcd99f114f3d1f5cb290f9347654ad074e6176a08c
-5579da656
+server_nonce: 4c3527bdb9d16d992698658a8672cc0bcde16ce53776d44a966eda7
+5933f01e4
+client_nonce: 2db20cef5dd352ee5651db0d43ac3008fdca1da0cac16bb464cf6b7
+4f202600c
 server_keyshare: 5ef3502cc40e7ba5006845c131b661ba6ebd0e6994b6f526e3b7
 cc108635912f
 client_keyshare: 84a786fae7664759a8bae0cbe9065cd80b70cbf600efc695654c
@@ -4684,34 +4644,36 @@ blind_registration: cc1ed755daf519e81c8a3ac073a357709d1c5946654b83476
 9933c09c92cf805
 blind_login: df67b103f15ba97ad4d7977a3a0779cf03b60362c2245bb1d2dc6093
 49be3f09
-oprf_key: 48ef29f7316f6f4276983528b80dd882ec987fe9e57d75fb37769fa5a72
-8e708
+oprf_key: db026f2b8dc13d3945641a25a534faf2b05e545f6c8c62c4402ff9c606a
+6fd0d
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: b01b468e8b1440534a4ad84e8732245f879ef0ef7f0774b57270f76bb64
-97a56b0f5740a2e418cc6ce83c08ea2209ed20141f5b2476c0e08403ba3fcf307dbec
-random_pwd: 6a75176b48436635e74fedbfecdd114bfeb3e4ed4dcdf1313dad621f9
-0612e8229da73ee879560f4bf3423dbb67e5397003973d110be93f02e1d0ce4705f20
-83
-envelope: 02dff9fd211c55a0fc6fff386654bdf94d6978128f10bb275c82a8cf132
-4a4031d9b058949eabd6b223915a8a0002f4ea3ac2ea0a6ef68a8d9ee7fdf2e6261d1
-7f0cf9a7b9dd09387ad4486b284ed559fec7ec115fbdd9e962e20ee4be62d1115e144
-14b0f4cc2f6d94ee8909d522716e749550334b5551f3cd7a9b7b1cc38c1e3
-handshake_secret: 5009b4ce1c5d68f141a07638d6e8f52d66df5f50e5e67608788
-379574106b318e6f3a3244491d3ed75b2e282bd440967e358737fc5ee573e405577d4
-a47d0091
-handshake_encrypt_key: 9494d7bdad9629cec66505ec3cbe4af1221f206631c541
-b702c45087fcd24fecbe6aa2968666f97630ad30f3b98d650bbc26fde9891bda06fa7
-b1fa029e64deb
-server_mac_key: 17ff1336ffd349f8b2a142d9d2323f78ca5fa25a92e8fba21e806
-22a855172ea0ba88cf71b08f31a793f8f7ab63aefe371c369a70c9902890895196409
-391bae
-client_mac_key: 632f71425c064f60c72c2a9741bc8fc8c0c6fdb98d397d0d2a9a3
-22e4415aeae19fbe8eb09d72a700b661af084f97094b355ce62aab0c17a5ef7bfeaed
-da69a2
+client_public_key: 88073089dcaf094d0d5d73105a99bc5e5c68bbe5173f80ae5b
+a927c3c6a9af07
+auth_key: 46e5dd8b62b4cbb8f4a497a27cc2ff955689b6dc90c1c6b78387993a696
+23a4987889824656e236ca67fff2ac47cc717c483aba623218289411bc17b09f54f99
+random_pwd: c917ddd6fec8f13bc25ae942a27c119f2aedb9a9c3c098d32e7f1ad18
+aa76f3dbfe39f1305609525bdea89e240f4055f08d5c8bbc6a13abab028bb150c03fc
+25
+envelope: eddf5422823d76dcca80bc45402a812bf44b3cfc323be993d94580b2747
+1ecacc7f8fc351418062ce343d15f5862a18a473a9815cfb54e2b873f4fc63e528160
+9694823a4ccf7601ea4490ab022e846ebb63ca7a55bf31b5acac74f8670ce0c685ced
+3cf6b87ad0727ada68db31102ee680a166d740b336ddd25b22f31ee1d49
+handshake_secret: c7d72cf681832ef089ed68e3096bf8b6c5cb2293ed2e3c3f155
+eb10f9d1eaeef837cb8108fb1469515d53d4ceff225a0e988f8752724b9a1be35d943
+eacb0288
+handshake_encrypt_key: 494774f40dec4318ec30f11091f546c673e94b47d67b13
+b0be4dd98594791a5d0f70839f07d4baee04598fe0137f44c29dbad6c45fd3af52992
+a62eeff477bce
+server_mac_key: 1e592c635637dbf162430f7d4ecf491429356ef3a64765b441bd8
+709fa624ab2b6bb18d7cc1ffa0026c39b410b0e3f73f166cf8159ee6a36bcce08592a
+a1fe5c
+client_mac_key: a8ef09307371b27d3177a2ffad72fb8db05ca0fcd62dd6b8b15aa
+654b9d875acceba0836341cc814ffcecec01b3082989b1742f3ccdaf6da08cbb5934f
+a7d977
 ~~~
 
 ### Output Values
@@ -4719,39 +4681,39 @@ da69a2
 ~~~
 registration_request: 34fb6ba29e60511d9ce2d2a644a58b8b34af6516cc54f20
 f7ff605e8134c1213
-registration_response: 9c902c87d08c6b7915c3c1a4c42bf8fb5da98a0b07ceab
-573349365e531a885c928eb99d8771526762cb6eff0ebaf085d10102934ab78d1cd9f
+registration_response: 20b3941efe426f8c49884d951be489d848273688dc76a8
+3ea42f743165fe4753928eb99d8771526762cb6eff0ebaf085d10102934ab78d1cd9f
 4389fecd57073
 registration_upload: 88073089dcaf094d0d5d73105a99bc5e5c68bbe5173f80ae
-5ba927c3c6a9af0772efcdfafc9548e6b622088a932949a0709e72a6fb591f0148532
-c31a7cd828a40bb6d2605e2771b2c566d44240a1a98dde4fe5802a8f9ef3d0bc3c6fc
-c7a7d602dff9fd211c55a0fc6fff386654bdf94d6978128f10bb275c82a8cf1324a40
-31d9b058949eabd6b223915a8a0002f4ea3ac2ea0a6ef68a8d9ee7fdf2e6261d17f0c
-f9a7b9dd09387ad4486b284ed559fec7ec115fbdd9e962e20ee4be62d1115e14414b0
-f4cc2f6d94ee8909d522716e749550334b5551f3cd7a9b7b1cc38c1e3
+5ba927c3c6a9af07a192377aaae1c828867cbfe56dbce3118968a05ad664c080ac52f
+4b41c820b98b647af5e2810d2e0262892ccffec0be1a59d7c192b9c09c17fec139148
+15bc59eddf5422823d76dcca80bc45402a812bf44b3cfc323be993d94580b27471eca
+cc7f8fc351418062ce343d15f5862a18a473a9815cfb54e2b873f4fc63e5281609694
+823a4ccf7601ea4490ab022e846ebb63ca7a55bf31b5acac74f8670ce0c685ced3cf6
+b87ad0727ada68db31102ee680a166d740b336ddd25b22f31ee1d49
 KE1: 9e642c6da6a475f89078708431aaa4e04d96097f7778b0de577bf4d08496ae5d
-5fc61b598fbaddcd99f114f3d1f5cb290f9347654ad074e6176a08c5579da65600096
+2db20cef5dd352ee5651db0d43ac3008fdca1da0cac16bb464cf6b74f202600c00096
 8656c6c6f20626f6284a786fae7664759a8bae0cbe9065cd80b70cbf600efc695654c
 93e356735c66
-KE2: 90d9f9bd1d19656ba4e612e63f8ea4ca3f34ed006af6e4ab73ac9fe786f0e445
-210a81edd2090f84735d30582dc9b4a261ba68346713df2f5c6aa400fa1b4e0e822f2
-7d5eb91a53c623600c6658c57f80ab007a2e39c4031f7408a951ed763d17f821d1ac9
-a9d5e9b2f1b7c4b4d0372500a92c4e8965e1eba63d6a9cdbedd9d8ac65e39564c10ad
-cdd608d0dc1bfa6823eaa9b24ea2ddb05a154bd64de749c103b6eb4ecaf9f3cf8f028
-e9fe545409a559bb320c6171623bfffc0394f64db5eb1febb739c572d49b683b7cc12
-c83440f83fb568a94e947940bd7cc01102d415d6a4e3b739d79608d5149af0a7691a3
-36e330eb8d0301326a70f9e52c3edaed94615ef3502cc40e7ba5006845c131b661ba6
-ebd0e6994b6f526e3b7cc108635912f000f766709b35637ea47d890062bfa90fd9166
-a9b36b632aefeb0837a3680fd5a31aabe45355c4292c564931d95be2a464156040efb
-d6c6df481b70d0de90acd299ce04cb58261dec2a48c44fe1bdf2e59
-KE3: 63986f218a044ed0752045d249666f61a98fdb90d52a05a516482fd238cbf071
-8c6252a75a570b440db64cf737716d9385353589182fbff1756dbc008450978c
-export_key: c896e3bbd61fe845d22dd1247edcb7856505fdc5bc3123447eed79ee2
-e7df08c346ad1d5813e210f4dcf92a68f93b416694ae0d8d82d64e0b1e81970dd0965
-c5
-session_key: ec75b559225296023b965501aaaaf113adeb71233ff8ab786a1eecad
-25c18274326209e3bbf395976744ea1ab902274f2b20470d57f03c2bf5cb606e55db5
-339
+KE2: 8a0df418a58feec3080cbd5cd896107d8c588285e09f8a8327398c34382e057b
+e187715f0d81ba0cde2794c3bf49430c9f9d54e85975c6b08d06e3a58f1da8be3969e
+629ccd984d408fac6690758c680a456db21c52c197a918f4b005cc9ff5a4dbc23f336
+17ff48058d8db0680c00bfa81106f4080c4b4ff869a2ebea5f212c242b50afcde5b76
+604896a7cb445ece15134dd5937bf3b16a101d15f66d6fa552e82c0c9f3d783cb1ac4
+f2d18463e3d51b14ad7612cf7ec0229d4b3d4703b447add471647e79315e66994aa0d
+1c084170d959ec72c71fe8d6975de52a8b2aa8f4c3527bdb9d16d992698658a8672cc
+0bcde16ce53776d44a966eda75933f01e45ef3502cc40e7ba5006845c131b661ba6eb
+d0e6994b6f526e3b7cc108635912f000f91d4a79950385e0a78d77201ec089031e7b2
+160413de9f408b7ba0a8a25adf4ac2c35ba1766c663834641a026df1c005e4e00d620
+c28d1b64e0e7cb9f71d9cb8b85be6d53a426f0f6a987d814b86f4
+KE3: 819110b7202e6e63ee3878ae340ff55e8922f6f59292de3ee3a3a7db79a19608
+c5a090eae86e63b44e1a007d5c6eec13ec70fe1382547e9f42170b02fd355014
+export_key: 57dab347b58f14a7ac8f0b54faf3fe6891eaceb2775df199b157ffe26
+7fcf44b4bca029c5a0d70a14db3fc71d5996d6226d95e30c893d4da5979d7d6759fa4
+5a
+session_key: d235cbd956f00e0ad8dda35e3bbbb2a6e2f943155a482cc58c5251f3
+db8af678476083cfa6977a2e73d4d24b9983a1f11db271373cdf5cbfb2c62eb814a39
+607
 ~~~
 
 ## OPAQUE-3DH Test Vector 23
@@ -4779,29 +4741,27 @@ Nok: 32
 
 ~~~
 server_identity: 626f62
-oprf_seed: 0744453cd346ecdf12b28bdb4cd8a920964ed3229d5ef248a7c705c871
-68a967ed517654c0635f89c2402841297eba68b00174911e19cd1f1a3b2d35061c073
-0
+oprf_seed: 1efd7cb823a75cf8d3aa89e8c74698406f53edf97a509b9a14224400be
+1d280889c33f584ca7f9eba83c0d769830baa54765aaae328c202a4ee5f0c16c47961
+2
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d7e160776c8f12c3084f40888bc54f4c3128ad758d89b22b084d6
-842bc8a87c6
-masking_nonce: 7b2312da5a60f21596c1d8cbece43c1524da1644e2bf63d9e31c72
-f8c22de69a
+envelope_nonce: 92f64a37d7380f838392d68566603521c2114c082733cd4e42429
+a5033352047
+masking_nonce: e4f7876c1a03f800742a9db1646d84dd650534d85c30be0e8e09a4
+bcec4f594c
 client_private_key: fee07a49ab54150e525557deebd0a14a8ea81876fdbbf94da
 f03d5a2e3cc8306
-client_public_key: 8463bc96f84a2fcbcf67658a19b22ecaae9ecd976e8b58f21f
-51945a636d180d
 server_private_key: ad52e51fb993d6053fd960279d81b6111a367246256f87159
 8aaa2367eb1770d
 server_public_key: c26c575e0048fed852257002c72e6cc0fddacc1df65e81d80d
 9d5eda7943266e
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 587178414e280f5f4d2e78e2e287baface2132ec51743d96b429cde
-a220d77dd
-client_nonce: cb7341840226c49aa9c98021cb3baef9879c5eb569e6b6c1a1eba42
-78cb29390
+server_nonce: 01febe6ded3f1069ce1920b0713401e5c478f2a50dc85c7b6cf7678
+50693914c
+client_nonce: c50e098646ec9782c70048635a5f60dae8ca37df643e861631c51af
+811012805
 server_keyshare: 16041ea53924cafd460331043cb3ec0c7f17d6c246499b9c6381
 18a606071e61
 client_keyshare: c2b0aee89ec05d28e6f9638d2e056f7cb4bfb8b4d032239d3e4a
@@ -4814,34 +4774,36 @@ blind_registration: 29fe2a69e6a588f230704cdb406004f763c86c685ca52b07c
 eebf891bd86510c
 blind_login: ad0703869a0fe935af28eda1b2c2ee62bc6b73edaf4d12d4580e9b1b
 9b4cad07
-oprf_key: d56fb95f6b130f75f1ee7fa05e09637a254220ac282c76750b665186f3f
-9df07
+oprf_key: 3064be0811d201eef06efd33760a8f722bc270eca58b9ced8a7d9a2dd31
+2f60b
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 267df5044b8da904931b4ff741529b2ca374532213e02d3068c989e0e3d
-1b0cb7a838b5902258b3439ec53a03a60b7aae0cb2218987f993084b16e33d878bf2f
-random_pwd: 70f4e588b8c8f462d29f62ff61c4ba817027177861624305d83c1fc64
-2c9c6e4e5fd22e41ebecf31b27c5bdf2ca042c4022149c2e7f5f3bdf679f9a2f515f2
-e7
-envelope: 02d7e160776c8f12c3084f40888bc54f4c3128ad758d89b22b084d6842b
-c8a87c648c0c644ccaf0490873d96cda760a8c1f61aba0f45c33132c3ae72d0f9c717
-637645148614c92c8c1a80390dad92bdd6cc6ac2515c5ba66865cf80dbe3b469db51b
-700468469ee1b8a0d48c0da28dfa714a6aeaef63482b319fc4b2caa985a70
-handshake_secret: 26761a5374d5a84c48fc0f7b53468009f1604e83f4c12523ff9
-c066bbcf1d47ecf584a7767712d95646117ba7ec515d1d9908e3c02cc6c4a2de71d91
-b2ce9fa0
-handshake_encrypt_key: 0e8569bcdd79b9f12c9391202805047d6c3dd30d5b2222
-3e1f0eb3b2463ffe11cf804f79311dfb26bde3f114340be594b9e08a08285ddf50d4b
-6afa1d2adbb5d
-server_mac_key: e0f31880893e39f965d5b605c933454ccaba9975db1927141ba74
-670b509b8af13b4133fe0ac7cec9748315bd29c260d788566d27502ffba3e7888c7d3
-b39410
-client_mac_key: 6a4a08b5aeb0bf9f9b965a3906bd7495ea56701a30a91ce96fa54
-ae32acb800dfdadb379c2eff4baab6f1e088650d89231ea551f1dc4da83b060b247f1
-776d60
+client_public_key: 8463bc96f84a2fcbcf67658a19b22ecaae9ecd976e8b58f21f
+51945a636d180d
+auth_key: 24ef48bd4a2b36f3bcfd545558b8d3c41288ffaf52e16fbc53b9c7d7945
+755cc9a246c19620ca6d2614dbbee25738c7baedf48c0a28db2f081257a90d417b668
+random_pwd: 6ae99103a9fa7b6f304ab991ce2ad045549e69c67a42bbf5cd5a37990
+d7e903e2ea3ec5231ba4c05afabd75dc40e3aefc2bb0ddfb357788108160f44d9df13
+60
+envelope: 92f64a37d7380f838392d68566603521c2114c082733cd4e42429a50333
+520472375e16d89da268ee7141afeb32d6ed2def0a93ff7f445db96d9f7fbcee6da3d
+bfa5daef068138b6763bebc4b8c7c8a9de24463ce76af0d172eea4cd162146e5a92a3
+22a873bfcc15e39873d8d4204f2d8af8216d28d9e12c8b9487b4593af42
+handshake_secret: 0d301f370a6fb9c9408662fc48331c4ed51ec5eedc2db05607b
+b4a15c2cc56f7a9a9f5a8a7eae03ba9b3b2a13d713bf846e0f4a0b9a843f52c9acfd3
+658535d4
+handshake_encrypt_key: 81ac2225be6ed57d49de904bfa23bcf490fa2f55a43618
+d92dd7f3869551d65a80af8f2adf73cd44a5ae12bffb4c2a54ff5f8c1d1ffbcee2ae0
+d4e44e5644294
+server_mac_key: 5443dd087f0188c2934974f29123dbb25a05608666b601ae80ef3
+7319e7b935b4be1747b1dbbc1570919c42a4b8972fc408f767921dea69ee027e3c5fb
+b8273e
+client_mac_key: 1d6159a4859653e6c1c12c231cd93305b00ba6482af56d6cbdec6
+e8a52f5911279e8bd996c310a1439cc03e34b4cbeb5af0987fc482a1f518063d02a88
+f64a57
 ~~~
 
 ### Output Values
@@ -4849,39 +4811,39 @@ ae32acb800dfdadb379c2eff4baab6f1e088650d89231ea551f1dc4da83b060b247f1
 ~~~
 registration_request: b02294ae456aa0e055e49a09a3a4cd7176d9b34778a4dd9
 493eaace4883c0016
-registration_response: f42cabeefd941a064438946e3be19f356c19504db140b9
-f714080c9610e97235c26c575e0048fed852257002c72e6cc0fddacc1df65e81d80d9
+registration_response: b862008bc987bb9fa19a936574ae7b53ed83d2697f476d
+1bc10ebc8102a53928c26c575e0048fed852257002c72e6cc0fddacc1df65e81d80d9
 d5eda7943266e
 registration_upload: 8463bc96f84a2fcbcf67658a19b22ecaae9ecd976e8b58f2
-1f51945a636d180de0a76ad3c5997fc2db329a8f7f8441728fed526b34cb924ff55fc
-4cb8dfdeaddca846d07d006a03787615ba60bd043adbc048c734c3b8bdd1b26e8ceb9
-27d49002d7e160776c8f12c3084f40888bc54f4c3128ad758d89b22b084d6842bc8a8
-7c648c0c644ccaf0490873d96cda760a8c1f61aba0f45c33132c3ae72d0f9c7176376
-45148614c92c8c1a80390dad92bdd6cc6ac2515c5ba66865cf80dbe3b469db51b7004
-68469ee1b8a0d48c0da28dfa714a6aeaef63482b319fc4b2caa985a70
+1f51945a636d180d0ba5aec13eaa9bcca368747d3075c9f9446154775fb21a30a3bfd
+747bc02e4a82576467360fac7213ede0e7319b0ea65308af7ba4ee8c67120dafd2ef8
+74e84b92f64a37d7380f838392d68566603521c2114c082733cd4e42429a503335204
+72375e16d89da268ee7141afeb32d6ed2def0a93ff7f445db96d9f7fbcee6da3dbfa5
+daef068138b6763bebc4b8c7c8a9de24463ce76af0d172eea4cd162146e5a92a322a8
+73bfcc15e39873d8d4204f2d8af8216d28d9e12c8b9487b4593af42
 KE1: 7405ec93c531676eb9437f46cf3c3dbe9346fa83dda34a37da03d693a90e9f7e
-cb7341840226c49aa9c98021cb3baef9879c5eb569e6b6c1a1eba4278cb2939000096
+c50e098646ec9782c70048635a5f60dae8ca37df643e861631c51af81101280500096
 8656c6c6f20626f62c2b0aee89ec05d28e6f9638d2e056f7cb4bfb8b4d032239d3e4a
 7960d7479e7c
-KE2: 5a2cce2b868980dd1eaeb5f1c5d73f7516a87d672f7e44a44ac668ed397d2036
-7b2312da5a60f21596c1d8cbece43c1524da1644e2bf63d9e31c72f8c22de69a92f14
-f8dcce8e22104e5ff08dd08087338e69d0654782011c8304237a5fa4967a5d516fc4c
-4da92b173a8b87249ec0104aacd48a0d4475bf18e6acb3f31548d1d113b7cdd5be569
-4e67bc65abe8bf98fad46886df42c25380eb146e7ac4dae181794624a1d4ac83f6840
-dc0c2404616281ff6f228c3b86abed8feb03b5dd9239dc433b943ce6c2f4f1623f100
-7e06e4f1a837ce7aea2c4e8edbf7c71bbd4168487587178414e280f5f4d2e78e2e287
-baface2132ec51743d96b429cdea220d77dd16041ea53924cafd460331043cb3ec0c7
-f17d6c246499b9c638118a606071e61000f39564834fb90a8ccc8251ae7fcf9cfb89b
-1cf04d4e91d024770e422e109209e2457594daea64f53a5ae19faa4df54f0477c8e5a
-58898ceaa302dffb08a3dc80cedbd8dac44417a8f5fe189c38e8aa9
-KE3: 1c5d3204b18ea222c97080bf67eb91035fd5f2e5a97eab45b68be64fe86b8ee0
-9bf58956cb8e8f09f10e36e44205d2a9112501bd87ed5e21dbe7a7a28a4cefcc
-export_key: 62d2fd8e12d8f93d8b296181a2656b9a9bf8f208162c2cb6d1fe52db9
-daa54bd202628c05c0b01244c13b36378b78a7a93688a748dcd89d6b6f84420fea813
-f4
-session_key: b67ea363bdb38e9dded248bd83cfb6bb8f52acd7fb4e018e08e5ed8e
-933cae86bc6f2fae3f39a3e16dd5116452914c899cbe5cb94c95bf58f3da9d519bf56
-c51
+KE2: 4a38dc2ba076fdc87edf69146d7ec5d4139c8614785868024ff7d07672831604
+e4f7876c1a03f800742a9db1646d84dd650534d85c30be0e8e09a4bcec4f594cb145b
+cb71f7e86e0e5562ceaf033b31ac5e4ee22f148a9283574c70e198a812271db20f67d
+240b0ad839c64b4ff44c232f4baa1a6adb1f66deaa2fc3e0c6e9f926562e015f4658b
+7546cb56198aa56c4f4f5c0f47bd66cca787bad83d56bcc0f7dfda69e1297f6d2dd06
+9527e8f1a79f23a02cb9f4b4ad2240f7493a219088ceaf6e8d470403e570f891f1719
+502396774ada682606fe4bc244f2012bbdf867001febe6ded3f1069ce1920b0713401
+e5c478f2a50dc85c7b6cf767850693914c16041ea53924cafd460331043cb3ec0c7f1
+7d6c246499b9c638118a606071e61000fb9e1a3ce5418063bc688d970f583a218c070
+63541a72744646cdf501299102e65959c5e6532705b16e59babd682e8cefc1e849a34
+3347421c9b2d8b2b26ae4e25a87d918fec7b799e85670dcd6d0b4
+KE3: 113a04e89fd053f9281599851ae5d3667d51491236f4fefb189dd295ca464ff0
+9abe7da9f4c34cab6ab37066173200a968117b8cd7ead80cdf4d1cab5590965b
+export_key: 3a5162ee0bc2c3d47edb34d90aa5665d5fca992d314079e592a0acca1
+3a0ca80bf47dd9f9421502df597f0387bfd7eb1fdeaeafef4723f0992e43b6e7da123
+53
+session_key: b5c8906d8b8e355e347d50ef6b2927d77b12bcddd6eb0037e05030c3
+3a203801d655b1346f41b1d4942e07913355a10c8825a6eb51d34a55101247d21974c
+29b
 ~~~
 
 ## OPAQUE-3DH Test Vector 24
@@ -4910,29 +4872,27 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: b850630b52045b35b769b214e87a39beb4b63ebcc18de915de46c2c753
-11891d84d9628a81a2272f0ce4fe562006c3b82d9760162159d859cecf25b2d2226d9
-6
+oprf_seed: 92d551d49c7511d6ea9997cc23a1bfbd14a7de6079ef89660910d7a4d2
+80103fcce0f42dfd3b3952f1c2e6d7d82e7ce9da52afe74dc03e34251cf167e6a1029
+f
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 71831f27998e3c7251cf84b41bda8db9ce2ce9ce9ee3e3bea9670
-793b4a38ad7
-masking_nonce: 4e101ab06b3b765045bdcadc6eb53d64c78fcc0b8535a02b1907e7
-b1d2e89857
+envelope_nonce: 04cccaeee283652f7a9c04bd4bdc20d7ea82d8a674e2575bc1623
+d4211fb2ff8
+masking_nonce: a2d2a75cec89ae7726b19cb6ad37811038a02c8f4a815e4bbbead2
+8cba527c3b
 client_private_key: 75da35392023fcbfaa87fcf458b0344248870cd73a38e3fcc
 d00a994e1a09e0e
-client_public_key: 2e7f449922d1b7b73c979920fc5eaf21787a6a52e5b4def633
-28bec3a4f21146
 server_private_key: a7f4d763822fcc14bb91a7b36b0a6d30f1ae8c3ca1c36505a
 02610dbec29260f
 server_public_key: 9023317b443158b83d4f4b49674209ad390595bd29758f5e86
 b1fb217190e964
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 5bbbe689f01621f5c793f3842ea50012d1ba5762232e3cb48ac66ab
-76c691444
-client_nonce: 18666b5fd187e90efc4db08a261cc5de043ffec862956229a91e90d
-aca2097ad
+server_nonce: 810c6baf22758e0d1a9acd1e60392a3622ad8b15e3b97b05608e4db
+23bc1941e
+client_nonce: dd5bfc352d151d647e0d47b2d40e2f77c1da80f9363c9fe9fb64d7d
+f7bf7de55
 server_keyshare: 58a6c4fdb4b3da03df2e5b1f6ce1549402e209712e5bf9d31efb
 db82c00eef5c
 client_keyshare: 2c8ffcf1bbc02dab15df7834ebdf85841395f07c8e7317285ba8
@@ -4945,34 +4905,36 @@ blind_registration: 7910645dea4be0d8f6e45f39d3db7bc33d1573d18032ac63b
 63afc6c3170cd04
 blind_login: ed642fdcc98bbe29b7b93769cd75686cce64941bdfd686956b1a60ac
 9f7d3a04
-oprf_key: b6badba39e6c18c81c4556521405dc25201eb44e5595c6a8efd1391ff41
-c5005
+oprf_key: d5382d7ac935e7a10233b5057ef3b148aa87d7af77cdb9c8bafee183d00
+1460f
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 6ce4a700a73d2c472f09a2a68cb25089f1d8addb44aa5f8e134885718f8
-4c4342c83469d90d68b0df5f3c0f737c2e6ddf37b8453573b678bb51971dca746253b
-random_pwd: 3616507cf13c17b5826259420e8bc95131a5846104eb6d3242d22703b
-e73562f1cd4dc29af638a4b4de6a04aeaddf31f58b6929c890bc30b235e290de413c6
-e2
-envelope: 0271831f27998e3c7251cf84b41bda8db9ce2ce9ce9ee3e3bea9670793b
-4a38ad76664ef2fd8d0050ebeefbb0336c4db7143dd5063ad8530030b53ad7d8eb1b4
-90dfeefada0f731f931fbd549cf9849c8daed97e0681d61c60bf6c7b64564d6959939
-6ca40a0bd5767caa52bf61276807f48c46e308135bfb6068743a66aa83092
-handshake_secret: 68c36c4d52db4a4803b12cda0c1478d2b794644db234ccccd0b
-10b5ed82429f194b147b41b42eb31fbcd292074b2860935e3e41928ff2fb2e8c81039
-d48db6e1
-handshake_encrypt_key: a7f407166e4b171702ca86e96d242b6f60d325e25c0e46
-baea77173f236f25b389001f73fc6b312f5e56bde0f33e58bbcce70ce7ccb3382eaee
-5d77e1727d01e
-server_mac_key: 616557a73404c6e4f18285fc8ae4519f7b5ad4477105917827415
-1b167afed90bfc5b0d8a263312646326599700b6612dccec39ea9d58862172a46b646
-a4e4e8
-client_mac_key: 55774774c26a6341f5080230a2de38cfb1f91b890518bc40d64ca
-d1327206812bfd6c0a0842894270a4d545fe96e8413ea70645635b3785eda2b68a42f
-d4201e
+client_public_key: 2e7f449922d1b7b73c979920fc5eaf21787a6a52e5b4def633
+28bec3a4f21146
+auth_key: ddf68453826bbb13e7a826abc5cc2d251d08b058879a7b8b5771c19c291
+e6c6bb14b7e8f9377bdc1d327526f6383220438052c394ab2be5aa57c795f6731313b
+random_pwd: ee251172c15bf3d8ef75e9f00dbf5d3f9963014c7dc46d687358c1bd0
+f3d6c16aeff7c2b9a16cdb0a4d043b068a594041bc15977706965383d2c6befaa4951
+7f
+envelope: 04cccaeee283652f7a9c04bd4bdc20d7ea82d8a674e2575bc1623d4211f
+b2ff848c2877f7689e6dfe8fbe7b386cf0b694323594f8718617383434395744c40c3
+7f57b90b70e5cccc25ed6e97a23bdd46ffd5ce5b6a03737e9641791256a8939a6e865
+2699f53d03824d8d643a7822a350da54d9dd370daf1f79f8231441800b9
+handshake_secret: 884b0b45a7c16b4075d488b899a2d8e261ff2e9f1e4788b61a3
+114c8c43acfa54b3484d2cd6615e7bc098bc22bc2fb28f95f507cd2d11cd003092d85
+80bb6c41
+handshake_encrypt_key: a1d74beb8a34bca91ca8ee513293324c08a74a92e6a60b
+16969046f585030ade282f3c3dbd845b5a2fb803d178b8ff3b4915261e9efcfe6c555
+0085be3e63dbb
+server_mac_key: 60cde9927fd06a2b6e277fcf4577db447e9c20579273b3aa8bd52
+5e58cc3a6340c4c3c4afe24e3ec5dbc57d22f38fa0687bbe3de26ce04a7c79e1520b2
+b3f687
+client_mac_key: 9dbcaa64912ebd7b63324364ed370ac8c5acb006d219c2c97d9bc
+1656bc7ddef8501a12628dffa8bcf34cb1719a5cfeb5c9fe61f9e09d96f9f995837d0
+b3a7e8
 ~~~
 
 ### Output Values
@@ -4980,39 +4942,39 @@ d4201e
 ~~~
 registration_request: 6a525dc9419e2d0261fbcd6033f9d500503a27027a48d91
 27ca1209e01690d29
-registration_response: ccb71572971056d2290d897152aecdd1d253a66a8854de
-866da9543cb7562b589023317b443158b83d4f4b49674209ad390595bd29758f5e86b
+registration_response: 64425cb833d1f0373fe30c5441fc354e2cd16bbfe4c676
+c42d6669fdba2932289023317b443158b83d4f4b49674209ad390595bd29758f5e86b
 1fb217190e964
 registration_upload: 2e7f449922d1b7b73c979920fc5eaf21787a6a52e5b4def6
-3328bec3a4f211469ecabe6be2d75bdfee6ae87f800ce6709f73ec706316c8907b64f
-065e15aa5a096388fc29f7418aff1db88cb904f15c3f26f664c2b385f161569a4c2ef
-5e2d620271831f27998e3c7251cf84b41bda8db9ce2ce9ce9ee3e3bea9670793b4a38
-ad76664ef2fd8d0050ebeefbb0336c4db7143dd5063ad8530030b53ad7d8eb1b490df
-eefada0f731f931fbd549cf9849c8daed97e0681d61c60bf6c7b64564d69599396ca4
-0a0bd5767caa52bf61276807f48c46e308135bfb6068743a66aa83092
+3328bec3a4f21146161364b0365404f08ed96fe7ed1612d664bd4ca770de3e7593dcf
+4781ca2880b87c6525ae7bad642817a0d52f7d1645ea891188a662e91e2e48dd86f6d
+7a757404cccaeee283652f7a9c04bd4bdc20d7ea82d8a674e2575bc1623d4211fb2ff
+848c2877f7689e6dfe8fbe7b386cf0b694323594f8718617383434395744c40c37f57
+b90b70e5cccc25ed6e97a23bdd46ffd5ce5b6a03737e9641791256a8939a6e8652699
+f53d03824d8d643a7822a350da54d9dd370daf1f79f8231441800b9
 KE1: d6a8af82258885688aada828f32e04463c3739c7da0e63c5246711520dc16e37
-18666b5fd187e90efc4db08a261cc5de043ffec862956229a91e90daca2097ad00096
+dd5bfc352d151d647e0d47b2d40e2f77c1da80f9363c9fe9fb64d7df7bf7de5500096
 8656c6c6f20626f622c8ffcf1bbc02dab15df7834ebdf85841395f07c8e7317285ba8
 574b6eee3910
-KE2: 502d958fbf7249f0aa279b333e5e4392a587dd0ba139ddf985549d5c2021254e
-4e101ab06b3b765045bdcadc6eb53d64c78fcc0b8535a02b1907e7b1d2e8985717c63
-7c79dff7ffb686e95f17ac5364ffa546bb040f50f3005ac0eed2b143f1157b2f40901
-793b767a496197bbe3425a27190681b61c67c4a2329acc17d963248e09be8124a8112
-a3d07de87d834a8cb7d1d32df755cd74617e49534e5f57645617feff9ad1f01d796a9
-f6436c17567ac129807660022435cfc1fd2896ed6df02d87ea3bc262bb35cedec23bb
-ee32ec3b684df2ef22497e16cea83802fc905cf225bbbe689f01621f5c793f3842ea5
-0012d1ba5762232e3cb48ac66ab76c69144458a6c4fdb4b3da03df2e5b1f6ce154940
-2e209712e5bf9d31efbdb82c00eef5c000f252110dfdc519d6b3ef39f2c6b583259b4
-368039ccb4a0dafd721f0f9fd9f4c5856d7acb971e1fe8aae3c1e83da942ba20cbc7c
-99fe5bc201e34e0d5839617813ef65c3f3818efadec9ff23a437329
-KE3: 2d28541fa726fe246378c49c731e6570f7ca173251e08da1e47f0ed21e3ff351
-0dba6b0029b63af1aee35f048883f62727fa5be1406b882a6af4128e0ad375f3
-export_key: 37222476076d1afeb735080772b1c9bf791d76923b409c63b0073cf1f
-19d826e89768e9246dd26822fdc7255d8b34899f9cbd7349ea96e595bc3454836dcd1
-22
-session_key: f58685510a6d09e39073a1e3535f121ae0d96f669f3fffe205d72582
-0782b97c204a1f8121fcd5f8e0edb3f50e0237dc8b7d6581401f0484415e7a9497da5
-69b
+KE2: ec47487410012b3d09529690b909a3edd402fba9c7a39bce0c77abc0f6f8fd67
+a2d2a75cec89ae7726b19cb6ad37811038a02c8f4a815e4bbbead28cba527c3b0f646
+77cef68aa031ad63a19d26483ff24b8948cbf56dbc2734c45db39c1debafcff009e2f
+01ffd38cd720d5ca83a518e8b4eae629179b2437e4e99671111826cf95997979712c4
+dba6454d942a3a76bbcc6777f37d769a48f23d519eb4704e7754aaccb7582babf34a9
+81ce0206b48f7c757eb228e54dde1a4424a070be84ae02e6e9f871018c2732ecf0162
+2839b1b723b9fce40696fa952477751b415019a810c6baf22758e0d1a9acd1e60392a
+3622ad8b15e3b97b05608e4db23bc1941e58a6c4fdb4b3da03df2e5b1f6ce1549402e
+209712e5bf9d31efbdb82c00eef5c000f0a35a2f429e81a49a083a6621ecf6ef1d7c2
+28981c02236aac46d04e36f7452857e383472e6a60c2a32e9647a6edd6bcff028fe23
+76ee5b21eb8fb165760cdbbdf14047f94c6104565a4a848d0aeb7
+KE3: d6f19a7eccb4b2c73f59f459617a7473546915cb51b67ae2b1ed7045775bdf40
+f78d09ede2a2deec385b3cf8601447288f4daa71811f35947cef2ac3f36d96fb
+export_key: 8967c53ae5cb626022a24d594e3e3babe2680e84d9491645f9e933750
+fd136400255185baaa92acab382370e1d3da32bfab92917394c2b2c5f37883348fccf
+73
+session_key: d4b8b8067ba6bf86dc4ff6789cffbf0a953c11aaaf595de22746f2d6
+784a96a48b634f3c94e489587a02f9225be8b0a5db9314622e04f2e5faeaabec84b64
+f71
 ~~~
 
 ## OPAQUE-3DH Test Vector 25
@@ -5039,29 +5001,27 @@ Nok: 56
 ### Input Values
 
 ~~~
-oprf_seed: e66f427152d231955aefeb40dd5dbce7a12c7461a13e8c041bb3ee8e49
-d8f7abee7b887766a87130a1b4dcb4d8441439d76ad3580ea5bd4a8b13748b48e120a
-f
+oprf_seed: 4b438e1094eee7ef2c36061757b03d70630508d5049a693bd3a29913af
+4cf036e65d87cb7a1a2e3059458c6d5ec279b9da4f022ba9f8bb9961ea579a5371918
+2
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 7f6e4f0ebe46a04dacd768180bee55eea3b40d4a8fa25f5971895
-e34edb626e4
-masking_nonce: 0d77061d3f32724815ada81492ca0584bcffbcfef2f316e8c7a7ca
-af696a94a5
+envelope_nonce: f20ee238462e21aad594988a2905155cf294251641c6671e03ed4
+b2c9b5d69d4
+masking_nonce: 388b952906d7d974d0e89711684402ba619882164f035b7a6ac439
+acff6020f3
 client_private_key: f4ff0c84bacb98d40ef1b543bdec5009b450e4fea1c8aeefa
 6022540fde3cac20b940bc918b0a16389fe160a1e6ae09a48d235acaa1d3735
-client_public_key: aca7c206bb8f25ac19b3436b1f4c8022f03e13c7763edf9fb6
-86b00b2c04b999f40d3f01507342017e83ef917616358cbf50d2d86063b2aa
 server_private_key: a762ac7f6fc2f643032abc43fbb2ad4e6e012f48d106d10ed
 ddb5b69d9e36d59b08eaa6830c6bfe473f50ccfb5c033b97885214dfe740e35
 server_public_key: fcbb8bbe6f857883e38783acf58dcd6de556530055a2353c4e
 584320e0916d28b8278212bd6405864ae84a5cd2508f09ea1185f82c9ba518
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 10773679d19e95613ef482ee2209ae78eb5e1778a0870a389c2fb05
-66487327b
-client_nonce: c915e703bf2f577fccf265e00494d13936febe0ae6ce6aec3951057
-9318dd552
+server_nonce: 5cc1889a1f31cee6fb5baa94bf72601aaf4c16141365f73222a7d2d
+86896fcb6
+client_nonce: 286bf277adfadd706738bbfd2b2fa7ec56163be5bfa65b7b4171c54
+16dc74ec4
 server_keyshare: 5898c178da53ad329a001103a6f2b4ec6e0966c665fff16d88b8
 7a83aa267c2be161d1a36a39b7b184828166f721b83ee15fe4753b05755e
 client_keyshare: d25b52b3af68ebda6905d0db5d964660ec9ec81066ef7955559a
@@ -5074,35 +5034,37 @@ blind_registration: 83a353c6d832a563b5706dbdfdb9f3e711ee26a9c31b896d0
 da0433f4f6eb32221c3c90388e170f8ed58afce06edf6625440f4e552502839
 blind_login: 31c8ad493e51f27fff7955175d8b2606fa4f81f8d116d2a9e8e49578
 715881238aa712a6fea64bbe268869aa0e6c166754e0b3cc45f4fe0b
-oprf_key: 0454a21a8602bc77ff199d5ec13a96455b76b265bedba1a32d4e1b20b3d
-6cd8694bc2db814c503d9ed1e2fb1f1edc7baf67daaefd08a0038
+oprf_key: 939ad0b341fedb343e3917261a9295e23516cf603cfea3910547d7fd01e
+a121aa637f58b0bcbcea4ec6906e6ff3233dd18646d844f56db20
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 538e0e9ef012d63c7ad8568f610c91eb66b260f31d4fb810e70f32443b9
-85f715b4ceb15bd10a4341b3c0e4cc885838c1788ad3724a5467e1d50d7d030f7c18e
-random_pwd: 9bfd04a55f454d7827f2698aba2219b513c9cb58603cfa90d84294586
-8af4c7749143e886d5b4da5bacb689831cf0a7eae7d31bdc2d457905ac0413127945e
-de
-envelope: 027f6e4f0ebe46a04dacd768180bee55eea3b40d4a8fa25f5971895e34e
-db626e43f48aca3badf3979a0770c2af8604c021b1224de9d6532cb2f757933eb44f8
-11e72629a6c649399c399fddc8edb68cf915aea2d17b240e32c7373270a562f9ed863
-912cd9c9620b769e8a11334ac7899b5e3bc7a74c1d43391a460635d8ca518deba0849
-0c73938b1f95ada457fe6263ba1817d98c802f24
-handshake_secret: ce3e48091755d118b8912ff230d87c55d56af3903457900ce11
-3a13b21ab713b3d5da8bc66795e6821aa1c20eeded3f226e50fa751f5ef9441a212fa
-a20c3ba8
-handshake_encrypt_key: 26056e92bfdbdae6271c2bec0ab4461ec7a2cdfcad2bdf
-398dfaa82c359a8e7af79677ccbafda4b49dca49934f5830c578797284256ed56d521
-ef911210aae71
-server_mac_key: 3d48e7e5281af0ea7afdcc61af855a8424ba7f929fad13c01df58
-7093e8ebce7dbc16def217bf7bc5637d8b188b0c8004dda5cd8c2b31bed94fd9f3ff3
-c339d2
-client_mac_key: 0c1c1425bb636d12a3b731a92292b899d0b004a5132e1d29c1ac7
-8afb64fb9ac1a38ec99ae43be6f3ee524c341a807bd2ac124ad6db3514cf9d965a77c
-6f24a4
+client_public_key: aca7c206bb8f25ac19b3436b1f4c8022f03e13c7763edf9fb6
+86b00b2c04b999f40d3f01507342017e83ef917616358cbf50d2d86063b2aa
+auth_key: fd29c74ca334121161afd535afae7f04b01d2970a9d7b30efe490988017
+a05d68f9930e971ab613eda187a42e3de7dcf5fbbf79939d7c9ba7a6393a63223c028
+random_pwd: f9bcbb9b85a120edabe5e587eaf6f643ee5f890b965716fd44cd559fb
+3e0c30eea2ab784ca0c9073e43dce8f0def739c2b106de8a8789154b57e829845fee5
+a1
+envelope: f20ee238462e21aad594988a2905155cf294251641c6671e03ed4b2c9b5
+d69d4f640acbf7e4b10b95ea5487e2c6eca4d74160cfc5b07329dfc8bdc2911ba8b78
+cf2851d481964bd85537c262d71178321816be900f58b9412b3b68158578e1d9eecf7
+abe16cdd341132d863631316a48e4022a42f4320f33f5f1c4fd89e7af2d27dc425165
+ab85f5635a47329b0e2072c6e8b9b3fb5a1243
+handshake_secret: 2a9d31d93f3478448dbb5c850474fba1158a6557b9d2b0f76a7
+da86e87a2113fe8a3b4a237a3d802bbdcc68bfa4618bdb4f5b2ef246c143e3aa73304
+1028101c
+handshake_encrypt_key: eb1d3ef844dd8b3605e684201b9fda3cc41079a6e7a567
+11cf50e776e7935a99cc5cb26d983c04f0f77b169dc6cfb404087ae5cb75ab0d61da2
+b4fc605fb96c5
+server_mac_key: f578efa8daaa8c4036fc98b7b2fa45e1eb33fb23775c8e125c04e
+d29d6f3f30dcc1cca262f1ce830579d9ae3b77bb775d0010b7147f5b16ef4ab4200a3
+0380e5
+client_mac_key: 900c6087a346357386f1ff76581cbcca1852feca658bfa8cb2a6a
+e6d0db779ecab6603a5932c4f20a85e04c63ad8128d71e95dcb3255e8f0aaa10fd55c
+973a66
 ~~~
 
 ### Output Values
@@ -5110,46 +5072,46 @@ client_mac_key: 0c1c1425bb636d12a3b731a92292b899d0b004a5132e1d29c1ac7
 ~~~
 registration_request: 56eba0e757af33e634107f2da32fbe987af1d37bfec1918
 a2d42ed2f6b3714bdc1dd190ed6dc6da310536bb748cad363e76ad2fb1b05f1c3
-registration_response: 7ad69e4b9dbdb6c392b0de82ef601d5b6554ae5986c093
-6fa75ed17dec63a701d26be625b06cbdef934fd5214654885de15c9d73df852611fcb
+registration_response: 769132f89b52be1efd60914e33299e9dcfc08ae8e83901
+97e2a19ccc46edd5398e9b6f8a9d187a911dc3115e31838694e45c3c2a2d8907f2fcb
 b8bbe6f857883e38783acf58dcd6de556530055a2353c4e584320e0916d28b8278212
 bd6405864ae84a5cd2508f09ea1185f82c9ba518
 registration_upload: aca7c206bb8f25ac19b3436b1f4c8022f03e13c7763edf9f
-b686b00b2c04b999f40d3f01507342017e83ef917616358cbf50d2d86063b2aa1fb24
-2c43cb43b96d5f0ccc15e047c12da06c2d10a8a79ec7040486472678697c66bc681ea
-9e33d3f53ea64d33eda501795bb7f4b1033e30853ff47482933311027f6e4f0ebe46a
-04dacd768180bee55eea3b40d4a8fa25f5971895e34edb626e43f48aca3badf3979a0
-770c2af8604c021b1224de9d6532cb2f757933eb44f811e72629a6c649399c399fddc
-8edb68cf915aea2d17b240e32c7373270a562f9ed863912cd9c9620b769e8a11334ac
-7899b5e3bc7a74c1d43391a460635d8ca518deba08490c73938b1f95ada457fe6263b
-a1817d98c802f24
+b686b00b2c04b999f40d3f01507342017e83ef917616358cbf50d2d86063b2aaf45cc
+091ed72e6185588e40aff6aa8bbeadabe0ec71eb12a1d93122d897372c466ea3e4834
+a16e5c689bf4ee6e69f9d5015396e979cf0ac57df35db2b78e6ef1f20ee238462e21a
+ad594988a2905155cf294251641c6671e03ed4b2c9b5d69d4f640acbf7e4b10b95ea5
+487e2c6eca4d74160cfc5b07329dfc8bdc2911ba8b78cf2851d481964bd85537c262d
+71178321816be900f58b9412b3b68158578e1d9eecf7abe16cdd341132d863631316a
+48e4022a42f4320f33f5f1c4fd89e7af2d27dc425165ab85f5635a47329b0e2072c6e
+8b9b3fb5a1243
 KE1: 16ecbe71c272b0b9cce77059395154ae766c95a7f10ad0e699aa0c773877225b
-a13e0a8ace5007c53ce3631c7e7cee782a6c44cad6832e0ac915e703bf2f577fccf26
-5e00494d13936febe0ae6ce6aec39510579318dd552000968656c6c6f20626f62d25b
+a13e0a8ace5007c53ce3631c7e7cee782a6c44cad6832e0a286bf277adfadd706738b
+bfd2b2fa7ec56163be5bfa65b7b4171c5416dc74ec4000968656c6c6f20626f62d25b
 52b3af68ebda6905d0db5d964660ec9ec81066ef7955559aa302e012006b1ce049556
 666231483f56af9dcd1c27fdbafb4d954060091
-KE2: dc56ec86c7873b8ce8239ca4eedb3611941d38486c7b3d28e6e40490cc8fae0d
-c470505329a26de1e340bd2b48ef50d2752182d6decc67830d77061d3f32724815ada
-81492ca0584bcffbcfef2f316e8c7a7caaf696a94a547dbcdd989cd321bfa43f01883
-f1705de6dfe1dfcbf5ffc5ae719918446eca570df701e767fb7c5ef0a62f442998596
-b53d2d30556de35c1ecdc81411867ecc9511ba7be24187651961b663f5edff78c3035
-961527c2bc8820f953abb12007e6e63d7a8e0ab57881d53bfc631662f2fd72ceddd60
-fa527ca3a721d42560d97e9e44a8614a5b09f3ae27c320e085620ae5496a5e260b17a
-0e4a5fa8c3c51a159fb75c5d982888bb013c1246c6a83c3c728543c872fba066c5d17
-5603c5de920a90886acf4dd04403541b198c94e3d94c0e210773679d19e95613ef482
-ee2209ae78eb5e1778a0870a389c2fb0566487327b5898c178da53ad329a001103a6f
-2b4ec6e0966c665fff16d88b87a83aa267c2be161d1a36a39b7b184828166f721b83e
-e15fe4753b05755e000f572ba68b5be4e8f44d5308cebd5ea5d6200553055aca94081
-a395b3b3c5610db4183266aa278434215745eb8b407ad65b0fd19c9e0349bb7ab186a
-c46a7ef8c5f1f99ec847365627e175c6a2519ea7
-KE3: c19b45d2ed3ef74fa67473abda4938c65c1cc3b373bc25fc52e010d8d3891abd
-9f82bcb30992d9f72d1bc4239998a83f8209fc07abb8d699d5c6d7a440dd9b86
-export_key: 9564a837ea3f29df9558e8cbd67f2d1bd976dc80ef887e1a715096413
-a9895658b47a50065d269d641dd6dc7996602e1b86bb8280915d4f64b00f36b1b083a
-30
-session_key: 6f568b61d594d1ceaacac82c19e79991e147d949f4fd7fc1a26206e8
-28bf4e2be222dafb41a52ce25e6121b5170d3a417ef80974a368a62aa11ccc15c63bf
-8dc
+KE2: b609216d947fb8f8e116bfddc98de812b5936a541024557c8bd5c52b7fefeb87
+972263dab4af30c05b4de5e9596e9b121ae23396e72c1bb5388b952906d7d974d0e89
+711684402ba619882164f035b7a6ac439acff6020f35d2ddb696c2587014e29c74250
+da02f33f71745d16febf7da27ff33439eaf51989365624470f6dbca28707146385385
+1ae86be6dbbe8195ad3d956179386dd49da5479d3135fc05036f96ce26a8d085a497b
+b7270e52447e73f4476056978d77204d7704980bb50957a84e2d9486243e8e7b0db95
+02a26ccab2f92b7f45d5563cb1bb19cf105a1fee8a6b4b0ed7581527af70a17d7a350
+609717edaf9a75aa7150381efb55035461cd90038f776244dfb0ddf934401c3d7375e
+e8b7fcb4ce4c3bfc1aa59c1469d14ca2022e6592c1d405cc1889a1f31cee6fb5baa94
+bf72601aaf4c16141365f73222a7d2d86896fcb65898c178da53ad329a001103a6f2b
+4ec6e0966c665fff16d88b87a83aa267c2be161d1a36a39b7b184828166f721b83ee1
+5fe4753b05755e000f3cc1b199327335aa6339e244754101e77e4e7f0f4486d428e3f
+53a2207be440fccfce3b67ac0268f44327440e4f2f5f6a1e1c7af200e54f38e3f9067
+0498820061918fe012a11909284d7ac245ee9e
+KE3: e4a167cb577b9b2daeafdf792367494dba3fca0028e1df50b5434f703adca61d
+47597cd9babec56159587ff171ae447bb8978f385976683647473f5896693386
+export_key: 278b3276079294de6a589044c992383a4f878f222176508ab325abc5a
+d2d4394947b8b26d5cbe59ac81c6ea3db9d3d6b744796137b809f83bc53d37f36c976
+60
+session_key: ce6b7aab8ccc83e36e1e1ca0c06a07dcbfadae4733c1fc57f6daa40c
+fec9bca0bf480090ed92888798f46b4b3e7f1cda1be75c6214a00d617e944aa4bd27d
+0c6
 ~~~
 
 ## OPAQUE-3DH Test Vector 26
@@ -5177,29 +5139,27 @@ Nok: 56
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 161c27188ba2c7ec0a16826e0a73a75017a3b9b9039d35690a5a290503
-b6bee971ba1fe40ce056a514b7b6e98576774e437c5b97af64bd06d098ec2c79a1536
-7
+oprf_seed: ecf05fd6c6030f687a38147851eab30c8136f3a827fdd001a69bcdacf5
+31b4d4ca6295270265ceb1087e77d5802bd55d76ab525021c5d3c441bbe97ba2a9069
+c
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: b2d9f14455e6cc806dbb85dcfd0f0f984140e268046c0e619d1ec
-306262bfc93
-masking_nonce: 4a7edf517d64ca5848c9cd198567da7b663062f96c13d4aae16ee0
-7630ee8265
+envelope_nonce: 1b82c2b09e59137c6ea1c0d9160869b9a95eaf0a5edcfe7d563e2
+c3239bd2346
+masking_nonce: fca3baf2ac9ce8b09b5c8756f2d13a02495fd05e23111f3f84d754
+9bb3460dec
 client_private_key: 4f4b1b91c6a9c0dab6a8ad279201e00d358aed1a0ba88c458
 589796b05ac19101d1119df1070dbd0911ca74b4634a51b9b1b093b74e1873c
-client_public_key: 30b7ffad2fdce2c282ec205685afe5d9e0551773c14c23ec2a
-f04c13af62b8df5558f6dbd310fd41bb2fb37c8377796be92aaa21bf60f357
 server_private_key: 6ab03a76f031abde2e7d1f987c101064757d6133445217316
 02876c29cc7d2652a7329cb8513ddcebb66b178194206a61256f5e14e70d23f
 server_public_key: 2ef8f9560867402d20f9c34942bb26e63d2cc667851473334c
 6cdf1f89ec0ea218e3ce0f73f9f1fd303f140bff958f80b7d4dd22a150a0aa
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 2ddbecce8ed6f5b2cead04c19f0daf63cd35510004a1a63f6d36a93
-2d14e7986
-client_nonce: 54d2d5bd6e6539e032975ba669a525500a3fcbcbcac903946d90cc5
-e9ac69e22
+server_nonce: 7f3ce3f5abcbed71e4799d052f3a1c6045b84ea2b4d93292e9a6738
+def8b4fe7
+client_nonce: b66d40e5b2945dd8b159f5df5bcde90b00c398d23f1d98e0d8e1348
+e3bfcd6e5
 server_keyshare: 32751cb95f97035f22d498ed57a8af0d2495075aace642f15244
 2da8485211d6a551142d9bc6771619ecf80ca8b4def396f706ce555e2896
 client_keyshare: d87899f024ee66ed5b8718f9966f2f34dde445da12078789f1e6
@@ -5212,35 +5172,37 @@ blind_registration: 0db98607cff12cd2badef2406e0491ecd3d6bb96a4335ee7f
 0c504e5cbe48ef5daa3a2b717e4009bfc8c60f6a0ad5e73607538ee51807c3a
 blind_login: 24ff7adb77a75a1f02efa6633339b91ae4a42dd0b52fb5f997673263
 f7f5af9ed39730c2d1a09d12123d1bee3f550acb33790d70b0123815
-oprf_key: 5d27c764fa1d0fdfefc39bc7423742a996583b69a7f38c6b9eb119e35e4
-1fdc12769faeccc610dacc09201786e347adec794f5b0fbedd625
+oprf_key: 83d6e42aba37fda118eec03965549d28d819a2f662c530ec73322480628
+b57c0b1adbb90408e2f89fb65963bbca62a8a512fb79c1d4a5517
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 03341ca63fd557e9dd711f3bae7d65310213d6aa3153982f03fe8b3f856
-aed3b5352881fc68936dfbacc8b83d9bf1e966d5ab7d148ec24301d8e89f5f993fe28
-random_pwd: 44a6348ec0516ed122517dfa6365f973fc5ae3897fa710bcaeef2a78a
-b4f4717382b94eb61a3a1a7612b5423c1d70d15a4ecfad6b5807a541f205988a55bbf
-40
-envelope: 02b2d9f14455e6cc806dbb85dcfd0f0f984140e268046c0e619d1ec3062
-62bfc9318975c173fac968257b6b3555ff65d830aa56522a35d7c3d742fac7df614fd
-8c21b3d3411a118e2d9779f98b0c5a458b066380c712880fad77b2faf7e32f4074264
-c9a20aca09a51f8e0effbd6c4dda9e939a4d1daf1d52fe738b500758b2f5180186d23
-3b4c77e5c1e283bf6fa48fb7d9973b1c6f7fa393
-handshake_secret: df9a36b0a9c85b5e00ecaf646de220df9a6d83663a402363906
-f40e7ef5784f448a1fbd5b39142e0b626b0f88f0405a87dc72f6f43b3488abcda215a
-e86bc732
-handshake_encrypt_key: 74add9467a5773529faefbb9f7b743adc20cccb7c1397b
-a582bdb14b054839bb5cfde0d190827e48e3c52838d17629681c99b9d67e59880dee9
-9fe60177a9761
-server_mac_key: cc619d0b094657d87947edebaf0a44df00ae68c1ef7105e1a245e
-65ee3bcb0c7e808c1e43e4a020963b8d029b17b94c2c4fd0e4ae7bdf2ffe6ebfdfd80
-33cbcf
-client_mac_key: 60ef4b8d54c6a4e36403923fdcc4665b57330b52bd2c432c8cb5c
-d0b3bd5d58962f52e37799ef2052ec02932df65c50b7139eba97aaeed6426c7402e7f
-fc749b
+client_public_key: 30b7ffad2fdce2c282ec205685afe5d9e0551773c14c23ec2a
+f04c13af62b8df5558f6dbd310fd41bb2fb37c8377796be92aaa21bf60f357
+auth_key: 18a52f53cd9a199c4b474b6dddb6b67ece09957bd0d0280ac8b3a745388
+79aad62efae10a2141e1b14a80046b71cce1075d1389e4deab3929aaeebd58accd936
+random_pwd: b8a031b3be8a579930d86a0e3648518c35bbb750f61e750c99a436880
+8dd15d9216adfdf00871a0321f51e5bef8a9f7b5f4acf60cc2321201d0a265d7813ec
+d0
+envelope: 1b82c2b09e59137c6ea1c0d9160869b9a95eaf0a5edcfe7d563e2c3239b
+d2346a918a25e6d03fe6d4e09a395f491f74faed44f27faca3c39aca6afe1cba5564d
+0f00f17adb5387b1ab8ce13afb0f11de431c825ed6d5dd663a684b4e5542268e92e1f
+f9592356e9d0057e3c2b2f2932558493aebc9ffb9e476831a5eb56c18068ef66a30b4
+b5e7f6aae5a68724ca714d5d91119d8cff1661
+handshake_secret: 8215a8ef096905e3f30fc7754b71a6425c4bff1ebadcc0dc839
+d144f8cb2cadbba1aa74709853f08f047eb2e2b016daabf3b04bfab3110a6e1cdda5e
+54f1661b
+handshake_encrypt_key: 3fab58f1e957170a1ab6451282f62a28259c0f32eed787
+4f95e072792d4851e45b92f7b7f318cd589c38b6fd4f268a266003f2f3ceb90637fa2
+29eb11fb70a55
+server_mac_key: b3c3bd42787589e3e3d6bc86d43b043acf427ef84bc3cce025858
+bc5dcad6f49a15433b75b252d3a0139bebfd03dc9a120fbd66ab6b5fe332cbad4ce40
+f03b7f
+client_mac_key: f2bc89e944f0a8a1c51e6cd6bb1576868bba80c6baed19b77f6ce
+8070f387a1678baf408f8af33fe8013c38b359bf6ca3830c6a9656e3a2ff4bce00f74
+ac1c5b
 ~~~
 
 ### Output Values
@@ -5248,46 +5210,46 @@ fc749b
 ~~~
 registration_request: d287a62ca4d452ff3b5e2d800121dbb5785bb383db9bdb0
 c541f8e643443dfe2ddb1162b8b7c758893fde1131a84ae57935e7b60b14058c1
-registration_response: e0e9c898b5c4083854a83869011ae5afa28a46b2f4b29a
-68c6dd2e94f00b48828011ef6ae7901ce6472c765e806361461097c0fce8ac70aa2ef
+registration_response: 9a77f4a8f646bfe8be5768beedaf0685e92a8cdae93269
+8fd38f90e092958d2947b019f510f31da19e221a1a9c0d20fe0690ce248f863c852ef
 8f9560867402d20f9c34942bb26e63d2cc667851473334c6cdf1f89ec0ea218e3ce0f
 73f9f1fd303f140bff958f80b7d4dd22a150a0aa
 registration_upload: 30b7ffad2fdce2c282ec205685afe5d9e0551773c14c23ec
-2af04c13af62b8df5558f6dbd310fd41bb2fb37c8377796be92aaa21bf60f357f2f0e
-df922af38b3d9cb2007a5d958b6fce5a6c2eb880e017e23b95fabb1c730edac9a8fac
-7c61614c5cd605e5ec4e89a60c251d681f2ad5e06637c04c48ff1a02b2d9f14455e6c
-c806dbb85dcfd0f0f984140e268046c0e619d1ec306262bfc9318975c173fac968257
-b6b3555ff65d830aa56522a35d7c3d742fac7df614fd8c21b3d3411a118e2d9779f98
-b0c5a458b066380c712880fad77b2faf7e32f4074264c9a20aca09a51f8e0effbd6c4
-dda9e939a4d1daf1d52fe738b500758b2f5180186d233b4c77e5c1e283bf6fa48fb7d
-9973b1c6f7fa393
+2af04c13af62b8df5558f6dbd310fd41bb2fb37c8377796be92aaa21bf60f357be568
+225a57eeeecd3ed90de3fd7d45bc65ffc1f5122c8e3401e37b9116eb04f4525b3caf9
+cf97aa4479efcf6ac71aa6a657ee3ef90572ba29bfbb228bc83ab01b82c2b09e59137
+c6ea1c0d9160869b9a95eaf0a5edcfe7d563e2c3239bd2346a918a25e6d03fe6d4e09
+a395f491f74faed44f27faca3c39aca6afe1cba5564d0f00f17adb5387b1ab8ce13af
+b0f11de431c825ed6d5dd663a684b4e5542268e92e1ff9592356e9d0057e3c2b2f293
+2558493aebc9ffb9e476831a5eb56c18068ef66a30b4b5e7f6aae5a68724ca714d5d9
+1119d8cff1661
 KE1: e4420dd6be305be0776f14c1140f0b36ca304c007827a8c5b4910c5432dd4caa
-6214b4077d4a99e6d6dd7f756bb3531bd010eec2253afd1b54d2d5bd6e6539e032975
-ba669a525500a3fcbcbcac903946d90cc5e9ac69e22000968656c6c6f20626f62d878
+6214b4077d4a99e6d6dd7f756bb3531bd010eec2253afd1bb66d40e5b2945dd8b159f
+5df5bcde90b00c398d23f1d98e0d8e1348e3bfcd6e5000968656c6c6f20626f62d878
 99f024ee66ed5b8718f9966f2f34dde445da12078789f1e6208028cbc9b7ac7cff5ae
 937856aa01321310e1858f0e3b89492e9e49f42
-KE2: cae80e4a2bfbbdee773259f27a51828997b7891990c73df674fbcb6045f4c7bc
-b18761ef11c0ef248ad2cb049cd2403d317547c1ec5576464a7edf517d64ca5848c9c
-d198567da7b663062f96c13d4aae16ee07630ee826515efaab86dcbe116fe4d3a1f78
-4c2a6dbe425bec7008c080090c90c099173ebcf639eb3f824632eaa160730702811db
-3659f86223d622c3fdbe0562dbbc987e4861479b735018bdf8cda3b86f7ec0e0b2719
-6296e27756095dd85637bcdc015cf6fb2f0792c05bfe7b0fea98cec5642166f70c53c
-cc73d736567ce20bc59fc790b882721e55c146a4e4f53e0e5da818741125f31dfb68d
-bd2e306aa83b05b48d77c7d60d04cae0d672eba5565aec701c36f45b01c9ab441e2e7
-1e7b9f472f4d9617952e9035bcae2e5be411d7fb81d11c52ddbecce8ed6f5b2cead04
-c19f0daf63cd35510004a1a63f6d36a932d14e798632751cb95f97035f22d498ed57a
-8af0d2495075aace642f152442da8485211d6a551142d9bc6771619ecf80ca8b4def3
-96f706ce555e2896000f53af7af7d0e6a210bdff9019deaee3bab57f16aae9f32498e
-6b360217b2ab378be1ee723da5dcc6b89b35395e6c3a77382d5239c57a70b3f78bc44
-89791b6b7bddd58056908fb0366bab1bd166c7e5
-KE3: 6cedbc6454bcd755ca71d88b061d7a67a2011ceefd8f30993c924feef46107f2
-088c2d5e4da7973acc0f45e9c297e2ac2a8bb1b1a8bf603785b7bc4f57bf525a
-export_key: 541b076a39722d131b55b0d305af4ec3edaa0b284e8421d1acc29e79c
-9fde09958a188b86c7c7c03f2107cbfb20b99be255cf9c99b0a2a29e457517acd80b3
-ca
-session_key: f3ea1fc5802d1c5a9c2e1613a409c16b7a132321fcedd30b7131ede9
-2ad15f320eb808cedda64591a62273b1bea97cf7acbc02a1d6443081f8cbf2c5f4f22
-e7a
+KE2: a827154dd01015fb25c4acfdb81f9ebc011845cd8bbc8cf9d5eb92be7940ae0f
+2d373a2dca009fc1b093e2ea6f18a5223450f83ec1da8d1afca3baf2ac9ce8b09b5c8
+756f2d13a02495fd05e23111f3f84d7549bb3460dec1d6328447bfcb2b59f42783162
+50bba7d876731967aa0ce4dc987ab8359573a3dfb611d4e0607635f8cbc4bdbcaf4c2
+3d2fd4a98b8bf8f405c0a8e353ad71a71f76e0f29019aa662b64a6e5f40fbd4530026
+f0322702199964a9d7ed42a2451bfddcc91e5e5afd763ad83a3b661d61cb91a6d1cbe
+15d6b51b995428a9a4b717210655602ccb7c64487870398ac15fb5bd31d6e9da4c379
+3849844db3435e1e2605904c6a07db7cdadc62ec54ca28f96021ea16798e4f06fcd0c
+e1114cf496ef11f76f7be99e69c9c2be4f1f651a9124b7f3ce3f5abcbed71e4799d05
+2f3a1c6045b84ea2b4d93292e9a6738def8b4fe732751cb95f97035f22d498ed57a8a
+f0d2495075aace642f152442da8485211d6a551142d9bc6771619ecf80ca8b4def396
+f706ce555e2896000f7139f8fc1d7fffcc7812bc3c1b6c7900177ad9de39eff8879f1
+9f2a2bd5c9980c71a4866cf7cf70091fdbdd1913b0a8ca1df63abaae6a58d075a1ac6
+0303d67bd46868e807f83f55771a5d3506930d
+KE3: 8b739d8f6276ee34b4b9023a4f5481b315f9499c5e1009961f6e88ae8ecee4d3
+cf6e435e1566bbbae6a0d583490e84f65d3c936c6547f3184c96b5108e8e177e
+export_key: 6ff43968ccbe5bfb03b0456c595038840b62c7dc7919c8ce6b34a492b
+99757f39ed4e91d3aa4d24d635336f9adba00ac2a013e8fe1af9de5cec56908a40027
+7f
+session_key: f0dfbe4a47315485b14f97b3eabc136a03668672582efec6a81f25f2
+02e3c45243c61838119bccfe1150816f8e6fa31a908b275a296b1daa21521168914be
+9f7
 ~~~
 
 ## OPAQUE-3DH Test Vector 27
@@ -5315,29 +5277,27 @@ Nok: 56
 
 ~~~
 server_identity: 626f62
-oprf_seed: 1be3870b801a63f56291c357c4b90ebf3a79924f2f927ac3a1df73dc39
-0785b2abd52fa49ac56ce44f37ef1c178cc48dfd5e1a833e9be8fc51e24fba80b9e8f
-3
+oprf_seed: e2dca178c2b1472fc21e870dcbbefccf14def3124f44d4061c0467f731
+9f426c67dfe72f19c2f31d5875bac10911556135292f249b4405e310906199dd949b5
+d
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: c83d3b4ae73ab2fd0c297c54b7c915bd8920b9b4d3ae72a075f71
-f29ffde742d
-masking_nonce: 22994ee890e5f487dba2c3b86a6c76cdd1a65984c1cd582ae2aa6e
-a72195e3a2
+envelope_nonce: dfcec8bfc96c8d35504993bb8e921fed4b312cf63e608d6d4eb2a
+afb4c199e11
+masking_nonce: c096e79ba9b7fd18ca2b28fa59a124e866a95632ee2e3791828b49
+197b449638
 client_private_key: 80b8326dd0c2b506b88b0b4025c0db89bb624a8b94861078d
 88f88515adfc5374ba9326bc531c7ec458fa14a482339ce7854b1c044ba083b
-client_public_key: 06b7fb8ec9beee7a168a7a820bd710d1b72d05a433fcf53e5f
-4ee0a2a5c3a1d48d16121594b272656efcc614aff77386030ae72e47d948ef
 server_private_key: 5315b843996e1c8dab628f7848b29fd8d4368a414eaaa9110
 da1cc53752548548f132674a235f9ee105780d4ece5e1a760c147f744bb450d
 server_public_key: bcd8a3897346eb85679f52067ff50f69dfb9fc0ae776fcac93
 c99e1e9dc14db5c9c26b09e1980f7f5b45774012be6234ac5a8953ff69ef28
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: dae3345586c7061724600f3493c080c087308d45532c04f9bf2405e
-1d6c8f611
-client_nonce: 749d6298ac595f85cd735dc6a88c2eee47da62d7c032396ba458254
-bbf530985
+server_nonce: 758b65209d4ab59f992b6cc73af931e5d12ff78967c9983a5508404
+edbe30688
+client_nonce: d369dec6ceccc831ab7953167491f9f9ea7cd0bd8216df60d4a3f7e
+0edf915a5
 server_keyshare: 3ab8469c97f3394c729de0b4f980ac06ea6a90dd077f924aac42
 10ce65521a90aa1ed82f46ad5cd948d1d96a179409a020f8a01cc86cb7b2
 client_keyshare: 6e0974f24da70adf24d24b5e267c80f6335a5cba9442a5658cdb
@@ -5350,35 +5310,37 @@ blind_registration: 5a58b6378e03f24937ae6ebb685ba39f43d99b2f6fdbe00a8
 c754c0d6d7ed824d2b5c8afca5b1cdbf7c3248fd9f16400508eecb6b7894a12
 blind_login: dfbc42d70013abe2cb8ebcf6de5b275aa83525d606424339cb500346
 6051f19cedbf00b0f680b7435bb165c340da077f8acc37c0a2594119
-oprf_key: 2a2f2c185d17ff5d1c4d2dd671c77d13aa9f941d91ad12234b904b00239
-6c2e6da9066a644c8b827d8af2c32c741b4aba0af85e69afc0623
+oprf_key: 107edce8eb369b4093a38e3b35c0eb924ad25228e0cd1986fac95c2ecfa
+9485e6bf9df3dbf50ad4edac9da5e4d4df03251ff728ab10fe211
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: af4481e1b4d9412f34349afaeaaf85683321d0a2e5d2a8298c500b9685b
-08e8a3094f6344ebc94b173240f68c764d3c41b3340968c5f7f42ebbc6c47055691d3
-random_pwd: a0bc414c3d032d52cb12bfff2696bab7f9c79c598616d7e5bead46334
-89b401bde4732a0842e900dbd51b69b698bb490db7ba969d2ace464f22fd47cee8af7
-31
-envelope: 02c83d3b4ae73ab2fd0c297c54b7c915bd8920b9b4d3ae72a075f71f29f
-fde742d298f643831f0335ebde21c665656ea471f85dc188503160e14f38d29439a3e
-9c0eec7144e89cc0df05800afa922c481e5e1d1c52896c4e27c50af2e870573ac1607
-1e72e5da71b44d4f10555f2ed34d1bfc2e3df46bfd597a36b7b19d6ef3f124b104fc0
-41349454c6289ce163a68d0134f5f5f78da10661
-handshake_secret: 7ff803ee315b51842f13880203d5a605b1567011ffe5fc4eb86
-11b71ed335feaa5ed51a5cbe7aa91eb9121338e862b633d5dfb5dbec4b8ae19fe6564
-1d82ab53
-handshake_encrypt_key: 934b11c43144814b82e08c6a038203d240a03f58b129e0
-35c339c1af0b1f162988c627856afec65d639100cb144ec8f5e2bafd7b3aa2aeb8221
-30a1fb7ea14d6
-server_mac_key: 098f22474a7042493afdc40af5e19921723c05ad6045a60d092e9
-1d418b5cbe681fc1bba8fa9428a57f5232878aafee013cee2967db0dcbbb7d04b1a76
-877471
-client_mac_key: 844704a8c5ab4a08399c3ff2139b90f401d55e4dda09b44f8eef9
-b8676e50e033a5c51472b812d1fcd639bd30370090d1c6712c890fea6eab78b7c28ad
-4bfa69
+client_public_key: 06b7fb8ec9beee7a168a7a820bd710d1b72d05a433fcf53e5f
+4ee0a2a5c3a1d48d16121594b272656efcc614aff77386030ae72e47d948ef
+auth_key: b5dc040a8c70a725640504544f0c21519f48c8e7a829bfb30b928f7b1cc
+48f18ff917d3418d84cd2d37b138fcb13951970b38256a7f0fd00fcb6e4565b851de9
+random_pwd: b87c7b3af688a875ffdd57a60c707621eb81851b4a988f83355827d27
+bbae1e9b1c2282791c8fc5c9cd1497b25aeaab592cadb2bd666df9e748e369a5a8334
+43
+envelope: dfcec8bfc96c8d35504993bb8e921fed4b312cf63e608d6d4eb2aafb4c1
+99e1182681885dc85025962559b523b5bc50c72d8a439c7b09783771425a3d5bed9c4
+d25b2b94187143b4429171dfdc39614e8951ba5ce0777109c99786445b1a8d8a784c1
+149e5542b922dadd4521077582ecbff76ce910fdcf4eae52112075b5aa4eea4f6ff8c
+549655c57a1d83e4074fedef800dba6fed57ca
+handshake_secret: 93f6749f4c768274591bdff1b18c5cf730517d0edaa13cc63cb
+766fee3d03eabc46bbd2bcde23e301e759fe981cff160602ebd7efd98bc58d3c3bc7e
+346646a9
+handshake_encrypt_key: 0a910069952fadad580b1e38b573b8a30ae870123188da
+d656f2cd0bfd7761b671b8b8b6d4973e2e81bce7c52fa0a6ae36207f983b337f5f6b8
+5c9690c666e6d
+server_mac_key: f1e8defd5acda15b0a1fd171d2d69ba43fa74332b9af2b0b69e27
+84091bf09eebab856784490866103f60182c756122fb921278d4d08feaa2deee0c330
+3187f8
+client_mac_key: edebf037dbf79640e4d9d26b6b01ccff22b393a9c992c43997914
+11bf16b8be73bfed1402d7691a51918aa56a94108d38229c2be4c4c92ba8cf833cd7c
+6ea3b5
 ~~~
 
 ### Output Values
@@ -5386,46 +5348,46 @@ b8676e50e033a5c51472b812d1fcd639bd30370090d1c6712c890fea6eab78b7c28ad
 ~~~
 registration_request: cc1b854bfac5f36d7f09d18975d26bd031490a8810722e5
 e84d13320bc6cc1ad88f2faefeeb84ac706985e2784da104dcfa376ea200241d6
-registration_response: 10a5ce760d890127fb10c3eca3cbc3d3514ada25ce8b28
-badcb336e9633651775f071a1fd45c9dbddf7f66f48ecb96c10e9c439f6b19bfd0bcd
+registration_response: 460bd9575116fc18d186da49e0b37146547e36ca81204f
+a189d6f48546a587fe43840f2dbde88967d7bf4fd0db2b1013dd59665ca1a58592bcd
 8a3897346eb85679f52067ff50f69dfb9fc0ae776fcac93c99e1e9dc14db5c9c26b09
 e1980f7f5b45774012be6234ac5a8953ff69ef28
 registration_upload: 06b7fb8ec9beee7a168a7a820bd710d1b72d05a433fcf53e
-5f4ee0a2a5c3a1d48d16121594b272656efcc614aff77386030ae72e47d948ef44d48
-97ff027dc60dcb12811c113d304690f3db4908db96b3b9cb3f101f36748f92a8fafa7
-005937eea0872266e70a9a7a8a2cc7afecfc831653e741d8df395802c83d3b4ae73ab
-2fd0c297c54b7c915bd8920b9b4d3ae72a075f71f29ffde742d298f643831f0335ebd
-e21c665656ea471f85dc188503160e14f38d29439a3e9c0eec7144e89cc0df05800af
-a922c481e5e1d1c52896c4e27c50af2e870573ac16071e72e5da71b44d4f10555f2ed
-34d1bfc2e3df46bfd597a36b7b19d6ef3f124b104fc041349454c6289ce163a68d013
-4f5f5f78da10661
+5f4ee0a2a5c3a1d48d16121594b272656efcc614aff77386030ae72e47d948effedf6
+1a1b3dbc9fa0291be85d973f851ec908a73804ee01cb4b04fd5a1d4cd023205da074d
+ac899f35087b6970bb187e4a8891727bfc2065d2b7c42cce122fb7dfcec8bfc96c8d3
+5504993bb8e921fed4b312cf63e608d6d4eb2aafb4c199e1182681885dc8502596255
+9b523b5bc50c72d8a439c7b09783771425a3d5bed9c4d25b2b94187143b4429171dfd
+c39614e8951ba5ce0777109c99786445b1a8d8a784c1149e5542b922dadd452107758
+2ecbff76ce910fdcf4eae52112075b5aa4eea4f6ff8c549655c57a1d83e4074fedef8
+00dba6fed57ca
 KE1: 8447080996dd1f729709b137aa45b6a6e68651f7f5794ec80d7aabca6f171226
-e8c5ac7aadfe6b9ace4bc355d7b891907d50282031c15d9f749d6298ac595f85cd735
-dc6a88c2eee47da62d7c032396ba458254bbf530985000968656c6c6f20626f626e09
+e8c5ac7aadfe6b9ace4bc355d7b891907d50282031c15d9fd369dec6ceccc831ab795
+3167491f9f9ea7cd0bd8216df60d4a3f7e0edf915a5000968656c6c6f20626f626e09
 74f24da70adf24d24b5e267c80f6335a5cba9442a5658cdb76b3a2bc569d39ec6fedc
 1a162f4e6c6a460b0978684aa5f30b3304cf04c
-KE2: c862d89c70adc455b977246652933bddc08166a03f8bb20aceefe1fd11ea7f90
-21ced06b2846261a4cb3dd5fa69acdcbf3a499448aaba43822994ee890e5f487dba2c
-3b86a6c76cdd1a65984c1cd582ae2aa6ea72195e3a27d592171b52af4c954b7e0a8c2
-0e384c94b37b74e56670c7354f5c199eb496cde26f838b38a435bbced23c930ae7825
-3afdd500ad03ecddae34bb461fc7645799119915b8be44162198f46299e594a97e859
-a25e6375b953efc6768064a7e3d5375a6ceb4cae96294a79f1ca160c6e407357c5a24
-abd11479b3738ac39c18a0487a0a5fec480e5739c1f582a5ffca104159dbeb643e97f
-832c3c4291d6061cf1ee2e74d615e1132156eddf878cbbfe4511601542117366014cd
-d7ee684dea5aa509cbc7a45760da3577e4a11cfaa5be54ddae3345586c7061724600f
-3493c080c087308d45532c04f9bf2405e1d6c8f6113ab8469c97f3394c729de0b4f98
-0ac06ea6a90dd077f924aac4210ce65521a90aa1ed82f46ad5cd948d1d96a179409a0
-20f8a01cc86cb7b2000f3f883a4192bbcee36c752953c979f2977834be8f76eb8312a
-d4a86ec66eda882e29aa5df76bb325f1fcb5e6b56311f871f4a00ee2d492f3dd9bb06
-adda1816e39675b762c17192a5e34d56c9bfb165
-KE3: 2162ac22baeb669826b98e3bf59c412fe59c6e8608fbb5873c4e515e127ddfb8
-07e3c5d4f1f1c6ceebde3ca7c19bb46784823c28dc9f33174f3438785be7b48a
-export_key: a965ee5216c42b35faf75a407763eacd8498374c83a59ef3ca13be619
-a65d71ab4ed4aac40bc20e3602bd9a79f3dfea1cae0aa4d1f0a9e53ebb8d11bb37ce9
-d4
-session_key: 8ec5cdb9c5adabe57169e5b3a632eb394cac402db21b65016f947a7a
-93f1f63102eafad5f0ec6baf5a4f69d4277c06c5e18dd2b56a292029ce60dd4c9efa9
-c2a
+KE2: 82f56fa8decb2e567531093e824d82b1408866a698226a659ddb3c8dc542f873
+ca32338f7f4fa5da53666d1fdca3228fc9a33389115368a3c096e79ba9b7fd18ca2b2
+8fa59a124e866a95632ee2e3791828b49197b449638af72fb1d8ffc6c97e0ffb1a78f
+9ed3a82ee6eb96f8c073c80fb4b303fbe1a63c8a6135c1ae2b27c61a7aff997455c6e
+b920ef1e51f45844e03d97c4c2eb54d0adc8185320c171e3fe6cbe3b09d9e60fe7441
+f77d43c6453cb053d3a84a1943e143cb5ea52d2158bca3012a9c81979d92f54933986
+ce8a0895fab8288be0430e904dc20d9b6359edde2e4bb4cda18d2567ec918eb0726e7
+5a5644fd0b580d2b9bfc940f16b10365e4ca805ddcdac1f0e421594be35f435f3987e
+575f0e3358e258dc9d8827fcf1119dd2d0d9bb4b05cda758b65209d4ab59f992b6cc7
+3af931e5d12ff78967c9983a5508404edbe306883ab8469c97f3394c729de0b4f980a
+c06ea6a90dd077f924aac4210ce65521a90aa1ed82f46ad5cd948d1d96a179409a020
+f8a01cc86cb7b2000f3eb09358fb5d17f01c6bfa1dc2909891cbf87e38ae98053ecf6
+6ad43ec947fcff5de9cb2425d77aab7c0d573e2e91526ff0296177d4cad43cedade7e
+4c5644920052d8aad7d719ca388261f7af04d6
+KE3: 7c5017ec5cc35f1b32a898e71642f159bc9e1b1469895d7b66d8c5273aa563d2
+a2c89da90a9409d298e002ce83c6b02c7bc97f3ab5070b8a0a94036683c2016c
+export_key: c7ee497272363f7b8e44a57ed34fd4d7ca394c488edb2ad5247fba8c6
+76fabed319f08da5209fc53bb6ad830f72c3810acaa5582c019d9a4a84aab745fb9f9
+c2
+session_key: e1dbcc7e276b27cc981e1531f5ada3af3766993964f328f8fd5fdc3e
+1e04588677c45977ec506cdfbdfdfbeaa7b34e47013ac3675825040f0c79607ab1056
+a35
 ~~~
 
 ## OPAQUE-3DH Test Vector 28
@@ -5454,29 +5416,27 @@ Nok: 56
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 9c27e9b40ab198a945c32c2dc2a2695c091750a2690453b97aee490429
-725747302f84464b2fa8313adcfbd0bc687389ab98e03aceabc59d59b17eb8ea0e5bc
-4
+oprf_seed: c2e63c06402755ee0088e6720002c30570afe8830b73a229879822601d
+b6c1ff7e378395bc2e853bf49617cc5825e6692f35a1a9bf5983099387abf6dd9447c
+7
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 8609f860a805cfa29550523156484fca633d2f29aee2d1c4bfdb2
-ccd8be04776
-masking_nonce: 195e4fadc8e0dfc4a57a2794d930dded3bbd99853e1c36a01a1f7e
-18f5c0900f
+envelope_nonce: a97722f77e8e8eda8cd8f1ecbe685383ab824c6e768003fcc61cf
+06ac7899862
+masking_nonce: ce3fe1a2c21e0160bd3279205acba316301d7604d5542791cbb5a0
+737b6b7306
 client_private_key: 771370125ea54cd3f86666bcf4155379dc1e0d5e6a8fbaa4c
 0e0a570b44a311701b936a442f340c21a65638fe11c0e7b3bd1c3528e632d19
-client_public_key: 7a9df676f00d588a90e562ab1ddb58fc1a860a3e6b6abcf0c4
-0dd4f64a94c634a1dd46ab02d02ca293f601406d881538bcc122cc61844549
 server_private_key: 7d455931c4f4efa18d5731a27e8ddbe8eac8be6eae6175f91
 137a8cffccfcd6cb52345e2bf2ad8995f69ba5a19ffa1afe3cba5f538b0e629
 server_public_key: 9cc2b31fb6677ce38ad340c70ad2a48fb8a11dfff6537994a8
 e42262e63634ec59d0431f3878051eca9888bb45c17a68359bb55071e6f6e7
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 3ba7e831213faa68b84f9af8b6bc20d505531b480c82c075bb577b1
-0e17b04f6
-client_nonce: 428c72244e32b6e2edc36ef425eb50d1bde4b19432059bc21ce0841
-8d9738bac
+server_nonce: a92c704834d2cd13d113c3639e493b11875efbf23c3a7fa5f21efce
+f2da5beff
+client_nonce: a658780625dfab84cf9c2f5858b3a9ce887c291b77ba67be9be63b7
+37668f803
 server_keyshare: b886b2c735272aa37e700b602edcdfcf53f73ae463d94139dfd0
 e173feda40f8ec315c59dabf8b7db0a77cf9c3e5b3528688b01849fd3523
 client_keyshare: b8de36842175636d346164767aa834a4bd1a0abe805678ced434
@@ -5489,35 +5449,37 @@ blind_registration: 1b121a9a0c3105a83ea792da07521422552c83edaf183ee32
 959f966fa8956b647b7c5d00ae7e1b60633bfccd44243649644143e6177763d
 blind_login: b38d2f5fc9a95095a10bc711cf190e7749518aff1f7207b6ba2daef2
 162a03cfcae4ba482b466a135440f1a813185f7dc14e970097e66335
-oprf_key: 96dc81063186f04e1763b4420415dc5191cee1816558c20278783ddceb8
-db0d9d2c059eecf5206ba92e7991e8e196f243058ae7f33190408
+oprf_key: 495460bc7dc3874108afacf493957fe91714218fe9bbeee11830fa98aa0
+3cdcdad4f19d5ad8d78c97b37995375306f19cb1468f6e9a3601c
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 13d7507991e84abf99d1ed1b392bd4378faf46b9b513ff427585e7a015b
-146f52c1f999eeb36f0d3c62140b420c7f85f0d22afca48891d300330ea4c8a8cab9c
-random_pwd: 22129feb37615d0277f3cfaa4e71d655a44146f8a4d497b772789c5dd
-6572f746a126e7a98ee15ef88fade37a6fa381a956c03f38dcfb7e4f4b2f1bf8e7926
-93
-envelope: 028609f860a805cfa29550523156484fca633d2f29aee2d1c4bfdb2ccd8
-be04776446d625bad64e9f708c864a090d445f055a1ef93234b67e126c44aac0fdaa3
-ff30692ba5ab12004cfaf0c2a10f7ce86d53839e65daaba41df9778beac269fbdce1f
-c039ceb9c87fd6494b312d53e7363771aecd08be5e255b2ad54d74e7bbbb3ccec614b
-4376451c4750659ede656ea480d7053aa12f360a
-handshake_secret: d79a55b82b41f4824e6d6afeab3e70887cfe2b18b6064edf1e3
-7570bb5a01bffeae82dab229dd845553854c3d272c96dd4b7119c7da97d7c71dd1d55
-eebf3cc5
-handshake_encrypt_key: 8881c78bca89b339769b1399fcdfd5faa4fafbeb07e558
-b45ccd182c6046b7cb7f2fe64eecdb6374442d8573c40af9db2f6816268d2e12b279a
-fff298350babb
-server_mac_key: d3410c44cee6160702b1643361196fc78d368c9477e961eafa626
-0101c59fc8c78afec86a648b8210e8db2a57462a49b7e74aae099354f19b7baabca7d
-429189
-client_mac_key: a438584f4fd942bb0f4f73a7bfcda3dbe5bdeea8ba80ceadd4c5f
-28631071f742484a40402be6d33379ff5eabfe49df77a771599aa5c79d7c94bf1cf02
-0223a0
+client_public_key: 7a9df676f00d588a90e562ab1ddb58fc1a860a3e6b6abcf0c4
+0dd4f64a94c634a1dd46ab02d02ca293f601406d881538bcc122cc61844549
+auth_key: 6a034e77372c8b257bb965b4987b27e238fcbc2e7896fed78c897c7691f
+c6cd43d30c43f8cee6cab3899bbe0c903022a17cb717c749ee61fa75f8b95a5ec269d
+random_pwd: bcefc476849cde4faf31b6eac0a0c25bad1ac39e000a4061d8248b114
+ba14808ed6589cfe7566ac4aae0b15f6a31e914e5de3e6ced8dde9ad7c01ff47cab1e
+14
+envelope: a97722f77e8e8eda8cd8f1ecbe685383ab824c6e768003fcc61cf06ac78
+99862266a6ab349bce6a366414ae0d986ee0fa259c95fe731f04ec6b4d420e4d25e46
+a91222880b2de7c15c9dbd7f6a3546216112329fc50f3b1ec0a2be0911e28cf643bf9
+f6c48e99e4ea8e8cc9f43bb2d64328bb4c34690bfcc28da1687427a3dad52e59a60d3
+796a9d52dbd443e042c4861a546126878bb0ac
+handshake_secret: 6df7c8a81b4a90c2e6fba79300d7fbc5dbaf3d3fd25c19fe3df
+5aae80f9dff5c22ce85e64b45d0c94c05be07dc77425db40f531661e5acd0c7196b51
+2d9765c5
+handshake_encrypt_key: d4cf07489ce739280033756947c7b741af66c7f55f19c9
+ec5aeafb720056b2e41d30e3d7d10ceecadb7544e5a678c11f0af73fff9ba79841c11
+0c5ed507addbc
+server_mac_key: 24af0b80a3aa30489c0f351b1fabbaf6e0aac3b0c9c8e05869677
+b86e3900870933534161f1d593d3eed2ef90d0905daae92d2b1a56a7f031daa0bdb69
+1b8d58
+client_mac_key: c25d2864c071c07b4e5b86905144c1f010269f51dec48df2bcb24
+f2a10292ebbf20525706391e857bb66f65cda96244977d17fd41a6955ba4d155ef1f1
+e5f918
 ~~~
 
 ### Output Values
@@ -5525,46 +5487,46 @@ client_mac_key: a438584f4fd942bb0f4f73a7bfcda3dbe5bdeea8ba80ceadd4c5f
 ~~~
 registration_request: 88c032a418dfb1e1cd1a3324ba5992452f93c66edbec9c3
 65e92c1ea793cf76c05ae910ae194ca9c51e885d3c2bcba7d76989d0d824ace6e
-registration_response: 082a84f6f37d542ee65e0eccb42bd895a6b66029865056
-cee3cdedfc7c365df681e9842f8c44f7b33c28c5eacd63bb2e75d5810607bb05f89cc
+registration_response: a032de64fc25a56ddd552a64e25725cf59c917b0a85b0b
+b01a2f20c621a45766a52822f3e851ff72efe782a858f131b9fc101005200f14b99cc
 2b31fb6677ce38ad340c70ad2a48fb8a11dfff6537994a8e42262e63634ec59d0431f
 3878051eca9888bb45c17a68359bb55071e6f6e7
 registration_upload: 7a9df676f00d588a90e562ab1ddb58fc1a860a3e6b6abcf0
-c40dd4f64a94c634a1dd46ab02d02ca293f601406d881538bcc122cc61844549daffd
-43ce3d5a98b2a308685d147e9942c5999309f7d79424df0f1b0f4db64ca7869627589
-4af810153f66777f8ab63274c4502d8361f119fd8a94c939556abe028609f860a805c
-fa29550523156484fca633d2f29aee2d1c4bfdb2ccd8be04776446d625bad64e9f708
-c864a090d445f055a1ef93234b67e126c44aac0fdaa3ff30692ba5ab12004cfaf0c2a
-10f7ce86d53839e65daaba41df9778beac269fbdce1fc039ceb9c87fd6494b312d53e
-7363771aecd08be5e255b2ad54d74e7bbbb3ccec614b4376451c4750659ede656ea48
-0d7053aa12f360a
+c40dd4f64a94c634a1dd46ab02d02ca293f601406d881538bcc122cc61844549ffa19
+6231df42713074697adc0002f99dd20c43bd118971cf0e26ca54c50ac99f87e945b2d
+05bf503baa13858ae3bfe4c1d488847137fe4cce3829446ae59ddaa97722f77e8e8ed
+a8cd8f1ecbe685383ab824c6e768003fcc61cf06ac7899862266a6ab349bce6a36641
+4ae0d986ee0fa259c95fe731f04ec6b4d420e4d25e46a91222880b2de7c15c9dbd7f6
+a3546216112329fc50f3b1ec0a2be0911e28cf643bf9f6c48e99e4ea8e8cc9f43bb2d
+64328bb4c34690bfcc28da1687427a3dad52e59a60d3796a9d52dbd443e042c4861a5
+46126878bb0ac
 KE1: b4f7627e7bdcfa7d9112301dd0081a3f51cf7e8853eb48a16c9078aeb0dd99b1
-6e691ec45b6dacb2dc05b62f0e09c124c94b1b5390a68abf428c72244e32b6e2edc36
-ef425eb50d1bde4b19432059bc21ce08418d9738bac000968656c6c6f20626f62b8de
+6e691ec45b6dacb2dc05b62f0e09c124c94b1b5390a68abfa658780625dfab84cf9c2
+f5858b3a9ce887c291b77ba67be9be63b737668f803000968656c6c6f20626f62b8de
 36842175636d346164767aa834a4bd1a0abe805678ced43406c4a09ce40145f03cd1d
 620d6b3932243017098851f7003f34a849e6c46
-KE2: 2e605b27e8744ab1e9fae3ebf412f57b23bf4c2cf774f360fc002e91e55e2f84
-3bba005fbbda8f219d4548d1ac3cec11cfe16605b1eaeb16195e4fadc8e0dfc4a57a2
-794d930dded3bbd99853e1c36a01a1f7e18f5c0900fe0c5dd533302552a016ba71fb8
-977503b6fe972717b51bdf8386f8f35025d49308e078d4d899be94f6fef7ee8b93250
-15bd8498027e7524cab58a1bd7783e2f23a7afc8a615b03bd4b11bd9d120d91077a72
-1e101e1ed7cad9eaa403783f08d9b15d08582544ce2df22184b36f6188c3af4a7a932
-339c7484b1f72bccb1bfd06a1521533bd29a90da1890764cef6725629b98daa88f114
-44856ad4114bbefad1af3a9dd3306bc648ea4d90cec15272ab08f82af639596dede4b
-8886ab647031241bf9f3387dca5f908316a5c9c201d45453ba7e831213faa68b84f9a
-f8b6bc20d505531b480c82c075bb577b10e17b04f6b886b2c735272aa37e700b602ed
-cdfcf53f73ae463d94139dfd0e173feda40f8ec315c59dabf8b7db0a77cf9c3e5b352
-8688b01849fd3523000f30a4a9abcf622f1b020500dd77e3aab3ce8edccd28346e909
-6c2692d2fdd4bc0dbb9b47c4f75931bcc9a5f887ca5577058c61dccedd79e88275df3
-75e5d5208d482298fcedbedb53b1b48877918b7c
-KE3: df1d7f620bf88a8bfbf982bc41156606877ce59da7395576ce70ce1706a2825a
-1d47bb4aca3801ab5b0efb8b46b884f0464f2a31f67df4062c90cc0c47572be9
-export_key: 2d9cd1d8fc2213f2886d6dc0416094c70ea124f7513c02aab377be492
-d850af1e90ed49caf5b4df75b247cd1bdfc993106c05b159eb4d3669d3beb59b18f76
-30
-session_key: 66f4a8a03ab0c9790ac81eac2f5b341094dcfb7c60126bcfe7dbe19c
-69197f07ffc7d046e2626dd4edd504c9950655d976ead13e28a4cb4bbe35de6ae024d
-455
+KE2: a28a96159dd45416e2983a999df7128a253fb90570514fedca04c0abe7a402a4
+9c09abe7f6ef99ea76f679b314bd6bd2852f44830da1cd9ece3fe1a2c21e0160bd327
+9205acba316301d7604d5542791cbb5a0737b6b7306895767bd0b109b381828b52e5f
+f78367390f37fa6dc5a2983e5bdfbe7c44c4ad3e5769e35ceea02e8106a0aab188a06
+ad21a7f5c65cc1228f9d5d3549ab8e1a865bf2a450f0a80c73dcd792f93bed0ad8fc0
+087e8f4a82cd22ffc14c06a3ef08d9630fcd6d7ca17a65adeec0e67f864de49622c75
+12faeb9d2359fadd1f61ac4095e6eda7b55567aef12fbb08dc26d227b897fd06c8683
+6787779ff37250ee81f6985ce27fdf4c5f2beb1703f91a43871d9bbacbf12d96072f5
+c855496f35c42aa6ce8222fb74870f78d78e17a2773efa92c704834d2cd13d113c363
+9e493b11875efbf23c3a7fa5f21efcef2da5beffb886b2c735272aa37e700b602edcd
+fcf53f73ae463d94139dfd0e173feda40f8ec315c59dabf8b7db0a77cf9c3e5b35286
+88b01849fd3523000f7d6b01c47746979c9c695bdfdeaff4ed170c87c46687efdec24
+330f299ddfe8a037b7f9a13a8498716bbc453aec6283b0d0932eb07bd9759295d491e
+2f3ff2ba15517d26dbd2167f3087c67728c4c5
+KE3: 71c7567390927e8a676e27b3c0cd9f01cd3a404c1a04c63125bdebbd61361a42
+9d18fa334db3c0a04d2224c38fc58fe1b086fa697c41a77707c8906a33c785d3
+export_key: ae21c569e1777f8406c31c849738e11ae92264738c7c2863d1009fc26
+b114878293f026aa7c9b747b232a1d70dd89d39fd8da69e81cff2ecca0edd44cffc9e
+fb
+session_key: 14baf411c03659f431f9692fb4d34bd9d11160d7da743969aaea4bd6
+a3343bd5d28d089eb506c2e6f033fdf1679dc6e57a026e529ed5870e51a7ecc961465
+825
 ~~~
 
 ## OPAQUE-3DH Test Vector 29
@@ -5591,28 +5553,26 @@ Nok: 32
 ### Input Values
 
 ~~~
-oprf_seed: 976b1f628f1bc5b4fb502171c3370f730f2e3dd87e3037376fb6d7151d
-709161
+oprf_seed: d0abf87d17a3309b28fa41111253db45faa06a87e2682785549b6061e5
+b02ad3
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 4bc7b399de40cde0dc506c6267f952a09b0388ae7a2f3359aabd3
-78bc7a47e9f
-masking_nonce: 3dd3ba233e8c03aff061c7c73ef96ba6933a0d1a3f988615cd7b2a
-e661bc58c2
+envelope_nonce: fe2c93ed07c52abb6d5ef4044ba55f95dd0d6009e2266be0e0b87
+5e5894022b9
+masking_nonce: 2371e02802f955f63738cebcb3d79676d6d43f17baeb5b3d7d8ccb
+b5379b14ad
 client_private_key: 5b1a8d0d1f59318d1a325244e784530a56f15f95cd7594b41
 1ea8f7ac77652db
-client_public_key: 02ea5098f6b7283d5481f1500a7b589214499b26484c4430b5
-2d36b1ccc475cc8d
 server_private_key: 40e02b1164d21f51b8022acbceb26069ac5ad37af70212b20
 1e18725cb41a5e7
 server_public_key: 02c136a2fc727c674b2e49783d5a79bee0c6ff8ccee9190d1b
 f7dafca0807eb046
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 851b6d0908057295ee98ddc3ddc6c889d432005ed2803aa5b4146bb
-884cef4da
-client_nonce: d4a3460b4798ce4a946b58d76947a6729e81fcc65e281a7577f6b0f
-9e55fdcf5
+server_nonce: 1cdab75945ce96072cc4bfea144aa825f666da5e1f3ed63e41c5666
+15492ef30
+client_nonce: f567c09f208b0271a658f2a7c4ab089faf84bbb14d0ccde79eaac6d
+d2a00840d
 server_keyshare: 02c5583ec9a10dfa32344fe8000007904dacd5e6be9eef27b0f9
 4b50605b017126
 client_keyshare: 02496d129c40fe6d255d57f6d92af5c0cf0ba277e8a0e7b67a61
@@ -5625,28 +5585,30 @@ blind_registration: 6418ab119b59a01aa2a2d0fc7658c372a2ca039410fb968eb
 ed2ba1d2991d9dc
 blind_login: 74b8f4b1411f14fe35c4f40e826c546bd9cabd9e4ef380108359988d
 4ec5165a
-oprf_key: 4b90ac5b2c226481edc8f88c081f2ede7d80db76aea6e238e51a7b322d3
-eaa39
+oprf_key: 585d358d3b81d138c1dc033d3c9ca99541dda01467d15ae5521a5a6ac7b
+0da22
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 6c05346f1d44cdcf02517342e85f53552a9cb9cc257e38e6e74cb363f3a
-8e849
-random_pwd: 9ca637a0bdc7f5ae80eb1676b9e17735f326a72fbd3c8b8d7546c0549
-607e7ff
-envelope: 024bc7b399de40cde0dc506c6267f952a09b0388ae7a2f3359aabd378bc
-7a47e9f680dffe2bc76720bd9c96aa785f25a4a42ed3a72d39ac2187c36c08c908ac4
-d4f0670d2a87093d4aaa71120b9b4407ce4b7ce131ef0f0da10b4f2a3749f848c8
-handshake_secret: 741b0b02969f13a8227236f037074b553701eaba5ac4b855fde
-deb10e2efb19b
-handshake_encrypt_key: 99fced644d56e5e5a01c57abfddcfc38dda1afc9fc6014
-5c380cc551cc66a4b1
-server_mac_key: 46bf8743c290d24fe8a0543ac6f8a4ae5cf5033856c16a43ff57b
-8bc79b05fca
-client_mac_key: e0b23256e9fa76d7cc93060488c14d461de8dba50fbe1d9fb9dbd
-c232838d340
+client_public_key: 02ea5098f6b7283d5481f1500a7b589214499b26484c4430b5
+2d36b1ccc475cc8d
+auth_key: 44903b004eedc0cadcaab80bacd362b43043e45acc408322d11e7d06f04
+b1014
+random_pwd: f4a8d39a3ec78ad2d0d4b35be7bac177dea2f37c2d058fa5fb776da86
+ab3dfbc
+envelope: fe2c93ed07c52abb6d5ef4044ba55f95dd0d6009e2266be0e0b875e5894
+022b94ce48ff131233fdc80cd84b9f5863641d4514ee903e09da65bda553570b2a093
+095be528429392c7f1aba460cc0a81b6d5df6574720257aed20416fddbfada52
+handshake_secret: eff37abdb4f1844ebf5133c6ca9835e0b03ef1e7ddf91455bcd
+262343c53bb44
+handshake_encrypt_key: dff116f7940c1b24055716b1599daf44d9ea8a2c805392
+4a7ed1d3f058e1a61f
+server_mac_key: 2c891587160e5838d69cae6eb3c873483de44f1775da1b60ee3fd
+66b57c1a646
+client_mac_key: ed05baf492ea55f1230e5166ab2d7926ce3a2c8fd9560efe8278d
+1e80c417c49
 ~~~
 
 ### Output Values
@@ -5654,33 +5616,32 @@ c232838d340
 ~~~
 registration_request: 039ae9435af572249db38975b192f1beeac30ed093c4d9f
 40bb5236d3521035ab9
-registration_response: 037c4c2b525b3599af79a47244495ba30489c9106c9588
-4a94bcb91ba79d5844dd02c136a2fc727c674b2e49783d5a79bee0c6ff8ccee9190d1
+registration_response: 028f1dc3783489b6c21a1d91c1b67b2338bc1ac3c65bac
+dab23bfe27015826610302c136a2fc727c674b2e49783d5a79bee0c6ff8ccee9190d1
 bf7dafca0807eb046
 registration_upload: 02ea5098f6b7283d5481f1500a7b589214499b26484c4430
-b52d36b1ccc475cc8db1e897f4d3e1727ca20a547538ba3a7303cac22742ade042b65
-f924312b229ac024bc7b399de40cde0dc506c6267f952a09b0388ae7a2f3359aabd37
-8bc7a47e9f680dffe2bc76720bd9c96aa785f25a4a42ed3a72d39ac2187c36c08c908
-ac4d4f0670d2a87093d4aaa71120b9b4407ce4b7ce131ef0f0da10b4f2a3749f848c8
+b52d36b1ccc475cc8d1ee6172ffac919f8fa2ef051e2de54a88b5d239c10967eb5bfe
+5e4a2d6d0e952fe2c93ed07c52abb6d5ef4044ba55f95dd0d6009e2266be0e0b875e5
+894022b94ce48ff131233fdc80cd84b9f5863641d4514ee903e09da65bda553570b2a
+093095be528429392c7f1aba460cc0a81b6d5df6574720257aed20416fddbfada52
 KE1: 03f86d270a693da19f82b655d8ffe6a26ac2b79ef779de92012d7fad3e15a7d1
-5dd4a3460b4798ce4a946b58d76947a6729e81fcc65e281a7577f6b0f9e55fdcf5000
+5df567c09f208b0271a658f2a7c4ab089faf84bbb14d0ccde79eaac6dd2a00840d000
 968656c6c6f20626f6202496d129c40fe6d255d57f6d92af5c0cf0ba277e8a0e7b67a
 61df2dccd9b02c5f
-KE2: 03c4b7795afb634f4bc4213d7eb5c0ae409e094d1a34e452983a1372d2f42e69
-313dd3ba233e8c03aff061c7c73ef96ba6933a0d1a3f988615cd7b2ae661bc58c2c06
-78f019d6e8b6bcaefc09159e3431fb8e4790dfcf938b4de9a2b3eca2a9e34dd66bb63
-0aca3dbaac7e7d30ebecf45dbb505ae3c5bcee3227ca90ffccd63d1e39502d2bf1233
-3c1e63d86f1b86b7a5124a3061b71c74b30ad077add21a6912efb2c25bf63e50d9cca
-3dfade5e6a285dffd1d52f1c07695b2f032eca13ed06c683e0851b6d0908057295ee9
-8ddc3ddc6c889d432005ed2803aa5b4146bb884cef4da02c5583ec9a10dfa32344fe8
-000007904dacd5e6be9eef27b0f94b50605b017126000f438248b747da20b94e8c964
-3f8c7566ad9625efe0375473ede705c0293685c79f3e382619f4a89d0a179673238ed
-8d
-KE3: 909e9edda3e3fed13caa9bba46af6bd181b751b24384c2c944e1041bb707114c
-export_key: ff2d5018452a4369e99ea2c2a895d15b5793ba901d196527891f14d95
-d13dd7d
-session_key: 36f00d739f52fe6fb00922ecd568287dee57c6adc04c65421d52b7a4
-0f669634
+KE2: 020df049fb4fc39b2590a8317d9d96cda8f0967ad853b84dba0cd3235377f8ae
+942371e02802f955f63738cebcb3d79676d6d43f17baeb5b3d7d8ccbb5379b14ad576
+ce189449ec014acd11ce34de9d9d4a686e3252eb998bfae6a9d7854cc1ba0d96310fb
+b51a3ba5d2fb90ecea5fe1d5515f86e232a7d7f84faaed8a7c45dca07d573373acb10
+ea4ab3ce38de9328cd237e23ce3d2d890ad0be6c42610bd688580e8534ab3355c7bc7
+bb923e3a5102aa4afb3895858d6e4e8c37a3f6784a0a79911cdab75945ce96072cc4b
+fea144aa825f666da5e1f3ed63e41c566615492ef3002c5583ec9a10dfa32344fe800
+0007904dacd5e6be9eef27b0f94b50605b017126000f92e227bdbfe027e6ca173844e
+ddba4824de3e3bbe81d5f619cc7c0fe92caa080798f85ce88daf4ec1270c3e8788b0b
+KE3: 20bf9af3387388d0294e9ba5ffdf21213a834109cf7eb02e14b688720d61f9d5
+export_key: 2ffe40d00f7dbd83501769f4a48ac69294db7e7e52ea0e914d1b236f5
+4947d18
+session_key: 853af4869744b95886b852e5389d615483e968aaa719c7863f97baa4
+2d7ad233
 ~~~
 
 ## OPAQUE-3DH Test Vector 30
@@ -5708,28 +5669,26 @@ Nok: 32
 
 ~~~
 client_identity: 616c696365
-oprf_seed: 058b349dda417ea35fa8ade6d1dd35bb8c90b6a3160a6c76440e52696c
-585d3b
+oprf_seed: 7c3560417bea546f3fb0fef8c5915dfc22388bad536848dc5ba4771895
+26c09d
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: ae32c8dd03de55d1ad271c599f3f34bdef493cc0ff03203b4d923
-1eb2a0bbe3f
-masking_nonce: f6b16baa6cea6e6aeb3de0d00c45d46c0517c95ea0cd6971bc3722
-1994b2d868
+envelope_nonce: 6258cabec73455bb3ece174437e286295d1b82172260a3d8cdadb
+669c103df19
+masking_nonce: 26d94b5f3ebc498905d6a346963cbf553588d4cca122822a9cf3e8
+35845469ce
 client_private_key: 03be3245a3830887fbce88f3eccc26f1639b91aa8f043ae61
 75d146de19bef1d
-client_public_key: 028ed3215a26f2763d4f9211ab13c415ba0e228fea364a264e
-65baa2434709f808
 server_private_key: 6a62ab611cc2ea77a7fcb3565850ac22c6d3a18b19541fce8
 3b070cfa802882c
 server_public_key: 02e1249c0906886b33b0ae59c981001448f2541fb718a158c4
 b4f37d391e813fed
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 1821e9aabc29dcabad42f38372c7c136acef29012bcbc703c5b9f4d
-beef29e16
-client_nonce: 527ca21687accea99ea1ea4ee79ebc2ef512fb1ae4a84c0d7721780
-05c118d25
+server_nonce: aac30804231a9b7d8c0562bbe2ee3f36fdfda155c9ca81b7be2ebe6
+fa816bbaf
+client_nonce: b143c07f1a14ea52b84f34b999c9a39f9b5ede86840a6db89fedb98
+be652824d
 server_keyshare: 02178e9554d669786c2e9349f1e178eb84961a7f8073d9ecbc5c
 f52bc2fef7791f
 client_keyshare: 026ec987d3b7ea3ef8cfdca092b9d6994d134e933a5fb7892953
@@ -5742,28 +5701,30 @@ blind_registration: b93db502618c7ed6facd1b2d033bf401d74b2c8b13b2da213
 802025522072622
 blind_login: d30953abfe724ce286487ba13f12ffa86adb64f66c99f58a465d8cd3
 16a5d496
-oprf_key: 484ea6560967618b29b794809cce634343fcb79fbb7b59619cb7ab83ba2
-0d15d
+oprf_key: 44f0699037c6ae54fb318b1c913a6246e0dbe2cc7c770269b1fde7c3402
+f58ae
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: a449ed408c2711359a458370fdb2c5054d74940bbe554bbe53b706d9813
-4b148
-random_pwd: 6fd5e0e7c6f028abae17d4f72afb6e0775864c518828a2e38db5438e4
-e227eff
-envelope: 02ae32c8dd03de55d1ad271c599f3f34bdef493cc0ff03203b4d9231eb2
-a0bbe3fb7b92e49ca1e2a3988e89099a0b3d56928e4808d5b8331fb5a0065a8a04a6d
-8b4402a1f73dacd1178916fdeb6b99c71930166bb9f2e5f63e2809e379e8d5679e
-handshake_secret: 2900ff5812081762242729cbcd148e58030a3c04a0f3eaa7e0c
-df7c8897b0b30
-handshake_encrypt_key: b812407832f04d819a8320cda3e7b1b815ffa6a34ef27f
-6a12d4b8d0b42ae4a4
-server_mac_key: 46be5c9f6f4a831a58e5bd4e815a4fa2711ee58545d363c43c3fb
-48488c480b0
-client_mac_key: af8286e234a0b66a62b6450bbe4a2501da84f5db9618223c6a9ef
-a8a9c441c03
+client_public_key: 028ed3215a26f2763d4f9211ab13c415ba0e228fea364a264e
+65baa2434709f808
+auth_key: 8441c3842b19c88c576c25e3caacf9d032c95194eba9d666f0ee322a242
+3172f
+random_pwd: 0d5e2b60fc15051057aee38de344d70038ccfa297b762f685b3b21494
+33415cf
+envelope: 6258cabec73455bb3ece174437e286295d1b82172260a3d8cdadb669c10
+3df19700268a0d53f824d10b8acdb3df08222d74ae835dd94a03ba23c31e38ec63dfc
+73dd254b5d37c5f7a41a72a2558c3193958be3e0488c0e6a80182a54cf91f038
+handshake_secret: 8c5edaafe761516bdd470cb3fb0ab9cdad305223c7b4b8b257a
+83440986f06aa
+handshake_encrypt_key: ffe4c25532908561eace89386e373762e896f1ffadb6b1
+1ddbb9ae539ac0ffe1
+server_mac_key: 48244ba9674fdfc6ab568e13fe3a4336e9b8a2d807326ede20558
+3342187e927
+client_mac_key: 1a42be390bccf34bf3e1e0d51ef81be7ab14ce7b132133493a1a1
+640417ff1d7
 ~~~
 
 ### Output Values
@@ -5771,33 +5732,32 @@ a8a9c441c03
 ~~~
 registration_request: 037a055d502f2a882c021fda1ec2fe8e5d8cd0d2a913e5a
 03b1e27e0fd06308275
-registration_response: 02ed5fbd8eaeeb0bb4cfdee090afb4dba19bb53d54fc5d
-7999ecfa145ae2d58bef02e1249c0906886b33b0ae59c981001448f2541fb718a158c
+registration_response: 03045f8b871f0b9c4dc30dfd39a3cc28fec466751fc22d
+b14724a63e1e5872be1602e1249c0906886b33b0ae59c981001448f2541fb718a158c
 4b4f37d391e813fed
 registration_upload: 028ed3215a26f2763d4f9211ab13c415ba0e228fea364a26
-4e65baa2434709f80870236f91ec31dd7994ae2cdb21a8fa03104b23bb4093bbca150
-2d8afa5e2310902ae32c8dd03de55d1ad271c599f3f34bdef493cc0ff03203b4d9231
-eb2a0bbe3fb7b92e49ca1e2a3988e89099a0b3d56928e4808d5b8331fb5a0065a8a04
-a6d8b4402a1f73dacd1178916fdeb6b99c71930166bb9f2e5f63e2809e379e8d5679e
+4e65baa2434709f808cfa4b5aa2f9c7a70d310818deca6cb70ced8b30a5435d275f29
+1c2feb8dea3276258cabec73455bb3ece174437e286295d1b82172260a3d8cdadb669
+c103df19700268a0d53f824d10b8acdb3df08222d74ae835dd94a03ba23c31e38ec63
+dfc73dd254b5d37c5f7a41a72a2558c3193958be3e0488c0e6a80182a54cf91f038
 KE1: 02e532d2687a979f0a75112437e1f4c6d5411c555b2330a8d6c45c7c7c657aeb
-b9527ca21687accea99ea1ea4ee79ebc2ef512fb1ae4a84c0d772178005c118d25000
+b9b143c07f1a14ea52b84f34b999c9a39f9b5ede86840a6db89fedb98be652824d000
 968656c6c6f20626f62026ec987d3b7ea3ef8cfdca092b9d6994d134e933a5fb78929
 5335d5f6956399b6
-KE2: 03379f8a2ab0f3fddc8cde9a14121e858baf0eb3496ca0bf0843a6f547f1525c
-2ef6b16baa6cea6e6aeb3de0d00c45d46c0517c95ea0cd6971bc37221994b2d868d03
-96377d65c5db67ba5c98b5a4e5ae0702de659eafb9caebdf217ca085e45422c5cae11
-91fb9b760b263575c769f8e57b26fbd8d83e7255effe794f7156dc6c3091681485cf8
-454926fc88014d040cc36a9fb63663d6d9fdde6634a4b95d0283d6fb95e8e25159d72
-b0d3d0dabe03ae063a2fa07fffaa18b7559364429703e86df01821e9aabc29dcabad4
-2f38372c7c136acef29012bcbc703c5b9f4dbeef29e1602178e9554d669786c2e9349
-f1e178eb84961a7f8073d9ecbc5cf52bc2fef7791f000f4aa48f170ba4d206e4c0688
-ae05cade28663c9bf1eb69994df1c13ddde5ac765f65dc5d4e8f7f7ce3cf87fbadd5b
-3b
-KE3: 70d67e1d53775a975d9b449dad9af5a2d19444781662e4109e3c764498f795bf
-export_key: 5d51d48ac8e1f21bd743924b0be04a4540d6d6873261c508ae1330ac8
-73da583
-session_key: e384fe34a0a6b6c122aa277f5405dfc83a76fe6d68a90e457d1a8ab5
-fe8cfd76
+KE2: 03a0e8f1a2a45fcffbb95083436a8e784747a5a853f1645308f4ff0d6ddf1bd5
+9b26d94b5f3ebc498905d6a346963cbf553588d4cca122822a9cf3e835845469ce098
+ee77ea76c96798fbfb642723240f46a93a44b4604dffb87a221687e6b455717c4a0dc
+be0114386d38174cf8abe7eb0d69379f9c51167ce7f1c9a8842d46410f8fee334a33c
+fd69b127fd0a4dc018749ac116b2f7c69e0d39ac21bd427ba3e66bf5a2386de688bd7
+3f764f0e269da2c67ccea8a268a20ded16dbb20f3242c62daac30804231a9b7d8c056
+2bbe2ee3f36fdfda155c9ca81b7be2ebe6fa816bbaf02178e9554d669786c2e9349f1
+e178eb84961a7f8073d9ecbc5cf52bc2fef7791f000f42b4888611860d0d236a8e7ae
+fad43c16a03ae3317855db64d989bb826634234df686be1f0b8118b4d784752a7707d
+KE3: dda7d634a091c9b9028476a20d4d53be11379715c26e365183e8756bcca0c430
+export_key: 2a0f3b52a605e62327d8311a1dfb676037ef7db8cfe5e9c0fafa9abd5
+24a09fb
+session_key: 58f4d84e26b78c957e69ec5abbcdc8429b198afd85d87d8f7d5ebfa2
+b1317b23
 ~~~
 
 ## OPAQUE-3DH Test Vector 31
@@ -5825,28 +5785,26 @@ Nok: 32
 
 ~~~
 server_identity: 626f62
-oprf_seed: 9e1b789bc4e9b77cc3694a002c51bec41fd6c592eb69ffd4c57a9b7c4b
-adafee
+oprf_seed: da0fb2f62cf6d6303bc7ed70a878ba3cbc353b9f5a296e717db6a77d0d
+45b758
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 9a6f3b07f8ae3c374694999c3fa7d4913a9fd10ed8407acbfe73c
-356eeaf8150
-masking_nonce: 344b8ff1ee5ad48e64225568e68a70423cf5f0d60195a0941a9426
-6d9877d01f
+envelope_nonce: f14dbfcc767e332513e9f3d90499fa34272bdc8de6fc3fb3c2560
+2de6039f889
+masking_nonce: f7944e60c59baad817600812c70136b76a6734072c8493c0809a16
+bdd3fa9dad
 client_private_key: eb7d0ea4bf06b78e3ed83cb2d3feb9683cece55d800eb5196
 e9304e50ac61518
-client_public_key: 031049be572a6e15f68e2d758a7ca7926e7ff85ab351ce2b00
-3b652dc03e8b5304
 server_private_key: b4cd2e42c0bbef01350751994440026574a20f677965ad056
 1acb622a32651dc
 server_public_key: 025cbaa4ddfc060bb49a281a97663ce9e20bfdcd9d11bb10a2
 5b74538d149fc226
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 0feff10674acc44f15cee714a4d73791fa9dea0fc3c5cc3ccce1502
-38d5e6bc1
-client_nonce: 28b96a3186102967e9ba7259177a5d37c958cf14412549dc2294ec5
-ca122b34b
+server_nonce: ccfad48bee622777794f570462a9b0cc6d7b08af183d1a0509f8c64
+ea12b7241
+client_nonce: ae8f1f7b2c5e4c804c9d1497ec114aede6d4ab60368e8920eb1df45
+25cbabea0
 server_keyshare: 03981bb9a42c6f60750d2c9098ec0e64d52dc1ef0b4d02a20b2a
 e9ce40b425a389
 client_keyshare: 02736055b3c97c36bc8e7bfe53ae65bc38c5be6b46adf3d48681
@@ -5859,28 +5817,30 @@ blind_registration: e1891039c8ca2bb5a8591dfa6e02d8bf4bb7eb3e3861cbe29
 cd03197fd5f6733
 blind_login: 9ed684a129b5e704cdd2a770bcc863c9f1f44d7e3e90c233aae441c7
 cb8da45d
-oprf_key: 4c2e5222acc2d235dd344c3c7d994f895302bd24305ccb7eec09c3fd587
-97ce0
+oprf_key: 7a790c7d3c96b3bcc914d5dced385c7643e0109d34c260c01ee77fcb2de
+41ac9
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: b98bc4520e616b68a48fce5839e98ae1a426aef47a59026ebfa84378a97
-1e43b
-random_pwd: 7c41d98efa0054d6f7a2cf857cbbe38df4c3fa657f2fbde52745bce49
-5629fcf
-envelope: 029a6f3b07f8ae3c374694999c3fa7d4913a9fd10ed8407acbfe73c356e
-eaf81507c23c6349384fb694c87de42aa22b38f3a81361e8d3a0f540339ddfc6375a9
-5f30ad47ce8093d5afa64899af1ea77b0d3eaadd7a216a441b393c32bbda554e7a
-handshake_secret: 62274f7b7576b1f2aa4d5b8a5482805d7135d1729e5c18ac6cc
-97b1b2ba859bb
-handshake_encrypt_key: 5c3210aeba665191a57abb64c2ec641b3fa27a24ec49fd
-fa97a8a9ff40c24718
-server_mac_key: 81a3081b5baef22c4ed3667d78f55e1b9f6d0a9a570eda4c3efca
-b3121f55fc2
-client_mac_key: 25e5f57cc2a554ee85ff40dc77dc9bd4edd880a1b49fd1904524a
-97cde012072
+client_public_key: 031049be572a6e15f68e2d758a7ca7926e7ff85ab351ce2b00
+3b652dc03e8b5304
+auth_key: 54ea7612f1568756a6237ef3ba6c9b77b96ebff1fe78c7befcf1041e6ab
+8612e
+random_pwd: 1a6e1335a67fab09a8b6dfd56b9e156afa4408d1250229f3e23c97270
+0c7ffad
+envelope: f14dbfcc767e332513e9f3d90499fa34272bdc8de6fc3fb3c25602de603
+9f8894f8993042513a5e95dcfe5e304f2d9cde2fa90708779e9c13c0ea770a923b9ab
+38802f4e19c667b4e5cab044465c81672add3d08d6b198cbe89ad2cc47100192
+handshake_secret: 9970399fbccc2d8be8fe71dd00a274c2fe6a656e50533de9474
+1a3fe19289292
+handshake_encrypt_key: e441fcf47a77d54bf83b159c92e8a0fe131db6d045e35d
+d42e19bb5c0ef91620
+server_mac_key: 0fa836d015f389e2c5cac3fb86aa471285945fc436f82c30f25fa
+bd2712787dc
+client_mac_key: 3c46a4070e349beb22274ae71cf6b69c9197281ad165458cb464d
+181a4a6ba4b
 ~~~
 
 ### Output Values
@@ -5888,33 +5848,32 @@ client_mac_key: 25e5f57cc2a554ee85ff40dc77dc9bd4edd880a1b49fd1904524a
 ~~~
 registration_request: 029ead8cb71d9f802fc71737e16f75eda7843e5b961c9ef
 0bdf8da0cb97a6364db
-registration_response: 03aa66fe0c40f2abc683a7596bb62e43cf2011a61b99b1
-577f6e07c073575d1118025cbaa4ddfc060bb49a281a97663ce9e20bfdcd9d11bb10a
+registration_response: 02a77b8bd45e25d02a6a52e9b3dadb72c48f98e8eb4b72
+dd2f3e02ab32b2ab4b05025cbaa4ddfc060bb49a281a97663ce9e20bfdcd9d11bb10a
 25b74538d149fc226
 registration_upload: 031049be572a6e15f68e2d758a7ca7926e7ff85ab351ce2b
-003b652dc03e8b5304b9fb02b3378fb2dbd56906f6d983af4199b0a6838e361f4cc4d
-d791f52f73c29029a6f3b07f8ae3c374694999c3fa7d4913a9fd10ed8407acbfe73c3
-56eeaf81507c23c6349384fb694c87de42aa22b38f3a81361e8d3a0f540339ddfc637
-5a95f30ad47ce8093d5afa64899af1ea77b0d3eaadd7a216a441b393c32bbda554e7a
+003b652dc03e8b5304d441b089a0ddfda0884043def4bdb3078f0ea3df77a07e2be53
+9540436c2eff8f14dbfcc767e332513e9f3d90499fa34272bdc8de6fc3fb3c25602de
+6039f8894f8993042513a5e95dcfe5e304f2d9cde2fa90708779e9c13c0ea770a923b
+9ab38802f4e19c667b4e5cab044465c81672add3d08d6b198cbe89ad2cc47100192
 KE1: 03fbe22a5b37f7345b2370c51a5290091f5af7b21cea757ca017b2a32279b543
-f628b96a3186102967e9ba7259177a5d37c958cf14412549dc2294ec5ca122b34b000
+f6ae8f1f7b2c5e4c804c9d1497ec114aede6d4ab60368e8920eb1df4525cbabea0000
 968656c6c6f20626f6202736055b3c97c36bc8e7bfe53ae65bc38c5be6b46adf3d486
 81df7bcfeb96770a
-KE2: 029c8893ae992e1aae5e0826b80b72b1169cd83393607b43aa78b44ea5dd8a13
-eb344b8ff1ee5ad48e64225568e68a70423cf5f0d60195a0941a94266d9877d01fa47
-b514e804c2250ad6b9febe2194ad53367c73e4729df33cc685615975359986c568248
-fde12cac6f42be7fa43a6840062a00d217b2063c09f2cc78c1aa0f645d3dd8c81c479
-de6cd8af4d3d216a19cb18f0a62aa82831690cd57bacd2c4d96e965fdf1263b78687f
-07b3fb17561ce23909eaac6a26b19c2be0b21735db66c24e040feff10674acc44f15c
-ee714a4d73791fa9dea0fc3c5cc3ccce150238d5e6bc103981bb9a42c6f60750d2c90
-98ec0e64d52dc1ef0b4d02a20b2ae9ce40b425a389000fa45375ba5e29fe773c899cf
-e95f8d2c26221d2fd4f405b45331dc2f3545d205f38d53c60bed56bd89e4069cbce97
-b4
-KE3: 4d8796a6045d697bdc929769d988678c3c65122eda3eb0c00d64a06d5764b902
-export_key: 429efe9b0290c3aa764264396a978482992b52da97ac0b3f147f5b89a
-0e278af
-session_key: fb54d003541befd33b6e3640080a57524e82057d8bd0b2e35229e0a2
-a406bdea
+KE2: 034236afd4aaaab6580d4a5c7ec72ad5c23e061b2ceb31e2960abc8b7ba8080f
+28f7944e60c59baad817600812c70136b76a6734072c8493c0809a16bdd3fa9dad632
+95681f02782e2a6fba0f711a3f30cbee488fd8060eb7e9e6bbe6b5bb8744fe9f130f2
+eda8c2e6285983ce261306beff0e8ebfd6123434eb73343c61a03f797552e0f99c7b6
+e56e0bdf3ad7934a2ad4b56447fa42bcd23b1fd647339e04d6a5527286ddc42869e65
+ad4bd7a7103a20cbf434811cde429101243938b3cece4cf4ccfad48bee622777794f5
+70462a9b0cc6d7b08af183d1a0509f8c64ea12b724103981bb9a42c6f60750d2c9098
+ec0e64d52dc1ef0b4d02a20b2ae9ce40b425a389000f17574003c0aa11b5c1b48d4b1
+8b20d125f76c07323356984d6ea7848834b55eabbea54ff0bb058d4136b76271fb23b
+KE3: c81734393a2e73860cd4cf926711769d8c3b398cf717fc9e5d5b5fcdd793c7e8
+export_key: d69946973cdf729762f49b2016883f009771204ddbbac00aa50567d51
+049bb7f
+session_key: 0c62827214da82b8700040257f294bb144c95a15539b8c8a8e04e0e1
+ae74f759
 ~~~
 
 ## OPAQUE-3DH Test Vector 32
@@ -5943,28 +5902,26 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: ce6584461400dcbda3c8e2b30a98a68f8c7aa889855a681405cadb2beb
-03cfcb
+oprf_seed: bc71f3a9060ad74a085bd162b33c06c55572d0c59975fce2b50b5f0706
+0c95c2
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 172d8af4c95f4d0c7843c5a16a27db0f37fc5507d4a7f573f2941
-bf9b9d83e20
-masking_nonce: 06c97c30c1cb4bf86ac4e122a59c1cf9e8f7470021f37e2efe77cd
-ee31cd22d3
+envelope_nonce: 921c8456b01a9184c22e1d5f464a1cf13be4d37357e861122356c
+a8720e6541c
+masking_nonce: 3c53475e70e7d59120450a0d0b096e23025e2f1fcecd6635d52c47
+ffab2f4de5
 client_private_key: 02c14f564a29a05e39d4b9382c20686e41faa8407f03f5d2b
 2b111efcb64be89
-client_public_key: 02148f47b6a57019ddb58b5f1feaeefccd9f5e979c1364f89a
-da3ab1d4b3f89098
 server_private_key: 759ebff988d2878fc2ac6619807ac6625d0ba08ab0d6c5a67
 e15fdbd8e329839
 server_public_key: 0249b8ed908a9b67d5f5f2f409502ad1b0e08b5dda755c15c5
 e37937a9187772af
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: e9e7f6baa4307cf9636f9f45e4c8e235933ac3f64e3dcc6af653658
-2d75d4409
-client_nonce: 9f8fdc33b656214f66997fdc2e7f6b28b5dff4c8c50befbd65ffcb7
-4789b3834
+server_nonce: b54f93747121d3cacd4e892aacb1c7c77bb8535a8494835f48ad891
+b5caad4f7
+client_nonce: e7fe5d42ed2db0094f5bfd73fa91e423143aa5549608780b6b74fb3
+414b1723c
 server_keyshare: 03a05823236f8f28bd60569e51b83712e6371b7006059bb85422
 16c9b9ec73ae8a
 client_keyshare: 03eeb46969c8d3c0ff2160547e2ab719958b7e8686ca4d9b12f6
@@ -5977,28 +5934,30 @@ blind_registration: 3edf1af7e06163a5711bdb94b2df8e91003824a359d0902c1
 4ceae7aff5a3ced
 blind_login: e10bb5610ececbde9ff768f649d22bfb588782c804b553e33fec1789
 41510c4f
-oprf_key: 7e66e667f7223b202e60a90f1fe8eb3a6cd4afd4ca59ecc36b16a02064c
-8c963
+oprf_key: 5206504c49942d51ba49fcd8c0fb5b9fd0a211d4d781656000d0b8fc6e6
+82b74
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 298a79ce43388c3d34e1a1347270d5fc3632cd4465c3fc12dc73c20d47f
-be58e
-random_pwd: ca9177122d96ff9f26f3d9c9d96a95b1dbdfc8f014906b188866f1c1a
-2700aa9
-envelope: 02172d8af4c95f4d0c7843c5a16a27db0f37fc5507d4a7f573f2941bf9b
-9d83e2085f7429a1853a075b75bf86b98a8b36001c4f89556f0e0800b604efeb14867
-8ece3685e67d2cbb41befcaf4f10d7e4762a04d412341b1050b78f9776abb86a86
-handshake_secret: 9637f0827d46145770fba58bd374f7f18608e281ffc3bee2f95
-826d8116ff35b
-handshake_encrypt_key: 5fb34ec6ac3d25bdb32b52422c5df0bdfc806fa9a756fa
-2652974324fb7ca2b4
-server_mac_key: 75af63b31186125d566bdc7281a16bcfedae3163526148dd90382
-a9a17657818
-client_mac_key: ea4663b1d51a29b11131763564372a7bf365810f4625b7a3af117
-f1f38d73ff2
+client_public_key: 02148f47b6a57019ddb58b5f1feaeefccd9f5e979c1364f89a
+da3ab1d4b3f89098
+auth_key: d53e51482cca3e5898df55eb878c953d75f79ae3bcf29039d66def88f41
+84db7
+random_pwd: c973b8bbf3449f9e9e14080ea12093526dc503e87270f8f3f744d7031
+66b56f5
+envelope: 921c8456b01a9184c22e1d5f464a1cf13be4d37357e861122356ca8720e
+6541c0880fff401f2e484bbd0bd0d4e73b5a02664065e7c44edc45e30967b52104ce7
+4028c5333cd0e76fbf9c3ef7092eeb9d02a2cb2f6e47669d9de117eb4d828d60
+handshake_secret: a442e53154a61de23bb90a766ea3d72396a5936bdedaa1ee40e
+125975005e04c
+handshake_encrypt_key: c3e6c6fcc182fd683ddb58e2fb89441ff977c9da24b436
+243724196a52c5bb0b
+server_mac_key: 8e8e089529073293944569f976a20c2c86ad4b299d3f0d269672d
+3972a3cb39d
+client_mac_key: 93bdfa9a7829dbb45fc9fd3b2114653967e1e6f3461c7cefdc83e
+0ecdf1bbe55
 ~~~
 
 ### Output Values
@@ -6006,33 +5965,32 @@ f1f38d73ff2
 ~~~
 registration_request: 024ff8b8c3636b93127c0c5350c4d2e64b47c78837d6edd
 ece7dd67a260bde8085
-registration_response: 03004de148343d294f3b69e55e0a2f0fdc962fbcbbc63f
-35e8c74891f3f9ce0c3e0249b8ed908a9b67d5f5f2f409502ad1b0e08b5dda755c15c
+registration_response: 035c2e9bcc4553843d238444e7fb8c490cb57f5c60831c
+93902e4b9f76a42204fc0249b8ed908a9b67d5f5f2f409502ad1b0e08b5dda755c15c
 5e37937a9187772af
 registration_upload: 02148f47b6a57019ddb58b5f1feaeefccd9f5e979c1364f8
-9ada3ab1d4b3f89098017cee00a0cdb7c8580f1f8efd0f364536a02b9d6ce83ec07df
-0607f00476c6602172d8af4c95f4d0c7843c5a16a27db0f37fc5507d4a7f573f2941b
-f9b9d83e2085f7429a1853a075b75bf86b98a8b36001c4f89556f0e0800b604efeb14
-8678ece3685e67d2cbb41befcaf4f10d7e4762a04d412341b1050b78f9776abb86a86
+9ada3ab1d4b3f890981b9e0c838dd5692210e2bca6b0f66967fcd1f3bd03c8cd00b04
+96ed50222fc21921c8456b01a9184c22e1d5f464a1cf13be4d37357e861122356ca87
+20e6541c0880fff401f2e484bbd0bd0d4e73b5a02664065e7c44edc45e30967b52104
+ce74028c5333cd0e76fbf9c3ef7092eeb9d02a2cb2f6e47669d9de117eb4d828d60
 KE1: 027694e256efc51327333fba8ab1927b511c4152f93ddb0771370995407b4b25
-fe9f8fdc33b656214f66997fdc2e7f6b28b5dff4c8c50befbd65ffcb74789b3834000
+fee7fe5d42ed2db0094f5bfd73fa91e423143aa5549608780b6b74fb3414b1723c000
 968656c6c6f20626f6203eeb46969c8d3c0ff2160547e2ab719958b7e8686ca4d9b12
 f604883194bb90a1
-KE2: 024cf5a3bae4c617bcc91bc10d99ba643f5040d6bec3d259cd68e62021ab3224
-7306c97c30c1cb4bf86ac4e122a59c1cf9e8f7470021f37e2efe77cdee31cd22d360d
-b3228cd17498ed2361c634cb7fea3544b2c35765ef14e41e38cc2a3a954d8917a4762
-15c84cb8cd93fa4c0d3675d066511584c765ac05290b1fdc51d91693df37aabf3a41a
-9718bdb89bf9e482aacdabc08a125fed5549eb5fff4cbb38374bb4e07bc725f048760
-fd7e9a71373aafe0ccf86b899358b4ee28321c6ef9286acd17e9e7f6baa4307cf9636
-f9f45e4c8e235933ac3f64e3dcc6af6536582d75d440903a05823236f8f28bd60569e
-51b83712e6371b7006059bb8542216c9b9ec73ae8a000f88d2b3af73005845b517a3a
-3563baec06c808af55fe5b3a97ab6f21ca0c83cc0f8ea36a027a39e41507318bfbe11
-67
-KE3: 6529d6f179e60b8056c1527c95c77f82a7273ac94a2c386eafc8250f88075d45
-export_key: 8b4bda5931ae5e68d6437f23c04e139f2688a44708f25c7964cbc2029
-f2478c2
-session_key: f0295858d8501ed08987b718849ff440c8b0e28d640261abc48ba6f2
-a7a70e9a
+KE2: 03ec9e073c6e9b68ca88fb17433cd12c45a154e1dd1627151f8b3e7ca9de398a
+1c3c53475e70e7d59120450a0d0b096e23025e2f1fcecd6635d52c47ffab2f4de5b81
+9cdbee6b8e4440feb0a6b36123cbdfa30814b9b9954663d8ad499cf3d2140b193a92e
+c0bcb95ce2aefe0ddec16f319731b3b0f70d40a86831717607becd97c86ee7667221e
+faacd09c07aee94325254b770916a6dc5c16bb6862090b187cd965f49c541f007f1f8
+431fe8acfee41dfe7971aada03646c2063463ec3ee2b0a02b54f93747121d3cacd4e8
+92aacb1c7c77bb8535a8494835f48ad891b5caad4f703a05823236f8f28bd60569e51
+b83712e6371b7006059bb8542216c9b9ec73ae8a000f2b0232b945dc4e2d38770a4d5
+6fb8c5afca83ed3fb08c15a019e0ecfc9851aacad8dd38b022f4c0bf30540a1fc2712
+KE3: 987ea300cc8bf5f2dca70ff6094cd0ebd1d73afa082e314907ffcc30b6cc2d31
+export_key: a01dcee503aa412e4d83315f6bc43b0ef858200a84f0de9f70dad880a
+d019fa5
+session_key: 4d0412e3aa70fd60502e881fa03f26535ac94504f9d8a7a319efefee
+15023b66
 ~~~
 
 ## OPAQUE-3DH Test Vector 33
@@ -6059,29 +6017,27 @@ Nok: 48
 ### Input Values
 
 ~~~
-oprf_seed: 86f8aab812d0dd7f52d14240d26ecf810fe9dba46d0947bcfeb17e8478
-49e84c11f41cf75136f8deb9a33afc943f6082898f6fb7009bfbf1594e4439f9fe075
-4
+oprf_seed: c24b354fae9a34f96373404af5cc916205eb5386d997c53df148e42a51
+caf26bc58d42003b7dab4d3bfb8deac32375610f7183e80fc48d3ec8c4f47df96013c
+2
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 99bef65b0a57153cd16cd0f85c5b2443003ccbaeb5126f5595185
-226992c782b
-masking_nonce: 3323efb149aa44b330e66e8f4f14cd0c63ae429d1fe4b3496a6681
-a06403603d
+envelope_nonce: a1cf3f7a80a7a9c9e8c035539eae03c252308211718260e060495
+7840f51bacf
+masking_nonce: c4dd9dd88e5885b6fecfcb68b296b405020ffb86410ba0ea61a8a7
+98ec795111
 client_private_key: a052da1e7263802eb5ea90bc30ebd07510b7997e0563f04cd
 b0173a862ea1adfe5ebc2d261008f3dfe97647b8ae9d6d8
-client_public_key: 0215d10d7067b3567d5a7ae9317329da934296ce40fc0132f2
-2abd78a05172adde74d97f453b902fb2c454718c91fe403e
 server_private_key: 32a099b199f3eae54592db460c87aa23e9dc4f969294ee264
 5b5184d63c0e7f19fcbfb025d7dd9e32e4906883081c997
 server_public_key: 02094306eaa9c62c5a873fee4afdf81c91a91556be8286e7c8
 f5fadc077f810adb6bb760faf2e46f85cb0b7649ebdfc524
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 58a03f1998dc7973a25056f4e3c747e8fa0b2bf8931baf3f478bbb5
-17e2ea03e
-client_nonce: e5b6b52366e683cc7ebbf164f0add4c9b7b34630a1448dd4588196a
-f8c2149a6
+server_nonce: ad91a1a887d8f907b0273757b3e34177e22fd14a7f3998179360343
+39416dbb9
+client_nonce: 5e368d863fbbb3e1f63eaeee4134ca91c8adf7ec612db23a7e8473b
+f1a330e59
 server_keyshare: 0218bb6548593c38236dd6991a1c556a5cfa81be6c235891e5a0
 0cf4eef1bb3ab6d653e03abcfe1634908971d19b9959f7
 client_keyshare: 03f58c4669321d580f98b4b166fbccd6da300ef7c4f0fe19d557
@@ -6094,35 +6050,37 @@ blind_registration: 1cb9b5ceeaff77653d67f2a897fa9364f72142c751dc724db
 566bc1edc57dca409d1c2c7f5247c62530ba0d92b779aeb
 blind_login: b1cd2d3b0027787f8d37c70cf5cfac66388fc090290dd4a2ef28559b
 88a3654fd3ad4d159273ad92f8c9b0f154e87dd7
-oprf_key: b20794ef2046362c1c2bf50370483735a7b3cbe23da3f599bc8a0349b32
-3637f6dabe1d1c7f7ae728c78f32406fb013a
+oprf_key: 57dc765a89ef3095e0f6ce5e92685caf61410ab789f3de42d256ad211f0
+dcfa5b0fdf8698ebb1138779fce5cf145cede
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: d83d6dfbb42cfa86f12d737beeb31464a4b47002c035aa7e17281ee3383
-3b8f9e5cc27d0cef723207da0e0898fa9c7c1b03a077fe247022697d0b6db220989bd
-random_pwd: a5360be58fcbbf66b19613fb65734469976b6cf1484239e5dfd795f7b
-54299ded9fe0a3c695b77c3e8a62724d2769498aaf21a89d1df2f11a2a937bd7ba8f8
+client_public_key: 0215d10d7067b3567d5a7ae9317329da934296ce40fc0132f2
+2abd78a05172adde74d97f453b902fb2c454718c91fe403e
+auth_key: 4f9b5b09f3d8521e143a700646e7daa8070726cb46b2898409d5bb9b7f9
+060d2075ab57705da3a54158ff650f96ed00b13a3e34f6234db138d5939676ce11a10
+random_pwd: 1346ac8aef2812aeb76674e9b384715c2cf83b6589a53be7d9fb60edf
+432b83b14c6806c92f0ce73d2d0a2b8c695e76c449be7c4f463bf746fa69e19e8b1c1
 59
-envelope: 0299bef65b0a57153cd16cd0f85c5b2443003ccbaeb5126f55951852269
-92c782b78a0419fa8e426affc0f5e68c1ddb40af918dbc57355f09b9a500cdff7e63d
-8ebfae60b2292597cebd2a9cff356c8dc2d47fabded8b98c220c09908a17e60cab71b
-ee9938735df0c503f803e5172c7959911e1ad5cf60b0b6e45b30394f9835b90939a51
-043fd1e2125f4971bd5f6922
-handshake_secret: b1cf5a9e69354c8fb2deb6db4a5070b0409af104978e39a0c98
-f50c0f9c177e20d9a1cbb4fa076bc54b0b86cefef647cb008e03c9e6ab5f9dd2f9c7d
-6c7c64a4
-handshake_encrypt_key: 9ad35a27404b68e509ebccf993af5f2031c69390952fa2
-fcf33f5b4057e6e2c3ed07922ea9ddf5ce2f1e29264b7ff0102d1a59875e397c1d890
-f94cf49ad3b60
-server_mac_key: 30ddb396173dd9f0790fe400e7a9c2e80245919a75656557bff36
-727cbd122a0fa672179c289105bc63388c4eb3c65645bb1b8fabb94c2771accfc8989
-9b12a8
-client_mac_key: 25a7a054c44bf37f1363121a37aaf96da5e3f2e6190758f2e3467
-5b3c4dff654a4725290681bc65358f0ba01fe73206502e29aa875c0d93055352af587
-edaf3f
+envelope: a1cf3f7a80a7a9c9e8c035539eae03c252308211718260e0604957840f5
+1bacf458d520e55080dd5a9785bc04909d988625fcee1cc47de674b6b2cf82f749de8
+e3702d1c85cc25c6c6d4ca859927e96dcec13a7ac1dbfe1285e8172268ab0de1579d3
+bd4496cb90a55aaf23850f5cbd50c274cfc0591fc12e5b6e3c691ab6405bc15fb4193
+edefcd0312035908ef2655
+handshake_secret: 1a9117ce9907e52104f51c8a0cb62a393f1e56352be0ba39134
+caa2ff35e3ce59b5cb3b7e7305c6e56776ac9ee83b00e3dd02ed35c1e0e7b7bbdc83b
+b721f74b
+handshake_encrypt_key: dfbd1dbc3d3336acfa19914f066805c197d7f314d056b3
+efedfc0688f69f72bc412fd71982dd78eb252b2537c49f989d64b25eb8a5bfefb1801
+9ff5872fe860f
+server_mac_key: e584079a1448f20166cdfd8977456428996cfee4b0c17b5d430a1
+6950f84b05fd3176c2f820e0593a9b1f05f325ce5dec3b350dd5b6ec6f482bc5ba86a
+a60540
+client_mac_key: e1a3abf5ad1ec5711343bc53324d689a17537e7a15e891ad98b73
+b7d446165f9cd8061ce3c64d472c622a99574b6611cdd50ecf5356224caa1b34598bc
+2f60ab
 ~~~
 
 ### Output Values
@@ -6130,44 +6088,44 @@ edaf3f
 ~~~
 registration_request: 032b5a44024063a5644913f145e01c5b787a77804a5ec25
 588320d5ecea9d524c1f9321b9ae76a6bc168b1f99e7305b9ec
-registration_response: 02a822166cdc5744a5df3017417c91db58cd6cabda82dd
-1a8eb2decb041647e22915afb7a668ccb5a9bdbb6829c3058d3302094306eaa9c62c5
+registration_response: 03072a0556ec832126bbabc0bd872bb04dc83ee8ea389d
+9b030b07cf56eead8be26898e4431e43939d84d221fd30c75a3e02094306eaa9c62c5
 a873fee4afdf81c91a91556be8286e7c8f5fadc077f810adb6bb760faf2e46f85cb0b
 7649ebdfc524
 registration_upload: 0215d10d7067b3567d5a7ae9317329da934296ce40fc0132
-f22abd78a05172adde74d97f453b902fb2c454718c91fe403e9b41baf524620b175b6
-af026e6097e256f0df04e0170ed01835c59a48faaee00129556dca6f33a05cbf09a11
-19d848b3e3a1d591ecb6067995126ed414ade0140299bef65b0a57153cd16cd0f85c5
-b2443003ccbaeb5126f5595185226992c782b78a0419fa8e426affc0f5e68c1ddb40a
-f918dbc57355f09b9a500cdff7e63d8ebfae60b2292597cebd2a9cff356c8dc2d47fa
-bded8b98c220c09908a17e60cab71bee9938735df0c503f803e5172c7959911e1ad5c
-f60b0b6e45b30394f9835b90939a51043fd1e2125f4971bd5f6922
+f22abd78a05172adde74d97f453b902fb2c454718c91fe403e303886ea6adb44098dd
+39a556b1eba217b37374ec277fdfa4c755af307dcf6dbc36c2778571bccd335360fe2
+e078f43067cb4cad73b975f1d932b20f7eb3bd65a1cf3f7a80a7a9c9e8c035539eae0
+3c252308211718260e0604957840f51bacf458d520e55080dd5a9785bc04909d98862
+5fcee1cc47de674b6b2cf82f749de8e3702d1c85cc25c6c6d4ca859927e96dcec13a7
+ac1dbfe1285e8172268ab0de1579d3bd4496cb90a55aaf23850f5cbd50c274cfc0591
+fc12e5b6e3c691ab6405bc15fb4193edefcd0312035908ef2655
 KE1: 03cc36ccf48d3e8018af55ce86c309bf23f2789bac1bc8f6b4163fc107fbbc47
-b92184dbba18bc9b984f29c7730463fba9e5b6b52366e683cc7ebbf164f0add4c9b7b
-34630a1448dd4588196af8c2149a6000968656c6c6f20626f6203f58c4669321d580f
+b92184dbba18bc9b984f29c7730463fba95e368d863fbbb3e1f63eaeee4134ca91c8a
+df7ec612db23a7e8473bf1a330e59000968656c6c6f20626f6203f58c4669321d580f
 98b4b166fbccd6da300ef7c4f0fe19d5576d3debceb23e50b5405ac264c31691e4517
 154d993fbe1
-KE2: 03db922060e76fc773f444a56e7c247a5f169bfba56a0f2e01401798df8f70c2
-2f29954d63305d9f25da1e54d117f079413323efb149aa44b330e66e8f4f14cd0c63a
-e429d1fe4b3496a6681a06403603d73a10878709d76dd9d0e91ed186a4741147b498d
-2925f5c8b7c9ac6b847d4a0d6e60f98e1133b50d504a9d823b0835e6c300a8b7c3eeb
-d455a783c47aeb9115ae29a0245358c73414748ba15daa24434fc6ffe304cd3fd52cf
-2cd29c878d47012f838d8cb72d23f71799c64e82faef12072671a8e3426affd442830
-9cbb76d2721afec997e45022fe3fe32448dc601aee146172518768ec349e8fa7f35e5
-a0cef4e50cc90bcdb3770aad33805c951892e6551aacb75847574883b3f9b8f355301
-9be58a03f1998dc7973a25056f4e3c747e8fa0b2bf8931baf3f478bbb517e2ea03e02
-18bb6548593c38236dd6991a1c556a5cfa81be6c235891e5a00cf4eef1bb3ab6d653e
-03abcfe1634908971d19b9959f7000f2ea02f0b1290b221c4710cf06e32799844bfa5
-eb7fa613b3f70bd7108332f4335f6df4483235feb1fc9514f8ff3be4a6b91f263d65c
-3734947e953b1ed6dbfd521eddc57023b2a8ecd5efdf1310bee
-KE3: 19ca87f49bcb9ce6e30ad3d214633b972496ebb1afdd593bb8f94cd9fe86a8fb
-14a1585945f2eabf506f431a70038ea86334c2cffc4fa99932785bf178393867
-export_key: d1e8c4ba661fb37e345b9ddf4cf4b83d304c210c8095a357ad96542b5
-1d3ffce95d877274a0c5a41f55f542fa80a746cf7539486b3f5700de9f9e583aaa1fb
-4f
-session_key: 10fe61bdf2ae4c95dab647ca06787333d78f074ca743c5d6d02abc69
-c12c2275f72a9497f2be73e2204b0b8049eab6052fda17c8969f9d82b903914182a0d
-311
+KE2: 0257bc1da6c7196ff387fc1954ff75a469539fb38e912ae3e762ddd3e28ce40d
+bd3d4743357693d235b2964866fe9b53dcc4dd9dd88e5885b6fecfcb68b296b405020
+ffb86410ba0ea61a8a798ec79511126c9a98a7af58d35236bbd137bdcafd1fc0c5953
+5bbc6ad1e5a5c7ae85a4f08f0cd487342f617ea6a49dad396358ea828bc71dcd69ee8
+b6a4e966fa499713c7a4c88934e1b839576e5b929e057b4dd413eb20836fd1c7e8a8f
+bd209c81f0a7e3b484592863cc0b7ff1c55a2cef13d1f22aa3f13f1f9ac75ad89a44e
+02d93f950573eb755ba182001380b29aaddba419b80eecf746bcb66defa879a187e24
+96cedae59610841647dc09e6b980e1a00fe4db7b3a0f6056cd2c9b7d5ecd81b595baa
+9ad91a1a887d8f907b0273757b3e34177e22fd14a7f399817936034339416dbb90218
+bb6548593c38236dd6991a1c556a5cfa81be6c235891e5a00cf4eef1bb3ab6d653e03
+abcfe1634908971d19b9959f7000fa94b742bd16184a27b32363f3bab740963830e07
+a1b2293df943b2d9da9986816ec71dfa7465263dca06847ce40ae6bf071a8190f43ea
+e788d54cdf6a462c91d83bfe4542693422ebd3f7fec5d6bd2
+KE3: ff86dfe8bac49a1b2cd9fefcfcc55d588b25f4bf89b7c3c154275135aedebed7
+6d2c7f231476cb194c0ea5cb10febad5990885b292bc8d129325e41ec1d105b0
+export_key: 7519276c78735ab01f884d141615ddc9e1344e45c14ec0d3193b4e791
+da2c7fe6c654a59182cc2d60c47fe2d29be265a1ad4f49b03b55a24c01159c8eb02b3
+7e
+session_key: 0f89058d721df0ba5032d0069d501d0e32740750bc7cbb058fadc7e1
+3228335d9db5bcf85ef8afbc860153d89817a9314ab3a4ee37aaf08e7c217c811f9a8
+ab9
 ~~~
 
 ## OPAQUE-3DH Test Vector 34
@@ -6195,29 +6153,27 @@ Nok: 48
 
 ~~~
 client_identity: 616c696365
-oprf_seed: b89ecfb19e18fb4ecd2316f507c8a2a94473aad2795157cd11658ca88f
-5d361ee1af8e7396204d1e4d8e6069b482d206b0c396c86c041260f5ed500dc3e2fb6
-b
+oprf_seed: 979757f6e39f8454836e2c1ce4cc67ee70058d7e7f015ad3e4e39e1dc3
+f2a6d7430fedd82238810544b0a1246f67351e48fcd83d10f0f2a895b839d06000271
+f
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 6f14a54d8d747c1920ac346ff2df10c3250151826ec85e0e40160
-88587596c6e
-masking_nonce: cf8dabdc7be8e9d12e9a0c74540f9a4dbb61df5d8f542d4317d2bc
-50adaadc85
+envelope_nonce: cc0b3e6554531afd5909e88174962217da469e2260a64058cc8a2
+514a54a53fb
+masking_nonce: dc894ea3368ca2c5a87c7566f5a6c9d548e3c64adf9626b70d1452
+6100117478
 client_private_key: 194f9a720f11c3f0f1613cef116e218267201ce0aa4f4f55b
 68c5393aaa4101699ae3b0dfa984cb954913dea02087eab
-client_public_key: 02592ee25abd015bd1f2ab94e91e0c6ab9decc55ae84a6d1b0
-a881e04fd39eebd626f3bc5edd60555e18d62dc84d81ff59
 server_private_key: d650dcda20f27d7bf4673d820cbf71e498ec903e4b3959af8
 52f6d9edfa68f06f4d7ff89d5897912df4f9c633a6d925b
 server_public_key: 030278df9fe8759989883c2ef9047b2449abcdbe9f508aad83
 f227836ddda86b3dfe0aea33995cd76243a4319800bf8ff7
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 1a335c37bed10932dd1160ef9a221e08632b79b6d5b951f207c0657
-3e6c6a9c6
-client_nonce: 872e84d6a39cdd15899d68d31dc05366057dad5f76be2e248ba0a8d
-751ced9ee
+server_nonce: 19edae31a7ccc1f1d7985b181623a395c1c0a9b08dfa320b2ec1649
+a84a5d1a0
+client_nonce: c63f8d9d358c419215dd2780c4676f636cd06d9889d86b4ae0ba79b
+04a30758f
 server_keyshare: 03ba3e99f4c2f39463fe214e7607ca3e9b1f6112d565d80bbdb3
 88f52437ec89f0da6b80279e10382bacc7cdab25a3a830
 client_keyshare: 02313f18385e0f0c3c88f3e60178a6727c9023e1044973eeb676
@@ -6230,35 +6186,37 @@ blind_registration: f69c6179ddb976b981abec905a0bdb649e99e5441bc707cfe
 3c966a87b253bb94ee1be97f8d0e0f99e4862e483b7e00b
 blind_login: b71e35cbe26e4ab93794edaa2ea66295456005572a7096070f6b551f
 0032de9749f7c6675eec2432a64c88d99c56fe1f
-oprf_key: 376c378d28df9e5390ad5eb95e0718f8698847a7c020d24699bc21d9401
-9a086c25170a6494ef7e918f809aefc519841
+oprf_key: accc8e94225054df59cfe38e251b4d587a940b8a79c399f9e98a01ae54c
+28efe13a4ad00096800763482d7db09376aa7
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: e4a332aa81707de7387ccb178772ae50836bad67eee99da4031937280fa
-af5ea3cff2935ff6fc80b258733b1d91e0481c80c0a31aa97b095359bf287d2e4698f
-random_pwd: 371bc9aaa2c05830cc2b1f5d3f65ab6daaecd2ba46cd1d56eb83131bd
-60baf9b7c867884a1d615c0afbfd82b2fd88f6db77eedc6ea8b2a0c4a49da9a961f61
-23
-envelope: 026f14a54d8d747c1920ac346ff2df10c3250151826ec85e0e401608858
-7596c6eda1c9b09ad58c0b9ce66a5cbf4959d5316db21b8a4e63599d696c7fbeb916e
-1f726f78d1f13696ad4b7617e60fe872934e5625d6d74eabea8e3356a47e62a0ba665
-85e45ec28d52fd8ce2c8bda87b6cc11c769b6c06a1836e2a227e806588fa74baccbd3
-ebda0fdbae677ad536af3d00
-handshake_secret: 50ad9c4ea9d9605ee4471e7e439cd96d0531df0c8d21088e762
-2901af692bac1fb039c8eba4d5d8b6fe8151c0729b1927e6eb8e5d3c6808d51b80ea8
-335eab30
-handshake_encrypt_key: 2d846fa9a8d87f92f20219c34ffce406e478188d48c93b
-5137d2e3de2869eb888f97ef86978cd483d9758c5a53c113e20d454d81a7b76818054
-ceda0204dbc35
-server_mac_key: 2d9f85ffb235e526ad767819170cef7330569aec4ac77b774ce5b
-eb7eefdfc48a7497ad966058ed9cb2883f653f75317404fd7b5227883065b461dc7bc
-ee68e6
-client_mac_key: 8c5bd13302262c82cd2aa64a952da6d9e0f5f273b7d88f75fffa6
-fe3b409ef61cf25d87fe584dae0d5bb4bb6d6f71f170afcaeb433d83a09b0dc9351e2
-e72c62
+client_public_key: 02592ee25abd015bd1f2ab94e91e0c6ab9decc55ae84a6d1b0
+a881e04fd39eebd626f3bc5edd60555e18d62dc84d81ff59
+auth_key: 376205875e4f9c50023662bd9d9d5b0a9762641d31d207c18a65a36cc1b
+d0faf4bf31502791c0700e72499a456f5528224d867751652b031762ac10dd272c735
+random_pwd: ca7ec198254496ff179ef8cfba98f0604b4e66cdb244b7580751e4001
+ebfa19da3b1febfa54bd8edf9a07b51ccd47c7b791e02f3b34402dfc340ade5d2a635
+ad
+envelope: cc0b3e6554531afd5909e88174962217da469e2260a64058cc8a2514a54
+a53fb2b6a666f389b00f4e515a9fc3377155316751c89b4d4d5a2108c37feea0bb054
+b4bb2d50cff45dff5e899aa074d5cbc900c653d7338f5e7447df7cd5156eae7a81841
+f6036c05dfed676d1e7178ad79c02d5b5c94109d5d5ec72929bb7147a8620032bb901
+444d79a30f5d3e73057e97
+handshake_secret: 2cfd510b430a9c5625a266e43d8527c253e16cbdf5eceafcaf9
+e8e650b74f468184b61f86f0c3d6a120f6b3f08be0347e1b11e5342abcd2d893c5424
+526720d8
+handshake_encrypt_key: a5bfad9f03fd098562de1ec65f8ee87a05005d4320d8d3
+5e58574e19fe50419ccd8154d71af8f86b32cd05841e374aebdc1690c7c39256bb799
+f896b8677417d
+server_mac_key: 9bd96a56bcebfe702e064bc4bfc2405123bb1ef8a2fb599e76ed2
+fd42237f9fa0ce19a2a8a186713b5d79779bde7c1b5b2636ba2f36d0b0f6f1fea4255
+8e1d8d
+client_mac_key: 8bd37145a6750baf8fe29a6c8d61e892281a311a0130c14ae0692
+4afe80e5d771237ac492f7acdd4be13fe95e5e734bb05c30a69d8d54e332483395834
+e051ec
 ~~~
 
 ### Output Values
@@ -6266,44 +6224,44 @@ e72c62
 ~~~
 registration_request: 02bc8b8b2d8b96ba8f527f59dc0054349f0fbf4c7cda280
 480d643909db6a8dbd4bcb455cc374050d8cce29147fab0a020
-registration_response: 035401d98d9af21de3778664ed7a87eb467199a9da3995
-d32bc429d27c839c15f8819b7d29f09d261e6120276bccc67c54030278df9fe875998
+registration_response: 029efad1a5ec0219513bf21ea40394622536bde1987dc0
+3ebc61afeb057f9e453e9f351c8ba6d72fa71299acbb33f68090030278df9fe875998
 9883c2ef9047b2449abcdbe9f508aad83f227836ddda86b3dfe0aea33995cd76243a4
 319800bf8ff7
 registration_upload: 02592ee25abd015bd1f2ab94e91e0c6ab9decc55ae84a6d1
-b0a881e04fd39eebd626f3bc5edd60555e18d62dc84d81ff5952fcd8a6dc112baef3d
-206372a10df6c23494e7ccd9316fc56b0f169693213f039636736e07962aef30bfa40
-ba27e7e4e471ad551cf4bdfcab06d6715142eee2026f14a54d8d747c1920ac346ff2d
-f10c3250151826ec85e0e4016088587596c6eda1c9b09ad58c0b9ce66a5cbf4959d53
-16db21b8a4e63599d696c7fbeb916e1f726f78d1f13696ad4b7617e60fe872934e562
-5d6d74eabea8e3356a47e62a0ba66585e45ec28d52fd8ce2c8bda87b6cc11c769b6c0
-6a1836e2a227e806588fa74baccbd3ebda0fdbae677ad536af3d00
+b0a881e04fd39eebd626f3bc5edd60555e18d62dc84d81ff59bb822e14de961b278f8
+e1ef4539175d6e6b4461402feae7bbf7da7a1fd62306ccaf48cf97a595e8db9206f4f
+9365997a0805861284733dab0bb1a1351094a7eecc0b3e6554531afd5909e88174962
+217da469e2260a64058cc8a2514a54a53fb2b6a666f389b00f4e515a9fc3377155316
+751c89b4d4d5a2108c37feea0bb054b4bb2d50cff45dff5e899aa074d5cbc900c653d
+7338f5e7447df7cd5156eae7a81841f6036c05dfed676d1e7178ad79c02d5b5c94109
+d5d5ec72929bb7147a8620032bb901444d79a30f5d3e73057e97
 KE1: 0258fdc4ba750f504274ff4644f2f43a75759b77adb1817c8686340bb28059b2
-af91d82801b94bbcb8326cc2e046a4df51872e84d6a39cdd15899d68d31dc05366057
-dad5f76be2e248ba0a8d751ced9ee000968656c6c6f20626f6202313f18385e0f0c3c
+af91d82801b94bbcb8326cc2e046a4df51c63f8d9d358c419215dd2780c4676f636cd
+06d9889d86b4ae0ba79b04a30758f000968656c6c6f20626f6202313f18385e0f0c3c
 88f3e60178a6727c9023e1044973eeb676b9a17a398424b1074d5e35246fc25be8302
 8853dc22f1d
-KE2: 0321653e9fd647f0ec78ee24ccf67d2eaabd5981ad6d83905848cc6d3ec01ce1
-64c2cf756e2901097c4a8852beb0275976cf8dabdc7be8e9d12e9a0c74540f9a4dbb6
-1df5d8f542d4317d2bc50adaadc8561ba396a9c488d84f90d6c8b5ed2ce21f0559c39
-5a08040bfb46bdc0cd37bd60df1a8cab8c5de6db44e7c4d26ebf865ca6e9320a61fa1
-fa2f2749aef223d8560abcf184a626a4a7d84c58c7e7ce490b5c0a75c1e0343d3662b
-1519fe983e90ffb3061d7244b362fc1353b596957879595e13300ae0a3041748d7f8f
-190a28a2f8463ac82c6a4574c12ffb200937934ec849371950dcd83d183b116049070
-834b0cfcbebbd3cf2939d5b5eec380cef468e112a136b7bffb03704d75fcc2e0a5246
-48d1a335c37bed10932dd1160ef9a221e08632b79b6d5b951f207c06573e6c6a9c603
-ba3e99f4c2f39463fe214e7607ca3e9b1f6112d565d80bbdb388f52437ec89f0da6b8
-0279e10382bacc7cdab25a3a830000f8b903a1e41f8c4e65298320015a7d76b4ad151
-55bfcaf7fd17dff8edbcf773384af475ae2c512cd1b8fd5cfd99cceeb3fc404e78889
-05f0c2891680e7bb503e574ff6757e7c287df1ec0eeb90a7a43
-KE3: 0326dde48f34839dd2354578dc115592d796ab38df45a8ce54f6457f0c6ae1ef
-5b640dc4c1e95a9baba110f865aa78f1ed1bf9c75bf820992edcd25a40f3c1c7
-export_key: b53ba27098d3e1f00abc625a6f48c9de081449dd037befc917136d827
-64f5096e9d2fb17c54842bca755a8adbf43e409e496412cd32fb304a75f46ba430985
-7a
-session_key: cb84e3a383965755dddd0b5e6acedffc60a977286dbbaead103dadec
-f36a5a2496c6481942047112063120b1649328a1e2fb0eb15b55e23856a98d3f69465
-f7d
+KE2: 03eaf0773e9c558849d387297d889ebcaf4cf5fc5a76d79d8c135405bc359f8e
+f2013c14943df42e048cb9bb2496d63446dc894ea3368ca2c5a87c7566f5a6c9d548e
+3c64adf9626b70d145261001174783e4cff5db7d73750cf960ba2abc6ece5bd321a86
+dad33c017af9d25fb850600803c3ac677e7db81ae78599f0d3ae0831c7ebe90de573b
+84d259a921a71490d05769d920df88f45b353635a7d4a560aa2bd41fee429761d5b96
+66e28f9f5540026d481bd4656b464f471f6a2384a26c3cf18890a1745d80a81822fb5
+a0811ca61d06b935f8cbb2e418bb18c6b002f92538474f0fd3bc2ea072063bf6034cc
+f44f76247c88302258a2379dd89f1252486d6da85140604e3abebfbe27a1b846de03e
+619edae31a7ccc1f1d7985b181623a395c1c0a9b08dfa320b2ec1649a84a5d1a003ba
+3e99f4c2f39463fe214e7607ca3e9b1f6112d565d80bbdb388f52437ec89f0da6b802
+79e10382bacc7cdab25a3a830000f047db0ed928c6a5157a040e1fb8b675166d84cc9
+de0a9d1b2ee90859b85096172d75fc9aa4701cd6d07c3c60e18b13c1b7961c4ecbe81
+b76d10e883286a979575888491b70ed7b58d05b8d3a9a84a9
+KE3: 5455e49eb7421e5a75dd3a70ee5606fe65472cf6e1c9b3cc0f8f3a8642635ab6
+4c65b7baadc3c5144b4590802612ac927150b7ef72d429cd83d5b90e44c522f9
+export_key: 89ecf6a1ef6b497602ba56ae74538b9473687ca0b072fe3abc335c796
+2f584f2348917f96d631e205a0cc0488b55db94bc2280c7f5d2b9d6e9eb529a4b434f
+1b
+session_key: ff2fad478708421b089f46e07d208184f233cc0f9b716b970f4aca1b
+bdfcd422e51f053cee840db175a6276e88afc6339a087e9bebb89242bc297c246ff13
+8cc
 ~~~
 
 ## OPAQUE-3DH Test Vector 35
@@ -6331,29 +6289,27 @@ Nok: 48
 
 ~~~
 server_identity: 626f62
-oprf_seed: c5e2c269409a95596dd6da21ea47f773890995a6b99776403060713efc
-500b69306895ee898f57ec19b68f839c51d985e3239d5ee2b53fdd51c23b28e6fe04c
-2
+oprf_seed: a91ad13ec340178d0945dce72294a9a9e006e6b080e07d44dc8c0ba9e9
+37b37491f3b78751c409cfccdf213ccf11d3b9a8082c0674e25fe498d5a0bf13fc219
+4
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 8b68eb5689cbcaf039788c1294a7d348baf57b053bb6cd387de0f
-a50e73ba278
-masking_nonce: eb3e5c45f266db87234f53a84cb98bce8e65fb775abfb32103accd
-03326e75a9
+envelope_nonce: 51f9b8df987bd1dd4466c71f69aa4bb5e2d7d875c242d976e79bf
+75e9b81d2bd
+masking_nonce: 2ee1821e36981541a140342d076ed337f4eb87aeaebc7624e8fd13
+bee87b4193
 client_private_key: fd62874455ee10870acb5cd728e1e21943e18c3afc1fc668e
 18c48250da37feea7768de6574b8b152dc64790a0fbd8ef
-client_public_key: 03f9f34e551fc2ca9b36f4c44dbe6189a22ae0bcfa6213ab18
-f3a4dc31ac55508e7fe05c28cf0734536fafb05c6eafdef0
 server_private_key: 9364031f78d6cfc1aec5bed89c718d3c8ff87115ed1526fde
 d4495afe150eeeabc6195e48de31f2a5b24f798faea51fb
 server_public_key: 03b73b7125c1d9517a42d63bf21b0c3eeed2b4f76005f72478
 de3440dda2a2a580ef58077c145719505764689842231b65
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 01389233f40d7a36cac715a365528e27109621a2787ce45e4b01a07
-2da1e1467
-client_nonce: 87f21361392a7d66afacd6bb517891a666c2d9c70056602c409563f
-11b3b52a4
+server_nonce: f770b80e0b74f0fe64abe3da070da359b0d7a57b0d345f2f9c030c4
+bd71e019c
+client_nonce: 16564569f81b562921a85f59bde65055c3bd7e8bec8964fca23417a
+7ff82c648
 server_keyshare: 02bb887f84a3158bd1a95c26114059d1064a69dd87c8813ad1ab
 19b0cff29b48d0e945af14537ac16d8f4160bb027fdeae
 client_keyshare: 03f07983f1b0b62e778918e7b15aa899a5c5c9fce3af75c5a424
@@ -6366,35 +6322,37 @@ blind_registration: 43ecbe67abd4b7d730867cbd85f758e9921a8614816cbeb5c
 d80d0aaefbd98c6e6b26643af7d92581e62be316ad49bc3
 blind_login: 087dcfc60cb02473a6148e636c3e87edb4da112f01b7bb4ac4e13e81
 c6a757191c9256cc0c7282d7b27fb62a60b63756
-oprf_key: decad3ba71ba30ee628b84e3c2a7dd0c3a14c6e031f39aee816831aca57
-8824916090875303ce525fdaef7a168d99d34
+oprf_key: 61b3d30c4df52efa69b65ed2ad1e3e8b1db1c89c726097df98f19d28ab3
+c4aaa5aaecdbfb3fb147ef7824a182812d6e5
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 7f2727a4777cf01d9368939e89875ac5cd34583ce74d3a17e216a3816fe
-325d15799e4876123051e07a55654dfcf6f09e7caa983577db928f24d4baef30c4c8e
-random_pwd: ceb76c899cda65f5e2ca9f4f223c83514469c3a6302f9a575aec5c049
-b1414097da1943322147a2a69151a3009e052f38a7726dc99f17b7a7e62cf3b883e42
-4a
-envelope: 028b68eb5689cbcaf039788c1294a7d348baf57b053bb6cd387de0fa50e
-73ba278d97b930d237f5ad4ee71b8dbaa09d59b98bbc06e939cf6102b994fcb29d87f
-fe23c79884f7a66ba97aeef719583ec8756861dc816d076a80fa8ead5b413d105d282
-90a812c08dfce38ca5f90ffa38d753d4297d366d0ef9a28b59ac44551c4c3b05fd966
-eb8b888b2a23a08ed24f64eb
-handshake_secret: 4bf3f2124dfd7f4d681511f647ae9d7d4f7b3d7c9b9148ba02f
-b87af44c0b0c32348ba3de589ef0d0da4fbdffaf0d614bc385460ad6bede308dc2c4b
-2e08fc3d
-handshake_encrypt_key: aa7058097aecad64742c05f521ca7904589d860ff4e7fd
-c6f84c3a17219e19681433f7c89e2fd6e9693f3d999a273b0b3bda6423befd08aed24
-700d2054a65d9
-server_mac_key: 3d4fa38aecc1e93a88fb13d2d839e2960e628622782a83dd95c2d
-0d2ad7e31cfb94bf07ad0782161cfc5eb5082d3de72b4479b4d57070178af7a24d506
-12097d
-client_mac_key: 4465027198c4c6dffb9fcbc6cacb647c2cd64db8a02b489282957
-0350d41edfe593825c4b6319f68a3d78df578c1ec831293c2ef3391128a9a7c210bc7
-d5483a
+client_public_key: 03f9f34e551fc2ca9b36f4c44dbe6189a22ae0bcfa6213ab18
+f3a4dc31ac55508e7fe05c28cf0734536fafb05c6eafdef0
+auth_key: eb88848759e869f295f63656481d966b194d4d34479daa1a7374763dd72
+e67fc89f7deb7b46bf4fe580359c3f02ede8929bbfc57ba4a22256beabcf7a4e02016
+random_pwd: afbd70e44de194da57e7987ee0f6d762a752c72a5551e46c1d94bcb01
+3d02bf6acb9e4aaa6734bb583fed40ba01f14f9e4d992619b39c92fffe35a1d3335ac
+6a
+envelope: 51f9b8df987bd1dd4466c71f69aa4bb5e2d7d875c242d976e79bf75e9b8
+1d2bd41f5c2ed17115c1891ae50db3035ad9d68ab246a94d0851888f4f4e999255389
+225bc7bd11780ee8c60579a90814303fd50e5d47728c2d0fb4c3c71a9555fb2183af1
+cd5f42c5a1926cc2cc82eb60fd51c60908b2e02d122f922d0048c3afa5eec4a81c43f
+184e5e50cb5916169c6810
+handshake_secret: 33f91457d68ea4f213832825de6532ffc6681eba6bde443ba0d
+36bf862da56c922651c967b186a4db67234a8cdc79dfb893709eb59c64f2316a42fed
+46547276
+handshake_encrypt_key: 03a3daba692ab9dedb8e2514a7cfd371725ab3ca97fee6
+47670707e1773f81af8f1cd814537c37d5f7ff103dcb0518e9fd92e6df27d3d77775a
+952c4d027efdf
+server_mac_key: 853603d1765c11344239df203610d40c34c739c8d2e9162955eb0
+791c1aa4f43e8bc61b1d5886868e9c09cf5dc0a92beb0990e7f38f515bddd68c678c2
+2fdab3
+client_mac_key: 332dfa7a50daab0545128f6c25d0454d0a80316c2a2d427e5f093
+b62b2ae1540559bf86b2449db88892ea97bc84bc0ba001fe703579e10c3655905188d
+cccc8a
 ~~~
 
 ### Output Values
@@ -6402,44 +6360,44 @@ d5483a
 ~~~
 registration_request: 03e0ffa19f9860931638c2a6a3fbcd8e0ec673cd39615a9
 d80959edda6fc8d269bfc206586f1a10b46a895f8f17e730174
-registration_response: 0374fded6c6508f2e79775013341b2bec5dabdd896faec
-e3b0b826457f66f25437d0a2f511b21fc00bb8564fd96edd76ce03b73b7125c1d9517
+registration_response: 0209d0f483a301d01c27acafdd4fdc4435c4ee68eefa7c
+c387557bbb6807a140a131f75b4f3548b91dd6aa7326829089fd03b73b7125c1d9517
 a42d63bf21b0c3eeed2b4f76005f72478de3440dda2a2a580ef58077c145719505764
 689842231b65
 registration_upload: 03f9f34e551fc2ca9b36f4c44dbe6189a22ae0bcfa6213ab
-18f3a4dc31ac55508e7fe05c28cf0734536fafb05c6eafdef064606a1cbb85076b9fe
-8919ec31f39151374492a7a662b2d6fc0b685a016aaedc0583d4ae4ed37d9dfd8b989
-9fa850888fa6cafaf91ba8824a7aa1b5f0213918028b68eb5689cbcaf039788c1294a
-7d348baf57b053bb6cd387de0fa50e73ba278d97b930d237f5ad4ee71b8dbaa09d59b
-98bbc06e939cf6102b994fcb29d87ffe23c79884f7a66ba97aeef719583ec8756861d
-c816d076a80fa8ead5b413d105d28290a812c08dfce38ca5f90ffa38d753d4297d366
-d0ef9a28b59ac44551c4c3b05fd966eb8b888b2a23a08ed24f64eb
+18f3a4dc31ac55508e7fe05c28cf0734536fafb05c6eafdef0d194abeaedf055cbf1c
+f65dc2fad700d574c25420be9ae689633c8fad4322b9633ac6af8bba44e7a58d70d92
+67bdd395fd54841061899a2b71e0c9297e7d189951f9b8df987bd1dd4466c71f69aa4
+bb5e2d7d875c242d976e79bf75e9b81d2bd41f5c2ed17115c1891ae50db3035ad9d68
+ab246a94d0851888f4f4e999255389225bc7bd11780ee8c60579a90814303fd50e5d4
+7728c2d0fb4c3c71a9555fb2183af1cd5f42c5a1926cc2cc82eb60fd51c60908b2e02
+d122f922d0048c3afa5eec4a81c43f184e5e50cb5916169c6810
 KE1: 027b40080d3b93d00403d4e7ce1944644d57cce6241c69181216ba7323afc9c6
-2054300441470c06aff071717754a2fd6087f21361392a7d66afacd6bb517891a666c
-2d9c70056602c409563f11b3b52a4000968656c6c6f20626f6203f07983f1b0b62e77
+2054300441470c06aff071717754a2fd6016564569f81b562921a85f59bde65055c3b
+d7e8bec8964fca23417a7ff82c648000968656c6c6f20626f6203f07983f1b0b62e77
 8918e7b15aa899a5c5c9fce3af75c5a424e114f3c9bc539cb3b290c4c4705829c21e2
 185ab3eefcf
-KE2: 02a1bb56cbc2dd174fd877bff71b42e8989ac5d39c611133a5d63b2d12dcfb18
-9457061a065bd167b6975f1c55a2cf780feb3e5c45f266db87234f53a84cb98bce8e6
-5fb775abfb32103accd03326e75a9c5a764e9ce64896269c3dc42c2c3d769dcad0439
-c5cb7df86f1c013417f4c555ffc0fe57c48a1dc9caf35e0facf04c2bd5286caa858f0
-ee2e71cdfd104d1d1e90f584f69867bcf2aec790b9d84a329fd57e304887b168e038b
-28981de89d0a618712bc7716d3bded9edf6df6d8daf43c767c7e999d8ebd21b9b9a93
-c8dc7ac9731c8ae54938cc487cbc0be72cb2a327cbfa1ab9342734e3051025417e0df
-6a9ba7789388a5b92c17dd244c347419aa13997bf91bd35fabc921cd1753127b9eac0
-c3001389233f40d7a36cac715a365528e27109621a2787ce45e4b01a072da1e146702
-bb887f84a3158bd1a95c26114059d1064a69dd87c8813ad1ab19b0cff29b48d0e945a
-f14537ac16d8f4160bb027fdeae000f7b2bc10aecae75222434b41e61a40178b3ce0b
-afe389f4af404ede73a9de6cf3761c32e3dfe67d084d35e72fba1b375331b976bfe9e
-724ce89322039b00be7d05c7347edb0934fd99de55751c83a34
-KE3: 12fa71392272514c3cc8a272f49a3c627b03377160b4ed999d751df7e999cbf7
-c0cac321970f2a9e44d03376c85a5912bbed0cb6606e07033bd09fec058739b2
-export_key: 161a1edbb368ba1aef7187476b511cdc0d881edc0e2dc60f3e019b545
-6faa1bc0a88a5d443fc667efc59c24443da6653daee5f33b085bd3e8cc28873247415
-4f
-session_key: 0630573085d91a4204ca7c8ec165089b18f328f9adff00cd402ece53
-783f061de2e61073a7791d76b52f1042ed092bfea5117c537c3e087b9bf0f93ed1011
-0db
+KE2: 03ab3249d3f06a222fd197776efb255d9002a2510f0b087b69fe2c416ad54f69
+8799771869d9322b74ed2fba5686e11c452ee1821e36981541a140342d076ed337f4e
+b87aeaebc7624e8fd13bee87b4193c3e5f93e115cd73c0fd5f59b93870ff37aa62f5e
+e61a08bbb59c5400689b796b50edf7df08e900d77bb2b4e9f9c8afa4336c61129fc07
+ede67875052047ffcdb18fbd9a8f88ac000ad312c77c60d782d84fdba13aa3bba9a1c
+a18de67d9747b7d0d9022738beb8e7e5bc6f816da0207505d13a53415ac93862c4860
+a9556a017f3f4daded9cb402c087bd535a87614119d25f1bb4f2f4464a004f2d543c9
+9f851ec7f9359c1d40828ac478d66445ce5cd49a5546206b62c5bf4135420c266ce79
+ef770b80e0b74f0fe64abe3da070da359b0d7a57b0d345f2f9c030c4bd71e019c02bb
+887f84a3158bd1a95c26114059d1064a69dd87c8813ad1ab19b0cff29b48d0e945af1
+4537ac16d8f4160bb027fdeae000fce5b72ee4ad2463c3002705f69d892f660967685
+c9f47e3c3ef8b0e4a573eac3008cd2410ac06471d6ec28872d1cef1c2764ba6a71230
+bd4f7d29f5cf7b3351e874ecf9784e0d2598fcd0db1eca546
+KE3: 0b5734cbe97fba1343911e04f100907ced730ae27b3671bf8fb4362806e8be53
+d479a126a1ce2b7097ce18a13827e276a5061fc4ac312894b3c5726823c54afa
+export_key: adfcad909694ff52b1acddb814e9e878aacd5ab2d7e795533f71bcbc8
+964d7d9341a5f83f3fff645b8e2d9c23493004f10f83bbc0429db9a342429c6391952
+a3
+session_key: 7fc04b4501922995bad7fa9843221585ca9cafed327df3379d20858b
+67a38584effc1707feb0fbebdc6f2eb4e1e56a8650e873a0a28ada2ad75a00ca77fc7
+a2d
 ~~~
 
 ## OPAQUE-3DH Test Vector 36
@@ -6468,29 +6426,27 @@ Nok: 48
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 0bfa4df1718206b74402d91a84e51a063e2b74601388b1d444888ea5ff
-332975da14573a4161a56072ef7d165bcd5681b2ef8daeac036124a39f3f0f71bb4eb
-2
+oprf_seed: ee326fc49e0dd56f492d40ce372e9084b64f8c37ab0e745fb0cf2dbdf6
+7402795fc72dfa97ca11eeaf07ff8c2adf50aacc1e8d2be67e9d5ff1db71b0cbfa06b
+1
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d969b846b24dba51dd0fa4dcf92db81a4f42ab612430687bd9279
-f1c536f0605
-masking_nonce: 2906fa66ce92e506c6e670f3f62a72589f0ee78d5d363ff8d829d3
-0b0d8f40d9
+envelope_nonce: 57eb87c57354a9e70be9a670781c4fd9c841c9c7bab0470b87a32
+733078d9b33
+masking_nonce: 64bd3f80b3abe3e3c360e3077c4f2862061fb9bc4cd1cfb94f5cb5
+493f5a8c3a
 client_private_key: 4bbeadefc59f6beea6a2a9557781f5e37bb6ad6f76e66c82f
 37070b975ef988bee3486703e469e30348af71c1050d94a
-client_public_key: 024954440156358f8db7a32b042020404c7918cfd0003699aa
-1e783ba913f31f54abbde5bfa0cb6c26ca9aa90fce906040
 server_private_key: 8e510d60a068ab453634d9f74837185ea0d5483ac4f1dfd38
 2792f1299390d98ffcd4e956fc02fe35df273276b75bd2e
 server_public_key: 028beb3ce19f449deb6aa31eb19c661d4c4ba0fd08b4cc1e91
 416b0c5b5ae74de003a76d68ac4f59b64b954717c4d843ba
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 667490736fea040e52f9afd9ed2715e81ebd73bfd577190c407d2c9
-8b23d6ff2
-client_nonce: 2f1f862104fa457ebb04fb0a675a5408d835d079b299a7f9ab73fd5
-b54b36530
+server_nonce: 4aef890299f1ec45e9ec5205cc93281ca420c15617d96fc7ff21eca
+52176fd4d
+client_nonce: 18b7f3078070411149ef8358f933e80a55e93c99b6f3e360665d9e1
+924a508ad
 server_keyshare: 036357745dab9026251b2bfb2ccd847536219da8e475cd1f2dc4
 842206a8452c720e3ee24c0abe77452903c64985b76a27
 client_keyshare: 02a39a8a45c68e977db2ff70778f0d34c28f7cf430ca1045d4c4
@@ -6503,35 +6459,37 @@ blind_registration: da4e681eeb61cbcb455e0f0c71af34cda3415ec62af58fea7
 52ae033f75706f6b00936445c37439ea821d4b515d8f9aa
 blind_login: 701a9cfae365aded9dc31c1bf34648023fdb53b284f0101d6612f750
 6b1471b67bd1a8eb1183844268c128bb84aec1fb
-oprf_key: 1a2cdbfe39363c5bee4dab7b0cdeac3b7cecf8a3726a5f655f4c1e4b14f
-caf2b8f3087caff8ee695f923b5bb43b0ea82
+oprf_key: 40c9916677cff682828b2ac80642289ae3ec91336904192ffc29bf23f36
+b3ba93247e894603b7bb2db7a75b961f6002d
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 973ace55a5b768dd670d534e39bd1c3a036b45c8c646073f6b77c76c0ca
-bec3d3a590cb7af630aaf8378c105bb7b34ec7780d2cf601c83ee1f92e674b074c912
-random_pwd: 86e68842d2c673283a7cddfcbf54f8d9ee3cccfa52e44d4ed921ecc96
-3a086bb89423cd59ea28911fcb835fffafbce43a0189eac426c9412e53e2343a4e7c0
-bb
-envelope: 02d969b846b24dba51dd0fa4dcf92db81a4f42ab612430687bd9279f1c5
-36f06051f077804653f3c1643b85f1d13da6522f39321099a9bc49aef30e5484c5757
-28d2ca09b7ea3ba589b6bcd5c18c6cd529cab9398314d16563b56fdb9f560b0c2449f
-ed8935b4f8c9574bfbba673df13e0d1e1b02895feb02702aea15f99d11380999623d0
-b0a575326ee16129bce28eea
-handshake_secret: 4e2d6053b104c156838e14b4fffc6c9b18116aada01ec15a720
-83ab5be3d1c702d074b2505869ce5ace5662a433a3e5e8186cd7ef378166ec0deef22
-710ab9ce
-handshake_encrypt_key: 16bf5dd36cd89054aa614c30ef2ab869e1330e6ad66709
-cd3d05a704c721f18898612f0565ad87bb194a2e652f52c36f0cd52a68891007e46c0
-840dfe846fc4a
-server_mac_key: 83f52fea18ba9282c8e85321d39feefec414b3b193c85bf0a13e5
-a36c159e037e646a7444b8dd6b67916624be9731146eb82456b2a82c6ba6c49fa1ad4
-c12f3e
-client_mac_key: 00d72eafca1b91c1606735750b546cf488a017e1b4cbdf940786b
-3608388f725c26db77045f6e5a77b093e8349644d33d78f1f6668f89226a515ff6e1f
-18bb06
+client_public_key: 024954440156358f8db7a32b042020404c7918cfd0003699aa
+1e783ba913f31f54abbde5bfa0cb6c26ca9aa90fce906040
+auth_key: 0404997ddaba328c4cef990f0388a9d22dbfa2a75b523c5bb7ec35420f8
+175fd34e42690d3690109ec5d580d0f8abd0233656c2bb29604266391149a71c59d10
+random_pwd: 0a37e32ba538832707f46c43a6d16d8631a065a29d7a9d7a7f4ab1b36
+6260766408af5f95ace4848c2cf9b4263e009818c7bf8046d20427f0722067846dc10
+ac
+envelope: 57eb87c57354a9e70be9a670781c4fd9c841c9c7bab0470b87a32733078
+d9b339f78ba7c5dd4ec5cab4149781f35fa45dde303bc2843a2cc5143a94893bbfa11
+3ae10a28b67019deb7bf423501d49eca9a6d7a2229a8907d10d93b485086bdb936c45
+611fc8c94d4ae43dfdc7b84d2ae63957158857630b19fe500b23fb06ccbb12d9d28f2
+5c4571d1d01586815777ca
+handshake_secret: b38fb4d1e1944b940d186f6d9e5a6101d8085060c3d3bd75ecf
+6a5697c6f2978b7be7b6930f24daceb6ca04505167896397722608b46c8c4ef87eaba
+7f297c08
+handshake_encrypt_key: afcade04886492439d82d359bcdf18d9628a58b7a9daa0
+36bfc532cbb0047ad20e51c1939325776350975cf8c948694cf92da7905f072784f4d
+6c5f5e3dbb370
+server_mac_key: ef2e61eb156ef2de570f7f015aec690b6187d49de55a758b77b9f
+83f8fb2d6935526cea2b3324e194cfd0a8347d50d7f2796d3cc73b0f7d56b43cbad08
+f65cca
+client_mac_key: 353dc66a50d5285fbc0363190a04834acb286b2373122bf393c01
+77dfa9d2badcdc4aa777128171e3a1d4124104f1cebc00f201946e58d95333923ebef
+49a22a
 ~~~
 
 ### Output Values
@@ -6539,44 +6497,44 @@ client_mac_key: 00d72eafca1b91c1606735750b546cf488a017e1b4cbdf940786b
 ~~~
 registration_request: 03a2e55f8d839d6b162d179f9b4f886337188f731db9ffe
 0ac206b54096e6a9a8f30785c33d207ece91c4fb97530fd491d
-registration_response: 02367ca14ba6dfe89e6e5dcde462461333155257a07aff
-385b1f912ed27b32b17bad34b5b2b376009fae47e4a8e86fc050028beb3ce19f449de
+registration_response: 02558087fcebc167f337095b97979d46c02dcb9933193d
+5ab351da57966e8e6bee6846fee10a03be42b1aa78c93ac52692028beb3ce19f449de
 b6aa31eb19c661d4c4ba0fd08b4cc1e91416b0c5b5ae74de003a76d68ac4f59b64b95
 4717c4d843ba
 registration_upload: 024954440156358f8db7a32b042020404c7918cfd0003699
-aa1e783ba913f31f54abbde5bfa0cb6c26ca9aa90fce90604053982e14381b73a7626
-22ec25284c03e1662c53174d0e09ab9a1601e4c7d0773ca957998392e732c8e134576
-012b5b0c5be788417c7b9ecd26455801e96a441e02d969b846b24dba51dd0fa4dcf92
-db81a4f42ab612430687bd9279f1c536f06051f077804653f3c1643b85f1d13da6522
-f39321099a9bc49aef30e5484c575728d2ca09b7ea3ba589b6bcd5c18c6cd529cab93
-98314d16563b56fdb9f560b0c2449fed8935b4f8c9574bfbba673df13e0d1e1b02895
-feb02702aea15f99d11380999623d0b0a575326ee16129bce28eea
+aa1e783ba913f31f54abbde5bfa0cb6c26ca9aa90fce90604010e742be88e26e26eaa
+c169d3105883dd6f02df89e393c60b27579f138fed3bbdcb5022244939cbbd6203154
+090fe288f0f093765f6cb8c67962f394eb798f6857eb87c57354a9e70be9a670781c4
+fd9c841c9c7bab0470b87a32733078d9b339f78ba7c5dd4ec5cab4149781f35fa45dd
+e303bc2843a2cc5143a94893bbfa113ae10a28b67019deb7bf423501d49eca9a6d7a2
+229a8907d10d93b485086bdb936c45611fc8c94d4ae43dfdc7b84d2ae639571588576
+30b19fe500b23fb06ccbb12d9d28f25c4571d1d01586815777ca
 KE1: 031b4f459c984d8a56589785181e03b93108602ccb92ef3e247651d9a9e72d36
-0a93afc86dd79490fa621685779408ba322f1f862104fa457ebb04fb0a675a5408d83
-5d079b299a7f9ab73fd5b54b36530000968656c6c6f20626f6202a39a8a45c68e977d
+0a93afc86dd79490fa621685779408ba3218b7f3078070411149ef8358f933e80a55e
+93c99b6f3e360665d9e1924a508ad000968656c6c6f20626f6202a39a8a45c68e977d
 b2ff70778f0d34c28f7cf430ca1045d4c48e6e749429f0f10b226c26cb0ab71bf2445
 f6b9ccb81cb
-KE2: 03a4571afcf94f61827a30190879df058c9a1bcb0d90b5c43dfe23c761e433f7
-37308983894147fb0da48d0e544e8f87f02906fa66ce92e506c6e670f3f62a72589f0
-ee78d5d363ff8d829d30b0d8f40d9712fbb77fc96cf9b3758dfdc90288baead2b7025
-13e522740ab355f81dc2d084072165bf3eabbde345995f50547893b2d990d3a828676
-e3238acad95b56c7ec554dcde9c5f6f28c2fcfdbbf95bb13d2183676dee92cc7be036
-0ab27be4982ad7f81c8c30dfbb3364790d50d49eba48fb0a2343bad1eeff1b8843495
-a873fe94407887414e816c7922778b26a67871e16e4c570690b3549a3c091870bcb56
-bd853297565920dfda65f275f6f146fc3b411edab3cf6251a9cbb28636b80712793b4
-dd1667490736fea040e52f9afd9ed2715e81ebd73bfd577190c407d2c98b23d6ff203
-6357745dab9026251b2bfb2ccd847536219da8e475cd1f2dc4842206a8452c720e3ee
-24c0abe77452903c64985b76a27000fb2e03a4307320b4d93483e619fa5840cd5fe33
-392dddbfdfe20c7b166b691186066612f4d39750487f5d01aac56c6b1125bbc8f317d
-66fa72e6fc774ac88e8056fce47b97a61a94ea6ce4f3bb4ff2a
-KE3: a32f0318db46beb9f69d6caf3d6d6c006b7c5986c204d602478e126b5556fdaa
-54a764d2b4542f8d397e913f08b96a3f8a647e51e8f50d01526559484a754f65
-export_key: 3d3792179ba5ea81f8cea5d1ae6dd2266c31b2025de55c38198d26c2f
-a0c2a26bb5f9131d34a3d713ef591842939b252392920e70ad8dc93c1b7745dcb4721
-35
-session_key: 5d660628bd79093af259be10c607c1c6978cf1aa1d95c34b744cdc41
-0fabdcb38f0e88dd586dd85fb15a99d3bc9a1bb1a0638c26acb2e06acbf1380c6b42f
-f06
+KE2: 028054d8445fde951e90bb4d921b33ad467dfa860528fb22d81478904b8179dc
+472ebac3c614f383517271cce0b781297664bd3f80b3abe3e3c360e3077c4f2862061
+fb9bc4cd1cfb94f5cb5493f5a8c3aa3c7cb6ee16fe119eb3ec054c8bb6a1c6c7b7496
+a1a6be7a2a9498e55ec15c84d9e906892fe1ed7e46c871b77e1976f2be78bf4f6f433
+f4ab4b14eed116daee771b65cd2b09c0399b87b5fc6dd84dcf431d1f6f121d0b639dc
+b06c6713b82c3adc825f70e0de46ef7a27f1264562575d885f090485ad7246c80a626
+cbf06ce8ab03f159d2c2e99f00aec14c0ff84bc35e990c3f303a8bd126b0c8416c284
+dde230f7582de6b30a2c2fab9a543a270a9d51964d49be67c0e898c3caf53b36448f6
+c4aef890299f1ec45e9ec5205cc93281ca420c15617d96fc7ff21eca52176fd4d0363
+57745dab9026251b2bfb2ccd847536219da8e475cd1f2dc4842206a8452c720e3ee24
+c0abe77452903c64985b76a27000f8c6c2535f3c310e270763d6e189e1928b6c11941
+d872cd2c520a4dd8af79f5df2c0c51f1420f34bb720897cab4ad1dd342e8c546c8533
+8d4ca018202fa2fd2dbe9f713705d75d4face11cf286695e3
+KE3: de65d8adb82a7169857f6b74ce9938377b7664d88dd104489771a85586964d90
+7fe5c1607c363bf5e3030e8529ac3f199d2014c909c3f19d9e245211bc9764ea
+export_key: b818442f1d00c7295d6a28deba068c07f159c1e085dc6e24d94a7dd84
+1320134b4adb2074ba94582181d322187f16593b2eb9f48ca75ffa2e66d709f68a489
+b4
+session_key: 185d00b5cfd76a4a3b3d4e7dc0cea4553ab1e738b0313ec69e430a1d
+d62f4e619d3f79125c123c8315fc4d9525b03cfc9d160dec811f8937ed6830177d3dd
+7f6
 ~~~
 
 ## OPAQUE-3DH Test Vector 37
@@ -6603,21 +6561,18 @@ Nok: 66
 ### Input Values
 
 ~~~
-oprf_seed: c01565885ab04d8d15d0e20a67a8ee27419d230da414f7d0634a48d2dc
-3adc8b013d147db526928cd5fff931cd0e178b611a549afdc22b8903b4a0d3c9c35ac
-8
+oprf_seed: 33a3671793a57f0369a3cef17874d24db14a983e69f995122cd0b07834
+88cebd1272889862b538b674b01635522758a373c5ed2c44d40fc44506814db918ad8
+f
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 4009b7f95a9e1bb5be575742b90586f2c452e242f789711efb97d
-6bd9a2a31c4
-masking_nonce: f8b27594e296533dea75aba16c527d6894513b45869bf06dd6c538
-527cdfd28f
+envelope_nonce: 5d79a9bc2f7b5f2d9ab664e1d6c8cdf45be64631aaa62b8262fcf
+835117549d5
+masking_nonce: 1f7f50d4fea1b0094160b68744049b2700538bb699439d1312ceaf
+4b551ccaa5
 client_private_key: 01e4eb0ddc00ee9c2e21a17727dd82145f8d42ce298b1b66f
 34284b8c5f884619f8ff53ea8f950ef4306d01fe5610b278f19d0acc0e752f86eb4b5
 3eb5acffbd5e7c
-client_public_key: 0201d6bd681715e3d330475e72471c1218aa718d96be735325
-1c9564f7be3a506b77361670f9a05f1e9bd648751b8494f78c4f1c788951efbf1831f
-811d49d120a8d45
 server_private_key: 0180674b4b34953199004d4c6ab21b6667721b3ce89a5f440
 f7f2b6ff1e3748041e66ebdcb789e3bbe63ce391c04598cab4ee6b5ea710911272f2a
 8ff2de75057d81
@@ -6626,10 +6581,10 @@ server_public_key: 03018fc6a77bc4127886d67871c03462740fc4d6fe66dc2226
 1d0bd9944a9161a
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 0b5dd9cfb5e685d08b7b9692029db0908f6f500d1ac5df20858c923
-80bca4e8f
-client_nonce: 6df1827b123ad4155d1e4b3d2af6ef640ff85f6693c18ea3161be9e
-d3222175a
+server_nonce: c9e833d3fb3132640751e3a7b2088d7e663d6790415127a8d2455f3
+8baae5529
+client_nonce: 429258c4779a65a076cea82829fbc530a6c3aadfaca166d7848a990
+10f9b5bb3
 server_keyshare: 0301ff9a97a3a4733b144d38330209bcea5a6401eb4e08e0697a
 c4dcb8369e20d76d32c34b619c424d643dc47bd680c0ef665404643d2961ad051a792
 0c318ecd948f0
@@ -6648,36 +6603,39 @@ blind_registration: 000de48e5ce653decb9dacdec7bc0aea97cc85749b792cc26
 blind_login: 00933d069bf9f5ac0439cb60de65fbe75c0096db58b875f19390d61c
 1e3a6d240c943f951b5b3fd7eedb2b9861f5cd3642ad0fa46b92b65fa5e3fe2999e32
 cd1822e
-oprf_key: 00c61c9feb1761b9aee68883a31279108adec0b4db5305cb79b00605e4a
-8e9d344b9a9f40167a7fd392769722ee0f8eeb43c35b0e045939fc76261df6aadd55b
-f2aa
+oprf_key: 012e2948514ec92fb9d347cb03a52717575276d94c8275d5ca1f39b24e3
+c56ec2346188499ff2d375ba9a994a07e22a24ad6d2e3a8517236376da9693f472fb7
+d1b6
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: f7618bc320e1d3f15b72f7482ee429694b6e412d72fee26ae6ed0b789bf
-236f459f2ea17d7ef3522e073e19f67a230307e9b08d20da147b86082305047a21c15
-random_pwd: e38f39e37618b866e2bc4f0679fd65c923bd513c773dab2acb994918c
-46e34bb6a642b31fd6a0501a27a5910bb0696e58b3460c0046d45f13aaac1cb1d50ac
-65
-envelope: 024009b7f95a9e1bb5be575742b90586f2c452e242f789711efb97d6bd9
-a2a31c48b164158a945a4c8cdc337619d0db71e4943461edc694f2d2a125177ec2844
-4768aff4b7d4f77af8ca7e327b370093395290be8696aef0e582cd1718ef659c27fa5
-2cfcc8a25a325dba17639f6daa1caecc8ce115f2b5ca68ff48d35239b364c8cb86d02
-5e33fe139d1ff9dccf7c1f516190d22651d6c833d553f40053a2568d668b
-handshake_secret: 63771738a5a6a79b128e07993d84da62fa4d0b7148f83a07756
-efc6982cec5774d69c9726d4e1dc5e28ea72e522abe7b9feb3cd894f0fde5933cf075
-d370c0ac
-handshake_encrypt_key: b46fba192117d682872957227a5a0e458b6627d8bacc57
-50d5ab893fb6c13f9fdfc11723b9ceab72f4e665db45b940b50e0c3fa92605224bc53
-5ccb673baa395
-server_mac_key: ea2dea19e12a1c92f09212eabf3ba5361218d49eebafa516519d8
-7bde5b5099ee1258118efe4f3f239401f8178e7e50e55f90d3b077f7efb3ddd71c387
-2757ec
-client_mac_key: bb25d99680526f1792e23da02aced4c411032fc5f1570584deabb
-030037ca242fcb4e7ca1799efa97eb7ab94dab2d5340cb8e6e281e93caa82bb4b3a2a
-8f12e0
+client_public_key: 0201d6bd681715e3d330475e72471c1218aa718d96be735325
+1c9564f7be3a506b77361670f9a05f1e9bd648751b8494f78c4f1c788951efbf1831f
+811d49d120a8d45
+auth_key: b93807af1dbb66ee3bf3a4ac1f3ed5df6201a25be9bed9b6b7832028ac2
+195ae9705459ed539fc561737deb6e95092bd17742d30c2e2b8be63ad770c3a3d4e18
+random_pwd: 83813e242baeb1789c3aa71e398d928d13bf15473e3b918361beef3cf
+47dd95788030a87ab325ec1298ea4631cf11c7f6beb5e43c9343614326a27c459f228
+ef
+envelope: 5d79a9bc2f7b5f2d9ab664e1d6c8cdf45be64631aaa62b8262fcf835117
+549d532a69873504edf07724602567b02da8633a0ab8f2d40b4af4cc1989090fab664
+7080835ebebbe3de43e1a4619c7680d5ea13e575727bc5f6e636c34c64f52623c1222
+66c8ddf4ebff66814d8796c5e4c9a451170258eb035d5aad3d338ec84c08b482c7351
+82c76e9b85ac2214c980ce6fc42b98132c347a1b35ff93631c5b3f075e
+handshake_secret: a43a80af2a25aed560da06a37b3f201afa4011816676ba848b2
+c523f1db79963008a4e3bc323baa3a7380b79acbdb81578d3b3564cfbea11b16d8da3
+f6c5b4e6
+handshake_encrypt_key: aee99a7edf96c01d5e625ecf8d4869a7d9cd3524c77b21
+824805864a2e5a31d89ade2db5534bfaa3c2107655f02e458c455e2df4ccc0ae198a4
+d1323f87cddfa
+server_mac_key: 87a9279710903fe706df9b3d85e6aaad6bb87742a61a8029c8372
+e3910b2570f7f912815113c34d8ce0fafd511365a30a53bcc202effb079864ed824c5
+7d5218
+client_mac_key: 5e5157db9dd17d7c4d72df9178ef141e526359dcd1157a444b3cd
+b5806e2fd530398b9222905e379f3c4af9718ee4683f4e61dc8d5cbe9873c7e355547
+34e1e1
 ~~~
 
 ### Output Values
@@ -6686,49 +6644,49 @@ client_mac_key: bb25d99680526f1792e23da02aced4c411032fc5f1570584deabb
 registration_request: 02015d0cf2aa22e0448949416bb4b3c246429439d4cee47
 a52b3b9874aaf727dbde7f34b5112e91e97e1d98c9cb0fb58e015721456160aadd16a
 d4f9a9ef2fa3d0ad8e
-registration_response: 03019d4e900d459ad8c49458ffadf4a0e8d1681de9b88c
-8e388033c76640602b101d95a8d7d7f707c3441a12642ad313b3a7a7e411af604bdc9
-8a58a3bfb06e9e4bf0a03018fc6a77bc4127886d67871c03462740fc4d6fe66dc2226
+registration_response: 0300472e53b09af98e38d565491aa8500307955b390d8a
+9418e2d285e2a059ecf47fafe4238f0fd8e10bae5165b61e221a7e8c40c06f003ec3e
+62fd21d96ab39f6a0b303018fc6a77bc4127886d67871c03462740fc4d6fe66dc2226
 365e994f8392a0b4c43cd6e67ce90ad594cb63c146011dc56b213bd42ef677cb6a5f0
 1d0bd9944a9161a
 registration_upload: 0201d6bd681715e3d330475e72471c1218aa718d96be7353
 251c9564f7be3a506b77361670f9a05f1e9bd648751b8494f78c4f1c788951efbf183
-1f811d49d120a8d45472b8c55a83808e499d58f0f81c119dc99a6176313b51ef4396b
-d317880374e36d77e58a47db201222ab74714c6c8ef467e8a8c91d7d658ef464f75ff
-3132717024009b7f95a9e1bb5be575742b90586f2c452e242f789711efb97d6bd9a2a
-31c48b164158a945a4c8cdc337619d0db71e4943461edc694f2d2a125177ec2844476
-8aff4b7d4f77af8ca7e327b370093395290be8696aef0e582cd1718ef659c27fa52cf
-cc8a25a325dba17639f6daa1caecc8ce115f2b5ca68ff48d35239b364c8cb86d025e3
-3fe139d1ff9dccf7c1f516190d22651d6c833d553f40053a2568d668b
+1f811d49d120a8d45934aea02900cbb8692f48f14651dd434396a5ce7d8291707bd41
+a39414611bd850da9807adcd61d862bae72abd6e9f606a2d0e6ef2f2568d76fa7a1a6
+4bbd6855d79a9bc2f7b5f2d9ab664e1d6c8cdf45be64631aaa62b8262fcf835117549
+d532a69873504edf07724602567b02da8633a0ab8f2d40b4af4cc1989090fab664708
+0835ebebbe3de43e1a4619c7680d5ea13e575727bc5f6e636c34c64f52623c122266c
+8ddf4ebff66814d8796c5e4c9a451170258eb035d5aad3d338ec84c08b482c735182c
+76e9b85ac2214c980ce6fc42b98132c347a1b35ff93631c5b3f075e
 KE1: 0200c3bce8c2c7da1856b486576082a136f031304eeba82c3e582d920469621b
 9657d018aabad67dd15d32492f0155ec944d11593c079c64c5d19088a72cddb12baaa
-46df1827b123ad4155d1e4b3d2af6ef640ff85f6693c18ea3161be9ed3222175a0009
+4429258c4779a65a076cea82829fbc530a6c3aadfaca166d7848a99010f9b5bb30009
 68656c6c6f20626f62030080bf524d28ba64b134c0bd0c860c8b1f976e55d94eb35d4
 2aa0cae1935a185c9f7c517875877aac4aa4e909dd5f25cc6ccfe125d031dcfe02459
 7af1f7bfb5ed89
-KE2: 0300e92a71752faced7f4813106f6c083e14c4ccbb1194d5e8e1adfb2cf2ab54
-6bbded56e081d5e5b4f10edbbbaa81190dd3f6756b802691f53687140d3889bf1ef7a
-0f8b27594e296533dea75aba16c527d6894513b45869bf06dd6c538527cdfd28f3fa3
-2398e17e16a53586e47abbbe887a45305869936e04cb1fe42b4236ee2928db0aab268
-210dbf970b1b7fa2adfbae929fd6d59a6517d1db54709867b2caee8a2503e1804d28c
-ad6ddbc931a7c109098a6485540f6fa07398ffbcec702d0ed1f568099727896e97de7
-77e2c971ca5b18444f926c10eb794bd1f6158e2352bdaf89eaffef30b34586ab594fa
-7f4923821b55db1c1af130090fdf419b9b59198d15b0448de08c0987de18be6ed5edb
-fee93599cdcf5086e93e81c16b0b0242ba21129f5114d55d340aff2d134f0c8e32372
-9d60ff7b8d69813fe98f4bac105605e44d09bfd2060b5dd9cfb5e685d08b7b9692029
-db0908f6f500d1ac5df20858c92380bca4e8f0301ff9a97a3a4733b144d38330209bc
-ea5a6401eb4e08e0697ac4dcb8369e20d76d32c34b619c424d643dc47bd680c0ef665
-404643d2961ad051a7920c318ecd948f0000fbaec2bea93fc528e503d6537cfaa95b4
-9404993e682f2fa90d331f15b19055c29a7bcca0fa12cda19ad924ab353272c29137b
-5c1afdc8161dc0fd8858d1eb78a0479f2a09010a6f97eaac04691dc5f
-KE3: 0a2c577bb2ee6f0b9b81f5ae01c8b8f0f781246835b197b4108a5c219b129c9a
-67de042c1d57e2f01f8df6e1063a745071dc90319c34117fb0a8d4112832a6e5
-export_key: 9b2250a6e84fe1a71a6a69b4bb1893f8349409981511179dbf8aa1e2e
-afaefa9e02d7a90ef8cd21688151c304072aa7aed8e387c5ac4c4a44735c2a1cbd8e7
-76
-session_key: 032e01e8396517cf350742a8d0e24eaf67783c28abf63ca163d9427c
-03c4b39ba2b9625fef9fbb514129d90e5fac657f9aba4aae541619f90702b9c485ac0
-5c8
+KE2: 020162c9ef4de57c5c3b665fbe190fbaca97dc8a5806cbd2faac0d9ae834cbc4
+f686beb9d9e9efcd188f6e0fe1d567228923c7a881f1dbd570463ce268fd474f5e010
+71f7f50d4fea1b0094160b68744049b2700538bb699439d1312ceaf4b551ccaa5c284
+1a3606158d79756814bcea1b8093f23f2c61eb55e8dc249728fff42156e80b989b2d3
+26e36c3878e5de12f25057c80f5fd280a56c34862a52f976f91605812fe71c8e2ed42
+0d1e34d912632d90d096a5049159db3e4ca6251338d74903ad1e3b7f0bd789fbee193
+1bf2561b33f0be69a9e5f451effe5624455378bf8b768c2fee9fcac294e47f850b0cf
+57409814776e119bae9c2ee1654733e07b504f19236b9ce592e77bfdc8cdd2144ea83
+4d5a274ec2b1b6ef961d58a6b893d866d67f0abaee9274ff7949052a9031903befb37
+0da8ab4f2280e2f79325f4125d803b952ca22d21c9e833d3fb3132640751e3a7b2088
+d7e663d6790415127a8d2455f38baae55290301ff9a97a3a4733b144d38330209bcea
+5a6401eb4e08e0697ac4dcb8369e20d76d32c34b619c424d643dc47bd680c0ef66540
+4643d2961ad051a7920c318ecd948f0000f9c4042aaf41d7ecf5672500b1ea4da892f
+4f3e2e590a0001306b395e486e325960f4cae50fe69c73d72e9e48abdf32f2ee2f220
+99774f33b405e3a047d336fbd1666564756f94c6d51cdb1c421fb49
+KE3: 000d09b78bd551ed11677dcf11e03a89532402866c73eda78f757e9572d57716
+4208b7f6f7b9f2f19eead3ed6d003ebba4ddab0d0f40f5bc9b9e9adc952796ac
+export_key: 0fc7b2354fd91304c0dab1a43510cbc1ccaf9b5197aecb603545b9558
+808cc50c0c3fbfea7718e0070c61fd7163e1103d4e3d5ed8cdf96643f0ab62fd5b598
+18
+session_key: 2e4fc6b1f0d084fb3b90eb49a2f151a4e7b729e3fd99de2dd77a060f
+f61e66c3c06524e35e696eff5190f41720d7f3b247f60dabc9266bd39429cc7485c25
+77d
 ~~~
 
 ## OPAQUE-3DH Test Vector 38
@@ -6756,21 +6714,18 @@ Nok: 66
 
 ~~~
 client_identity: 616c696365
-oprf_seed: d7036a41ad58f07f1350e9d009f9085f9401b301056953e9b6b6652549
-a9ccd7b6067676c7418c117815eb0eb41eccd1b037f8fecbe3ded89ab52f133027e24
-4
+oprf_seed: 36bc12a486d171ed103cdf14c43c9f373cc316e379235080cd9b9698f0
+8786e640c0727571c6fb5c296f44a0eb5fe33d9c424532297a72d378f821a26577224
+3
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 96f2a9f32ca77f66e645ff43ef30991b8fde9ef5af47312e3a2ab
-022688ac3ab
-masking_nonce: e963bb28068d3a2e31e0ea9d44f97b5376d3f9e574ec0639a987d2
-f92dfd4d48
+envelope_nonce: 252fa4e41d669b2658edff0572ff3cc10391c17eefc19eec475f1
+e5cd6dd0666
+masking_nonce: 8e0784d3053cc1fe568c431402c9ef623f2d0599a383c59650baf7
+cd6f71bf9a
 client_private_key: 01dbf86c586f691ca14b9ab40d70a9e5c73c0b8c027fb639c
 9affddf316a4f24a457b33e0273c41c71c5ca880a54ed88d6eb7176277593cbb29d44
 bb9daf835f3133
-client_public_key: 0301347c5fb96ce61b57ab45d42005522f77483664bd260ec7
-f6a0c6bf4e7b9f2a6c873193d8ee75f62ba7d4b36d93cda144fd99dae7422a31a8290
-cee86e55fe23462
 server_private_key: 015d65d73dfd2c51951ac649bb19095f1d02a822b02e5a86b
 ae37e79a3ac7d05f1d1a02f58c3cc57af7318bd8c3aef01e27f343d5f8aa5197e80d7
 2ed5ceacb845a9
@@ -6779,10 +6734,10 @@ server_public_key: 0200e85b446310593c25258991eeb8da130df718df2efeee93
 9929d82395d9928
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 666b72fd0082ebf840260ac598f3c5f6e50af0463cb7a3676a757dd
-a20cdc77b
-client_nonce: d3e350118bc8ffb48a34f9134d5812bee4f62630bf0b8cc37fbfdd8
-5ebf997a8
+server_nonce: 5214be7760537d24771b34debb141a64b53f3c6d35c272ac54f0793
+9eb1356ee
+client_nonce: 9781741246dfc0a5a76b39dfb5a800013bcc1419c56fcd7ef2124f6
+ebdc8a984
 server_keyshare: 0300ffcefd89e8ee736b4e6149934a1040b8691ba4bc58b160d8
 c526e73cb99d7c45ce09264ae268a5afd07c1a3db59c5feb9203ecffc694a41b1138d
 eb9a11d6fecbd
@@ -6801,36 +6756,39 @@ c57f1dbe4de36c40141c93b2bb304e7718ebcd7bd9978981955e4d6b6addb9cc52a45
 blind_login: 01d230b755d2262f548f495004d64322b827dcd30baa2d3960769310
 cb55be07bbe2b70eb67bc27a11714cc90e5296b68e7e316be4c1d9b09393deb3e724c
 349b971
-oprf_key: 00ba5e37539db205c6063c3709be828b600c258286b8e605b10d3d72b0e
-7d751fe78aaf0c1c385908e8e97177e74e70d2d9ad5db5b34ec661890a2e7a29c1d88
-98a3
+oprf_key: 00ff150ad6540343241a1506babbf63341dac444150d84c10a729559b29
+7ac79bd034761085c84a900e2e20447cef8f3449d0d831aec0fcd0ff4bbaf0e342a20
+cfa1
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 5dba7ef5648b28bfd8bd93293656ca0c47da18e4de89e01c087de2a04a8
-e39ec42ec12e7f18e4dfaa06cecad49f12b0a79ef5782581b8b5a3988018423ab9b20
-random_pwd: e48f5edce8266ece35d2a6be1be448ecaf2eea6f89f5a87cadc6407d7
-c6f351eb4d14e5d6bd5e363fa47dca4f3be7b29605a6fb63182c6125ff309ca289648
-12
-envelope: 0296f2a9f32ca77f66e645ff43ef30991b8fde9ef5af47312e3a2ab0226
-88ac3ab3b05397339b12964b187ac0648af95f590b7f3da2c04818e47e4576f0048ee
-36f382b76f39f1046e0817eeccce7aa5db22010009daad60cd64378fee2e5024c5e21
-d6c154f5d6efb9213213bec81aa3568045801597ae7327c288b97eb8c76f05cccdb46
-809f888d54a4a9940fe44e2b022da597f2e17644c43864c53461f4865bf1
-handshake_secret: 044a0e30ff4f42d385b02e137a22f372100094a17ec1b15a206
-4e7c55dc541bfedef4fe5794d836fd3794f328d939b369fcfaac4dc0da61e2b581122
-ec48f1e6
-handshake_encrypt_key: 264c07f8c4b8fc8d78731e0994573ac2cc02e0de388732
-bea255a9406973a6462f26995b1f2529f3dd61a23b8cd5302193a81eac9d7f424332d
-907df0f0edd62
-server_mac_key: 87ace2eda67d95ad02ada739f3f876fda3df7682ae0b666307487
-54ca62df30b3f120261ba621538692e1798971b9deb368793272fd797e292dacf6580
-99e27b
-client_mac_key: 931513239f6b651f2752822db92abbc91015369bc4718cdf8d3ab
-1c01c059e4eca44cd9e459491a959edb333dd5b51c4ab872c139b60b8f05b3600daca
-961bad
+client_public_key: 0301347c5fb96ce61b57ab45d42005522f77483664bd260ec7
+f6a0c6bf4e7b9f2a6c873193d8ee75f62ba7d4b36d93cda144fd99dae7422a31a8290
+cee86e55fe23462
+auth_key: 86d495f20746bb13568d893888df071d65a95029cd0ed11a9ac00cbc6a4
+c747bde03d8ae027e3e958f1ed703391deb05b47ba516ae885651d891ea5c8af3e9fc
+random_pwd: 00c0a12bd9ce6e8b9008871c6c613b3197a0bf8345112c1d43507df91
+56fb17e3a804ca8b4539a426561c6c83af0f5cac301482df418c86c662554cb120da7
+f8
+envelope: 252fa4e41d669b2658edff0572ff3cc10391c17eefc19eec475f1e5cd6d
+d0666239e2b2b490f4214b81e05333699d7f3f85f24b00d621259ab4cf10b75837391
+06f8b9826edcf0dc03f70a5dad5f6c42c3df60e0a81b084369a17140c8e2a8a076a4e
+fda65dae62797459a604412379286aec60543dc58f3b36b9bb7e33248732a7598030e
+f4dd6b3f87535a4d37c6225f09f9ecca6be2f27a2a295bd5d0b0ff9677
+handshake_secret: d408d8cf91cc03f545188b2557f774456f81773302a9db35fee
+0089425ea8946a700720715be9da38f8c8a8478ec4dc27beae863df998005a3f36188
+d67c7f89
+handshake_encrypt_key: bac7bdb188c9120976489609a7148939a2ce0b233839df
+c2334c79f8440418fd8bb7953c0798143129297ab41e0606815ec1fcc4446638fde01
+aaebd6087c3b1
+server_mac_key: e337358b291d4aec331720425da20bd05e9e52c00dd4d37807cd2
+2b316dc944cf8ea944367ffe18b657d41373aa5b81cdbcdfb56e3102a89ca7ee3a641
+6a4729
+client_mac_key: 00c2b77daf12b49519d7bf50fb667406a9da066fbe451fc82fcc7
+554930bdb4020e5c1a8eea34d0ebb29e06f707b8c690f9325eabc1e0ab9952d8fe57a
+2bf966
 ~~~
 
 ### Output Values
@@ -6839,49 +6797,49 @@ client_mac_key: 931513239f6b651f2752822db92abbc91015369bc4718cdf8d3ab
 registration_request: 0200572541736c54fb88d0f50d1080d98cc390cec131e56
 c5e3d038122c6655d23defe37f0946f3d3b5dcf73545a6df6277e20f9b377591bd443
 034fdf53d008028969
-registration_response: 0200efab4ab3cf3d676f014b020a25ef15c98ac44b9c61
-e4e28d15ca4995348f0e765d31c7fc260a107d06ccfd90656f0b0fdafadaa5c6c1d3e
-d1d741b493962f269290200e85b446310593c25258991eeb8da130df718df2efeee93
+registration_response: 02000d9cc124f69d89d3695ee1a8b00e8f3eccf2890ce0
+32d4f5b3361bde5b7f5d3678c95e090bf687ddbe6279b6e8f60f514933aae7d3725cc
+c2dd731ccc66b8fe8390200e85b446310593c25258991eeb8da130df718df2efeee93
 29b6d6c7a3906749464ffb90f8e43122192f8e77b9f04f708aa5f9ecca9cbeab701f4
 9929d82395d9928
 registration_upload: 0301347c5fb96ce61b57ab45d42005522f77483664bd260e
 c7f6a0c6bf4e7b9f2a6c873193d8ee75f62ba7d4b36d93cda144fd99dae7422a31a82
-90cee86e55fe23462b44decdb45e0ac7bc258aff751faf9f92397eb78f00b189fcb35
-09feb101d463d0ba081199e4a966b48ec24b1f175e2bd6158ef868b04bf66d9f4c41f
-d7ba68b0296f2a9f32ca77f66e645ff43ef30991b8fde9ef5af47312e3a2ab022688a
-c3ab3b05397339b12964b187ac0648af95f590b7f3da2c04818e47e4576f0048ee36f
-382b76f39f1046e0817eeccce7aa5db22010009daad60cd64378fee2e5024c5e21d6c
-154f5d6efb9213213bec81aa3568045801597ae7327c288b97eb8c76f05cccdb46809
-f888d54a4a9940fe44e2b022da597f2e17644c43864c53461f4865bf1
+90cee86e55fe23462de285246d430e8e10ca96b84fd44363a2f8e9bfc216f89444304
+c9393fd3c49ebcc471076606679216262288eae2fa0ada235068f95667df9ade41942
+1ac2154252fa4e41d669b2658edff0572ff3cc10391c17eefc19eec475f1e5cd6dd06
+66239e2b2b490f4214b81e05333699d7f3f85f24b00d621259ab4cf10b7583739106f
+8b9826edcf0dc03f70a5dad5f6c42c3df60e0a81b084369a17140c8e2a8a076a4efda
+65dae62797459a604412379286aec60543dc58f3b36b9bb7e33248732a7598030ef4d
+d6b3f87535a4d37c6225f09f9ecca6be2f27a2a295bd5d0b0ff9677
 KE1: 0201147f07392ddb5ab846130ce65a4c16d1eb26735fec1de7716b2c8bc935ad
 1c65ebc30a6449adb8504b41fe61b9634a1ac3e429e03db700e6e6f852469e8e83bec
-4d3e350118bc8ffb48a34f9134d5812bee4f62630bf0b8cc37fbfdd85ebf997a80009
+49781741246dfc0a5a76b39dfb5a800013bcc1419c56fcd7ef2124f6ebdc8a9840009
 68656c6c6f20626f6203001f619d901664fc0a4916b616bf340eafded4dec3c9af08a
 7d89f9442bf41048a8824f22d5ce906558f99250ba96a112c5ccf2ff02e062cf9158d
 fbd1abc4a48e92
-KE2: 0201f8813bb6d09afd381c5a2b6cfbafd938924fa2a5915d1c5692c95a92a448
-6d59a668fefcbaff60efd8cdd2bc5657343128ac295625ba97cd267bfa165ea98fd5c
-6e963bb28068d3a2e31e0ea9d44f97b5376d3f9e574ec0639a987d2f92dfd4d483a1a
-64c9e9239f1e646189cd0a65fb05bc2f4b18683dbb73a34415e0b3901bc715097c3ac
-7e1d29e8efcae151e3fe189e864f51eca1a88a0949da8b940b5ac1d09b915e06f0216
-31d681439991e425e6559ddb144b578b3e1dff94124ef3fff1d63209e9c27e741bddc
-53ee5122e31e558ee11934805fabd78474947cdeffe4f2e5cca4bc3c752cb2434b05b
-f956e912528da70888da90ac114a3668671ad4e3b662ea5e3ba7c7ba5eea313c78efb
-f77fb5c97c6e1620927c88edb2c72941f33efb82bfe1b895d297f746a48427a129cf8
-dd1a63fad112733a42feb54d8f08c854fe44b445a6666b72fd0082ebf840260ac598f
-3c5f6e50af0463cb7a3676a757dda20cdc77b0300ffcefd89e8ee736b4e6149934a10
-40b8691ba4bc58b160d8c526e73cb99d7c45ce09264ae268a5afd07c1a3db59c5feb9
-203ecffc694a41b1138deb9a11d6fecbd000fead7cee48cad44695b3acbc7978d56a0
-dba047138abc4195f2766f27b6f26bf9bc0d990e60ef3d8bce1df9b4d74f9e357b385
-ed60d3b9a17547d587a1e82914d94f880d727a6391b20825db710d275
-KE3: 96a1be25c5de707680cb1996548b5d901e66e1525b4d2c01e8a2eb3573fc3a0d
-061e94bc1b33f000e8941984c6b1fdc021cf4f9a0099c0c9898f1decb98a85fa
-export_key: 037df3309efa8f0c3652bb134ee8675fa8b4d8f11a3c1bb094df49130
-bb061e50612f8b244ec23d5a88be0e08a097ec06ae149eb6ebcf7d95a621fc31b1fa7
-de
-session_key: 5c159e1e7b71dfcc8723ab1bb78ca1f999c913d60953a20977074ac1
-c14beddcf0ab6897bf28b1f9fdca818f3f34a85335482d0561f5b4e14604682af8dc1
-cce
+KE2: 0301ec538235e6051f482d626eee057408a1b03e139bef9c3ecce7263f556329
+a60f3fb1fbe73c89d0b984ae399ae007ebf7a48f9dab9535fe3b043c859bbd8456026
+38e0784d3053cc1fe568c431402c9ef623f2d0599a383c59650baf7cd6f71bf9ad0a9
+c0c9f888ec8c8c6eec49b0bd7d47b83ab5fa207476690e8010ca66eba9c8e20b52268
+d25923510af40bcbed79a3dc0bdc4ca773320b479fa0d63675fc02d4b0fd3ec900f7d
+308b754519a93233d0d73fa37eba42afc66c6cfdc84a21557c1b4ea72106f65ce0e90
+bda2621f9781c1a4ffe31a7ca45988a11a684ab39db169ba8eb133a22f76e029660fc
+760506dfaef9d64974d3782ba5abab080130312f2482f6bae0d8f6e9e23a3893b3eed
+718c8a858490174b60374e1b15269b80ee5297ea9441771be3f2054e29bbd5f162db8
+58db7d8b5e557b62e17391e838a42b313e1da3b15214be7760537d24771b34debb141
+a64b53f3c6d35c272ac54f07939eb1356ee0300ffcefd89e8ee736b4e6149934a1040
+b8691ba4bc58b160d8c526e73cb99d7c45ce09264ae268a5afd07c1a3db59c5feb920
+3ecffc694a41b1138deb9a11d6fecbd000f63250f6281585199ef3ee31e94956c7283
+968257a457997538dcc4645ed6031cf2a4911f55d3817c362ef5cab7a61cec5c6911c
+adcd57c5b905723481249d659767e62de0b8241a3534a0efadd1f62
+KE3: e252410ef8adbc27f4ba148f3a6dd18412107413ccba1095be1fc2015788f212
+76d149ece08850ce48160028b7495a1f39c36b7cb8c9cac8f81d703d8813822a
+export_key: 5c551ebc735df1e370b7eec682b745ab724f5b5f31753c94fc525fd20
+2c093dd803207b637d1bd8387c4d850a513d2e202d4b046d826efa8cd26e5231c1729
+33
+session_key: 68d2c58f6bc280c997e03801a902cdeba3b8898c472f1caf5640e2b8
+8f66dc22a2bbabfbdee63b06176fcdb6d89edb3cf925c3f0133aafcac2052ece71403
+183
 ~~~
 
 ## OPAQUE-3DH Test Vector 39
@@ -6909,21 +6867,18 @@ Nok: 66
 
 ~~~
 server_identity: 626f62
-oprf_seed: 22374ff9bdc092ca87ec2dcfc6059b33a22c9244ae0afc88ae073fd015
-71357e20bbbaeed3a62c782757d6a2332a48932aab2d19e8bd9808ddbc98e944b4805
-e
+oprf_seed: c49d24d684e08a0e2884d5b57ceb7fa4797231c3b1c5d1b2484dbaffe3
+63f3c89a17d65313d263f83f8859a0e3968302f55b87064d0abd622c65aa2c155ca8a
+8
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 2811ccfea7156426b5b397dbd55b1c246e60daa18e5dbd7f2aa41
-9a5394c29f9
-masking_nonce: a009160840509143258c3eac15f20cf18e26a2be59654a281cbe44
-21de43fe64
+envelope_nonce: c5c1afb4aa401e405bc2d13ac2e33631b24e6f2325437a4b2d98d
+109c0b0f224
+masking_nonce: 73a93750e011930fc4f7b28df901d252414a724317dfb84b662e43
+3bdec6dedf
 client_private_key: 01aa0739d3c390e0df1d6a83419001361e6494e0958c6268e
 9a64bc44109b2f8e1784d38719b913380fff07f6d1fe601f5560987bb2828a484cf42
 b97e93965448d3
-client_public_key: 0300ddde60161dc32b29345ac9ce18ecf102284bde1013e4ca
-15d2e6cef0207da6b4099be218142b531926f99a2f1112392aff5a985d451b37dc1e7
-ee4c024556f0808
 server_private_key: 00ac7137ef41e45bd9f1cf40ea91380647ac28462ad98e22b
 5326fc0adc6757c67e0fdfb9fb3141a5595e168f85adb13e86ecbd0e8af169868d1c9
 4aeadca2d95be0
@@ -6932,10 +6887,10 @@ server_public_key: 0201a6573b69f46bf93cb3f18e2510c753f689097b7b96059c
 a65f95345686984
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 3e466a399782fd02b4415d06bfa5354482f02f9ae2d96413d6a5ce3
-252cc3dbd
-client_nonce: 6173fb8547ea3b77e32b8c475194ea86c0e0dd2e25e8ff219bf46ca
-3eb488288
+server_nonce: 6ed2d2bf3063fcb83f99047b1fc119468adbf9f960e94f425e8d0bb
+ef93f4d6f
+client_nonce: b7a4c42dcabb47896d72041c6596db9aca7607c1934907af16eec3c
+d60ac24ff
 server_keyshare: 030029562d54d53c7c51651334989bcc95b45a1a07484448ef72
 bab708b55322b49a43736afc60bf85fc05d3c1d8b60a0b55a83e37befa115e9625e00
 f35c1eeae27ba
@@ -6954,36 +6909,39 @@ blind_registration: 00f4bdd1521b23adce41b680898d5524610afc314961ae68f
 blind_login: 00291beead7120bd93250d96aa3a7e5945f5b2e1f8955e6ae5645915
 40c8f92ad668d4ab1ac65eace7d1f74d34335b389d3e6ea3da84a830cd902bf1bd8fd
 5879b10
-oprf_key: 004c3147cf7990f16b30d4f80aef00f398ffd2f93c1c0f25a204711b582
-19a1f61cec51948d733d747ef0031dfd42c042520d917871c5a030e4fa002d308dbea
-eb57
+oprf_key: 0007db5f9bf6227bd1aed0dc1f9a4e20d453a3deed2bc227b60e288252b
+872bd8c63ea04ec4deb972cc3bd5b408bf96b9aeb5420e6be5a4a61b04278269fc8f5
+9c15
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: e6a5a56981b8b2514258045ad0f942ad14d180964811ea4e88f71f6ef1d
-821b3c23eecbb3e96559d2b398198ca30312758cc427986fde77c597feef3f735740d
-random_pwd: 886d025641863b91cd2d4e491eb37af33360698cd11d1cb8cf4f71412
-5a82e5ef095b668f8c52a05e31f66e87ec55ce140a89b3dcced163d26b977b5d2583b
-84
-envelope: 022811ccfea7156426b5b397dbd55b1c246e60daa18e5dbd7f2aa419a53
-94c29f9f733fee01d2720efc243061c9e4a00b86302c806a50c3d373c4fa0a5f47339
-a16e369d0a31cce1a22c65478c96ab46121e256f362b44ec93c5047e2960019598094
-7cce4d283a53da7c5c08c8d85abff78dfaf4508d9ff20cddb8f644dfe8079559e76b3
-5edfa6b9b2575865aee92d812aedadad67c298c6b6de8db47f07ff6ac00b
-handshake_secret: db131322e3ad03d2ac4fddc279f840d97de10926d3ba4927fae
-e9bc65ef32864c57cbfc72f2b7705c682972f2e9a0c98703e867cb6efab71281caab1
-529b6e13
-handshake_encrypt_key: 5730b86dd5ad87c45fa60f9c6a9a7c65239bb738792dce
-e74d1452907e611418acb6d290bf2a26f5e365120464bacdb9f3be59930b39fc137f8
-4c963e40c0c25
-server_mac_key: 342a2cbda06dda99d432aa81816e40724549c999b057e1c51b721
-6ccae3f668902f45db349609471ad82903ce8d8e8e0577babded43e2faa88c5820742
-a31ed3
-client_mac_key: ea77d9d5332df5d6657ce9c5f3320516eb1efb11795fd9e16e4f4
-d7275eaee01703d8b1bebb47dacdd501bca160ae119283da0adb7c70b4dd0173de3d1
-2fd6cc
+client_public_key: 0300ddde60161dc32b29345ac9ce18ecf102284bde1013e4ca
+15d2e6cef0207da6b4099be218142b531926f99a2f1112392aff5a985d451b37dc1e7
+ee4c024556f0808
+auth_key: 7647ab1866bbdb4c4455a41f233138b488e49ce0c8d975c08b9b879eb31
+f226a1dc2097c9dd7bd093370b9cde3e4c84c4aa9a79628aa8093644949bc494623b4
+random_pwd: 574e008676480f7ef1ff6b8d816c2c55b143bedb34fa2fcd0665d196a
+50aad67483a0f48aace766939d88fec8810e170cea3a4f365fed8a16748626ab171c0
+ef
+envelope: c5c1afb4aa401e405bc2d13ac2e33631b24e6f2325437a4b2d98d109c0b
+0f2246d956dc075bda0bc0bc7871ffe6f54c9b9aa00aaa61498339bd11f6ad81b6af5
+6605d4e504387e74e2f0c4fafc71647536c84bff3a6ae90c8e358158f80b2b3bd20e6
+70ec6a337b0786ac549d24d17135029db3232f2990eddf1130968a549f4bd187456a0
+805cff57f8782547de522a99a46dec7afab439ad5ee0f859b89218161c
+handshake_secret: 8987311d8d195f937f7aec23abbae7c2bd3cb5a4162c8c2d58f
+88754b9d3ffd6f222312e05b85282cfa7fe94c784efaaf8df7864bfeb7872564a0974
+93f0541a
+handshake_encrypt_key: 9158456ef7bcb003af38c3e2ef5ca55de94908206453c7
+d6c045d729ad749727334aa890ddbd6cb86bb9327dfa08888e88b597ba426ebfb80cb
+129d978addb95
+server_mac_key: ad4c079ea07bd9ac9e5ee3cac5d1f4ca95ff2f2a3a42262f9cab7
+c5a2f0ad0af30ac6c79e36be8310c967f2ac631a2556823b9b6b96c37a4afd2a9660a
+9cb583
+client_mac_key: 035a9ccc28f279fe0017c09242fc52c65b4cea480b99f709af9e4
+50770d446591d2fb00d5c6739d32c57451c7a26a66a1262440db67820b4e2c1f4c786
+bbbeb5
 ~~~
 
 ### Output Values
@@ -6992,49 +6950,49 @@ d7275eaee01703d8b1bebb47dacdd501bca160ae119283da0adb7c70b4dd0173de3d1
 registration_request: 02000c53a2fa3c1dd1ed747b297b82020f316ee5b38d5ad
 d8bfa68d9c6eb9b22ac651badd5d5751e7371cae832503f66442cdc156414f4a5ba0c
 2db08b33530cde8dec
-registration_response: 020058a95aeaee3d744499510ba6c2a972a7284f2589ab
-fbf1dd9be9cd5551adf239e38ead61d97a521cfcc3d8ec38e370f9b9817e6ee309248
-d5a3dc7e937f25c2c140201a6573b69f46bf93cb3f18e2510c753f689097b7b96059c
+registration_response: 0301c65fe2a4b15a3a4acb63aa86323c4c29acb3245b16
+50d8b8d6cd71d1fafa9bb9eef916de30ef0d2aec374d95ff394db9de4a309ae6ea8ff
+b77f22d148a9cb82c830201a6573b69f46bf93cb3f18e2510c753f689097b7b96059c
 3ca8f8e45c66a03b694fd8618c9a52c4104ca42186438849e73613cb25fbd4ecc16c5
 a65f95345686984
 registration_upload: 0300ddde60161dc32b29345ac9ce18ecf102284bde1013e4
 ca15d2e6cef0207da6b4099be218142b531926f99a2f1112392aff5a985d451b37dc1
-e7ee4c024556f0808a7e7568d529df58ff7c412425efb9060c5207ff96daf052bf9e0
-91363db61e71c36bad9af6809aa4560ad2e28e2db9d90702b012a5a21e34a264258d8
-12f0dc4022811ccfea7156426b5b397dbd55b1c246e60daa18e5dbd7f2aa419a5394c
-29f9f733fee01d2720efc243061c9e4a00b86302c806a50c3d373c4fa0a5f47339a16
-e369d0a31cce1a22c65478c96ab46121e256f362b44ec93c5047e29600195980947cc
-e4d283a53da7c5c08c8d85abff78dfaf4508d9ff20cddb8f644dfe8079559e76b35ed
-fa6b9b2575865aee92d812aedadad67c298c6b6de8db47f07ff6ac00b
+e7ee4c024556f08086a2e5ea1562691e77fe874a250c30edc24a81f3e09eb661c039e
+404743d53f8beb87497c42576edee0e454aae4857c98d882dd1b7ca893b68f8f698fd
+48f10eec5c1afb4aa401e405bc2d13ac2e33631b24e6f2325437a4b2d98d109c0b0f2
+246d956dc075bda0bc0bc7871ffe6f54c9b9aa00aaa61498339bd11f6ad81b6af5660
+5d4e504387e74e2f0c4fafc71647536c84bff3a6ae90c8e358158f80b2b3bd20e670e
+c6a337b0786ac549d24d17135029db3232f2990eddf1130968a549f4bd187456a0805
+cff57f8782547de522a99a46dec7afab439ad5ee0f859b89218161c
 KE1: 03014f2799259882d01af61644db264602a3486a32f6b510aecb336456ce58af
 6cdf6f5630ab4e3e7081f1e99b1688558f0a1bf15da34b7c0252f1036d916928a0f33
-26173fb8547ea3b77e32b8c475194ea86c0e0dd2e25e8ff219bf46ca3eb4882880009
+2b7a4c42dcabb47896d72041c6596db9aca7607c1934907af16eec3cd60ac24ff0009
 68656c6c6f20626f620201e2f40c1d877219e9512862469e31da268ab014fdce9cb3f
 9ed6b27fc01fe6d9b1ec37c6cee76131139ccc3eee0a35438250e9ecaff6cf223ad9f
 a469dfaaa0f0a5
-KE2: 03003d1a513ad22fb9f0abcc9ae3055d541233e214bd86e7bd89d7b06b3769b1
-baf0bc4e3a33f264bf1cb13b12a98ca85b9305a548fe6c19307f427551bd31ff0a075
-7a009160840509143258c3eac15f20cf18e26a2be59654a281cbe4421de43fe64e4a3
-299996c6280236ca54f3e905ac0b21f647a124448c79cda7ceb8acec21a1670344cf8
-2f0b561fbea314ac922124e3004d5ccd506b7e1179200e8b7b57f8d30647dbda4b248
-788d4177e20ad264b528eab8065eb82f93b1c5e213754e4e8f89ea66e893a73d1c4df
-6d9f34f112581fe123c5eb419ca2fe4bcfb6cdcabba49b99e2dee230ec22bc26b52a3
-4f9ec02d8e8fa41f9492dbcce0a1748594df0b41e00910fa71746009b28b730f9a03e
-62063b680a9537d984ebcad50134a9b2b3d66a16d5d309e834664183aa6918732aba9
-9bba7159d6ae32b4a7a0342d099e7ed4d2717079563e466a399782fd02b4415d06bfa
-5354482f02f9ae2d96413d6a5ce3252cc3dbd030029562d54d53c7c51651334989bcc
-95b45a1a07484448ef72bab708b55322b49a43736afc60bf85fc05d3c1d8b60a0b55a
-83e37befa115e9625e00f35c1eeae27ba000f7e0c8b9b60d4268c2b8fa0e6ac89307e
-ca92f71543b183cb38ac9df6bbace65a230024a417e4e019653f970fd6c83de96b385
-676cf8ab90c346aa4dabe9e713d284a9b4df944b681fb3edbc7f68f03
-KE3: 9e24b63782dc1725d2ca3d85c129fe0628ba72c86ae52dc7e8536b1fe5336477
-7ae2b8399db80b356c441f4ce20c56a35ac89c144056efc228e37de756213d61
-export_key: db3ad1004d6d742b49288cb3a6126cfd46d3800de0056de56ebb1b205
-c3ba5d16b22aeb2048c23923a28bcf9573ebef5cbb39b210abfbd4dfe2ed5c62e5ee6
-3e
-session_key: ce9b7aea6838d1bec10a0093252a29a7a4332d28d70ad355fac41072
-c19c69b3b2b6697ea9c09451520a938f0638c89fe47f5876aa21eabbf967e14b2f8ec
-43b
+KE2: 03002e6e57758eb563357d8fe7155c10f7e078101ec156ce20e7eb3661304c0b
+3386e86c02fb2aa463560637c9e95720e1ab7edc6a8c74aa939fb5e1cc960eb21cde5
+373a93750e011930fc4f7b28df901d252414a724317dfb84b662e433bdec6dedf766a
+d1560373b3423058b060dae864b1935ff032b73afb87b9ff95c12841a5ae349a2f159
+455b2a6e53e2546e74650763dd1706b7bd1594abfbeed13fc23c116838f81339aa61f
+50ee5d91627d82c070864e1be3b8df9c77e3dc4ca4f381f82576468bc31848085bf15
+4ea2fc1ca12c33b156f62681b2bdd2b9d080af5ed8e3f71796e32314ee156958493a4
+b79eb52d4f549e39604de14c751991df968e893affb26489c8ba5dd8eb7bb897b86c9
+eba611422e31af92d77248f4869f108fcedec55796caf4dbbe669a9c4e362e8765ea9
+0920d8808cb5002c396d905e7f0281c2c34f24236ed2d2bf3063fcb83f99047b1fc11
+9468adbf9f960e94f425e8d0bbef93f4d6f030029562d54d53c7c51651334989bcc95
+b45a1a07484448ef72bab708b55322b49a43736afc60bf85fc05d3c1d8b60a0b55a83
+e37befa115e9625e00f35c1eeae27ba000f64b93948b079af44a97bea33360f032e17
+ad32971be1f3d3b5bd31d0ca7848ef6d2590e593e82be7658b2616a42cdd0b29faf10
+9cb77bca28d9ed159d8a871b295d8ce6f8fae7ed0919f18dce81c78
+KE3: 8c6258751caafdeb8e7e12a303d2526fba30559c4476d6f684e7969dad978d51
+fd7ac16b8cb4d3d8e3c8219a9bdeaf6b78bde40c2ef86ab110d2f59d32683b33
+export_key: 1b824cf1ae893080c356e80e8f67d7ae57daa08219efb3921f9b502eb
+d4047c3e661fd71bfd87319b429c31c9c19af4d966f693001f2c3585ce631eaba48d9
+f9
+session_key: b89ab6a9187a718247ce764bc350809c892898f8e89b1ae07f34f59b
+d0aea21275ea1db36e9b032b43c225323bdf28ad37907925c46286094c3dce08ebe1d
+326
 ~~~
 
 ## OPAQUE-3DH Test Vector 40
@@ -7063,21 +7021,18 @@ Nok: 66
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 5e30606c08752fbd9b22758c152f17c8bf7080b78d4834108b2e4ca64d
-48f239940d1a1f1ea9b9dc2565401bed9d6eb07cdef0a68e3a39b84e8a72c2cd700ca
+oprf_seed: 30391e789b23defd2157684475ac8e0072c745191634c87a5a6f12536b
+f75736995683f0c1d0cfb4561b840f6d614038bf600a0d2478daa06e43859459ccc4f
 3
 credential_identifier: 31323334
 password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 334df92b47d6f492bf798b140f77f910e82068e809889cbe82c0a
-513a05454cc
-masking_nonce: ac6c7b34eb67a97e13e7004fe8cce434e7a5e5b1712d43de5f0a7a
-ca44dfcaba
+envelope_nonce: d8fabb831225a425d1d00c20468094095e062285e86cc7aee95c8
+4ce7087efcb
+masking_nonce: e39c94d36e0faeae52fd294bae548ecd6310a5f298c175bef4f585
+db995a12ee
 client_private_key: 008fb26f2c88d274661db787733c175d7034e4da200a4ebb0
 1c9589fd7a0d54771e479fce2a99af6a64f80e4106dcef77a750147dcf14217936a74
 679455ddadece4
-client_public_key: 0201ef259e80ef427390cf74d1cf31778645e53d0ab4a7fef6
-f57a56a0c2b5f4b602d0dd906fa77bdf011b9b7e6bb4098102bb9806b3d74d12bea03
-e0379fb9127abe5
 server_private_key: 00b78f376d4dee066fa82592ffb702498326c37dadf63135c
 ca8df4d8e19f5dc6e830163ea683e19a507b15a66ed74b1ce6ebbd902a5c74a51eeaa
 2ec2bfc113d4fc
@@ -7086,10 +7041,10 @@ server_public_key: 0200f944f464cfcbdfe94b720c0a59487456cca17580dd1982
 febdecef64998dc
 client_info: 68656c6c6f20626f62
 server_info: 6772656574696e677320616c696365
-server_nonce: 30a3a4d80c81466d0d0f91be62362b34c0695e483cfd6d827fa86d9
-01bc27b32
-client_nonce: 696977ad73d5fb23d007db360f53d478c5d2615501ed9753f647e69
-e6b2f9d72
+server_nonce: 9fe6b6aa7df25b49127ae2ee76c02f9f604e17d5855bc2b790bdb68
+32ccc615d
+client_nonce: 3b48f9aca2f714db4094f74ff1da4505347e9cf5276813f32b23b21
+03e1f16a4
 server_keyshare: 0300ed0fdc747de2ff4797c4b18da821ae9ec83376c51d00a51b
 2d1701e5689e8dd720cca6fdd1a548b5b3ad34015006ce4f7548be73295e07f15f8b0
 c60331cb65160
@@ -7108,36 +7063,39 @@ e73f71b7054c673a45711b4be7a89fee03569a6a058f9dda2294315a167fa19af3279
 blind_login: 011646fd1eb67204c84e2be0273c76e96a29d0f20428bcb157922105
 599e83b939f76446fb738af8d38a00fae287d39a8d7234b7b8a704076e51cfacd73bb
 24554bc
-oprf_key: 00ebe05301cdb5d3227de223fca76c6e6a220d94e70afe655bbcf0e8332
-27d5c3caff5a240af61600a7120be901a96e32530b3ea3d533280940a719f23e7eadd
-3410
+oprf_key: 001c1fcd9454ecc3c8305afa432cb62f8f1ee8218cbf38b10a282eccde2
+7d192ccdbc64a7cc7d3217f15e141c8585fdd70b78702988e3ed2cdd8a7c192d17dcf
+f5ab
 ~~~
 
 ### Intermediate Values
 
 ~~~
-auth_key: 015bfcd3ff3f9ffce68edd5dc9d439cc21e8f552e3b0697b616d2017e37
-06133816f1d4851fae48b650e3201811664e5856348820b9fda2bb4dbe35f2c3dafd2
-random_pwd: 2d7e09c0860f9cd7684ae2ebd1a1a12852c0a5248b96b09a865fdeb6a
-f2484603570e14391f0e9604be3ab1467a7a97dc29ee2ea4638022e60e3368b740da1
-3d
-envelope: 02334df92b47d6f492bf798b140f77f910e82068e809889cbe82c0a513a
-05454cc1fb1f6188c0188a0cb5a41e592ca8abf8e50b3f27b7cf19bd5b7bc6e73e927
-e129dd2fd5462f4dacce5c4c8466cb1ed851994c982b287bde15f87327e55db8c165b
-527ecec7d12ef0d58cbcca62a4bcccaa26cf165bd81479ee3b7f94adc857d2f1dc0ea
-06c6008eb47f97bc260630018670d9dd3c22a55d1e287d2dad7a83544c94
-handshake_secret: e14c6902f2be4e39f41ce5e2504a858f9061c546c88c2bb5f02
-3e19c6a9c81aaff97bcf646851f39e6ff998301412c5626208f3ba6936e9ae5c2b87a
-8a9036b3
-handshake_encrypt_key: d9159a9797b87535607eba1ea39f2aa624de6527987c0e
-546e441ad1f1d349ac35e365155486e8c0e6a6832ff7114d09bf725275e3fe9fe2dda
-4e6c03052a7b8
-server_mac_key: caa779382e29392753ab46d8daaa82f4d8bea81f2a0e3d8440b72
-7000ad71612779d656695a767e6675982f17b665d12f830c9880b263ed6caaf4c38aa
-589344
-client_mac_key: afda80121fcf7a9146fb75492c848126e1283692b721e99dbe522
-9665a7d0328879096cf2355772f598869d7fa9b053e9227c67f82407718d3541bea0d
-2c83bc
+client_public_key: 0201ef259e80ef427390cf74d1cf31778645e53d0ab4a7fef6
+f57a56a0c2b5f4b602d0dd906fa77bdf011b9b7e6bb4098102bb9806b3d74d12bea03
+e0379fb9127abe5
+auth_key: 3a6096e30b42750dd83107d4f6179a7f0abd51b8e2e889165e6508c3466
+f9985d3bb633bf22ccd3cf363ab15f3f9342ef06d7bb8fbaae114ba503bde3d5a0af8
+random_pwd: 85d87f753ac795a72185e52c93c2c1edbb41f7adc84d83be30e4213f3
+b32bbd6116c75cd7cf96df1900df934908af68011fa44397a43c97e8d93ee8710b0a0
+86
+envelope: d8fabb831225a425d1d00c20468094095e062285e86cc7aee95c84ce708
+7efcb682c3277e812d6103119f8754e6697dfe8ef35c311a002d2a2a8860511583f32
+55f408b1e896612e232feeb46742e9f46793d91759db118dfc1e6d04bf1de89045366
+02d8818eb0e296d101cb4cb3625e174e1f12bd3b3308ddc0f0669665e57351df23eb8
+9d2a676eba2e2d9978df8b01b6f2ddc5c8689f7fd78081d9c978009fe2
+handshake_secret: 1d6f5bec50be444abf164bc22b4ec03a79071bd10c2a9c1f085
+8d9b2ee173d7d93172814478864c3db9e4514d7ce1f030c4753cd16247ee994762250
+917c646c
+handshake_encrypt_key: e53f2a0794c4ac41006147795210f5fa17eb36746894db
+efad63dbf93185a95c2141a8d714e1b87b2bc7771d45f875f4930d37b79110a00cb71
+822a5a192e59a
+server_mac_key: 82e32188524882c474b6ccbf8991317ce06f66b19df7c67f3300c
+c05b5fb7c68cc6fe53993fb22febf01fcb2142057b55aafad3cab39a807b219bc1bd3
+a6d893
+client_mac_key: 86cbb80256f89b4cf2af060124449978214ccba58037c40bd026a
+ea090fd308636869ec849b7280edb95e73f0f21f65633bb9975e2417cf172689029aa
+f17f87
 ~~~
 
 ### Output Values
@@ -7146,47 +7104,48 @@ client_mac_key: afda80121fcf7a9146fb75492c848126e1283692b721e99dbe522
 registration_request: 0201d22759697d1d91f6b1812d14acfee093886e889d913
 cdffc78de009924d3d80a7aa9384149f163fd706498375c34402df2ccd8c1283cd250
 477ce032c9e7c78ef8
-registration_response: 02005502fb60b910903742575956546586c6426280e054
-a027e5286ba02775cf4f1d0b6db0e9ef35de3bcc99987901aecdafe73607b64e30190
-0627c0a86f5a8c0593d0200f944f464cfcbdfe94b720c0a59487456cca17580dd1982
+registration_response: 020170af143a1ae290beeab128011e8f69b480b247af3a
+d5200258ac81abbfb5be24075281d6859cf86e2aa2e5323dd18009db9bc5d11903fa0
+5802d9f43a56406c4360200f944f464cfcbdfe94b720c0a59487456cca17580dd1982
 4532d540642aa4017edec0b9308bf4f4fc00611115a145c1374680847e4815f6c8dd7
 febdecef64998dc
 registration_upload: 0201ef259e80ef427390cf74d1cf31778645e53d0ab4a7fe
 f6f57a56a0c2b5f4b602d0dd906fa77bdf011b9b7e6bb4098102bb9806b3d74d12bea
-03e0379fb9127abe518a1d70057f0a519940947892258c3ece7cdb90d99a7877c2591
-4e22c99e0747adeea9886a9f1a39638381fdcd13c877f0d7e62cea574cec9efe327ac
-fd1afd002334df92b47d6f492bf798b140f77f910e82068e809889cbe82c0a513a054
-54cc1fb1f6188c0188a0cb5a41e592ca8abf8e50b3f27b7cf19bd5b7bc6e73e927e12
-9dd2fd5462f4dacce5c4c8466cb1ed851994c982b287bde15f87327e55db8c165b527
-ecec7d12ef0d58cbcca62a4bcccaa26cf165bd81479ee3b7f94adc857d2f1dc0ea06c
-6008eb47f97bc260630018670d9dd3c22a55d1e287d2dad7a83544c94
+03e0379fb9127abe5ec405238d99bed58a7d6724a0e7eaa4dc8605930356ef4948469
+bd257dd0f83e9bb94734f704ce4d1e5f982d3239705b48b80d33688743baf0c5c58e2
+d66ec53d8fabb831225a425d1d00c20468094095e062285e86cc7aee95c84ce7087ef
+cb682c3277e812d6103119f8754e6697dfe8ef35c311a002d2a2a8860511583f3255f
+408b1e896612e232feeb46742e9f46793d91759db118dfc1e6d04bf1de8904536602d
+8818eb0e296d101cb4cb3625e174e1f12bd3b3308ddc0f0669665e57351df23eb89d2
+a676eba2e2d9978df8b01b6f2ddc5c8689f7fd78081d9c978009fe2
 KE1: 02002c6e65b998d160fbbde62484f39c2678bda170db547005889379b570e83e
 4f6aa45200a183dc5cbf014bc7f94f28064bae53132dfb3a0736bf7b806b1091ce541
-8696977ad73d5fb23d007db360f53d478c5d2615501ed9753f647e69e6b2f9d720009
+83b48f9aca2f714db4094f74ff1da4505347e9cf5276813f32b23b2103e1f16a40009
 68656c6c6f20626f620300c566f59e65c950d86356e925ce1f87b3d4a7a9b2e556ece
 f17041679c76f8afd8f7b1e9fb82549886fdedf29e4e86564475b0c2c200a9c7a4e08
 9e846932e07d36
-KE2: 02005de4f349614dd3f979abb37c23991781ecbae10dba640811f06af90162d9
-439dbc2c3e31cb31bdbd584eb62d694067646716f964ba74552dbe6a14be4158a1b1e
-1ac6c7b34eb67a97e13e7004fe8cce434e7a5e5b1712d43de5f0a7aca44dfcaba057f
-7e940565c62a69eb20c899ad8bbd6358c52eb84c0a430f4903aa86833ccb0cf09d8e0
-2ddc2f93706c2ca108749a0890429fecaa385ec65f22af9a535f5b0aae853fa3868d9
-ea0e16fcad14484449878a274b53ddebe6c2ed4132581782181b12fedbe11faeaa77c
-79d82fe95a6a68f85ecd10479aed91d67cd9ad4e4d16b645ba81b95fb878ea90746bf
-1ca31aae05928371383f744b53b699b02e606bbd00e277fac1a1c7c50137c79f55b3f
-428d41c9b5dabf4e8fc1f74d685e25276469df6d495a5ec4f6344803ef9b73bee501e
-ec81479759264c3bfa942a8283db0576837eaa06cf30a3a4d80c81466d0d0f91be623
-62b34c0695e483cfd6d827fa86d901bc27b320300ed0fdc747de2ff4797c4b18da821
-ae9ec83376c51d00a51b2d1701e5689e8dd720cca6fdd1a548b5b3ad34015006ce4f7
-548be73295e07f15f8b0c60331cb65160000f3de4af3d8548e3ea963d1b738621c961
-b4b72ab491b5536281f03039910784dd76b74584508e7e7d99a7059ee752fba2c7ccd
-1ecfe4be584b2508dbb6d946008b9c0791162aeb6ec19cfaf36eca9a2
-KE3: c68079599a72ee9e051c247e356493bb8809d44337c77a5255188411596783d4
-59f7bef3f7698903f3974b1845a55f83667ae6e8c71473fd63d05adaa4750277
-export_key: e7e99db020f7cbfbc6b3c28c021a80f5c016e890c881d25e127df6100
-1ac8f7a0a997d38c1afa0cb9d991206baf985ffac4db7f40af1fdbc4231610f002457
-19
-session_key: c0e11962d1dbd4a0aff0e8209d8d772ee8671286b79dd2aa99e4fbca
-a463a2d4c6671fd6e991c4ea6864a86afc24b9d6e4b33c540e7b493c9f7ea87e87e4a
-9a7
+KE2: 03011cc1f78ce51c71959925a0ee41fb6c76ca6b6b1e88b0b96bf4a085672d99
+a124eff1eeb45fee775fb864cc84f0f263e44c9c296c38c526fdcaa11d153fb91a512
+1e39c94d36e0faeae52fd294bae548ecd6310a5f298c175bef4f585db995a12ee92a1
+4d8efa7163a8ba9bf41858faae65d58d0d224d1050e72a1850259d5bcff09610ca5cd
+6767055ccb891da98bf2304b04ac642c241a5bb071cb292038da462f3381a7a711475
+b27ca7220b9d6e20f0800c54ed9a885cc8b736b779e86c03f6efcbb79d0d29a298404
+55492f99d2b47b470ec8669f488ca9a153dc1e8535cffc4ad910cfd550f395bdf8201
+a3c520a9e1b41b19d10b461cbd01193334e3349665ae41dea5255a364cafb60629cbb
+27c36f5407fcde891e43e3feeb784f5102f63ee7ddb01c125e129b3aed545d6e9d186
+329d38fdfcf311287159707fd85f45228dcdb31b9fe6b6aa7df25b49127ae2ee76c02
+f9f604e17d5855bc2b790bdb6832ccc615d0300ed0fdc747de2ff4797c4b18da821ae
+9ec83376c51d00a51b2d1701e5689e8dd720cca6fdd1a548b5b3ad34015006ce4f754
+8be73295e07f15f8b0c60331cb65160000f021e29d553a8efd942a6961b71720cda56
+12fe82d79acc3d1f61d32ed60b6ecc9d4a777cfcdaed7fde1ab082246d3585d713c65
+3e3d0b4b5b706c141948c87daea57e8403b6d8f6a1f7a64226a3900
+KE3: b0db13d1326c1880ebfe783fd7fc097d267e43cf4222a2f903e316fb4621f476
+31322f613dd3d851acf32ae26c6fdf3007afc0ba1d131d175c27a9c836c0e111
+export_key: 6dabdeaf4aa065bba51b8d6b922d5d3c24661762a906d665d54e405a2
+eacbd696d0b730d144cf6c99a1c0447b93a1a4c494c97350724e9edd55397f6fe7eca
+0b
+session_key: 7761e4a34ac13a92db8ee44ac9c2868fd46b380b611672df0a42cf15
+063247f86cadd80062cfb47827cc1550b8dbb8b332827ce348f90621b4dbcc0a2ab30
+b74
 ~~~
+
