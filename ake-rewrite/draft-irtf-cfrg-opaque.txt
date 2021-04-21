@@ -669,7 +669,7 @@ Output:
 - envelope, the client's `Envelope` structure
 - client_public_key, the client's AKE public key
 - masking_key, a key used by the server to preserve the confidentiality of the envelope during login
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. envelope_nonce = random(Nn)
@@ -695,7 +695,7 @@ Input:
 
 Output:
 - client_private_key, The encoded client private key for the AKE protocol
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. auth_key = Expand(random_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -955,7 +955,7 @@ Steps:
       the private key "client_private_key".
 
    masking_key  A key used by the server to preserve confidentiality of
-      the envelope during login
+      the envelope during login.
 
    envelope  The client's "Envelope" structure.
 
@@ -1021,7 +1021,7 @@ Input:
 
 Output:
 - record, a RegistrationUpload structure
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. y = Finalize(password, blind, response.data)
@@ -1057,10 +1057,11 @@ Steps:
    server agree on a mutually authenticated shared secret key.
 
    OPAQUE produces two outputs: a session secret and an export key.  The
-   export key may be used for additional application-specific purposes,
-   as outlined in Section 7.4.  The output "export_key" MUST NOT be used
-   in any way before the MAC value in the envelope is validated.  See
-   Section 7.3 for more details about this requirement.
+   export key is only available to the client, and may be used for
+   additional application-specific purposes, as outlined in Section 7.4.
+   The output "export_key" MUST NOT be used in any way before the MAC
+   value in the envelope is validated.  See Section 7.3 for more details
+   about this requirement.
 
 5.1.  Credential Retrieval
 
@@ -1186,7 +1187,7 @@ Input:
 Output:
 - client_private_key, the client's private key for the AKE protocol
 - server_public_key, the public key of the server
-- export_key, an additional key
+- export_key, an additional client key
 
 Steps:
 1. y = Finalize(password, blind, response.data)
@@ -1205,14 +1206,12 @@ Steps:
    output values of the credential retrieval process, which includes the
    OPRF.
 
-   OPAQUE exposes the following API for authentication: - "ke1, blind,
-   client_secret = ClientInit(client_identity, password, client_info)" -
-   "ke2, client_info, expected_client_mac, session_key =
-   ServerInit(server_identity, server_private_key, server_public_key,
-   record, credential_identifier, oprf_seed)" - "ke3, server_info,
-   session_key = ClientFinish(password, blind, client_secret,
-   client_identity, server_identity, ke1, ke2)" - "valid =
-   ServerFinish(expected_client_mac, ke3)"
+   OPAQUE exposes the following API for authentication: - "ke1 =
+   ClientInit(client_identity, password, client_info)" - "ke2,
+   client_info = ServerInit(server_identity, server_private_key,
+   server_public_key, record, credential_identifier, oprf_seed)" - "ke3,
+   server_info, session_key = ClientFinish(password, client_identity,
+   server_identity, ke1, ke2)" - "session_key = ServerFinish(ke3)"
 
    Section 5.2.1 and Section 5.2.2 specify the inner working of these
    functions.
@@ -1222,27 +1221,48 @@ Steps:
 
    The return value of "ServerFinalize()" indicates the client's
    authenticity to the server and therefore the validity of
-   "client_info" and "session_key" produced by "Response()".  If it
-   returns "false", then the client MUST NOT be trusted and
-   "client_info" and "session_key" MUST NOT be used.
+   "client_info" produced by "Response()", and "session_key" if valid
+   (nil otherwise).  If it returns nil, then the client MUST NOT be
+   trusted and "client_info" and the internal value "session_key" MUST
+   NOT be used.
 
-   The following values are internal state values and displayed here for
-   exhaustivity, to be carried from one stage to the other: - "blind"
-   and "client_secret" for the client - "expected_client_mac" for the
-   server
+   The following structure can be used by the client to carry internal
+   values in a state between calls to "ClientInit()" and
+   "ClientFinish()":
+
+   struct {
+       opaque blind[Nok];
+       opaque client_secret[Nsk];
+   } ClientState;
+
+   blind  The client's OPRF blinding scalar.
+
+   client_secret  The client's 3DH ephemeral secret key share.
+
+   The following structure can be used by the server to carry internal
+   values in a state between calls to "ServerInit()" and
+   "ServerFinish()":
+
+   struct {
+       uint8 expected_client_mac[Nm];
+       uint8 session_key[Nx];
+   } ServerState;
+
+   expected_client_mac  The pre-computed mac of the full transcript
+      expected in KE3.
+
+   session_key  The session's shared secret.
 
    Prior to the execution of these functions, both the client and the
    server must be set to use the same parameters described in Section 6.
 
    In order to achieve this interlacing, the AKE should implement the
-   following interface: - "ke1, client_secret =
-   Start(credential_request, client_info)" - "ke2, client_info,
-   expected_client_mac, session_key = Response(server_identity,
-   server_private_key, client_identity, client_public_key, server_info,
-   ke1, credential_response)" - "ke3, server_info, session_key =
-   ClientFinalize(client_secret, client_identity, client_private_key,
-   server_identity, server_public_key, ke1, ke2)" - "valid =
-   ServerFinalize(expected_client_mac, KE3)"
+   following interface: - "ke1 = Start(credential_request, client_info)"
+   - "ke2, client_info = Response(server_identity, server_private_key,
+   client_identity, client_public_key, server_info, ke1,
+   credential_response)" - "ke3, server_info, session_key =
+   ClientFinalize(client_identity, client_private_key, server_identity,
+   server_public_key, ke1, ke2)" - "session_key = ServerFinalize(KE3)"
 
    The "credential_request", "client_public_key", "credential_response",
    "client_private_key", and "server_public_key" (in "ClientFinalize()")
@@ -1256,6 +1276,9 @@ Steps:
 
 ClientInit(client_identity, password, client_info)
 
+State:
+- state, a ClientState structure
+
 Input:
 - client_identity, the optional encoded client identity, which is nil if not specified
 - password, an opaque byte string containing the client's password
@@ -1268,15 +1291,17 @@ Output:
 
 Steps:
 1. request, blind = CreateCredentialRequest(password)
-2. ke1, client_secret = Start(request, client_info)
-3. Output (ke1, blind, client_secret)
+2. state.blind = blind
+3. ke1 = Start(request, client_info)
+4. Output ke1
 
-ClientFinish(password, blind, client_secret, client_identity, server_identity, ke1, ke2)
+ClientFinish(password, client_identity, server_identity, ke1, ke2)
+
+State:
+- state, a ClientState structure
 
 Input:
 - password, an opaque byte string containing the client's password
-- blind, the OPRF blinding scalar
-- client_secret, the client's Diffie-Hellman secret share for the session
 - client_identity, the optional encoded client identity, which is set to its public key if not specified
 - server_identity, the optional encoded server identity, which is set to its public key if not specified
 - ke1, a KE1 message structure
@@ -1289,14 +1314,15 @@ Output:
 
 Steps:
 1. Create Credentials creds with (client_identity, server_identity)
-2. client_private_key, server_public_key, export_key = RecoverCredentials(password, blind, ke2.CredentialResponse)
-3. ke3, server_info, session_key = ClientFinalize(client_secret, client_identity, client_private_key,
+2. client_private_key, server_public_key, export_key = RecoverCredentials(password, state.blind, ke2.CredentialResponse)
+3. ke3, server_info, session_key = ClientFinalize(client_identity, client_private_key,
                                                server_identity, server_public_key, ke1, ke2)
 4. Output (ke3, server_info, session_key)
 
-   The client's state between the two functions, except the parameters,
-   are: - client_identity (n.b. must match the one used in registration,
-   recovery, and ake) - password - blind - client_secret - ke1
+   The client's state between the two functions not included in the
+   "ClientState" structure, except the parameters, are: -
+   client_identity (n.b. must match the one used in registration,
+   recovery, and ake) - password - ke1
 
 5.2.2.  OPAQUE Server
 
@@ -1313,22 +1339,16 @@ Input:
 Output:
 - KE2, a KE2 structure
 - client_info, optional and unauthenticated application-specific information sent by the client
-- expected_client_mac, the pre-computed mac of the full transcript expected in KE3
-- server_secret, the server's Diffie-Hellman secret share for the session
 
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record, credential_identifier, oprf_seed)
-2. ke2, client_info, expected_client_mac, session_key = Response(server_identity, server_private_key, client_identity, record.client_public_key, server_info, KE1, response)
-3. Output (ke2, client_info, expected_client_mac, session_key)
+2. ke2, client_info = Response(server_identity, server_private_key, client_identity, record.client_public_key, server_info, KE1, response)
+3. Output (ke2, client_info)
 
    Servers MUST NOT use "session_key" unless "OPAQUEServerFinalize"
    returns "true".
 
 ServerFinish(expected_client_mac, ke3) = ServerFinalize(expected_client_mac, ke3)
-
-   By pre-computing the necessary values in the response stage, the
-   server's state holds in the following variables (except the
-   parameters): - expected_client_mac - session_key
 
 5.3.  AKE Instantiations
 
@@ -1357,9 +1377,9 @@ ServerFinish(expected_client_mac, ke3) = ServerFinalize(expected_client_mac, ke3
    "session_key" to derive additional keying material as needed.  Key
    derivation and other details of the protocol are specified by the AKE
    scheme.  We note that by the results in [OPAQUE], KE2 and KE3 must
-   authenticate credential_request and credential_response,
-   respectively, for binding between the underlying OPRF protocol
-   messages and the KE session.
+   authenticate "credential_request" and "credential_response",
+   respectively, to bind the underlying OPRF protocol messages with the
+   KE session.
 
    We use the parameters Npk and Nsk to denote the size of the public
    and private keys used in the AKE instantiation.
@@ -1373,7 +1393,8 @@ ServerFinish(expected_client_mac, ke3) = ServerFinalize(expected_client_mac, ke3
    operations in the key derivation steps in Section 5.3.1.3.2 are
    performed in this group and represented here using multiplicative
    notation.  The output of OPAQUE-3DH is a session secret "session_key"
-   and export key "export_key".
+   and export key "export_key", where "export_key" is only available to
+   the client.
 
    OPAQUE-3DH allows the server to send additional encrypted and
    authenticated application specific information.  An opaque byte
@@ -1386,7 +1407,7 @@ ServerFinish(expected_client_mac, ke3) = ServerFinalize(expected_client_mac, ke3
 
 5.3.1.1.  Flow
 
- Client (client_info)             Server (server_identity, server_private_key, client_identity, client_public_key, serverInfo)
+ Client (credential_request, client_info)             Server (server_identity, server_private_key, client_identity, client_public_key, serverInfo)
  --------------------------------------------------------------------
  KE1 = Start(client_info)
 
@@ -1467,24 +1488,30 @@ Start(credential_request, client_info)
 Parameters:
 - Nn, the nonce length
 
+State:
+- state, a ClientState structure
+
 Input:
 - credential_request, a CredentialRequest structure
 - client_info, the optional client_info to send to the server. Note that it will not be encrypted, and only authenticated
 
 Output:
 - ke1, a KE1 structure
-- client_secret, the client's ephemeral secret key of the Diffie-Hellman key exchange
 
 Steps:
 1. client_nonce = random(Nn)
 2. client_secret, client_keyshare = GenerateKeyPair()
 3. Create KE1 ke1 with (credential_request, client_nonce, client_info, client_keyshare)
-4. Output (ke1, client_secret)
+4. state.client_secret = client_secret
+5. Output (ke1, client_secret)
 
 Response(server_identity, server_private_key, client_identity, client_public_key, server_info, ke1, credential_response)
 
 Parameters:
 - Nn, the nonce length
+
+State:
+- state, a ServerState structure
 
 Input:
 - server_identity, the optional encoded server identity, which is set to its public key if not specified
@@ -1498,31 +1525,31 @@ Input:
 Output:
 - KE2, A KE2 structure
 - client_info, optional and unauthenticated application-specific information sent by the client
-- expected_client_mac, pre-computed mac of the full transcript expected in KE3
-- session_key, the shared session secret. This MUST NOT be used under any circumstance if the client_mac
-in the upcoming KE3 message doesn't match the pre-computed expected_client_mac.
 
 Steps:
 1. server_nonce = random(Nn)
 2. server_secret, server_keyshare = GenerateKeyPair()
 3. Create inner_ke2 ike2 with (credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, KE1, server_identity, ike2)
-5. ikm = ServerIKM(server_secret, server_private_key, KE1.client_keyshare, client_public_key)
+5. ikm = TripleDHIKM(server_secret, KE1.client_keyshare, server_private_key, KE1.client_keyshare, server_secret, client_public_key)
 6. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
 7. pad = Expand(handshake_encrypt_key, "EncryptionPad", len(server_info))
 8. enc_server_info = xor(pad, server_info)
 9. server_mac = MAC(Km2, Hash(concat(preamble, enc_server_info))
 10. expected_client_mac = MAC(Km3, Hash(concat(preamble, enc_server_info, server_mac))
+11. Populate state with ServerState(expected_client_mac, session_key)
 11. Create KE2 ke2 with (ike2, enc_server_info, server_mac)
-12. Output (ke2, ke1.client_info, expected_client_mac, session_key)
+12. Output (ke2, ke1.client_info)
 
-ClientFinalize(client_secret, client_identity, client_private_key, server_identity, server_public_key, ke1, ke2)
+ClientFinalize(client_identity, client_private_key, server_identity, server_public_key, ke1, ke2)
 
 Parameters:
 - Nn, the nonce length
 
+State:
+- state, a ClientState structure
+
 Input:
-- client_secret, the ephemeral secret key of the Diffie-Hellman key exchange
 - client_identity,  the optional encoded client identity, which is set to its public key if not specified
 - client_private_key, the client's private key
 - server_identity, the optional encoded server identity, which is set to its public key if not specified
@@ -1536,7 +1563,7 @@ Output:
 - session_key, the shared session secret
 
 Steps:
-1. ikm = ClientIKM(client_secret, client_private_key, KE2.server_keyshare, server_public_key)
+1. ikm = TripleDHIKM(state.client_secret, KE2.server_keyshare, state.client_secret, server_public_key, client_private_key, KE2.server_keyshare)
 2. preamble = Preamble(client_identity, KE1, server_identity, KE2.inner_ke2)
 3. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info))
@@ -1545,59 +1572,27 @@ Steps:
 6. client_mac = MAC(Km3, Hash(concat(preamble, KE2.enc_server_info, expected_server_mac))
 7. pad = Expand(handshake_encrypt_key, "EncryptionPad", len(KE2.enc_server_info))
 8. server_info = xor(pad, enc_server_info)
-9. session_key = DeriveSecret(prk, "SessionKey", preamble)
-10. Create KE3 ke3 with client_mac
-11. Output (ke3, server_info, session_key)
+9. Create KE3 ke3 with client_mac
+10. Output (ke3, server_info, session_key)
 
-ServerFinalize(expected_client_mac, ke3)
+ServerFinalize(ke3)
+
+State:
+- state, a ServerState structure
 
 Input:
-- expected_client_mac, the mac over the complete transcript pre-computed in `AKEResponse()`
 - ke3, a KE3 structure
 
 Output:
-- bool, the boolean indicating whether the mac in KE3 is valid
+- session_key, the shared session secret if, and only if, KE3 is valid, nil otherwise
 
 Steps:
-1. Output !ct_equal(KE3.client_mac, expected_client_mac)
+1. if ct_equal(KE3.client_mac, state.expected_client_mac):
+2.     Output( state.session_key)
+3. else
+4.     Output( nil )
 
-5.3.1.3.1.1.  Helper functions {#opaque-3dh-helper-functions)
-
-ServerIKM(server_secret, server_private_key, client_keyshare, client_public_key)
-
-Input:
-- server_secret, The server's ephemeral secret key of the Diffie-Hellman key exchange
-- server_private_key, The server's long-term AKE private key
-- client_keyshare, The client's ephemeral public key of the Diffie-Hellman key exchange
-- client_public_key, The client's long-term AKE public key
-
-Output:
-- ikm, input key material for the server
-
-Steps:
-1. p1 = server_secret * client_keyshare
-2. p2 = server_private_key * client_keyshare
-3. p3 = server_secret * client_public_key
-4. Output concat( p1, p2, p3 )
-
-ClientIKM(client_secret, client_private_key, server_keyshare, server_public_key)
-
-Input:
-- client_secret, The client's ephemeral secret key of the Diffie-Hellman key exchange
-- client_private_key, The client's long-term AKE private key
-- server_keyshare, The server's ephemeral public key of the Diffie-Hellman key exchange
-- server_public_key, The server's long-term AKE public key
-
-Output:
-- ikm, input key material for the client
-
-Steps:
-1. p1 = client_secret * server_keyshare
-2. p2 = client_secret * server_public_key
-3. p3 = client_private_key * server_keyshare
-4. Output concat( p1, p2, p3 )
-
-5.3.1.3.1.2.  OPAQUE-3DH Key Schedule Utility Functions
+5.3.1.3.1.1.  OPAQUE-3DH Key Schedule Utility Functions
 
    The key derivation procedures for OPAQUE-3DH makes use of the
    functions below, re-purposed from TLS 1.3 [RFC8446].
@@ -1641,6 +1636,21 @@ Steps:
                      I2OSP(len(server_identity), 2), server_identity,
                      KE2.inner_ke2)
 2. Output preamble
+
+   TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
+
+   Input:
+   - skx, scalar to be multiplied with their corresponding pkx
+   - pkx, element to be multiplied with their corresponding skx
+
+   Output:
+   - ikm, input key material
+
+   Steps:
+   1. dh1 = sk1 * pk1
+   2. dh2 = sk2 * pk2
+   3. dh3 = sk3 * pk3
+   4. Output concat( dh1, dh2, dh3 )
 
 DeriveKeys(ikm, preamble)
 
