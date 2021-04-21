@@ -1098,8 +1098,6 @@ struct {
 struct {
     uint8 expected_client_mac[Nm];
     uint8 session_key[Nx];
-    KE1 ke1;
-    KE2 ke2;
 } ServerState;
 ~~~
 
@@ -1250,9 +1248,6 @@ computed using the following function.
 
 ~~~
 DeriveKeys(ikm, preamble)
-
-Parameters:
-- Nx, the output size of the Extract function
 
 Input:
 - ikm, input key material
