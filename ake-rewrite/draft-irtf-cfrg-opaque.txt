@@ -1543,9 +1543,6 @@ Steps:
 
 ClientFinalize(client_identity, client_private_key, server_identity, server_public_key, ke1, ke2)
 
-Parameters:
-- Nn, the nonce length
-
 State:
 - state, a ClientState structure
 
