@@ -1075,7 +1075,7 @@ the following application APIs:
 - ke1 = ClientInit(client_identity, password, client_info)
 - ke2, client_info = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
 - ke3, server_info, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
-- session_key, export_key = ServerFinish(ke3)
+- session_key = ServerFinish(ke3)
 
 Outputs `ke1`, `ke2`, and `ke3` are the three protocol messages sent between client and server.
 Outputs `client_info`, `server_info` correspond to the optional information exchanged between
@@ -1309,7 +1309,7 @@ Input:
 
 Output:
 - ke3, a KE3 message structure
-- server_info, optional application-specific information sent by the server
+- server_info, optional application-specific information sent encrypted and authenticated to the client
 - session_key, the session's shared secret
 
 Steps:
@@ -1362,7 +1362,7 @@ Input:
 
 Output:
 - ke3, a KE3 structure
-- server_info, the server_info sent by the server
+- server_info, optional application-specific information sent encrypted and authenticated to the client
 - session_key, the shared session secret
 
 Steps:
@@ -1439,7 +1439,7 @@ Input:
 - server_private_key, the server's private key
 - client_identity, the optional encoded client identity, which is set to its public key if not specified
 - client_public_key, the client's public key
-- server_info, the optional server_info to send to the client. This will be encrypted and authenticated
+- server_info, optional application-specific information sent encrypted and authenticated to the client
 - ke1, a KE1 message structure
 - credential_response, a CredentialResponse structure
 
