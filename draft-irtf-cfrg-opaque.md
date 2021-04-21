@@ -1204,9 +1204,9 @@ The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 Preamble(client_identity, ke1, server_identity, inner_ke2)
 
 Input:
-- client_identity,  the optional encoded client identity, which is set to its public key if not specified
+- client_identity, the optional encoded client identity, which is set to client_public_key if not specified
 - KE1, a KE1 message structure
-- server_identity, the optional encoded server identity, which is set to its public key if not specified
+- server_identity, the optional encoded server identity, which is set to server_public_key if not specified
 - inner_ke2, a inner_ke2 structure as defined in KE2
 
 Output:
@@ -1302,8 +1302,8 @@ State:
 
 Input:
 - password, an opaque byte string containing the client's password
-- client_identity, the optional encoded client identity, which is set to its public key if not specified
-- server_identity, the optional encoded server identity, which is set to its public key if not specified
+- client_identity, the optional encoded client identity, which is set to client_public_key if not specified
+- server_identity, the optional encoded server identity, which is set to server_public_key if not specified
 - ke1, a KE1 message structure
 - ke2, a KE2 message structure
 
@@ -1353,9 +1353,9 @@ State:
 - state, a ClientState structure
 
 Input:
-- client_identity,  the optional encoded client identity, which is set to its public key if not specified
+- client_identity, the optional encoded client identity, which is set to client_public_key if not specified
 - client_private_key, the client's private key
-- server_identity, the optional encoded server identity, which is set to its public key if not specified
+- server_identity, the optional encoded server identity, which is set to server_public_key if not specified
 - server_public_key, the server's public key
 - ke1, a KE1 message structure
 - ke2, a KE2 message structure
@@ -1385,7 +1385,7 @@ Steps:
 ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed)
 
 Input:
-- server_identity, the optional encoded server identity, which is set to its public key if nil
+- server_identity, the optional encoded server identity, which is set to server_public_key if nil
 - server_private_key, the server's private key
 - server_public_key, the server's public key
 - record, the client's RegistrationUpload structure
@@ -1435,9 +1435,9 @@ State:
 - state, a ServerState structure
 
 Input:
-- server_identity, the optional encoded server identity, which is set to its public key if not specified
+- server_identity, the optional encoded server identity, which is set to server_public_key if not specified
 - server_private_key, the server's private key
-- client_identity, the optional encoded client identity, which is set to its public key if not specified
+- client_identity, the optional encoded client identity, which is set to client_public_key if not specified
 - client_public_key, the client's public key
 - server_info, optional application-specific information sent encrypted and authenticated to the client
 - ke1, a KE1 message structure
