@@ -1402,8 +1402,6 @@ Steps:
 3. Output (ke2, client_info)
 ~~~
 
-Servers MUST NOT use `session_key` unless `OPAQUEServerFinalize` returns `true`.
-
 ~~~
 ServerFinish(ke3)
 
