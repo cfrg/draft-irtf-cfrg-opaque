@@ -1521,9 +1521,6 @@ Steps:
 2. ke2, client_info = Response(server_identity, server_private_key, client_identity, record.client_public_key, server_info, KE1, response)
 3. Output (ke2, client_info)
 
-   Servers MUST NOT use "session_key" unless "OPAQUEServerFinalize"
-   returns "true".
-
 ServerFinish(ke3)
 
 State:
