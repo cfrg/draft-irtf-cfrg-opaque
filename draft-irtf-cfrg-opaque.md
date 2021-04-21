@@ -1225,7 +1225,7 @@ Steps:
 
 #### Shared Secret Derivation
 
-The OPAQUE-3DH shared secret derive during the key exchange protocol is computed
+The OPAQUE-3DH shared secret derived during the key exchange protocol is computed
 using the following function.
 
 ~~~
@@ -7078,4 +7078,3 @@ session_key: 7761e4a34ac13a92db8ee44ac9c2868fd46b380b611672df0a42cf15
 063247f86cadd80062cfb47827cc1550b8dbb8b332827ce348f90621b4dbcc0a2ab30
 b74
 ~~~
-
