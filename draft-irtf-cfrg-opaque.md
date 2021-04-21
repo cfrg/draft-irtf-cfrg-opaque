@@ -902,8 +902,8 @@ public keys must be Diffie-Hellman keys. In the end, the client proves its
 knowledge of the password, and both client and server agree on a mutually authenticated
 shared secret key.
 
-OPAQUE produces two outputs: a session secret and an export key. The export key is only 
-available to the client, and may be used for additional application-specific purposes, 
+OPAQUE produces two outputs: a session secret and an export key. The export key is only
+available to the client, and may be used for additional application-specific purposes,
 as outlined in {{export-key-usage}}.
 The output `export_key` MUST NOT be used in any way before the MAC value in the
 envelope is validated. See {{envelope-encryption}} for more details about this requirement.
@@ -1113,7 +1113,7 @@ Note that the Label parameter is not a NULL-terminated string.
 OPAQUE-3DH is implemented using a suitable prime order group. All operations in
 the key derivation steps in {{derive-3dh}} are performed in this group and
 represented here using multiplicative notation. The output of OPAQUE-3DH is a
-session secret `session_key` and export key `export_key`, where `export_key` is 
+session secret `session_key` and export key `export_key`, where `export_key` is
 only available to the client.
 
 The parameters Npk and Nsk are set to be equal to the size of an element and
