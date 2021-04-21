@@ -1358,7 +1358,7 @@ Steps:
 
 5.2.2.2.  Shared Secret Derivation
 
-   The OPAQUE-3DH shared secret derive during the key exchange protocol
+   The OPAQUE-3DH shared secret derived during the key exchange protocol
    is computed using the following function.
 
    TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
