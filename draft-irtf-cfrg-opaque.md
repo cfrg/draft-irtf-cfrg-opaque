@@ -1366,7 +1366,7 @@ Steps:
 2. server_secret, server_keyshare = GenerateKeyPair()
 3. Create inner_ke2 ike2 with (credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, KE1, server_identity, ike2)
-5. ikm = ServerIKM(server_secret, server_private_key, KE1.client_keyshare, client_public_key)
+5. ikm = TripleDHIKM(server_secret, KE1.client_keyshare, server_private_key, KE1.client_keyshare, server_secret, client_public_key)
 6. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
 7. pad = Expand(handshake_encrypt_key, "EncryptionPad", len(server_info))
 8. enc_server_info = xor(pad, server_info)
@@ -1397,7 +1397,7 @@ Output:
 - session_key, the shared session secret
 
 Steps:
-1. ikm = ClientIKM(client_secret, client_private_key, KE2.server_keyshare, server_public_key)
+1. ikm = TripleDHIKM(client_secret, KE2.server_keyshare, client_secret, server_public_key, client_private_key, KE2.server_keyshare)
 2. preamble = Preamble(client_identity, KE1, server_identity, KE2.inner_ke2)
 3. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(concat(preamble, KE2.enc_server_info))
@@ -1423,46 +1423,6 @@ Output:
 
 Steps:
 1. Output !ct_equal(KE3.client_mac, expected_client_mac)
-~~~
-
-###### Helper functions {#opaque-3dh-helper-functions)
-
-~~~
-ServerIKM(server_secret, server_private_key, client_keyshare, client_public_key)
-
-Input:
-- server_secret, The server's ephemeral secret key of the Diffie-Hellman key exchange
-- server_private_key, The server's long-term AKE private key
-- client_keyshare, The client's ephemeral public key of the Diffie-Hellman key exchange
-- client_public_key, The client's long-term AKE public key
-
-Output:
-- ikm, input key material for the server
-
-Steps:
-1. p1 = server_secret * client_keyshare
-2. p2 = server_private_key * client_keyshare
-3. p3 = server_secret * client_public_key
-4. Output concat( p1, p2, p3 )
-~~~
-
-~~~
-ClientIKM(client_secret, client_private_key, server_keyshare, server_public_key)
-
-Input:
-- client_secret, The client's ephemeral secret key of the Diffie-Hellman key exchange
-- client_private_key, The client's long-term AKE private key
-- server_keyshare, The server's ephemeral public key of the Diffie-Hellman key exchange
-- server_public_key, The server's long-term AKE public key
-
-Output:
-- ikm, input key material for the client
-
-Steps:
-1. p1 = client_secret * server_keyshare
-2. p2 = client_secret * server_public_key
-3. p3 = client_private_key * server_keyshare
-4. Output concat( p1, p2, p3 )
 ~~~
 
 ###### OPAQUE-3DH Key Schedule Utility Functions
@@ -1513,6 +1473,23 @@ Steps:
                      I2OSP(len(server_identity), 2), server_identity,
                      KE2.inner_ke2)
 2. Output preamble
+~~~
+
+~~~
+TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
+
+Input:
+- skx, scalar to be multiplied with their corresponding pkx
+- pkx, element to be multiplied with their corresponding skx 
+
+Output:
+- ikm, input key material
+
+Steps:
+1. dh1 = sk1 * pk1
+2. dh2 = sk2 * pk2
+3. dh3 = sk3 * pk3
+4. Output concat( dh1, dh2, dh3 )
 ~~~
 
 ~~~
