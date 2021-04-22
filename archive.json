@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-18T01:05:21.343211+00:00",
+  "timestamp": "2021-04-22T01:04:48.255622+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4395,15 +4395,15 @@
       "id": "MDU6SXNzdWU4Mjc5MDAwNzI=",
       "title": "Hash output lengths",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/158",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "bytemare",
-      "authorAssociation": "CONTRIBUTOR",
+      "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "The new interfaces introduced in #155 decouple the hashing function from the underlying hash functions used in KDF and MAC. This opens the possibility to use an XOF for hashing. Per definition, they don't have a fixed size output, so a size for their use should be set.\r\n\r\nI suggest we also set 'length dependencies' between the output lengths and desired key lengths. For example, the `Expand()` output that yields `auth_key` should be of sufficient size for `MAC()`, and so on.\r\n\r\ncc @chris-wood @kevinlewi ",
       "createdAt": "2021-03-10T15:18:51Z",
-      "updatedAt": "2021-03-10T15:18:51Z",
-      "closedAt": null,
+      "updatedAt": "2021-04-21T14:12:47Z",
+      "closedAt": "2021-04-21T14:12:47Z",
       "comments": []
     },
     {
@@ -4677,6 +4677,184 @@
       "createdAt": "2021-04-14T19:49:23Z",
       "updatedAt": "2021-04-14T19:49:29Z",
       "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 176,
+      "id": "MDU6SXNzdWU4NjA4MzM5NjY=",
+      "title": "Test vectors: client_public_key should be an intermediate value",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/176",
+      "state": "CLOSED",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "In all of the test vectors, client_public_key is under \"Input Values\", but it should be an \"Intermediate Value\" instead.\r\n\r\ncc: @chris-wood ",
+      "createdAt": "2021-04-19T02:07:41Z",
+      "updatedAt": "2021-04-20T14:30:47Z",
+      "closedAt": "2021-04-20T14:30:47Z",
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This is only true in internal mode. It's an input otherwise. Can you please send a PR to fix?",
+          "createdAt": "2021-04-19T02:09:58Z",
+          "updatedAt": "2021-04-19T02:09:58Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I see, I thought this would be true of external mode, given the following current text:\r\n\r\n\r\n> External Key mode {#external-mode}\r\n> This mode allows applications to import custom keys for the client. This specification only imports the client's private key and > internally recovers the corresponding public key. Implementations are free to import both and thus spare a scalar multiplication at registration. In this case, the functions FinalizeRequest(), CreateEnvelope(), and BuildInnerEnvelope() must be adapted accordingly.\r\n\r\nPerhaps we should also update that to make it more clear that both client_private_key and client_public_key are inputs in external mode?",
+          "createdAt": "2021-04-19T02:49:06Z",
+          "updatedAt": "2021-04-19T02:49:06Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "The private key is all that's necessary, I think. That text says that APIs can let clients import the public key, too. That's totally up to the implementation. I'm not sure off hand what further clarification is needed, so can you send a PR? ",
+          "createdAt": "2021-04-19T02:54:25Z",
+          "updatedAt": "2021-04-19T02:54:25Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Sure, just want to clarify the change exactly since I think I am slightly confused by the above statements:\r\n\r\n> This is only true in internal mode. It's an input otherwise.\r\n\r\nThis seems to indicate that client_public_key for external mode *should* remain as an input for the test vectors section\r\n\r\n> The private key is all that's necessary, I think. ... I'm not sure off hand what further clarification is needed,\r\n\r\nThis seems to indicate that client_public_key for external mode *should not* remain as an input for the test vectors section\r\n\r\nWhich should it be?",
+          "createdAt": "2021-04-19T04:26:20Z",
+          "updatedAt": "2021-04-19T04:26:20Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I agree that the pubkey _can_ be checked as an intermediate value. For the external mode, even if it's given it will eventually pop back up and can be tested the same way as for the internal mode.\n\nIn the internal mode, it will **always** be an intermediate value, and **sometimes** in the external mode.",
+          "createdAt": "2021-04-19T08:10:58Z",
+          "updatedAt": "2021-04-19T08:10:58Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> In the internal mode, it will always be an intermediate value, and sometimes in the external mode.\r\n\r\nThis. :-)",
+          "createdAt": "2021-04-19T13:33:41Z",
+          "updatedAt": "2021-04-19T13:33:41Z"
+        }
+      ]
+    },
+    {
+      "number": 177,
+      "id": "MDU6SXNzdWU4NjA4NDQwOTE=",
+      "title": "Serialization of envelope: swap ordering of inner_env and auth_tag?",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/177",
+      "state": "CLOSED",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Currently, the serialization of the envelope is defined as follows:\r\n```\r\nstruct {\r\n EnvelopeMode mode;\r\n opaque nonce[Nn];\r\n opaque auth_tag[Nm];\r\n InnerEnvelope inner_env;\r\n} Envelope;\r\n```\r\n\r\nAny reason why auth_tag is not at the end of this struct? Would it suffice to put it at the end, after the inner_env parameter?\r\n\r\ncc: @bytemare , @chris-wood ",
+      "createdAt": "2021-04-19T02:37:04Z",
+      "updatedAt": "2021-04-20T21:19:50Z",
+      "closedAt": "2021-04-20T21:19:50Z",
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Maybe I should have specified this somewhere, as you're not the first asking this :) ( someone else asked this somewhere in the comments of the PR)\n\nThe reason the authentication tag is at this place is that it will always be exactly there, regardless of the envelope mode (and thus the inner_envelope length), since `mode`, `nonce`, and `auth_tag` will always have the same length. I believe this makes deserialization a bit easier and might avoid deserialization errors in implementations.\n\nWhat do you think?",
+          "createdAt": "2021-04-19T07:12:51Z",
+          "updatedAt": "2021-04-19T07:12:51Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "After discussions offline, and with regard to #180 , the application should provide and specify the envelope mode, and thus know about the inner envelope's length. The auth tag is therefore not required anymore to be in a fixed position and can safely be put back at the end of the envelope.",
+          "createdAt": "2021-04-19T23:39:41Z",
+          "updatedAt": "2021-04-19T23:39:41Z"
+        }
+      ]
+    },
+    {
+      "number": 179,
+      "id": "MDU6SXNzdWU4NjIxMDMzODU=",
+      "title": "Align serialized OPRF group element in messages with other representations",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/179",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Currently, OPRF elements have a non-specified fixed length and format in messages, but public keys have an indicated size.\r\n\r\ne.g.\r\n\r\n```\r\nstruct {\r\n    SerializedElement data;\r\n    opaque server_public_key[Npk];\r\n} RegistrationResponse;\r\n```\r\n\r\nI suggest we go for the `opaque name[Npk]` format for OPRF elements as well",
+      "createdAt": "2021-04-19T23:28:10Z",
+      "updatedAt": "2021-04-20T14:32:47Z",
+      "closedAt": "2021-04-20T14:32:47Z",
+      "comments": []
+    },
+    {
+      "number": 180,
+      "id": "MDU6SXNzdWU4NjIxMTE1Nzk=",
+      "title": "Fix mode to application instanciation",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/180",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Different envelope modes yield different inner-envelope lengths. This difference leaks when an application changes modes, and breaks a privacy property of the user enumeration mitigation.\r\n\r\nHence, if an application implements the client enumeration mitigation, it must stick to a single mode. This means it's part of the instance configuration and makes its specification inside the envelope redundant and unnecessary.",
+      "createdAt": "2021-04-19T23:34:33Z",
+      "updatedAt": "2021-04-20T23:51:54Z",
+      "closedAt": "2021-04-20T23:51:54Z",
+      "comments": []
+    },
+    {
+      "number": 181,
+      "id": "MDU6SXNzdWU4NjIxNjQ3NzI=",
+      "title": "Specify that the export key is client-only",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/181",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Reading the current text in the draft, one could believe that the `export_key` is produced by both client and server. This should be fixed to makes it clear it's only available to the client.",
+      "createdAt": "2021-04-20T00:18:03Z",
+      "updatedAt": "2021-04-20T14:30:17Z",
+      "closedAt": "2021-04-20T14:30:17Z",
+      "comments": []
+    },
+    {
+      "number": 184,
+      "id": "MDU6SXNzdWU4NjIyMTI0MjA=",
+      "title": "Specify envelope length in message structures",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/184",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Currently, the envelope has not specified any length in the message specifications, and I believe that's because it's a newly available value. For consistency, we should add its serialized size `Ne`.",
+      "createdAt": "2021-04-20T00:55:53Z",
+      "updatedAt": "2021-04-20T13:57:52Z",
+      "closedAt": "2021-04-20T13:57:52Z",
+      "comments": []
+    },
+    {
+      "number": 195,
+      "id": "MDU6SXNzdWU4NjQzMjY4MDg=",
+      "title": "Convert all instances of \"opaque\" to \"uint8\" in struct definitions",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/195",
+      "state": "CLOSED",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-21T21:42:10Z",
+      "updatedAt": "2021-04-22T00:08:49Z",
+      "closedAt": "2021-04-22T00:08:49Z",
       "comments": []
     }
   ],
@@ -13837,25 +14015,35 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NjEzMTc2OTA2",
       "title": "Update the OPAQUE-3DH Instantiation section",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/172",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "bytemare",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
-      "labels": [],
+      "labels": [
+        "editorial"
+      ],
       "body": "- Added protocol compilation at login\r\n- interface for main API\r\n- high level composition of credential recovery and AKE\r\n- Write out various functions\r\n- Introduce RandomPrivateKey() to create a fresh key for EDH\r\n- Move to CamelCase and space-less magic strings\r\n- Clean-up leftover mishaps",
       "createdAt": "2021-04-12T00:15:55Z",
-      "updatedAt": "2021-04-16T14:40:38Z",
+      "updatedAt": "2021-04-21T14:43:39Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "baseRefOid": "4f147815162327daefbcb61e3ae9d669951cdecd",
       "headRepository": "bytemare/draft-irtf-cfrg-opaque",
       "headRefName": "ake-rewrite",
-      "headRefOid": "cb32b1b834cdd3dc8c35b9661ba002e52c28de4f",
-      "closedAt": null,
+      "headRefOid": "d3691fd3230b0ff64d40548f00370619102e85c5",
+      "closedAt": "2021-04-21T14:43:38Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closing due to merging bug. Transferred to #193 ",
+          "createdAt": "2021-04-21T14:43:38Z",
+          "updatedAt": "2021-04-21T14:43:38Z"
+        }
+      ],
       "reviews": [
         {
           "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM2OTQ4NzAx",
@@ -13873,91 +14061,91 @@
               "originalPosition": 29,
               "body": "```suggestion\r\n```",
               "createdAt": "2021-04-15T17:26:53Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 19,
               "body": "Do we need the \"OPAQUE\" prefix for these functions? This is part of the OPAQUE spec, so that seems implied. Perhaps just `ClientInit`, `ServerInit`, `ClientFinish`, and `ServerFinish`?",
               "createdAt": "2021-04-15T17:28:23Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 32,
               "body": "```suggestion\r\nThe `ke1`, `ke2`, and `ke3` output values are the protocol messages sent between client and server.\r\n```",
               "createdAt": "2021-04-15T17:59:04Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 34,
               "body": "The function names in this paragraph seem outdated?",
               "createdAt": "2021-04-15T18:00:14Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 37,
               "body": "Since these are internal values, perhaps we can hide them under a \"client_state\" and \"server_state\" structure? Otherwise, APIs might be tempted to export them for applications to use.",
               "createdAt": "2021-04-15T18:00:56Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 101,
               "body": "As above, I would recommend folding all this into a \"state\" or \"context\" object.",
               "createdAt": "2021-04-15T18:06:47Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 114,
               "body": "```suggestion\r\n- server_identity, the optional encoded server identity, which is set to its public key if nil\r\n```",
               "createdAt": "2021-04-15T18:07:04Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 134,
               "body": "```suggestion\r\nServers MUST NOT use `session_key` unless `OPAQUEServerFinalize` returns `true`.\r\n```",
               "createdAt": "2021-04-15T18:07:48Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 140,
               "body": "Make this a state/context object, too?",
               "createdAt": "2021-04-15T18:08:07Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 197,
               "body": "Should we reference the dependencies section, where this is specified?",
               "createdAt": "2021-04-15T18:09:10Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 330,
               "body": "Maybe we can add \"GenerateKeyPair\" to the AKE dependency? For example:\r\n\r\n```\r\nGenerateKeyPair(): Return a randomly generate private and public key pair. This\r\ncan be implemented by generating a random private key `sk` and then computing\r\n`pk = RecoverPublicKey(sk)`.\r\n```",
               "createdAt": "2021-04-15T18:11:11Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 331,
               "body": "`ephemeral_client_secret_key` is undefined?",
               "createdAt": "2021-04-15T18:11:18Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 213,
               "body": "The \"AKE\" prefix is missing here. I think it reads better without it, so maybe we drop \"AKE\" elsewhere?",
               "createdAt": "2021-04-15T18:12:20Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 446,
               "body": "```suggestion\r\n```\r\n\r\nThis should just go in the AKE dependency section, I think. (See my comment above about GenerateKeyPair.)",
               "createdAt": "2021-04-15T18:16:35Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             },
             {
               "originalPosition": 449,
               "body": "Can we use the same function for both client and server here? In my implementation, that's what I do.",
               "createdAt": "2021-04-15T18:16:53Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         },
@@ -13977,7 +14165,7 @@
               "originalPosition": 19,
               "body": "No, and I wanted to discuss that. I like your suggestions, let's do it this way.",
               "createdAt": "2021-04-15T22:33:31Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         },
@@ -13997,7 +14185,7 @@
               "originalPosition": 213,
               "body": "Yes, let's drop it",
               "createdAt": "2021-04-15T22:36:41Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         },
@@ -14017,7 +14205,7 @@
               "originalPosition": 197,
               "body": "Maybe this phrase is not even necessary, we could drop it",
               "createdAt": "2021-04-15T23:02:21Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         },
@@ -14037,7 +14225,7 @@
               "originalPosition": 331,
               "body": "it's `client_secret`, of course \ud83e\udd26 ",
               "createdAt": "2021-04-15T23:41:56Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         },
@@ -14057,7 +14245,7 @@
               "originalPosition": 446,
               "body": "Will do after rebase",
               "createdAt": "2021-04-15T23:43:14Z",
-              "updatedAt": "2021-04-16T14:33:17Z"
+              "updatedAt": "2021-04-20T23:38:52Z"
             }
           ]
         }
@@ -14104,24 +14292,28 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NjE3MTk5NDQ5",
       "title": "Clarify hash function requirements.",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/175",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
-      "labels": [],
+      "labels": [
+        "editorial"
+      ],
       "body": "Closes #158.",
       "createdAt": "2021-04-16T23:59:06Z",
-      "updatedAt": "2021-04-16T23:59:58Z",
+      "updatedAt": "2021-04-21T14:12:48Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "caw/hash-dependencies",
-      "headRefOid": "a21e56a0079ba8c27f2c6768b7c5479bf99d2161",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "6d57454737e47170ddb8b97f8bd6982f9e3a24ed",
+      "closedAt": "2021-04-21T14:12:48Z",
+      "mergedAt": "2021-04-21T14:12:47Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "9a3fc970ce709492858e614b7af3e54da6b74da6"
+      },
       "comments": [],
       "reviews": [
         {
@@ -14140,7 +14332,7 @@
               "originalPosition": 296,
               "body": "This is the main change.",
               "createdAt": "2021-04-16T23:59:44Z",
-              "updatedAt": "2021-04-16T23:59:45Z"
+              "updatedAt": "2021-04-20T23:52:43Z"
             }
           ]
         },
@@ -14160,9 +14352,972 @@
               "originalPosition": 253,
               "body": "This is the second part of this change.",
               "createdAt": "2021-04-16T23:59:58Z",
-              "updatedAt": "2021-04-16T23:59:58Z"
+              "updatedAt": "2021-04-20T23:52:43Z"
             }
           ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwNDc5NTUw",
+          "commit": {
+            "abbreviatedOid": "a21e56a"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-20T22:41:10Z",
+          "updatedAt": "2021-04-20T22:41:28Z",
+          "comments": [
+            {
+              "originalPosition": 253,
+              "body": "What is `security parameter` referring to?",
+              "createdAt": "2021-04-20T22:41:10Z",
+              "updatedAt": "2021-04-20T23:52:43Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwNTE3ODk3",
+          "commit": {
+            "abbreviatedOid": "a21e56a"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-20T23:52:28Z",
+          "updatedAt": "2021-04-20T23:52:29Z",
+          "comments": [
+            {
+              "originalPosition": 253,
+              "body": "```suggestion\r\n  if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.\r\n```",
+              "createdAt": "2021-04-20T23:52:29Z",
+              "updatedAt": "2021-04-20T23:52:43Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwNTE4MTM1",
+          "commit": {
+            "abbreviatedOid": "a21e56a"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-20T23:53:07Z",
+          "updatedAt": "2021-04-20T23:53:07Z",
+          "comments": [
+            {
+              "originalPosition": 253,
+              "body": "Clarified that it's the target security parameter for the OPAQUE configuration. We're not (yet) crisp about that, but we can always expand on that later.",
+              "createdAt": "2021-04-20T23:53:07Z",
+              "updatedAt": "2021-04-20T23:53:07Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwOTIwMTIw",
+          "commit": {
+            "abbreviatedOid": "6d57454"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-21T10:45:01Z",
+          "updatedAt": "2021-04-21T10:45:01Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 178,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4NjY0MTMx",
+      "title": "Put client_public_key in intermediate test values for all modes",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/178",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #176",
+      "createdAt": "2021-04-19T22:51:44Z",
+      "updatedAt": "2021-04-20T14:30:48Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/intermiate-pkc",
+      "headRefOid": "4621f1ee4be0c71e90b299d4b300d34ecdd05e88",
+      "closedAt": "2021-04-20T14:30:48Z",
+      "mergedAt": "2021-04-20T14:30:47Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "5fd6fd09022a552c1052f864992f46852f3b9a12"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM5Njk2OTkz",
+          "commit": {
+            "abbreviatedOid": "4621f1e"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-20T09:05:01Z",
+          "updatedAt": "2021-04-20T09:05:01Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDI3NzI3",
+          "commit": {
+            "abbreviatedOid": "4621f1e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-20T14:30:44Z",
+          "updatedAt": "2021-04-20T14:30:44Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 182,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4Nzc3ODMz",
+      "title": "Mode configuration",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/182",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "- the mode must be part of the application configuration and static (not change within the app's lifecycle)\r\n- don't include envelope mode in the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n\r\ncloses #180 ",
+      "createdAt": "2021-04-20T00:27:27Z",
+      "updatedAt": "2021-04-20T23:51:54Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "4f147815162327daefbcb61e3ae9d669951cdecd",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/config-mode",
+      "headRefOid": "d649872d77471cd68d012ac745ff1bc856488af7",
+      "closedAt": "2021-04-20T23:51:54Z",
+      "mergedAt": "2021-04-20T23:51:54Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "58150d3a0a98bdee75e8f45a61b6a59c9943bfd6"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDMyNjcz",
+          "commit": {
+            "abbreviatedOid": "f7624d1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM pending test vector updates!",
+          "createdAt": "2021-04-20T14:34:33Z",
+          "updatedAt": "2021-04-20T14:34:33Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 183,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4NzkxODcz",
+      "title": "Put envelope auth_tag back to envelope end",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/183",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #177 ",
+      "createdAt": "2021-04-20T00:39:54Z",
+      "updatedAt": "2021-04-20T21:19:50Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "b1c49e4d98d35b671857fe4a37f38e0834090d62",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/env-auth-tag-back",
+      "headRefOid": "0031f8ae74e6eeccc502eca01d72e480aea218e9",
+      "closedAt": "2021-04-20T21:19:50Z",
+      "mergedAt": "2021-04-20T21:19:50Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "c4f22fd6edf77915abc9afae5addb05a1cc31d48"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM5NjkyNzUz",
+          "commit": {
+            "abbreviatedOid": "8fb3470"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM.\r\n\r\nHowever, this is not just an editorial change, so we need to adjust the test vectors too right?",
+          "createdAt": "2021-04-20T09:00:46Z",
+          "updatedAt": "2021-04-20T09:01:19Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDMzMTQy",
+          "commit": {
+            "abbreviatedOid": "8fb3470"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM pending test vector updates!",
+          "createdAt": "2021-04-20T14:34:54Z",
+          "updatedAt": "2021-04-20T14:34:54Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwNDE1ODkz",
+          "commit": {
+            "abbreviatedOid": "b48199f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-20T20:58:08Z",
+          "updatedAt": "2021-04-20T20:58:08Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 185,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4ODEzOTk5",
+      "title": "Consistent format for OPRF group elements",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/185",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "- introduce Noe, the serialized element length in the OPRF group\r\n- deleted mention of SerializedScalar, since it's not used\r\n- deleted mention of SerializedElement, since it's not used\r\n- specify OPRF group element lengths in message structures\r\n\r\nCloses #179 ",
+      "createdAt": "2021-04-20T00:59:39Z",
+      "updatedAt": "2021-04-20T14:32:47Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/oprf-point-format",
+      "headRefOid": "966ead1faa641598b250134f54652600335ea5ec",
+      "closedAt": "2021-04-20T14:32:47Z",
+      "mergedAt": "2021-04-20T14:32:47Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "b1c49e4d98d35b671857fe4a37f38e0834090d62"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM5OTk1MjIx",
+          "commit": {
+            "abbreviatedOid": "966ead1"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-20T14:05:28Z",
+          "updatedAt": "2021-04-20T14:05:29Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "@kevinlewi Nok is the 'serialized' size, right?",
+              "createdAt": "2021-04-20T14:05:28Z",
+              "updatedAt": "2021-04-20T14:05:29Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDI4NTQx",
+          "commit": {
+            "abbreviatedOid": "966ead1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-20T14:31:22Z",
+          "updatedAt": "2021-04-20T14:31:23Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "\ud83d\udc4d ",
+              "createdAt": "2021-04-20T14:31:22Z",
+              "updatedAt": "2021-04-20T14:31:23Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDMwMjYy",
+          "commit": {
+            "abbreviatedOid": "966ead1"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-20T14:32:43Z",
+          "updatedAt": "2021-04-20T14:32:43Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 186,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4ODIxNDg4",
+      "title": "Specify envelope length in RegistrationUpload",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/186",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Closes #184 ",
+      "createdAt": "2021-04-20T01:06:10Z",
+      "updatedAt": "2021-04-20T13:57:38Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/envelope-ne",
+      "headRefOid": "46bd3430d6e2a64b6f3481d2bb456224b5112cc7",
+      "closedAt": "2021-04-20T13:57:38Z",
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Thanks @kevinlewi ! I wasn't sure about that :)",
+          "createdAt": "2021-04-20T13:57:28Z",
+          "updatedAt": "2021-04-20T13:57:28Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM5NjkwODc5",
+          "commit": {
+            "abbreviatedOid": "46bd343"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "According to https://tools.ietf.org/html/rfc8446, Section 3, this change would mean that the field consists of `Ne` Envelope structs. I believe the current state of the draft is correct as it stands.",
+          "createdAt": "2021-04-20T08:58:57Z",
+          "updatedAt": "2021-04-20T08:58:57Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 187,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE4ODMwNDIz",
+      "title": "clarify export_key client exclusivity",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/187",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "Closes #181 ",
+      "createdAt": "2021-04-20T01:14:00Z",
+      "updatedAt": "2021-04-20T14:30:17Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/client-export-key",
+      "headRefOid": "c82041ed16dddee12322b9b21d6c69e0c5c16841",
+      "closedAt": "2021-04-20T14:30:17Z",
+      "mergedAt": "2021-04-20T14:30:17Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "4828978cc350f6ef827a620b9224ac921683d86c"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjM5NjkxODgy",
+          "commit": {
+            "abbreviatedOid": "c82041e"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM",
+          "createdAt": "2021-04-20T08:59:55Z",
+          "updatedAt": "2021-04-20T08:59:55Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQwMDI2OTk3",
+          "commit": {
+            "abbreviatedOid": "c82041e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-20T14:30:09Z",
+          "updatedAt": "2021-04-20T14:30:09Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 188,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE5NzYwOTM5",
+      "title": "Revert \"Mode configuration\"",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/188",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Reverts cfrg/draft-irtf-cfrg-opaque#182",
+      "createdAt": "2021-04-20T23:55:56Z",
+      "updatedAt": "2021-04-20T23:56:31Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "58150d3a0a98bdee75e8f45a61b6a59c9943bfd6",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "revert-182-dbz/config-mode",
+      "headRefOid": "51c0651a461af225349502cea0c2398d32d2f3e0",
+      "closedAt": "2021-04-20T23:56:31Z",
+      "mergedAt": "2021-04-20T23:56:31Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "7343ed1ff210a2e6a2f78d9874069d2eb8a8caeb"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 189,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE5NzYzMjA1",
+      "title": "Revert #183.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/189",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-21T00:03:15Z",
+      "updatedAt": "2021-04-21T00:03:28Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "7343ed1ff210a2e6a2f78d9874069d2eb8a8caeb",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/revert-183",
+      "headRefOid": "734acaf7c108ad0d39384dda96f5fe62a1f2b4f4",
+      "closedAt": "2021-04-21T00:03:28Z",
+      "mergedAt": "2021-04-21T00:03:28Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "388bc8099747f986c2e5a1d97416b97825577482"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 190,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE5NzcxOTA2",
+      "title": "Update envelope mode integration",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/190",
+      "state": "CLOSED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "- the mode must be part of the application configuration and static\r\n- don't include envelope mode form the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n- updated poc and vectors",
+      "createdAt": "2021-04-21T00:23:44Z",
+      "updatedAt": "2021-04-21T00:26:09Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "388bc8099747f986c2e5a1d97416b97825577482",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/config-mode-2",
+      "headRefOid": "513d5a10cadbeb5ef9356254246ff4cbeca8282a",
+      "closedAt": "2021-04-21T00:26:09Z",
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 191,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE5NzgyMTE0",
+      "title": "Update envelope mode integration",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/191",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "- the mode must be part of the application configuration and static\r\n- don't include envelope mode form the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n- updated poc and vectors",
+      "createdAt": "2021-04-21T01:01:05Z",
+      "updatedAt": "2021-04-21T14:31:30Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "4ff533d3b5d09142ba79ba668d8f4276331d51e2",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/config-mode-3",
+      "headRefOid": "7e3359e99524324a9aa76adb26b575e66ea775ba",
+      "closedAt": "2021-04-21T14:31:30Z",
+      "mergedAt": "2021-04-21T14:31:30Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "6d4e71d3248fde928dc1df600ca6fde68d7f6ea8"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 192,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjE5ODA4NDA4",
+      "title": "Put envelope auth_tag back to envelope end",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/192",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-21T02:29:47Z",
+      "updatedAt": "2021-04-21T14:13:17Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "388bc8099747f986c2e5a1d97416b97825577482",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/env-auth-tag-back-2",
+      "headRefOid": "3908192876e97c17adfceb172fee476a4a2a0bdd",
+      "closedAt": "2021-04-21T14:13:17Z",
+      "mergedAt": "2021-04-21T14:13:17Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "4ff533d3b5d09142ba79ba668d8f4276331d51e2"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxMTQ1MzA0",
+          "commit": {
+            "abbreviatedOid": "3908192"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-21T14:13:12Z",
+          "updatedAt": "2021-04-21T14:13:12Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 193,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIwMjc2MDY5",
+      "title": "Update the OPAQUE-3DH Instantiation section",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/193",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "- added protocol compilation at login\r\n- interface for the main API\r\n- high-level composition of credential recovery and AKE\r\n- write out various functions\r\n- introduce RandomPrivateKey() to create a fresh key for EDH\r\n- move to CamelCase and space-less magic strings\r\n- clean-up leftover mishaps\r\n\r\ncloses #172 ",
+      "createdAt": "2021-04-21T14:36:40Z",
+      "updatedAt": "2021-04-21T23:55:17Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "9f8c81de6bee3a6fac647affd7aba6b6a9a35ea2",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/ake-rewrite",
+      "headRefOid": "5ce326fb09f0876d5fc7090376c559c4071155ea",
+      "closedAt": "2021-04-21T23:55:16Z",
+      "mergedAt": "2021-04-21T23:55:16Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "5895adf00519a140e1f8eb5a07fe0aed6aadcfd3"
+      },
+      "comments": [
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "LGTM pending @kevinlewi's review!",
+          "createdAt": "2021-04-21T19:52:16Z",
+          "updatedAt": "2021-04-21T19:52:16Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxMTgwODQw",
+          "commit": {
+            "abbreviatedOid": "ddb268e"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T14:42:09Z",
+          "updatedAt": "2021-04-21T14:42:56Z",
+          "comments": [
+            {
+              "originalPosition": 48,
+              "body": "Since these are internal values, perhaps we can hide them under a \"client_state\" and \"server_state\" structure? Otherwise, APIs might be tempted to export them for applications to use.",
+              "createdAt": "2021-04-21T14:42:09Z",
+              "updatedAt": "2021-04-21T23:53:41Z"
+            },
+            {
+              "originalPosition": 419,
+              "body": "Can we use the same function for both client and server here? That's what we do in the POC",
+              "createdAt": "2021-04-21T14:42:49Z",
+              "updatedAt": "2021-04-21T23:53:41Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDUzOTAy",
+          "commit": {
+            "abbreviatedOid": "47618a3"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T19:32:53Z",
+          "updatedAt": "2021-04-21T19:32:54Z",
+          "comments": [
+            {
+              "originalPosition": 406,
+              "body": "```suggestion\r\n```",
+              "createdAt": "2021-04-21T19:32:53Z",
+              "updatedAt": "2021-04-21T23:53:41Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDY3NzUz",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-21T19:52:05Z",
+          "updatedAt": "2021-04-21T19:52:05Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTQ3MDIx",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T21:22:52Z",
+          "updatedAt": "2021-04-21T21:22:52Z",
+          "comments": [
+            {
+              "originalPosition": 461,
+              "body": "ke2",
+              "createdAt": "2021-04-21T21:22:52Z",
+              "updatedAt": "2021-04-21T23:53:41Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTQ5NjQz",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T21:24:02Z",
+          "updatedAt": "2021-04-21T21:24:03Z",
+          "comments": [
+            {
+              "originalPosition": 430,
+              "body": "client_info, the optional client-side information",
+              "createdAt": "2021-04-21T21:24:03Z",
+              "updatedAt": "2021-04-21T23:53:42Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTUwMDkx",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T21:24:14Z",
+          "updatedAt": "2021-04-21T21:24:14Z",
+          "comments": [
+            {
+              "originalPosition": 465,
+              "body": "server_info, the optional server-side information",
+              "createdAt": "2021-04-21T21:24:14Z",
+              "updatedAt": "2021-04-21T23:53:42Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTUyMTky",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T21:25:10Z",
+          "updatedAt": "2021-04-21T21:25:11Z",
+          "comments": [
+            {
+              "originalPosition": 287,
+              "body": "remove double-space between comma and \"the\"",
+              "createdAt": "2021-04-21T21:25:11Z",
+              "updatedAt": "2021-04-21T23:53:42Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTYyMDM0",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T21:29:35Z",
+          "updatedAt": "2021-04-21T21:29:35Z",
+          "comments": [
+            {
+              "originalPosition": 287,
+              "body": "Also, for descriptions of client_identity, can we say \"set to client_public_key if not specified\" instead of \"its public key\"? Same with server_identity",
+              "createdAt": "2021-04-21T21:29:35Z",
+              "updatedAt": "2021-04-21T23:53:42Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNTgyNjA5",
+          "commit": {
+            "abbreviatedOid": "07190b2"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM modulo the above comments!",
+          "createdAt": "2021-04-21T21:57:25Z",
+          "updatedAt": "2021-04-21T21:57:25Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 194,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIwNDM1MTEw",
+      "title": "Refactor and rearrange things.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/194",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-21T18:31:55Z",
+      "updatedAt": "2021-04-21T19:47:23Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "dbz/ake-rewrite",
+      "baseRefOid": "47618a3d0498efaef2f19412267fc0078ce102aa",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/dbz-refactor",
+      "headRefOid": "48b21ac362a582d5f4b8eaed6d958540f81cdc88",
+      "closedAt": "2021-04-21T19:47:22Z",
+      "mergedAt": "2021-04-21T19:47:22Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "07190b28e067eaca767bed2f002e80210054221a"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDM1NDk5",
+          "commit": {
+            "abbreviatedOid": "2320a07"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T19:08:09Z",
+          "updatedAt": "2021-04-21T19:08:09Z",
+          "comments": [
+            {
+              "originalPosition": 124,
+              "body": "If it's implicit, then maybe not return it at line 1075 :) (or add it at line 1076)",
+              "createdAt": "2021-04-21T19:08:09Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDQwNzM1",
+          "commit": {
+            "abbreviatedOid": "2320a07"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-04-21T19:15:27Z",
+          "updatedAt": "2021-04-21T19:36:04Z",
+          "comments": [
+            {
+              "originalPosition": 394,
+              "body": "```suggestion\r\nThe OPAQUE-3DH shared secret derived during the key exchange protocol is computed\r\n```",
+              "createdAt": "2021-04-21T19:15:27Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            },
+            {
+              "originalPosition": 422,
+              "body": "This function doesn't use Nx directly. Is it necessary specifying it here?",
+              "createdAt": "2021-04-21T19:17:10Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            },
+            {
+              "originalPosition": 461,
+              "body": "```suggestion\r\n- ke1, a KE1 message structure\r\n```",
+              "createdAt": "2021-04-21T19:21:01Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            },
+            {
+              "originalPosition": 147,
+              "body": "why these two?",
+              "createdAt": "2021-04-21T19:35:56Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDU4MDMw",
+          "commit": {
+            "abbreviatedOid": "a19ee3f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T19:38:46Z",
+          "updatedAt": "2021-04-21T19:38:46Z",
+          "comments": [
+            {
+              "originalPosition": 147,
+              "body": "Oh, right, it doesn't need them!",
+              "createdAt": "2021-04-21T19:38:46Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNDU4Njc0",
+          "commit": {
+            "abbreviatedOid": "a19ee3f"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-21T19:39:36Z",
+          "updatedAt": "2021-04-21T19:39:36Z",
+          "comments": [
+            {
+              "originalPosition": 422,
+              "body": "Nope -- removed.",
+              "createdAt": "2021-04-21T19:39:36Z",
+              "updatedAt": "2021-04-21T19:40:34Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 196,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIwNjQyMDI1",
+      "title": "Move opaque byte representations to uint8",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/196",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "closes #195 ",
+      "createdAt": "2021-04-22T00:08:04Z",
+      "updatedAt": "2021-04-22T00:08:49Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "5895adf00519a140e1f8eb5a07fe0aed6aadcfd3",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/opaque-2-uint8",
+      "headRefOid": "bdb4ed2cc6d8e31e48011799b85f27ba6ca7417b",
+      "closedAt": "2021-04-22T00:08:49Z",
+      "mergedAt": "2021-04-22T00:08:49Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "e221cfe3ab3fc632c5548929a6582dcec46a7098"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQxNjUwODk1",
+          "commit": {
+            "abbreviatedOid": "bdb4ed2"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-22T00:08:45Z",
+          "updatedAt": "2021-04-22T00:08:45Z",
+          "comments": []
         }
       ]
     }
