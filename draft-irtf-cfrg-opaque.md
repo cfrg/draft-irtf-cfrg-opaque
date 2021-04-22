@@ -425,9 +425,9 @@ These credential values are used in the `CleartextCredentials` structure as foll
 
 ~~~
 struct {
- opaque server_public_key[Npk];
- opaque server_identity<1..2^16-1>;
- opaque client_identity<1..2^16-1>;
+ uint8 server_public_key[Npk];
+ uint8 server_identity<1..2^16-1>;
+ uint8 client_identity<1..2^16-1>;
 } CleartextCredentials;
 ~~~
 
@@ -460,8 +460,8 @@ with names matching the values.
 
 ~~~
 struct {
- opaque server_identity;
- opaque client_identity;
+ uint8 server_identity;
+ uint8 client_identity;
 } Credentials;
 ~~~
 
@@ -473,9 +473,9 @@ whose structure is determined by the mode. Future modes MAY introduce alternate 
 
 ~~~
 struct {
- opaque nonce[Nn];
+ uint8 nonce[Nn];
  InnerEnvelope inner_env;
- opaque auth_tag[Nm];
+ uint8 auth_tag[Nm];
 } Envelope;
 ~~~
 
@@ -667,7 +667,7 @@ which is then stored encrypted in the `InnerEnvelope`. This encryption must foll
 
 ~~~
 struct {
- opaque encrypted_creds[Nsk];
+ uint8 encrypted_creds[Nsk];
 } InnerEnvelope;
 ~~~
 
@@ -771,7 +771,7 @@ Upon completion, S stores C's credentials for later use.
 
 ~~~
 struct {
-    opaque data[Noe];
+    uint8 data[Noe];
 } RegistrationRequest;
 ~~~
 
@@ -780,8 +780,8 @@ data
 
 ~~~
 struct {
-    opaque data[Noe];
-    opaque server_public_key[Npk];
+    uint8 data[Noe];
+    uint8 server_public_key[Npk];
 } RegistrationResponse;
 ~~~
 
@@ -793,8 +793,8 @@ server_public_key
 
 ~~~
 struct {
-    opaque client_public_key[Npk];
-    opaque masking_key[Nh];
+    uint8 client_public_key[Npk];
+    uint8 masking_key[Nh];
     Envelope envelope;
 } RegistrationUpload;
 ~~~
@@ -940,7 +940,7 @@ more detail.
 
 ~~~
 struct {
-    opaque data[Noe];
+    uint8 data[Noe];
 } CredentialRequest;
 ~~~
 
@@ -949,9 +949,9 @@ data
 
 ~~~
 struct {
-    opaque data[Noe];
-    opaque masking_nonce[Nn];
-    opaque masked_response[Npk + Ne];
+    uint8 data[Noe];
+    uint8 masking_nonce[Nn];
+    uint8 masked_response[Npk + Ne];
 } CredentialResponse;
 ~~~
 
@@ -1090,8 +1090,8 @@ clients and servers MUST NOT use any outputs from the protocol, such as `session
 
 ~~~
 struct {
-    opaque blind[Nok];
-    opaque client_secret[Nsk];
+    uint8 blind[Nok];
+    uint8 client_secret[Nsk];
     KE1 ke1;
 } ClientState;
 
@@ -1113,7 +1113,7 @@ configuration; see {{configurations}} for details.
 struct {
   CredentialRequest request;
   uint8 client_nonce[Nn];
-  opaque client_info<0..2^16-1>;
+  uint8 client_info<0..2^16-1>;
   uint8 client_keyshare[Npk];
 } KE1;
 ~~~
@@ -1138,7 +1138,7 @@ struct {
     uint8 server_nonce[Nn];
     uint8 server_keyshare[Npk];
   } inner_ke2;
-  opaque enc_server_info<0..2^16-1>;
+  uint8 enc_server_info<0..2^16-1>;
   uint8 server_mac[Nm];
 } KE2;
 ~~~
@@ -1189,7 +1189,7 @@ Where CustomLabel is specified as:
 struct {
    uint16 length = Length;
    opaque label<8..255> = "OPAQUE-" + Label;
-   opaque context<0..255> = Context;
+   uint8 context<0..255> = Context;
 } CustomLabel;
 
 Derive-Secret(Secret, Label, Transcript-Hash) =
