@@ -5,10 +5,10 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                                   K. Lewi
-Expires: 23 October 2021                                   Novi Research
+Expires: 24 October 2021                                   Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           21 April 2021
+                                                           22 April 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 October 2021.
+   This Internet-Draft will expire on 24 October 2021.
 
 Copyright Notice
 
@@ -574,9 +574,9 @@ Table of Contents
    structure as follows:
 
    struct {
-    opaque server_public_key[Npk];
-    opaque server_identity<1..2^16-1>;
-    opaque client_identity<1..2^16-1>;
+    uint8 server_public_key[Npk];
+    uint8 server_identity<1..2^16-1>;
+    uint8 client_identity<1..2^16-1>;
    } CleartextCredentials;
 
    The function CreateCleartextCredentials constructs a
@@ -607,8 +607,8 @@ Steps:
    values.
 
    struct {
-    opaque server_identity;
-    opaque client_identity;
+    uint8 server_identity;
+    uint8 client_identity;
    } Credentials;
 
 3.1.  Envelope Structure
@@ -619,9 +619,9 @@ Steps:
    "InnerEnvelope" contents.  "Envelope" is constructed as follows:
 
    struct {
-    opaque nonce[Nn];
+    uint8 nonce[Nn];
     InnerEnvelope inner_env;
-    opaque auth_tag[Nm];
+    uint8 auth_tag[Nm];
    } Envelope;
 
    nonce : A unique nonce of length "Nn" used to protect this Envelope.
@@ -824,7 +824,7 @@ Steps:
    recovered using the private key.
 
    struct {
-    opaque encrypted_creds[Nsk];
+    uint8 encrypted_creds[Nsk];
    } InnerEnvelope;
 
    encrypted_creds : Encrypted client_private_key.  Authentication of
@@ -926,14 +926,14 @@ Steps:
 4.2.1.  Registration Messages
 
    struct {
-       opaque data[Noe];
+       uint8 data[Noe];
    } RegistrationRequest;
 
    data  A serialized OPRF group element.
 
    struct {
-       opaque data[Noe];
-       opaque server_public_key[Npk];
+       uint8 data[Noe];
+       uint8 server_public_key[Npk];
    } RegistrationResponse;
 
    data  A serialized OPRF group element.
@@ -942,8 +942,8 @@ Steps:
       for the online authenticated key exchange stage.
 
    struct {
-       opaque client_public_key[Npk];
-       opaque masking_key[Nh];
+       uint8 client_public_key[Npk];
+       uint8 masking_key[Nh];
        Envelope envelope;
    } RegistrationUpload;
 
@@ -1086,15 +1086,15 @@ Steps:
 5.1.1.  Credential Retrieval Messages
 
    struct {
-       opaque data[Noe];
+       uint8 data[Noe];
    } CredentialRequest;
 
    data  A serialized OPRF group element.
 
    struct {
-       opaque data[Noe];
-       opaque masking_nonce[Nn];
-       opaque masked_response[Npk + Ne];
+       uint8 data[Noe];
+       uint8 masking_nonce[Nn];
+       uint8 masked_response[Npk + Ne];
    } CredentialResponse;
 
    data  A serialized OPRF group element.
@@ -1241,8 +1241,8 @@ Steps:
    named fields:
 
    struct {
-       opaque blind[Nok];
-       opaque client_secret[Nsk];
+       uint8 blind[Nok];
+       uint8 client_secret[Nsk];
        KE1 ke1;
    } ClientState;
 
@@ -1262,7 +1262,7 @@ Steps:
    struct {
      CredentialRequest request;
      uint8 client_nonce[Nn];
-     opaque client_info<0..2^16-1>;
+     uint8 client_info<0..2^16-1>;
      uint8 client_keyshare[Npk];
    } KE1;
 
@@ -1283,7 +1283,7 @@ Steps:
        uint8 server_nonce[Nn];
        uint8 server_keyshare[Npk];
      } inner_ke2;
-     opaque enc_server_info<0..2^16-1>;
+     uint8 enc_server_info<0..2^16-1>;
      uint8 server_mac[Nm];
    } KE2;
 
@@ -1324,7 +1324,7 @@ Steps:
    struct {
       uint16 length = Length;
       opaque label<8..255> = "OPAQUE-" + Label;
-      opaque context<0..255> = Context;
+      uint8 context<0..255> = Context;
    } CustomLabel;
 
    Derive-Secret(Secret, Label, Transcript-Hash) =
