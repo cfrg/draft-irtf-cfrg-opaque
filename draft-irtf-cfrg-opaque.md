@@ -388,7 +388,7 @@ We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
 used in the AKE. The AKE protocol must provide the following functions:
 
 - RecoverPublicKey(private_key): Recover the public key related to the input `private_key`.
-- DeriveAuthKeyPair(seed): Derive a private and public authentication key key pair
+- DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`.
 - GenerateKeyPair(): Return a randomly generated private and public key pair. This can be
   implemented by generating a random private key `sk`, then computing `pk = RecoverPublicKey(sk)`.
