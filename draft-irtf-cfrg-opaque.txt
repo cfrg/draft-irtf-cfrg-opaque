@@ -1778,7 +1778,7 @@ Steps:
    algorithms, with the following considerations:
 
    1.  The size of AKE public and private keys -- "Npk" and "Nsk",
-       respectively -- must adhere to an output length limitations of
+       respectively -- must adhere to the output length limitations of
        the KDF Expand function.  If HKDF is used, this means Npk, Nsk <=
        255 * Nx, where Nx is the output size of the underlying hash
        function.  See [RFC5869] for details.
@@ -1830,8 +1830,8 @@ Steps:
    aPAKE model that ensures security against pre-computation attacks and
    is formulated in the Universal Composability (UC) framework
    [Canetti01] under the random oracle model.  This assumes security of
-   the OPRF function and of the underlying key exchange protocol.  In
-   turn, the security of the OPRF protocol from [I-D.irtf-cfrg-voprf] is
+   the OPRF function and the underlying key exchange protocol.  In turn,
+   the security of the OPRF protocol from [I-D.irtf-cfrg-voprf] is
    proven in the random oracle model under the One-More Diffie-Hellman
    assumption [JKKX16].
 
@@ -1890,7 +1890,7 @@ Steps:
    client_public_key (and server_identity and server_public_key) are
    protected by the authentication from the envelope.  Then, the client
    can verify that the client_identity and server_identity contained in
-   its envelope matches the client_identity and server_identity supplied
+   its envelope match the client_identity and server_identity supplied
    by the server.
 
    However, if this extra layer of verification is unnecessary for the
@@ -1905,7 +1905,7 @@ Steps:
    to have a special property called random key-robustness (or key-
    committing).  This specification enforces this property by utilizing
    encrypt-then-MAC in the construction of the envelope.  There is no
-   option to use another authenticated-encryption scheme with this
+   option to use another authenticated encryption scheme with this
    specification.  (Deviating from the key-robustness requirement may
    open the protocol to attacks, e.g., [LGR20].)  We remark that
    export_key for authentication or encryption requires no special
@@ -1991,7 +1991,7 @@ Steps:
    credential files.
 
    Applications must use the same envelope mode when using this
-   prevention throughout its lifecycle.  The envelope size varies from
+   prevention throughout their lifecycle.  The envelope size varies from
    one to another, and a switch in envelope mode could then be detected.
 
    Finally, note that server implementations may choose to forego the
@@ -2237,8 +2237,8 @@ B.1.  HMQV Instantiation Sketch
 
 B.2.  SIGMA-I Instantiation Sketch
 
-   A SIGMA-I instantiation differs more drastically from OPAQUE-3DH,
-   since authentication uses digital signatures in lieu of Diffie
+   A SIGMA-I instantiation differs more drastically from OPAQUE-3DH
+   since authentication uses digital signatures instead of Diffie
    Hellman.  In particular, both KE2 and KE3 would carry a digital
    signature, computed using the server and client private keys
    established during registration, respectively, as well as a MAC,
