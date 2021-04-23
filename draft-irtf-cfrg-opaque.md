@@ -234,7 +234,7 @@ Password authentication is ubiquitious in many applications. In a common
 implementation, a client authenticates to a server by sending its client
 ID and password to the server over a secure connection. This makes
 the password vulnerable to server mishandling, including accidentally
-logging the password or storing it in cleartext in a database. Server
+logging the password or storing it in plaintext in a database. Server
 compromise resulting in access to these plaintext passwords is not an
 uncommon security incident, even among security-conscious companies.
 Moreover, plaintext password authentication over secure channels like
@@ -316,13 +316,6 @@ This draft complies with the requirements for PAKE protocols set forth in
 {::boilerplate bcp14}
 
 ## Notation
-
-The following terms are used throughout this document to describe the
-operations, roles, and behaviors of OPAQUE:
-
-- Client (C): Entity that has knowledge of a password and wishes to authenticate.
-- Server (S): Entity that authenticates clients using passwords.
-- password: An opaque byte string containing the client's password.
 
 The following functions are used throughout this document:
 
@@ -825,7 +818,7 @@ Steps:
 This section describes the registration flow, message encoding, and helper functions.
 In a setup phase, the client chooses its password, and the server chooses its own pair
 of private-public AKE keys (server_private_key, server_public_key) for use with the
-AKE, along with a Nh-byte oprf_seed. S can use the same pair of keys with multiple
+AKE, along with a Nh-byte oprf_seed. The server can use the same pair of keys with multiple
 clients and can opt to use multiple seeds (so long as they are kept consistent for
 each client). These steps can happen offline, i.e., before the registration phase.
 
