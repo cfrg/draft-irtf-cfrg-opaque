@@ -238,7 +238,7 @@ logging the password or storing it in plaintext in a database. Server
 compromise resulting in access to these plaintext passwords is not an
 uncommon security incident, even among security-conscious companies.
 Moreover, plaintext password authentication over secure channels like
-TLS are also vulnerable to cases where TLS may fail, including: PKI
+TLS is also vulnerable to cases where TLS may fail, including PKI
 attacks, certificate mishandling, termination outside the security
 perimeter, visibility to middleboxes, and more.
 
