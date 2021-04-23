@@ -237,7 +237,7 @@ the password vulnerable to server mishandling, including accidentally
 logging the password or storing it in cleartext in a database. Server
 compromise resulting in access to these plaintext passwords is not an
 uncommon security incident, even among security-conscious companies.
-Moreover, plaintex password authentication over secure channels like
+Moreover, plaintext password authentication over secure channels like
 TLS are also vulnerable to cases where TLS may fail, including: PKI
 attacks, certificate mishandling, termination outside the security
 perimeter, visibility to middleboxes, and more.
