@@ -464,7 +464,7 @@ The authenticated key exchange flow is shown below:
 
 The rest of this document describes the details of these stages in detail.
 {{client-credential-storage}} describes how client credential information is
-encoded, encrypted, and stored on the server. {{offline-phase}} describes the
+generated, encoded, encrypted, and stored on the server. {{offline-phase}} describes the
 first registration stage of the protocol, and {{online-phase}} describes the
 second authentication stage of the protocol. {{configurations}} describes how
 to instantiate OPAQUE using different cryptographic dependencies and parameters.
