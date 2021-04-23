@@ -1477,7 +1477,7 @@ Steps:
 1. Create Credentials creds with (client_identity, server_identity)
 2. (client_private_key, server_public_key, export_key) =
     RecoverCredentials(password, state.blind, ke2.CredentialResponse)
-3. ke3, server_info, session_key =
+3. (ke3, server_info, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
                     server_public_key, ke1, ke2)
 4. Output (ke3, server_info, session_key)
