@@ -418,7 +418,7 @@ client registrations as needed.
 Registration is the only part in OPAQUE that requires an authenticated and
 confidential channel, either physical, out-of-band, PKI-based, etc.
 
-The registration flow is shown below.
+The registration flow is shown below:
 
 ~~~
     creds                                   parameters
