@@ -532,7 +532,7 @@ Table of Contents
       key pair.  This can be implemented by generating a random private
       key "sk", then computing "pk = RecoverPublicKey(sk)".
 
-   Finally, all random nonces used in this protocol are of length Nn =
+   Finally, all random nonces used in this protocol are of length "Nn" =
    32 bytes.
 
 3.  Protocol Overview
@@ -553,7 +553,7 @@ Table of Contents
    authenticated and confidential channel, either physical, out-of-band,
    PKI-based, etc.
 
-   The registration flow is shown below.
+   The registration flow is shown below:
 
        creds                                   parameters
          |                                         |
