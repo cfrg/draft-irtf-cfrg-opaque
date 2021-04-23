@@ -519,7 +519,7 @@ Table of Contents
    protocol.  This specification defines one particular AKE based on
    3DH; see Section 6.2.  We let "Npk" and "Nsk" denote the size of
    public and private keys, respectively, used in the AKE.  The AKE
-   protocol must provide the following functions.
+   protocol must provide the following functions:
 
    *  RecoverPublicKey(private_key): Recover the public key related to
       the input "private_key".
