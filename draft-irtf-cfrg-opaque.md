@@ -1011,7 +1011,7 @@ server's setup phase must also be persisted.
 The generic outline of OPAQUE with a 3-message AKE protocol includes three messages
 ke1, ke2, and ke3, where ke1 and ke2 include key exchange shares, e.g., DH values, sent
 by the client and server, respectively, and ke3 provides explicit client authentication and
-full forward security (without it, forward secrecy is only achieved against eavesdroppers
+full forward security (without it, forward secrecy is only achieved against eavesdroppers,
 which is insufficient for OPAQUE security).
 
 This section describes the online authenticated key exchange protocol flow,
