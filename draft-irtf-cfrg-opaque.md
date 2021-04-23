@@ -671,7 +671,7 @@ the following interface:
 - `inner_env, client_public_key = BuildInnerEnvelope(random_pwd, nonce, client_private_key)`:
   Build and return the mode's `InnerEnvelope` structure and the client's public key.
 - `client_private_key, client_public_key = RecoverKeys(random_pwd, nonce, inner_env)`:
-  recover and return the client's private and public keys for the AKE protocol.
+  Recover and return the client's private and public keys for the AKE protocol.
 
 The implementations of this interface for both `internal` and `external` modes
 are in {{internal-mode}} and {{external-mode}}, respectively.
