@@ -1000,7 +1000,7 @@ Output:
 Steps:
 1. y = Finalize(password, blind, response.data)
 2. random_pwd = Extract("", Harden(y, params))
-3. envelope, client_public_key, masking_key, export_key =
+3. (envelope, client_public_key, masking_key, export_key) =
     CreateEnvelope(random_pwd, response.server_public_key, client_private_key, creds)
 4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
 5. Output (record, export_key)
