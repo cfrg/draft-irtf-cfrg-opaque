@@ -849,7 +849,7 @@ the following values:
 
 The server inputs the following values:
 
-- server_private_key: server private for the AKE protocol.
+- server_private_key: server private key for the AKE protocol.
 - server_public_key: server public for the AKE protocol.
 - credential_identifier: client credential identifier.
 - oprf_seed: seed used to derive per-client OPRF keys.
