@@ -392,7 +392,7 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 OPAQUE additionally depends on an Authenticated Key Exchange (AKE) protocol.
 This specification defines one particular AKE based on 3DH; see {{ake-protocol}}.
 We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
-used in the AKE. The AKE protocol must provide the following functions.
+used in the AKE. The AKE protocol must provide the following functions:
 
 - RecoverPublicKey(private_key): Recover the public key related to the input `private_key`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key key pair
