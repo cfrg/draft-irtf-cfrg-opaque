@@ -230,7 +230,7 @@ based on 3DH.
 
 # Introduction {#intro}
 
-Password authentication is ubiquitious in many applications. In a common
+Password authentication is ubiquitous in many applications. In a common
 implementation, a client authenticates to a server by sending its client
 ID and password to the server over a secure connection. This makes
 the password vulnerable to server mishandling, including accidentally
