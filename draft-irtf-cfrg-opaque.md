@@ -640,7 +640,7 @@ Output:
 Steps:
 1. auth_key = Expand(random_pwd, concat(envelope.nonce, "AuthKey"), Nh)
 2. export_key = Expand(random_pwd, concat(envelope.nonce, "ExportKey", Nh)
-3. client_private_key, client_public_key =
+3. (client_private_key, client_public_key) =
     RecoverKeys(random_pwd, envelope.nonce, envelope.inner_env)
 4. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, creds.server_identity,
