@@ -591,11 +591,11 @@ Table of Contents
 
    The rest of this document describes the details of these stages in
    detail.  Section 4 describes how client credential information is
-   encoded, encrypted, and stored on the server.  Section 5 describes
-   the first registration stage of the protocol, and Section 6 describes
-   the second authentication stage of the protocol.  Section 7 describes
-   how to instantiate OPAQUE using different cryptographic dependencies
-   and parameters.
+   generated, encoded, encrypted, and stored on the server.  Section 5
+   describes the first registration stage of the protocol, and Section 6
+   describes the second authentication stage of the protocol.  Section 7
+   describes how to instantiate OPAQUE using different cryptographic
+   dependencies and parameters.
 
 4.  Client Credential Storage
 
