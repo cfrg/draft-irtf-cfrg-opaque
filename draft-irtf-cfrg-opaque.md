@@ -1214,7 +1214,7 @@ Steps:
      concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
 5. concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-6. client_private_key, export_key =
+6. (client_private_key, export_key) =
     RecoverEnvelope(random_pwd, server_public_key, creds, envelope)
 7. Output (client_private_key, response.server_public_key, export_key)
 ~~~
