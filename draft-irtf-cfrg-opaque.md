@@ -686,7 +686,7 @@ In this mode, the client's private and public keys are deterministically derived
 from the OPRF output.
 
 With the internal key mode the `EnvelopeMode` value MUST be `internal` and the
-`InnerEnvelope` is empty, and the size `Ne` of the serialized `Envelope` is Nn + Nm.
+`InnerEnvelope` is empty, and the size `Ne` of the serialized `Envelope` is `Nn + Nm`.
 
 To generate the private key OPAQUE-3DH implements `DeriveAuthKeyPair(seed)` as follows:
 
