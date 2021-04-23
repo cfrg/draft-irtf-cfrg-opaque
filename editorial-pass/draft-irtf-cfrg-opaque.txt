@@ -805,7 +805,7 @@ Steps:
    must implement the following interface:
 
    *  "inner_env, client_public_key = BuildInnerEnvelope(random_pwd,
-      nonce, client_private_key)": build and return the mode's
+      nonce, client_private_key)": Build and return the mode's
       "InnerEnvelope" structure and the client's public key.
 
    *  "client_private_key, client_public_key = RecoverKeys(random_pwd,
