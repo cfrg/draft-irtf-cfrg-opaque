@@ -312,11 +312,11 @@ Table of Contents
 
 1.  Introduction
 
-   Password authentication is ubiquitious in many applications.  In a
+   Password authentication is ubiquitous in many applications.  In a
    common implementation, a client authenticates to a server by sending
    its client ID and password to the server over a secure connection.
    This makes the password vulnerable to server mishandling, including
-   accidentally logging the password or storing it in cleartext in a
+   accidentally logging the password or storing it in plaintext in a
    database.  Server compromise resulting in access to these plaintext
    passwords is not an uncommon security incident, even among security-
    conscious companies.  Moreover, plaintext password authentication
@@ -408,16 +408,6 @@ Table of Contents
    capitals, as shown here.
 
 1.2.  Notation
-
-   The following terms are used throughout this document to describe the
-   operations, roles, and behaviors of OPAQUE:
-
-   *  Client (C): Entity that has knowledge of a password and wishes to
-      authenticate.
-
-   *  Server (S): Entity that authenticates clients using passwords.
-
-   *  password: An opaque byte string containing the client's password.
 
    The following functions are used throughout this document:
 
@@ -619,10 +609,9 @@ Table of Contents
    and public keys for authentication or to generate them internally,
    making the application oblivious to the client's private key.  Each
    public and private key value is an opaque byte string, specific to
-   the AKE protocol in which OPAQUE is instantiated.
-
-   These two options are defined as the "internal" and "external" modes.
-   See Section 4.3 for their specifications.
+   the AKE protocol in which OPAQUE is instantiated.  These two options
+   are defined as the "internal" and "external" modes.  See Section 4.3
+   for their specifications.
 
    Applications may pin key material to identities if desired.  If no
    identity is given for a party, its value MUST default to its public
@@ -833,25 +822,22 @@ Steps:
    To generate the private key OPAQUE-3DH implements
    "DeriveAuthKeyPair(seed)" as follows:
 
-DeriveAuthKeyPair(seed)
+   DeriveAuthKeyPair(seed)
 
-Parameter:
-- dst, domain separation tag for HashToScalar set to "OPAQUE-HashToScalar".
+   Input:
+   - seed, pseudo-random byte sequence used as a seed.
 
-Input:
-- seed, pseudo-random byte sequence used as a seed.
+   Output:
+   - private_key, a private key
+   - public_key, the associated public key
 
-Output:
-- private_key, a private key
-- public_key, the associated public key
-
-Steps:
-1. private_key = HashToScalar(seed, dst)
-2. public_key = private_key * G
-3. Output (private_key, public_key)
+   Steps:
+   1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+   2. public_key = private_key * G
+   3. Output (private_key, public_key)
 
    HashToScalar(msg, dst) is as specified in [I-D.irtf-cfrg-voprf],
-   except that dst = "OPAQUE-HashToScalar".
+   except that the "dst" parameter is "OPAQUE-HashToScalar".
 
    BuildInnerEnvelope(random_pwd, nonce, client_private_key)
 
@@ -965,9 +951,9 @@ Steps:
    helper functions.  In a setup phase, the client chooses its password,
    and the server chooses its own pair of private-public AKE keys
    (server_private_key, server_public_key) for use with the AKE, along
-   with a Nh-byte oprf_seed.  S can use the same pair of keys with
-   multiple clients and can opt to use multiple seeds (so long as they
-   are kept consistent for each client).  These steps can happen
+   with a Nh-byte oprf_seed.  The server can use the same pair of keys
+   with multiple clients and can opt to use multiple seeds (so long as
+   they are kept consistent for each client).  These steps can happen
    offline, i.e., before the registration phase.
 
    If using "external" mode, the client provides a key pair
