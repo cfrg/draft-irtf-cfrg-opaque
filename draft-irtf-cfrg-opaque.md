@@ -669,7 +669,7 @@ Each `EnvelopeMode` defines its own `InnerEnvelope` structure and must implement
 the following interface:
 
 - `inner_env, client_public_key = BuildInnerEnvelope(random_pwd, nonce, client_private_key)`:
-  build and return the mode's `InnerEnvelope` structure and the client's public key.
+  Build and return the mode's `InnerEnvelope` structure and the client's public key.
 - `client_private_key, client_public_key = RecoverKeys(random_pwd, nonce, inner_env)`:
   recover and return the client's private and public keys for the AKE protocol.
 
