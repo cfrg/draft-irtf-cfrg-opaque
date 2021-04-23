@@ -990,7 +990,7 @@ Steps:
 
    *  server_private_key: server private key for the AKE protocol.
 
-   *  server_public_key: server public for the AKE protocol.
+   *  server_public_key: server public key for the AKE protocol.
 
    *  credential_identifier: client credential identifier.
 
