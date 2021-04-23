@@ -449,7 +449,7 @@ is the primary AKE output. The server outputs a single value `session_key`
 that matches that of the client. Upon completion, clients and servers can
 use these values as needed.
 
-This flow is shown below.
+The authenticated key exchange flow is shown below:
 
 ~~~
     creds                             (parameters, record)
