@@ -561,7 +561,7 @@ struct {
 nonce: A unique nonce of length `Nn` used to protect this Envelope.
 
 auth_tag: Authentication tag protecting the contents of the envelope, covering the envelope nonce,
-`InnerEnvelope` and `CleartextCredentials`.
+`InnerEnvelope`, and `CleartextCredentials`.
 
 inner_env: A mode dependent `InnerEnvelope` structure. See {{envelope-modes}} for its specifications.
 
