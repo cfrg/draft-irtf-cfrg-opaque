@@ -486,7 +486,6 @@ OPAQUE allows applications to either provide custom client private and public ke
 for authentication or to generate them internally, making the application oblivious
 to the client's private key. Each public and private key value is an opaque byte
 string, specific to the AKE protocol in which OPAQUE is instantiated.
-
 These two options are defined as the `internal` and `external` modes.
 See {{envelope-modes}} for their specifications.
 
@@ -693,9 +692,6 @@ To generate the private key OPAQUE-3DH implements `DeriveAuthKeyPair(seed)` as f
 ~~~
 DeriveAuthKeyPair(seed)
 
-Parameter:
-- dst, domain separation tag for HashToScalar set to "OPAQUE-HashToScalar".
-
 Input:
 - seed, pseudo-random byte sequence used as a seed.
 
@@ -704,13 +700,13 @@ Output:
 - public_key, the associated public key
 
 Steps:
-1. private_key = HashToScalar(seed, dst)
+1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
 2. public_key = private_key * G
 3. Output (private_key, public_key)
 ~~~
 
 HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf}},
-except that dst = "OPAQUE-HashToScalar".
+except that the `dst` parameter is "OPAQUE-HashToScalar".
 
 ~~~
 BuildInnerEnvelope(random_pwd, nonce, client_private_key)
