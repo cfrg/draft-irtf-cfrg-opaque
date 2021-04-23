@@ -1352,7 +1352,7 @@ Input:
 - ke1, a KE1 message structure.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
-- inner_ke2, a inner_ke2 structure as defined in KE2.
+- inner_ke2, an inner_ke2 structure as defined in KE2.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
