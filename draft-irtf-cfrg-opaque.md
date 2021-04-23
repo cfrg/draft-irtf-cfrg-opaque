@@ -871,7 +871,7 @@ The registration protocol then runs as shown below:
 ~~~
 
 {{registration-functions}} describes details of the functions and the
-correspoding parameters referenced above.
+corresponding parameters referenced above.
 
 Both client and server MUST validate the other party's public key before use.
 See {{validation}} for more details. Upon completion, the server stores
