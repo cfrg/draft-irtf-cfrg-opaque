@@ -1074,10 +1074,10 @@ The protocol runs as shown below:
                          ke2
               <-------------------------
 
-    ke3,
+    (ke3,
     server_info,
     session_key,
-    export_key = ClientFinish(password, client_identity,
+    export_key) = ClientFinish(password, client_identity,
                               server_identity, ke2)
 
                          ke3
