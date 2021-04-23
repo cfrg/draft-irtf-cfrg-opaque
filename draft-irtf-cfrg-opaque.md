@@ -813,7 +813,7 @@ Input:
 - inner_env, an InnerEnvelope structure.
 
 Output:
-- client_private_key, The encoded client private key for the AKE protocol.
+- client_private_key, the encoded client private key for the AKE protocol.
 - client_public_key, the client's AKE public key.
 
 Steps:
