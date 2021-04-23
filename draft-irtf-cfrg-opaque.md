@@ -1574,7 +1574,7 @@ Output:
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-2. ke2, client_info = Response(server_identity, server_private_key,
+2. (ke2, client_info) = Response(server_identity, server_private_key,
     client_identity, record.client_public_key, server_info, ke1, response)
 3. Output (ke2, client_info)
 ~~~
