@@ -1005,8 +1005,8 @@ Steps:
                            record
                  ------------------------->
 
-   Section 5.1.1 describes details of the functions and the correspoding
-   parameters referenced above.
+   Section 5.1.1 describes details of the functions and the
+   corresponding parameters referenced above.
 
    Both client and server MUST validate the other party's public key
    before use.  See Section 8.6 for more details.  Upon completion, the
