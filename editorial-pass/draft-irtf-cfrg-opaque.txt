@@ -5,10 +5,10 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                                   K. Lewi
-Expires: 24 October 2021                                   Novi Research
+Expires: 25 October 2021                                   Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           22 April 2021
+                                                           23 April 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 24 October 2021.
+   This Internet-Draft will expire on 25 October 2021.
 
 Copyright Notice
 
@@ -319,10 +319,11 @@ Table of Contents
    accidentally logging the password or storing it in cleartext in a
    database.  Server compromise resulting in access to these plaintext
    passwords is not an uncommon security incident, even among security-
-   conscious companies.  Moreover, plaintex password authentication over
-   secure channels like TLS are also vulnerable to cases where TLS may
-   fail, including: PKI attacks, certificate mishandling, termination
-   outside the security perimeter, visibility to middleboxes, and more.
+   conscious companies.  Moreover, plaintext password authentication
+   over secure channels like TLS are also vulnerable to cases where TLS
+   may fail, including: PKI attacks, certificate mishandling,
+   termination outside the security perimeter, visibility to
+   middleboxes, and more.
 
    Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
    protocols are designed to provide password authentication and
