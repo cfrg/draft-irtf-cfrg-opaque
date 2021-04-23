@@ -765,7 +765,7 @@ the functions `FinalizeRequest()`, `CreateEnvelope()`, and `BuildInnerEnvelope()
 must be adapted accordingly.
 
 With the external key mode the `EnvelopeMode` value MUST be `external`, and the
-size `Ne` of the serialized `Envelope` is Nn + Nm + Nsk.
+size `Ne` of the serialized `Envelope` is `Nn + Nm + Nsk`.
 
 An encryption key is generated from the hardened OPRF output and used to encrypt
 the client's private key, which is then stored encrypted in the `InnerEnvelope`.
