@@ -1138,7 +1138,7 @@ Steps:
    exchange shares, e.g., DH values, sent by the client and server,
    respectively, and ke3 provides explicit client authentication and
    full forward security (without it, forward secrecy is only achieved
-   against eavesdroppers which is insufficient for OPAQUE security).
+   against eavesdroppers, which is insufficient for OPAQUE security).
 
    This section describes the online authenticated key exchange protocol
    flow, message encoding, and helper functions.  This stage is composed
