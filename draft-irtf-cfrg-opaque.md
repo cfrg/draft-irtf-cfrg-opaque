@@ -1663,7 +1663,7 @@ Future configurations may specify different combinations of dependent algorithms
 with the following considerations:
 
 1. The size of AKE public and private keys -- `Npk` and `Nsk`, respectively -- must adhere
-to an output length limitations of the KDF Expand function. If HKDF is used, this means
+to the output length limitations of the KDF Expand function. If HKDF is used, this means
 Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
 See {{RFC5869}} for details.
 1. The output size of the Hash function SHOULD be long enough to produce a key for
@@ -1711,7 +1711,7 @@ Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
-function and of the underlying key exchange protocol. In turn, the
+function and the underlying key exchange protocol. In turn, the
 security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
 in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
 
@@ -1760,7 +1760,7 @@ The advantage to supplying a custom client_identity and server_identity (instead
 on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
 mappings between client_identity and client_public_key (and server_identity and server_public_key)
 are protected by the authentication from the envelope. Then, the client can verify that the
-client_identity and server_identity contained in its envelope matches the client_identity
+client_identity and server_identity contained in its envelope match the client_identity
 and server_identity supplied by the server.
 
 However, if this extra layer of verification is unnecessary for the application, then simply
@@ -1773,7 +1773,7 @@ The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption sch
 used to produce the envelope in the external mode to have a special property called random key-robustness
 (or key-committing). This specification enforces this property by utilizing
 encrypt-then-MAC in the construction of the envelope. There is no option to use another
-authenticated-encryption scheme with this specification. (Deviating from the
+authenticated encryption scheme with this specification. (Deviating from the
 key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
 We remark that export_key for authentication or encryption requires no special
 properties from the authentication or encryption schemes as long as export_key
@@ -1854,8 +1854,9 @@ resulting in a change in the oprf_key value for each client. Although this
 change can be detected by an adversary, it is only leaked upon password rotation
 after the exposure of the credential files.
 
-Applications must use the same envelope mode when using this prevention throughout its lifecycle.
-The envelope size varies from one to another, and a switch in envelope mode could then be detected.
+Applications must use the same envelope mode when using this prevention
+throughout their lifecycle. The envelope size varies from one to another,
+and a switch in envelope mode could then be detected.
 
 Finally, note that server implementations may choose to forego the construction
 of a simulated credential response message for an unregistered client if these client
@@ -1959,8 +1960,8 @@ Its output length (in bits) must be at least L.
 
 ## SIGMA-I Instantiation Sketch
 
-A SIGMA-I instantiation differs more drastically from OPAQUE-3DH, since authentication
-uses digital signatures in lieu of Diffie Hellman. In particular, both KE2 and KE3
+A SIGMA-I instantiation differs more drastically from OPAQUE-3DH since authentication
+uses digital signatures instead of Diffie Hellman. In particular, both KE2 and KE3
 would carry a digital signature, computed using the server and client private keys
 established during registration, respectively, as well as a MAC, where the MAC is
 computed as in OPAQUE-3DH.
