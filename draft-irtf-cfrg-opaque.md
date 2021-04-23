@@ -492,7 +492,7 @@ See {{envelope-modes}} for their specifications.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
-application credential information are hereby considered:
+application credential information are considered:
 
 - client_private_key: The encoded client private key for the AKE protocol.
 - client_public_key: The encoded client public key for the AKE protocol.
