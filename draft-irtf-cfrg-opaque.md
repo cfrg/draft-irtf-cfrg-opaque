@@ -282,7 +282,7 @@ the protocol to support storage and retrieval of client secrets solely
 based on a password; being amenable to a multi-server distributed
 implementation where offline dictionary attacks are not possible without
 breaking into a threshold of servers (such a distributed solution requires
-no change or awareness on the client side relative to a single-server implementation).
+no change or awareness on the client-side relative to a single-server implementation).
 
 OPAQUE is defined and proven as the composition of two functionalities:
 an oblivious pseudorandom function (OPRF) and an authenticated key
