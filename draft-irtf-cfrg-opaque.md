@@ -790,7 +790,7 @@ BuildInnerEnvelope(random_pwd, nonce, client_private_key)
 Input:
 - random_pwd, randomized password.
 - nonce, a unique nonce of length `Nn`.
-- client_private_key, The encoded client private key for the AKE protocol.
+- client_private_key, the encoded client private key for the AKE protocol.
 
 Output:
 - inner_env, an InnerEnvelope structure.
