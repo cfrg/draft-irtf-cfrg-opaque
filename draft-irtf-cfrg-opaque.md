@@ -987,7 +987,7 @@ parameter (`internal` mode), or to additionally include `client_public_key`
 FinalizeRequest(client_private_key, password, blind, response)
 
 Input:
-- client_private_key, the client's private key. In the internal key mode, this is nil.
+- client_private_key, the client's private key. In internal mode, this is nil.
 - password, an opaque byte string containing the client's password.
 - creds, a Credentials structure.
 - blind, the OPRF scalar value used for blinding.
