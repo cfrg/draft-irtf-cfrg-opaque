@@ -400,7 +400,7 @@ used in the AKE. The AKE protocol must provide the following functions:
 - GenerateKeyPair(): Return a randomly generated private and public key pair. This can be
   implemented by generating a random private key `sk`, then computing `pk = RecoverPublicKey(sk)`.
 
-Finally, all random nonces used in this protocol are of length Nn = 32 bytes.
+Finally, all random nonces used in this protocol are of length `Nn` = 32 bytes.
 
 # Protocol Overview {#protocol-overview}
 
