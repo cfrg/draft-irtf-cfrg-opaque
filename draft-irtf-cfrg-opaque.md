@@ -779,7 +779,7 @@ struct {
 ~~~
 
 encrypted_creds : Encrypted client_private_key. Authentication of this field is
-ensured with the `AuthTag` in the envelope that covers this `InnerEnvelope`.
+ensured with the `auth_tag` field in the envelope that covers this `InnerEnvelope`.
 
 If the implementation provides the `client_public_key`, then `BuildInnerEnvelope()`
 can skip the `RecoverPublicKey()` call.
