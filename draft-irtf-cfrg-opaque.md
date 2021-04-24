@@ -174,17 +174,6 @@ protocols"
       -
         ins: T. Ristenpart
         name: Thomas Ristenpart
-
-  SIGMA:
-    title: "SIGMA: The SIGn-and-MAc approach to authenticated Diffie-Hellman and its use in the IKE protocols"
-    author:
-      -
-        ins: H. Krawczyk
-        name: Hugo Krawczyk
-
-    seriesinfo: CRYPTO
-    date: 2003
-
   HMQV:
     title: "HMQV: A high-performance secure Diffie-Hellman protocol"
     author:
