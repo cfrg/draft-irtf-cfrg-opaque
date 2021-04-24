@@ -5,10 +5,10 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                                   K. Lewi
-Expires: 25 October 2021                                   Novi Research
+Expires: 26 October 2021                                   Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           23 April 2021
+                                                           24 April 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 October 2021.
+   This Internet-Draft will expire on 26 October 2021.
 
 Copyright Notice
 
@@ -2151,10 +2151,6 @@ Steps:
    [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
               Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
               <https://datatracker.ietf.org/doc/html/rfc8446>.
-
-   [SIGMA]    Krawczyk, H., "SIGMA: The SIGn-and-MAc approach to
-              authenticated Diffie-Hellman and its use in the IKE
-              protocols", CRYPTO , 2003.
 
    [SIGNAL]   "Signal recommended cryptographic algorithms",
               https://signal.org/docs/specifications/
