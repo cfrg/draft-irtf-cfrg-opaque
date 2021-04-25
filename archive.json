@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-22T01:04:48.255622+00:00",
+  "timestamp": "2021-04-25T01:09:36.676194+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4871,7 +4871,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2020-05-18T14:14:15Z",
-      "updatedAt": "2020-05-18T14:14:22Z",
+      "updatedAt": "2021-04-24T15:11:40Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "141e15efee0a73c14ce1d9766c591e7fd974dba9",
@@ -4983,7 +4983,7 @@
       "labels": [],
       "body": "cc @hugokraw ",
       "createdAt": "2020-05-21T03:04:11Z",
-      "updatedAt": "2020-05-21T13:24:21Z",
+      "updatedAt": "2021-04-24T15:11:41Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "64e188b1197d555f14a4358bde2d9541b056b956",
@@ -5011,7 +5011,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2020-05-21T16:25:28Z",
-      "updatedAt": "2020-05-21T21:32:59Z",
+      "updatedAt": "2021-04-24T15:11:41Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "9cef30edba1afce5701546450fa5be004e87fdd5",
@@ -5053,7 +5053,7 @@
       "labels": [],
       "body": "Closes #9.",
       "createdAt": "2020-05-21T16:28:33Z",
-      "updatedAt": "2020-05-21T21:27:52Z",
+      "updatedAt": "2021-04-24T15:11:42Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "9cef30edba1afce5701546450fa5be004e87fdd5",
@@ -5095,7 +5095,7 @@
       "labels": [],
       "body": "This change shuffles around content and replaces the text-based protocol descriptions with protocol flows and messages. It also includes a first cut at wire format details for these messages. (We can always iterate later on!) \r\n\r\ncc @hugokraw \r\n",
       "createdAt": "2020-05-23T14:58:59Z",
-      "updatedAt": "2020-05-28T12:32:08Z",
+      "updatedAt": "2021-04-24T15:11:42Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "1a45065d3f8ef7617093b9e36d874a20f5d5a2ca",
@@ -5131,7 +5131,7 @@
       "labels": [],
       "body": "This addresses #23.",
       "createdAt": "2020-05-28T19:01:02Z",
-      "updatedAt": "2020-05-29T00:44:49Z",
+      "updatedAt": "2021-04-24T15:11:48Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "21de69f0b70488207df108cd25023ed421be24df",
@@ -5159,7 +5159,7 @@
       "labels": [],
       "body": "Closes #18.",
       "createdAt": "2020-05-29T13:06:33Z",
-      "updatedAt": "2020-05-29T15:08:36Z",
+      "updatedAt": "2021-04-24T15:11:48Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f39bcc8e8a4aceefeff19d778ceb4e6dcb0de1ec",
@@ -5201,7 +5201,7 @@
       "labels": [],
       "body": "This is to match the VOPRF document, which uses Serialize/Deserialize. (Encode was also used as a type of Hash in hash-to-curve, so this is probably better.)",
       "createdAt": "2020-06-04T20:44:51Z",
-      "updatedAt": "2020-06-05T16:00:44Z",
+      "updatedAt": "2021-04-24T15:11:49Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "41068ef6e0a02eed821764cc80ab8fe7fa084e32",
@@ -5243,7 +5243,7 @@
       "labels": [],
       "body": "This moves derivation of the KdKey to the main protocol flow (outside of the RKR-AEAD algorithm), uses HKDF-Extract for secret derivation, and renames KdKey to exporter_key. ",
       "createdAt": "2020-06-04T23:17:51Z",
-      "updatedAt": "2020-06-05T18:04:34Z",
+      "updatedAt": "2021-04-24T15:11:49Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "41068ef6e0a02eed821764cc80ab8fe7fa084e32",
@@ -5335,7 +5335,7 @@
       "labels": [],
       "body": "We address static DH oracle attacks in the security considerations. Nothing to be worried about! :-)",
       "createdAt": "2020-06-17T03:12:09Z",
-      "updatedAt": "2020-06-17T13:10:39Z",
+      "updatedAt": "2021-04-24T15:11:50Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "df8af66cf5dd6cf86c7c07fa7c853a6e7a42df44",
@@ -5377,7 +5377,7 @@
       "labels": [],
       "body": "This removes the RKR-AEAD dependency in favor of a simpler OTP-like construction for credential secrecy. It also replaces redundant Extract calls on RwdU with Expand calls (RwdU is already assumed to be the output of a RO). Finally, it removes the `context` parameter from all protocol messages, punting that functionality to applications.",
       "createdAt": "2020-06-17T16:29:13Z",
-      "updatedAt": "2020-06-18T23:04:26Z",
+      "updatedAt": "2021-04-24T15:11:51Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "5b15b1938e36d068e600eed46442ec3cb3317e9a",
@@ -5909,7 +5909,7 @@
       "labels": [],
       "body": "Closes #2.\r\n\r\nThis removes TLS 1.3 integration details, but keeps the SIGMA-I content. (TLS 1.3 details will go in the TLS document.)",
       "createdAt": "2020-06-18T23:35:42Z",
-      "updatedAt": "2020-06-19T15:14:46Z",
+      "updatedAt": "2021-04-24T15:11:52Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "683cb6842f4a9e862cc5982247afdc4ce2526282",
@@ -5959,7 +5959,7 @@
       "labels": [],
       "body": "This shuffles content around, mostly.",
       "createdAt": "2020-06-19T00:24:24Z",
-      "updatedAt": "2020-06-19T15:06:44Z",
+      "updatedAt": "2021-04-24T15:11:51Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "12c2440575fd2bb47a3aaaeffc7152806b44d94a",
@@ -6091,7 +6091,7 @@
       "labels": [],
       "body": "cc @kevinlewi ",
       "createdAt": "2020-07-15T19:41:04Z",
-      "updatedAt": "2020-07-21T16:42:39Z",
+      "updatedAt": "2021-04-24T15:11:52Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "aae69344bcc40290a825b9503540f607e48bcac7",
@@ -6175,7 +6175,7 @@
       "labels": [],
       "body": "This aligns the KE instantiations with the core protocol messages, using them where appropriate instead of OPRF1/OPRF2/EnvU etc directly. ",
       "createdAt": "2020-08-21T13:18:40Z",
-      "updatedAt": "2020-08-24T17:31:51Z",
+      "updatedAt": "2021-04-24T15:11:53Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f32a22595db939752bd94c51bb2a4cc1c53e24e6",
@@ -6499,7 +6499,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2020-08-24T17:53:03Z",
-      "updatedAt": "2020-08-25T03:55:49Z",
+      "updatedAt": "2021-04-24T15:11:54Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "d6fcfaa0ce739c702683cc555b7aa4d1d9cb251a",
@@ -6678,7 +6678,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2020-08-24T23:00:22Z",
-      "updatedAt": "2020-08-26T12:26:35Z",
+      "updatedAt": "2021-04-24T15:11:55Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "63a8acabd6e6420146cb38a0cd8f238688839107",
@@ -6846,7 +6846,7 @@
       "labels": [],
       "body": "Making this a parameter seems like too much flexibility, so I suggest we be opinionated and remove it. ",
       "createdAt": "2020-08-27T23:11:34Z",
-      "updatedAt": "2020-08-28T17:07:59Z",
+      "updatedAt": "2021-04-24T15:11:55Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "196753132f819990fa1c582995985fbe87ae6de7",
@@ -6910,7 +6910,7 @@
       "labels": [],
       "body": "And use it to control the auth_key and exporter_key size(s). ",
       "createdAt": "2020-08-28T17:21:45Z",
-      "updatedAt": "2020-08-30T16:20:07Z",
+      "updatedAt": "2021-04-24T15:11:56Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "a7d1e6cc3f87c7e4a1c4ed02aa633650191ea074",
@@ -6960,7 +6960,7 @@
       "labels": [],
       "body": "Closes #30.",
       "createdAt": "2020-08-30T16:25:31Z",
-      "updatedAt": "2020-08-31T14:25:21Z",
+      "updatedAt": "2021-04-24T15:11:57Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "7065e8d74c16275d98131340d3d197ee17cdf4b5",
@@ -7002,7 +7002,7 @@
       "labels": [],
       "body": "This shuffles text around and fixes some lingering issues. I'll do a full pass over the text after we merge this (or some variant of it)!",
       "createdAt": "2020-09-03T01:35:51Z",
-      "updatedAt": "2020-09-05T00:15:22Z",
+      "updatedAt": "2021-04-24T15:11:57Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "48ad199022ca5fdaa6e99a45a08c4adc4a3b7cb8",
@@ -7052,7 +7052,7 @@
       "labels": [],
       "body": "cc @crockeea",
       "createdAt": "2020-09-16T13:12:00Z",
-      "updatedAt": "2020-09-22T01:56:40Z",
+      "updatedAt": "2021-04-24T15:11:59Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "eb5855c74d8068fdcd6267bc8beeb7865e8132b8",
@@ -7338,7 +7338,7 @@
       "labels": [],
       "body": "We can address private key possession proofs and WebAuthn in a future change!",
       "createdAt": "2020-09-16T23:36:25Z",
-      "updatedAt": "2020-09-18T12:40:32Z",
+      "updatedAt": "2021-04-24T15:11:58Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "e1ff2f58342b48bb881538e3f80fa77e9af85096",
@@ -7380,7 +7380,7 @@
       "labels": [],
       "body": "I made some minir edits, nothing worth highlighting I think.\r\nTwo issues that we may want to address before submitting are:\r\n\r\n1. We say IBM has a patent on HMQV. Is that enough (for now at least) or do we need to have some formal IP notice?\r\n\r\n2. Section 6.3 (called from section 3.2 and 4.2.1) refers to SP800-56A Sec 5.6.2.3.4 which seems to be phrased for ephemeral keys while in the context of Sec 3.2 we talk about static ones. More importantly, the NIST document omits any tests of membership as they assume/require cofactor clearing. Is this something we want to assume/require ourselves? I thought we would \"outsource\" these issues to documents describing the curves themselves as the choice between explicit membership tests, prime order tests, cofactor operations, etc. may depend on the specific curve. If you do not want to get into these issues now (I am happy not to), we should still mention membership tests in Section 6.3. \r\n\r\nOnce we are done with these two issues, we can submit.\r\n",
       "createdAt": "2020-09-27T23:32:55Z",
-      "updatedAt": "2020-09-28T18:33:11Z",
+      "updatedAt": "2021-04-24T15:11:59Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "13b1c0dcf6489faf7ca72b102358eda7168bee31",
@@ -7654,7 +7654,7 @@
       "labels": [],
       "body": "Closes #5.\r\n\r\nIt was somewhat stale, and I'm not sure it adds much to the document.\r\n\r\ncc @kevinlewi ",
       "createdAt": "2020-10-28T13:08:34Z",
-      "updatedAt": "2020-11-02T22:18:22Z",
+      "updatedAt": "2021-04-24T15:12:00Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "30a4a795bf17e7352a4c197d621dd4ede1db8101",
@@ -7670,7 +7670,7 @@
       "comments": [
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": " This is fine by me",
           "createdAt": "2020-10-28T19:13:20Z",
           "updatedAt": "2020-10-28T19:13:20Z"
@@ -7690,7 +7690,7 @@
       "labels": [],
       "body": "cc @kevinlewi, I'll target submission today!",
       "createdAt": "2020-11-02T23:28:48Z",
-      "updatedAt": "2020-11-02T23:35:46Z",
+      "updatedAt": "2021-04-24T15:12:06Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "a41ef961ea49207c1ad256b1457631b673e5d198",
@@ -7706,7 +7706,7 @@
       "comments": [
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Great!",
           "createdAt": "2020-11-02T23:34:33Z",
           "updatedAt": "2020-11-02T23:34:33Z"
@@ -7839,7 +7839,7 @@
       "labels": [],
       "body": "Closes #85. \r\n\r\ncc @kevinlewi, @stef",
       "createdAt": "2020-11-16T20:21:12Z",
-      "updatedAt": "2020-11-16T20:31:56Z",
+      "updatedAt": "2021-04-24T15:12:07Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "deeeead3207280710202773f68edb85c8171704b",
@@ -7860,7 +7860,7 @@
             "abbreviatedOid": "a274e8e"
           },
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "APPROVED",
           "body": "",
           "createdAt": "2020-11-16T20:29:37Z",
@@ -8134,7 +8134,7 @@
       "labels": [],
       "body": "The OPAQUE wrapper protocol is responsible for transmitting idU from\r\nclient to server. OPAQUE does not use it for anything other than password\r\nfile lookup.\r\n\r\nCloses #88.\r\n\r\ncc @kevinlewi, @stef",
       "createdAt": "2020-12-01T14:55:31Z",
-      "updatedAt": "2020-12-02T03:15:08Z",
+      "updatedAt": "2021-04-24T15:12:08Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "8894db3c031a56873bbd536f7fe3eaf4dc1e4ad6",
@@ -8150,7 +8150,7 @@
       "comments": [
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "This looks good, but I do have a general comment that maybe we can move to discussion in an issue:\r\n\r\nWould it make more sense to perhaps make kU, envU, pkU parameters to CreateCredentialResponse? The reason is because \"LookupUserRecord\" is not actually defined anywhere, and is only run in the wrapper protocol, so it may cause confusion.\r\n\r\n",
           "createdAt": "2020-12-02T02:14:32Z",
           "updatedAt": "2020-12-02T02:14:32Z"
@@ -8171,7 +8171,7 @@
         },
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Cool, looks! Minor nit: Shouldn't kU, envU, pkU be listed in the Input, not the Parameters (and also following an update to read as: \"CreateCredentialResponse(request)\" -> \"CreateCredentialResponse(request, kU, envU, pkU))",
           "createdAt": "2020-12-02T02:27:03Z",
           "updatedAt": "2020-12-02T02:27:03Z"
@@ -8185,7 +8185,7 @@
         },
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "We can leave it to a separate change since it is probably a separate discussion, but I also noted that for \"CreateRegistrationResponse\", pkS is an input instead of a parameter. Not sure if that should change, but it seems like they should both be parameters or both be inputs.\r\n\r\nAnyway, not a big deal either way, at least for now!",
           "createdAt": "2020-12-02T03:01:29Z",
           "updatedAt": "2020-12-02T03:01:29Z"
@@ -8199,7 +8199,7 @@
         },
         {
           "author": "kevinlewi",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "Excellent",
           "createdAt": "2020-12-02T03:14:39Z",
           "updatedAt": "2020-12-02T03:14:39Z"
@@ -8219,7 +8219,7 @@
       "labels": [],
       "body": "Closes #94.\r\n\r\ncc @kevinlewi ",
       "createdAt": "2020-12-03T03:55:58Z",
-      "updatedAt": "2020-12-03T04:14:20Z",
+      "updatedAt": "2021-04-24T15:12:09Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "455538b2043587ea9e455e4f64b111a012dacee7",
@@ -8341,7 +8341,7 @@
       "labels": [],
       "body": "Closes #100.\r\n\r\ncc @hugokraw, @stef",
       "createdAt": "2020-12-17T02:10:12Z",
-      "updatedAt": "2020-12-21T16:42:15Z",
+      "updatedAt": "2021-04-24T15:12:11Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "c4246341b42614facba070e74733cd6391a6bc80",
@@ -8708,7 +8708,7 @@
       "labels": [],
       "body": "Lift wrapper-specific pieces, such as credential information and key material, out of the core protocol, where they are not used. Update the reference implementation to match.\r\n\r\nI might ignore the reference implementation for the time being, since it's kind of sloppy. But if you wanted to check it for consistency against the core module API boundary, that would be useful. \r\n\r\nCloses #105.",
       "createdAt": "2021-01-05T01:24:29Z",
-      "updatedAt": "2021-01-06T21:48:02Z",
+      "updatedAt": "2021-04-24T15:12:13Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "0e39200d483f37d5b1be63a5fecc0b94017ccc96",
@@ -8868,7 +8868,7 @@
       "labels": [],
       "body": "I chose to leave the enumeration and restrict its values to in the text. \r\n\r\nAs discussed, this also makes pkU/pkS mandatory in the core OPAQUE messages.",
       "createdAt": "2021-01-06T22:03:34Z",
-      "updatedAt": "2021-01-08T03:25:18Z",
+      "updatedAt": "2021-04-24T15:12:14Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "758c8a0314775f16f3c02c7741bf282de321f0cb",
@@ -9355,7 +9355,7 @@
       "labels": [],
       "body": "This addresses most small things in @crockeea's review. I'll add the updated protocol descriptions after the structural refactor, @kevinlewi!",
       "createdAt": "2021-01-23T00:28:43Z",
-      "updatedAt": "2021-01-25T15:54:01Z",
+      "updatedAt": "2021-04-24T15:12:15Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ac3192db44619e394344a4bff648711ffd827c4b",
@@ -9397,7 +9397,7 @@
       "labels": [],
       "body": "This is a pretty invasive change that tries to better organize the document and protocol description into its two steps: registration and authentication. It also includes more wire format details for the 3DH instantiation, and removes HMQV and SIGMA-I in the process. (We can bring them back in a future change as needed.) The outline now looks like so:\r\n\r\n```\r\n   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3\r\n     1.1.  Requirements Notation . . . . . . . . . . . . . . . . . .   5\r\n     1.2.  Notation  . . . . . . . . . . . . . . . . . . . . . . . .   5\r\n   2.  Cryptographic Protocol and Algorithm Dependencies . . . . . .   6\r\n   3.  Offline Registration  . . . . . . . . . . . . . . . . . . . .   7\r\n     3.1.  Credential Storage  . . . . . . . . . . . . . . . . . . .   8\r\n     3.2.  Registration Messages . . . . . . . . . . . . . . . . . .  10\r\n     3.3.  Registration Functions  . . . . . . . . . . . . . . . . .  11\r\n       3.3.1.  CreateRegistrationRequest . . . . . . . . . . . . . .  11\r\n       3.3.2.  CreateRegistrationResponse  . . . . . . . . . . . . .  11\r\n       3.3.3.  FinalizeRequest . . . . . . . . . . . . . . . . . . .  11\r\n       3.3.4.  CredentialFile  . . . . . . . . . . . . . . . . . . .  13\r\n   4.  Online Authenticated Key Exchange . . . . . . . . . . . . . .  13\r\n     4.1.  Credential Retrieval  . . . . . . . . . . . . . . . . . .  13\r\n       4.1.1.  Credential Retrieval Messages . . . . . . . . . . . .  14\r\n       4.1.2.  Credential Retrieval Functions  . . . . . . . . . . .  14\r\n     4.2.  AKE Instantiations  . . . . . . . . . . . . . . . . . . .  16\r\n       4.2.1.  Key Schedule Utility Functions  . . . . . . . . . . .  17\r\n       4.2.2.  OPAQUE-3DH Instantiation  . . . . . . . . . . . . . .  18\r\n       4.2.3.  Alternate AKE instantiations  . . . . . . . . . . . .  20\r\n   5.  Configurations  . . . . . . . . . . . . . . . . . . . . . . .  20\r\n```\r\n\r\ncc @hugokraw, @crockeea",
       "createdAt": "2021-01-26T13:47:50Z",
-      "updatedAt": "2021-01-30T15:19:17Z",
+      "updatedAt": "2021-04-24T15:12:43Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "50b3ce795fe0ec19b74e98dcfcf482992b9bb692",
@@ -9592,7 +9592,7 @@
       "labels": [],
       "body": "Closes #120.\r\n\r\ncc @hugokraw ",
       "createdAt": "2021-01-30T15:33:26Z",
-      "updatedAt": "2021-02-01T14:31:15Z",
+      "updatedAt": "2021-04-24T15:12:41Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3451ec3e3e5f6ab3d06247a8d4e7bf1488749c64",
@@ -9682,7 +9682,7 @@
       "labels": [],
       "body": "Closes #119.",
       "createdAt": "2021-02-02T19:02:55Z",
-      "updatedAt": "2021-02-03T21:55:16Z",
+      "updatedAt": "2021-04-24T15:12:34Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "239450c6747e5aed3a3b510d9b33ac7f816534e1",
@@ -9877,7 +9877,7 @@
       "labels": [],
       "body": "Also, nail down the MHF parameters. We don't currently allow them to be negotiated *in* the protocol. (The wrapper protocol may choose to allow negotiation, but that negotiation would yield a different configuration.)\r\n\r\nCloses #128 and #69.\r\n\r\ncc @hugokraw ",
       "createdAt": "2021-02-04T00:20:58Z",
-      "updatedAt": "2021-02-06T04:35:41Z",
+      "updatedAt": "2021-04-24T15:12:33Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "111b02c884ca967d6c78182dae08f7d83d4be7ae",
@@ -10330,7 +10330,7 @@
       "labels": [],
       "body": "This change unifies the transcripts used across key derivation and confirmation. It allows clients and servers to keep a rolling hash of messages sent and received when running the protocol, thereby minimizing state. It also makes testing and implementation easier, as there are no longer two different transcripts which differ in context.\r\n\r\nCloses #108 and #142.\r\n\r\ncc @bytemare, @stef\r\n",
       "createdAt": "2021-02-14T22:47:33Z",
-      "updatedAt": "2021-02-17T19:49:21Z",
+      "updatedAt": "2021-04-24T15:12:31Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "572f395c8c536694ed8efe35fa80db2b213cdefd",
@@ -10346,7 +10346,7 @@
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "body": "That's very interesting, well spotted!\r\nBut do you hash in `hmac` because you already hash for `info` ?",
           "createdAt": "2021-02-15T13:36:53Z",
           "updatedAt": "2021-02-15T13:38:08Z"
@@ -10360,7 +10360,7 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "body": "If I'm not mistaken, `hmac()` doesn't need its input to be hashed beforeheand. Please correct me if I'm wrong.\r\n\r\nHere, you build upon the running hash used for `info` and use this state for `hmac()`. `info` needs to hash, so reusing this existing state is beneficial. My question is whether you hash the transcript for `hmac()` so you can use/piggyback on `info`'s running hash.",
           "createdAt": "2021-02-15T23:11:30Z",
           "updatedAt": "2021-02-15T23:11:30Z"
@@ -10374,14 +10374,14 @@
         },
         {
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "body": "Yes, thank you :)",
           "createdAt": "2021-02-17T01:39:52Z",
           "updatedAt": "2021-02-17T01:39:52Z"
         },
         {
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "body": "Also, I tested and confirm the new vectors! ",
           "createdAt": "2021-02-17T01:40:20Z",
           "updatedAt": "2021-02-17T01:40:20Z"
@@ -10408,7 +10408,7 @@
             "abbreviatedOid": "a1451a8"
           },
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-02-15T13:47:42Z",
@@ -10448,7 +10448,7 @@
             "abbreviatedOid": "a1451a8"
           },
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-02-17T00:18:49Z",
@@ -10468,7 +10468,7 @@
             "abbreviatedOid": "a1451a8"
           },
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-02-17T00:40:11Z",
@@ -10561,7 +10561,7 @@
       "labels": [],
       "body": "Closes #131.",
       "createdAt": "2021-02-15T14:01:38Z",
-      "updatedAt": "2021-02-17T03:09:49Z",
+      "updatedAt": "2021-04-24T15:12:32Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "572f395c8c536694ed8efe35fa80db2b213cdefd",
@@ -10603,7 +10603,7 @@
       "labels": [],
       "body": "cc @bytemare if he wants to verify :) ",
       "createdAt": "2021-02-18T22:55:31Z",
-      "updatedAt": "2021-02-19T21:45:42Z",
+      "updatedAt": "2021-04-24T15:12:30Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "fb9c5f136ec310978040892b0cb392623f3d4773",
@@ -10619,7 +10619,7 @@
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "NONE",
+          "authorAssociation": "COLLABORATOR",
           "body": "Verified \u2705",
           "createdAt": "2021-02-19T01:56:46Z",
           "updatedAt": "2021-02-19T01:56:46Z"
@@ -10660,7 +10660,7 @@
       "labels": [],
       "body": "Closes #150.\r\n\r\ncc @bytemare",
       "createdAt": "2021-02-21T15:18:51Z",
-      "updatedAt": "2021-02-21T23:36:45Z",
+      "updatedAt": "2021-04-24T15:12:30Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "e2387879ec05c7251532f2d3203e60f7c8297722",
@@ -10676,7 +10676,7 @@
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "\u2705 Works like a charm!",
           "createdAt": "2021-02-21T17:17:07Z",
           "updatedAt": "2021-02-21T17:17:07Z"
@@ -10689,7 +10689,7 @@
             "abbreviatedOid": "b7df7ee"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-02-21T17:13:38Z",
@@ -12336,7 +12336,7 @@
       "labels": [],
       "body": "Starting as a draft for now, since this does technically add more dependencies, but I think it's more future proof. \r\n\r\nOnce we agree on the contents here, I'll update the PoC to match. Note that this should not change any test vectors, but will in fact remove some!\r\n\r\nCloses #132.",
       "createdAt": "2021-03-03T18:09:49Z",
-      "updatedAt": "2021-03-11T15:11:35Z",
+      "updatedAt": "2021-04-24T15:12:29Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6012168b4e1093d7ae47081b64af0cc020334aa8",
@@ -12352,7 +12352,7 @@
       "comments": [
         {
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "body": "All vectors are good \u2714\ufe0f ",
           "createdAt": "2021-03-10T16:31:01Z",
           "updatedAt": "2021-03-10T16:31:01Z"
@@ -12445,7 +12445,7 @@
             "abbreviatedOid": "fe80401"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "CHANGES_REQUESTED",
           "body": "",
           "createdAt": "2021-03-09T00:24:03Z",
@@ -12477,7 +12477,7 @@
             "abbreviatedOid": "fe80401"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "CHANGES_REQUESTED",
           "body": "",
           "createdAt": "2021-03-09T01:50:10Z",
@@ -12497,7 +12497,7 @@
             "abbreviatedOid": "fe80401"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-09T02:14:56Z",
@@ -12605,7 +12605,7 @@
             "abbreviatedOid": "7dbb85c"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-09T17:58:15Z",
@@ -12645,7 +12645,7 @@
             "abbreviatedOid": "7dbb85c"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-09T18:31:59Z",
@@ -12665,7 +12665,7 @@
             "abbreviatedOid": "7dbb85c"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-09T21:54:43Z",
@@ -12745,7 +12745,7 @@
             "abbreviatedOid": "9ffa0fd"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-10T15:19:10Z",
@@ -12765,7 +12765,7 @@
             "abbreviatedOid": "9ffa0fd"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "APPROVED",
           "body": "",
           "createdAt": "2021-03-10T15:19:20Z",
@@ -12778,7 +12778,7 @@
             "abbreviatedOid": "9ffa0fd"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-10T15:53:08Z",
@@ -12818,7 +12818,7 @@
             "abbreviatedOid": "9ffa0fd"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-10T16:04:48Z",
@@ -12858,7 +12858,7 @@
             "abbreviatedOid": "0d93d4f"
           },
           "author": "bytemare",
-          "authorAssociation": "CONTRIBUTOR",
+          "authorAssociation": "COLLABORATOR",
           "state": "COMMENTED",
           "body": "",
           "createdAt": "2021-03-11T15:08:37Z",
@@ -13781,7 +13781,7 @@
       "labels": [],
       "body": "Based on changes in #156.",
       "createdAt": "2021-03-23T20:36:53Z",
-      "updatedAt": "2021-03-24T22:03:00Z",
+      "updatedAt": "2021-04-24T15:12:29Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "a9c566d33cba27a54e065a7acfec4d67331ddf01",
@@ -13849,7 +13849,7 @@
       "labels": [],
       "body": "Implements #154. Starting as a draft while we work through interop.",
       "createdAt": "2021-04-01T01:10:02Z",
-      "updatedAt": "2021-04-15T17:20:06Z",
+      "updatedAt": "2021-04-24T15:12:28Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "40f2784b521eba1c0e4a5a1b0fa34b12b88e4b5e",
@@ -14263,7 +14263,7 @@
       "labels": [],
       "body": "Fixes #165, #159, and #157.",
       "createdAt": "2021-04-15T15:38:30Z",
-      "updatedAt": "2021-04-15T23:49:09Z",
+      "updatedAt": "2021-04-24T15:12:27Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "7c3e8d5652b0cd10f981bdd52cce51a97b730a44",
@@ -14301,7 +14301,7 @@
       ],
       "body": "Closes #158.",
       "createdAt": "2021-04-16T23:59:06Z",
-      "updatedAt": "2021-04-21T14:12:48Z",
+      "updatedAt": "2021-04-24T15:12:22Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
@@ -14443,7 +14443,7 @@
       "labels": [],
       "body": "Closes #176",
       "createdAt": "2021-04-19T22:51:44Z",
-      "updatedAt": "2021-04-20T14:30:48Z",
+      "updatedAt": "2021-04-24T15:12:27Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
@@ -14498,7 +14498,7 @@
       "labels": [],
       "body": "- the mode must be part of the application configuration and static (not change within the app's lifecycle)\r\n- don't include envelope mode in the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n\r\ncloses #180 ",
       "createdAt": "2021-04-20T00:27:27Z",
-      "updatedAt": "2021-04-20T23:51:54Z",
+      "updatedAt": "2021-04-24T15:12:23Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "4f147815162327daefbcb61e3ae9d669951cdecd",
@@ -14540,7 +14540,7 @@
       "labels": [],
       "body": "Closes #177 ",
       "createdAt": "2021-04-20T00:39:54Z",
-      "updatedAt": "2021-04-20T21:19:50Z",
+      "updatedAt": "2021-04-24T15:12:23Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "b1c49e4d98d35b671857fe4a37f38e0834090d62",
@@ -14610,7 +14610,7 @@
       ],
       "body": "- introduce Noe, the serialized element length in the OPRF group\r\n- deleted mention of SerializedScalar, since it's not used\r\n- deleted mention of SerializedElement, since it's not used\r\n- specify OPRF group element lengths in message structures\r\n\r\nCloses #179 ",
       "createdAt": "2021-04-20T00:59:39Z",
-      "updatedAt": "2021-04-20T14:32:47Z",
+      "updatedAt": "2021-04-24T15:12:25Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
@@ -14694,7 +14694,7 @@
       ],
       "body": "Closes #184 ",
       "createdAt": "2021-04-20T01:06:10Z",
-      "updatedAt": "2021-04-20T13:57:38Z",
+      "updatedAt": "2021-04-24T15:12:25Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
@@ -14744,7 +14744,7 @@
       ],
       "body": "Closes #181 ",
       "createdAt": "2021-04-20T01:14:00Z",
-      "updatedAt": "2021-04-20T14:30:17Z",
+      "updatedAt": "2021-04-24T15:12:24Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ff5ec6e9348f801b00f80287fd13f1d747cb9082",
@@ -14799,7 +14799,7 @@
       "labels": [],
       "body": "Reverts cfrg/draft-irtf-cfrg-opaque#182",
       "createdAt": "2021-04-20T23:55:56Z",
-      "updatedAt": "2021-04-20T23:56:31Z",
+      "updatedAt": "2021-04-24T15:11:34Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "58150d3a0a98bdee75e8f45a61b6a59c9943bfd6",
@@ -14827,7 +14827,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2021-04-21T00:03:15Z",
-      "updatedAt": "2021-04-21T00:03:28Z",
+      "updatedAt": "2021-04-24T15:11:34Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "7343ed1ff210a2e6a2f78d9874069d2eb8a8caeb",
@@ -14855,7 +14855,7 @@
       "labels": [],
       "body": "- the mode must be part of the application configuration and static\r\n- don't include envelope mode form the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n- updated poc and vectors",
       "createdAt": "2021-04-21T00:23:44Z",
-      "updatedAt": "2021-04-21T00:26:09Z",
+      "updatedAt": "2021-04-24T15:12:21Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "388bc8099747f986c2e5a1d97416b97825577482",
@@ -14881,7 +14881,7 @@
       "labels": [],
       "body": "- the mode must be part of the application configuration and static\r\n- don't include envelope mode form the envelope itself\r\n- don't include envelope mode in the envelope's auth_tag\r\n- add internal mode as recommended parameter\r\n- updated poc and vectors",
       "createdAt": "2021-04-21T01:01:05Z",
-      "updatedAt": "2021-04-21T14:31:30Z",
+      "updatedAt": "2021-04-24T15:11:33Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "4ff533d3b5d09142ba79ba668d8f4276331d51e2",
@@ -14909,7 +14909,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2021-04-21T02:29:47Z",
-      "updatedAt": "2021-04-21T14:13:17Z",
+      "updatedAt": "2021-04-24T15:12:20Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "388bc8099747f986c2e5a1d97416b97825577482",
@@ -14953,7 +14953,7 @@
       ],
       "body": "- added protocol compilation at login\r\n- interface for the main API\r\n- high-level composition of credential recovery and AKE\r\n- write out various functions\r\n- introduce RandomPrivateKey() to create a fresh key for EDH\r\n- move to CamelCase and space-less magic strings\r\n- clean-up leftover mishaps\r\n\r\ncloses #172 ",
       "createdAt": "2021-04-21T14:36:40Z",
-      "updatedAt": "2021-04-21T23:55:17Z",
+      "updatedAt": "2021-04-24T15:11:39Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "9f8c81de6bee3a6fac647affd7aba6b6a9a35ea2",
@@ -15162,7 +15162,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2021-04-21T18:31:55Z",
-      "updatedAt": "2021-04-21T19:47:23Z",
+      "updatedAt": "2021-04-24T15:11:32Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "dbz/ake-rewrite",
       "baseRefOid": "47618a3d0498efaef2f19412267fc0078ce102aa",
@@ -15291,7 +15291,7 @@
       ],
       "body": "closes #195 ",
       "createdAt": "2021-04-22T00:08:04Z",
-      "updatedAt": "2021-04-22T00:08:49Z",
+      "updatedAt": "2021-04-24T15:11:38Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "5895adf00519a140e1f8eb5a07fe0aed6aadcfd3",
@@ -15320,6 +15320,603 @@
           "comments": []
         }
       ]
+    },
+    {
+      "number": 197,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIxNjEwNjgx",
+      "title": "Editorial pass.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/197",
+      "state": "MERGED",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "This removes some redundant text, tries to introduce better flow in the document (starting with a protocol overview and then drilling into specific stages), and rearranges some text for (what seems to be) better readability. It's still not perfect, but I think this is an improvement overall.",
+      "createdAt": "2021-04-22T22:49:19Z",
+      "updatedAt": "2021-04-24T15:11:31Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "e221cfe3ab3fc632c5548929a6582dcec46a7098",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/editorial-pass",
+      "headRefOid": "238c45a28ff81baa010cbe63880a5878f1ff6134",
+      "closedAt": "2021-04-23T17:01:43Z",
+      "mergedAt": "2021-04-23T17:01:43Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "d18343e49970a3c9ca229798a24da9273a5fb62a"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQyNzg2MjUw",
+          "commit": {
+            "abbreviatedOid": "70fd9f8"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "Bunch of nits, but otherwise looks good! Thanks for doing this :) ",
+          "createdAt": "2021-04-23T00:10:30Z",
+          "updatedAt": "2021-04-23T01:31:50Z",
+          "comments": [
+            {
+              "originalPosition": 27,
+              "body": "typo: plaintex -> plaintext",
+              "createdAt": "2021-04-23T00:10:30Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 166,
+              "body": "```suggestion\r\nused in the AKE. The AKE protocol must provide the following functions:\r\n```",
+              "createdAt": "2021-04-23T00:53:00Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 179,
+              "body": "```suggestion\r\nFinally, all random nonces used in this protocol are of length `Nn` = 32 bytes.\r\n```",
+              "createdAt": "2021-04-23T00:53:47Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 198,
+              "body": "```suggestion\r\nThe registration flow is shown below:\r\n```",
+              "createdAt": "2021-04-23T00:55:39Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 229,
+              "body": "```suggestion\r\nThe authenticated key exchange flow is shown below:\r\n```",
+              "createdAt": "2021-04-23T00:55:57Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 275,
+              "body": "We can probably merge these two paragraphs into one",
+              "createdAt": "2021-04-23T01:06:27Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 282,
+              "body": "```suggestion\r\napplication credential information are considered:\r\n```",
+              "createdAt": "2021-04-23T01:07:28Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 503,
+              "body": "Now that `EnvelopeMode` is no longer encoded anywhere, it seems like we do not need to define this enum anymore, right? An implementation can choose to use whatever number it desires to represent \"internal\" and \"external\", it doesn't have to be 1 and 2, right?",
+              "createdAt": "2021-04-23T01:10:02Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 516,
+              "body": "```suggestion\r\n  Build and return the mode's `InnerEnvelope` structure and the client's public key.\r\n```",
+              "createdAt": "2021-04-23T01:10:39Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 518,
+              "body": "```suggestion\r\n  Recover and return the client's private and public keys for the AKE protocol.\r\n```",
+              "createdAt": "2021-04-23T01:10:47Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 538,
+              "body": "```suggestion\r\n`InnerEnvelope` is empty, and the size `Ne` of the serialized `Envelope` is `Nn + Nm`.\r\n```",
+              "createdAt": "2021-04-23T01:11:28Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 549,
+              "body": "Can we just omit this as a parameter, and hard-code \"OPAQUE-HashToScalar\" on line 707?",
+              "createdAt": "2021-04-23T01:12:28Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 549,
+              "body": "So that line 707 reads:\r\n\r\n1. private_key = HashToScalar(seed, dst = \"OPAQUE-HashToScalar\")",
+              "createdAt": "2021-04-23T01:12:54Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 563,
+              "body": "Perhaps remove the \"except that dst = \"OPAQUE-HashToScalar\"\", since this is already specified above?",
+              "createdAt": "2021-04-23T01:13:34Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 636,
+              "body": "```suggestion\r\nsize `Ne` of the serialized `Envelope` is `Nn + Nm + Nsk`.\r\n```",
+              "createdAt": "2021-04-23T01:14:25Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 656,
+              "body": "```suggestion\r\nensured with the `auth_tag` field in the envelope that covers this `InnerEnvelope`.\r\n```",
+              "createdAt": "2021-04-23T01:15:03Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 672,
+              "body": "```suggestion\r\n- client_private_key, the encoded client private key for the AKE protocol.\r\n```",
+              "createdAt": "2021-04-23T01:15:38Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 696,
+              "body": "```suggestion\r\n- client_private_key, the encoded client private key for the AKE protocol.\r\n```",
+              "createdAt": "2021-04-23T01:15:48Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 745,
+              "body": "```suggestion\r\n- server_private_key: server private key for the AKE protocol.\r\n```",
+              "createdAt": "2021-04-23T01:18:47Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 746,
+              "body": "```suggestion\r\n- server_public_key: server public key for the AKE protocol.\r\n```",
+              "createdAt": "2021-04-23T01:18:55Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 893,
+              "body": "```suggestion\r\n- client_private_key, the client's private key. In internal mode, this is nil.\r\n```",
+              "createdAt": "2021-04-23T01:25:32Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 586,
+              "body": "```suggestion\r\n2. (_, client_public_key) = DeriveAuthKeyPair(seed)\r\n```",
+              "createdAt": "2021-04-23T01:26:00Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 476,
+              "body": "```suggestion\r\n3. (client_private_key, client_public_key) =\r\n```",
+              "createdAt": "2021-04-23T01:26:15Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 909,
+              "body": "```suggestion\r\n3. (envelope, client_public_key, masking_key, export_key) =\r\n```",
+              "createdAt": "2021-04-23T01:26:48Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1010,
+              "body": "```suggestion\r\n    (ke3,\r\n    server_info,\r\n    session_key,\r\n    export_key) = ClientFinish(password, client_identity,\r\n```",
+              "createdAt": "2021-04-23T01:28:03Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1159,
+              "body": "```suggestion\r\n6. (client_private_key, export_key) =\r\n```",
+              "createdAt": "2021-04-23T01:28:46Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1362,
+              "body": "```suggestion\r\n2. (client_private_key, server_public_key, export_key) =\r\n```",
+              "createdAt": "2021-04-23T01:30:03Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1364,
+              "body": "```suggestion\r\n3. (ke3, server_info, session_key) =\r\n```",
+              "createdAt": "2021-04-23T01:30:11Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1480,
+              "body": "```suggestion\r\n2. (ke2, client_info) = Response(server_identity, server_private_key,\r\n```",
+              "createdAt": "2021-04-23T01:30:52Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzAyNzI3",
+          "commit": {
+            "abbreviatedOid": "70fd9f8"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T13:33:52Z",
+          "updatedAt": "2021-04-23T13:33:53Z",
+          "comments": [
+            {
+              "originalPosition": 27,
+              "body": "```suggestion\r\nMoreover, plaintext password authentication over secure channels like\r\n```",
+              "createdAt": "2021-04-23T13:33:52Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzEwNDYw",
+          "commit": {
+            "abbreviatedOid": "3579bfa"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T13:41:32Z",
+          "updatedAt": "2021-04-23T13:41:33Z",
+          "comments": [
+            {
+              "originalPosition": 503,
+              "body": "It doesn't, but let's leave this for a separate PR. ",
+              "createdAt": "2021-04-23T13:41:32Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzI3Mjk4",
+          "commit": {
+            "abbreviatedOid": "fdd862b"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T13:57:38Z",
+          "updatedAt": "2021-04-23T13:57:39Z",
+          "comments": [
+            {
+              "originalPosition": 110,
+              "body": "Are we using the C/S notation somewhere?",
+              "createdAt": "2021-04-23T13:57:38Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzMxMDQy",
+          "commit": {
+            "abbreviatedOid": "fdd862b"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:01:11Z",
+          "updatedAt": "2021-04-23T14:30:33Z",
+          "comments": [
+            {
+              "originalPosition": 15,
+              "body": "```suggestion\r\nPassword authentication is ubiquitous in many applications. In a common\r\n```",
+              "createdAt": "2021-04-23T14:01:11Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 28,
+              "body": "```suggestion\r\nTLS is also vulnerable to cases where TLS may fail, including PKI\r\n```",
+              "createdAt": "2021-04-23T14:03:34Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 73,
+              "body": "```suggestion\r\nno change or awareness on the client-side relative to a single-server implementation).\r\n```",
+              "createdAt": "2021-04-23T14:04:48Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 100,
+              "body": "I'm not sure about the oxford comma here \ud83e\udd14 ",
+              "createdAt": "2021-04-23T14:07:13Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 179,
+              "body": "```suggestion\r\n- DeriveAuthKeyPair(seed): Derive a private and public authentication key pair\r\n```",
+              "createdAt": "2021-04-23T14:08:51Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 195,
+              "body": "> which includes its password and user identifier\r\n\r\nWe may want to clarify here that this identifier may or may not be the same as used in the protocol",
+              "createdAt": "2021-04-23T14:11:37Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 199,
+              "body": "> to encrypt additional information to the server\n\r\nthis phrase can be misleading and interpreted as \"to encrypt additional information sent to the server who can decrypt it\".\r\n\r\n```suggestion\r\nfor application-specific purposes, e.g., to encrypt additional information\r\nto be sent to and saved by server. The server output of this stage is a record corresponding to\r\n```",
+              "createdAt": "2021-04-23T14:14:54Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 195,
+              "body": "The phrasing may exclude the external mode. Is it intentional?",
+              "createdAt": "2021-04-23T14:17:18Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 257,
+              "body": "```suggestion\r\nThe remainder of this document describes the details of these stages in detail.\r\n```",
+              "createdAt": "2021-04-23T14:21:24Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 259,
+              "body": "```suggestion\r\ngenerated, encoded, encrypted, and stored on the server. {{offline-phase}} describes the\r\n```",
+              "createdAt": "2021-04-23T14:22:29Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 291,
+              "body": "If we mention the client's private key in this part, it makes sense to also mention the server's private key. I suggest either both or none (as they are not used as identities).",
+              "createdAt": "2021-04-23T14:25:26Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 392,
+              "body": "```suggestion\r\n`InnerEnvelope`, and `CleartextCredentials`.\r\n```",
+              "createdAt": "2021-04-23T14:27:50Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzY0NjI4",
+          "commit": {
+            "abbreviatedOid": "f5c3548"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:33:39Z",
+          "updatedAt": "2021-04-23T14:33:39Z",
+          "comments": [
+            {
+              "originalPosition": 199,
+              "body": "I went with a slightly different variant: \"to encrypt additional information under the password\"",
+              "createdAt": "2021-04-23T14:33:39Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzY2MTM2",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:35:10Z",
+          "updatedAt": "2021-04-23T14:35:11Z",
+          "comments": [
+            {
+              "originalPosition": 195,
+              "body": "No, but I didn't want to confuse reads so early on. I figured omitting that for now and explaining internal/external mode later was easiest.",
+              "createdAt": "2021-04-23T14:35:11Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzY3MjI5",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:36:12Z",
+          "updatedAt": "2021-04-23T14:36:13Z",
+          "comments": [
+            {
+              "originalPosition": 291,
+              "body": "The server public key is part of the CleartextCredentials structure, so I think we should keep this as-is.",
+              "createdAt": "2021-04-23T14:36:13Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzY3NDU0",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:36:26Z",
+          "updatedAt": "2021-04-23T14:36:27Z",
+          "comments": [
+            {
+              "originalPosition": 195,
+              "body": "Hmm, maybe. Can you propose text?",
+              "createdAt": "2021-04-23T14:36:26Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzc1MTQx",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:43:57Z",
+          "updatedAt": "2021-04-23T14:43:57Z",
+          "comments": [
+            {
+              "originalPosition": 291,
+              "body": "I mean the private keys",
+              "createdAt": "2021-04-23T14:43:57Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzMzgyMzUy",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-23T14:51:08Z",
+          "updatedAt": "2021-04-23T14:51:09Z",
+          "comments": [
+            {
+              "originalPosition": 291,
+              "body": "I understand, but since the server private key isn't used for credentials, it's not included. ",
+              "createdAt": "2021-04-23T14:51:08Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzNDUxNzEw",
+          "commit": {
+            "abbreviatedOid": "c6f112e"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2021-04-23T16:02:55Z",
+          "updatedAt": "2021-04-23T16:12:10Z",
+          "comments": [
+            {
+              "originalPosition": 799,
+              "body": "```suggestion\r\ncorresponding parameters referenced above.\r\n```",
+              "createdAt": "2021-04-23T16:02:55Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 733,
+              "body": "```suggestion\r\nIf using the `external` mode, the client provides a key pair\r\n```",
+              "createdAt": "2021-04-23T16:03:53Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 943,
+              "body": "```suggestion\r\nfull forward security (without it, forward secrecy is only achieved against eavesdroppers,\r\n```",
+              "createdAt": "2021-04-23T16:05:25Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1270,
+              "body": "```suggestion\r\n- inner_ke2, an inner_ke2 structure as defined in KE2.\r\n```",
+              "createdAt": "2021-04-23T16:08:08Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            },
+            {
+              "originalPosition": 1087,
+              "body": "```suggestion\r\nyet to register, or never will).\r\n```",
+              "createdAt": "2021-04-23T16:10:15Z",
+              "updatedAt": "2021-04-23T17:00:56Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 198,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIyMTg1NDYw",
+      "title": "Some extra typo corrections",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/198",
+      "state": "MERGED",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [
+        "editorial"
+      ],
+      "body": "",
+      "createdAt": "2021-04-23T16:18:47Z",
+      "updatedAt": "2021-04-24T15:11:38Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "e221cfe3ab3fc632c5548929a6582dcec46a7098",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/fix-typos",
+      "headRefOid": "15c8dd6967dcc28a3cf81225bfb0ae6dc0dfb70d",
+      "closedAt": "2021-04-23T17:02:21Z",
+      "mergedAt": "2021-04-23T17:02:21Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "9cdad32731e22e4e7588ca731f8d319db72af5a5"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQzNTAwMDUy",
+          "commit": {
+            "abbreviatedOid": "15c8dd6"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-04-23T17:02:18Z",
+          "updatedAt": "2021-04-23T17:02:18Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 199,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjIyNjAzMDUz",
+      "title": "Add application considerations.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/199",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Opening as a draft to discuss. Are there other considerations we want to add?",
+      "createdAt": "2021-04-24T15:36:11Z",
+      "updatedAt": "2021-04-24T15:36:11Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "e221eaf702c2f018ad73bdfd3e043abbf8706b1f",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/app-considerations",
+      "headRefOid": "260754a38b0f8431a571cb6ed8956aad6f5e0906",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
