@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-25T01:09:36.676194+00:00",
+  "timestamp": "2021-04-27T01:04:07.480731+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4618,7 +4618,7 @@
       ],
       "body": "In the 3DH instantiation, the fields `client_info` and `server_info` are marked as optional and application-specific. \r\n\r\n```\r\nclient_info\r\nOptional application-specific information to exchange during the protocol.\r\n\r\nenc_server_info\r\nOptional application-specific information to exchange during the protocol encrypted under key Ke2, defined below.\r\n```\r\n\r\nThe request here is to highlight in the document what are the possible use cases of these fields, and to remark the relevance of having these fields vs not having them at all.\r\n \r\n",
       "createdAt": "2021-04-01T19:16:52Z",
-      "updatedAt": "2021-04-15T21:17:52Z",
+      "updatedAt": "2021-04-26T18:51:11Z",
       "closedAt": null,
       "comments": [
         {
@@ -4627,6 +4627,13 @@
           "body": "(not answering the question, but FTR: #172 adds that client_info is authenticated under the KE3 mac )",
           "createdAt": "2021-04-15T21:17:52Z",
           "updatedAt": "2021-04-15T21:17:52Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Some observations about these fields\r\n\r\nI'm not aware of many significant use cases for these fields. I'm very interested in examples that would undoubtedly justify these fields are kept. I can come up with valid ones, but they are weird enough they don't seem to solve any existing problem.\r\n\r\nAn important point to consider The `server_info `has strong constraints.\r\n_If it is used for client-specific values_, it may leak info about the client's existence and activity, harming the client enumeration mitigation effort to some degree. That means that it must be of constant length, whether the user exists or not. Keeping this coherent across and for all clients in time doesn't look to scale reasonably well.\r\nThis being considered, application-specific `server_info `might not even need encryption if we consider an attacker already has access to the application.\r\n\r\nThen again, `server_info `in KE2 instead of being in a message post-OPAQUE must justify a reasonable practical, security, or performance point. This point might be very niche and application-specific as well, thus not justifying `server_info `to be kept in-band. Maybe extracting its concept and specifying it in the appendix would be an acceptable compromise.\r\n\r\nAlso, there's a very interesting thread in #74 ",
+          "createdAt": "2021-04-26T18:51:11Z",
+          "updatedAt": "2021-04-26T18:51:11Z"
         }
       ]
     },
@@ -14537,10 +14544,12 @@
       "author": "bytemare",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
-      "labels": [],
+      "labels": [
+        "editorial"
+      ],
       "body": "Closes #177 ",
       "createdAt": "2021-04-20T00:39:54Z",
-      "updatedAt": "2021-04-24T15:12:23Z",
+      "updatedAt": "2021-04-25T22:37:49Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "b1c49e4d98d35b671857fe4a37f38e0834090d62",
@@ -15904,7 +15913,7 @@
       "labels": [],
       "body": "Opening as a draft to discuss. Are there other considerations we want to add?",
       "createdAt": "2021-04-24T15:36:11Z",
-      "updatedAt": "2021-04-24T15:36:11Z",
+      "updatedAt": "2021-04-26T13:44:20Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "e221eaf702c2f018ad73bdfd3e043abbf8706b1f",
@@ -15915,8 +15924,37 @@
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
-      "reviews": []
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Do you mean with regard to #169 and #173?",
+          "createdAt": "2021-04-26T13:42:57Z",
+          "updatedAt": "2021-04-26T13:44:20Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ0MTg2NTg5",
+          "commit": {
+            "abbreviatedOid": "260754a"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-04-25T22:19:02Z",
+          "updatedAt": "2021-04-25T22:19:02Z",
+          "comments": [
+            {
+              "originalPosition": 7,
+              "body": "\u2764\ufe0f ",
+              "createdAt": "2021-04-25T22:19:02Z",
+              "updatedAt": "2021-04-25T22:19:02Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
