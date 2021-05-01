@@ -5,12 +5,12 @@
 Network Working Group                                        H. Krawczyk
 Internet-Draft                                       Algorand Foundation
 Intended status: Informational                               D. Bourdrez
-Expires: 1 November 2021                                                
+Expires: 2 November 2021                                                
                                                                  K. Lewi
                                                            Novi Research
                                                                C.A. Wood
                                                               Cloudflare
-                                                           30 April 2021
+                                                              1 May 2021
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -49,7 +49,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 1 November 2021.
+   This Internet-Draft will expire on 2 November 2021.
 
 Copyright Notice
 
@@ -7167,7 +7167,7 @@ Authors' Addresses
 
    Daniel Bourdrez
 
-   Email: d@bytema.re
+   Email: dan@bytema.re
 
 
    Kevin Lewi
