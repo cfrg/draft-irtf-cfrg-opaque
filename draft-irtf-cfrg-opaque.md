@@ -20,7 +20,7 @@ author:
  -
     ins: D. Bourdrez
     name: Daniel Bourdrez
-    email: d@bytema.re
+    email: dan@bytema.re
  -
     ins: K. Lewi
     name: Kevin Lewi
@@ -7191,4 +7191,3 @@ session_key: c529e3877be75151e9fd18f1dee4e1bcb27f81b7277e06a5ded2296f
 7d0fc8ca13b8f23116e34a2ab83f644a5c9ce94b74d574667f679463d51a9db41200e
 0a9
 ~~~
-
