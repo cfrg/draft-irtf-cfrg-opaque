@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-04-29T01:03:01.093923+00:00",
+  "timestamp": "2021-05-02T01:08:42.130562+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4618,7 +4618,7 @@
       ],
       "body": "In the 3DH instantiation, the fields `client_info` and `server_info` are marked as optional and application-specific. \r\n\r\n```\r\nclient_info\r\nOptional application-specific information to exchange during the protocol.\r\n\r\nenc_server_info\r\nOptional application-specific information to exchange during the protocol encrypted under key Ke2, defined below.\r\n```\r\n\r\nThe request here is to highlight in the document what are the possible use cases of these fields, and to remark the relevance of having these fields vs not having them at all.\r\n \r\n",
       "createdAt": "2021-04-01T19:16:52Z",
-      "updatedAt": "2021-04-28T05:59:12Z",
+      "updatedAt": "2021-04-30T06:08:57Z",
       "closedAt": null,
       "comments": [
         {
@@ -4655,6 +4655,13 @@
           "body": "\r\n\r\n> @afbase could routing information (like the specific backend being used) not be conveyed _outside_ of the OPAQUE messages? Does it need to be authenticated by the handshake?\r\n\r\n\r\n\r\n@chris-wood \r\nwith respect to the use cases above and after some thought about this, the simple answer is no; it is not necessary to be authenticated in the handshake and application (and routing) information can be done after the handshake.  \r\n\r\n>I will follow up with prior art examples of where extra server information is provided in other authentication schemes in another comment (either Tuesday or Wednesday evening Pacific time)\r\n\r\nWell I've been asking a lot of myself here!  I have given some thought about other prior art in key exchanges and authentication schemes this evening but i haven't quite written much just yet.  Hope to have something tomorrow (wedenesday evening pacific time)\r\n\r\n\r\n",
           "createdAt": "2021-04-28T05:58:58Z",
           "updatedAt": "2021-04-28T05:59:12Z"
+        },
+        {
+          "author": "afbase",
+          "authorAssociation": "NONE",
+          "body": ">and to remark the relevance of having these fields vs not having them at all.\r\n\r\nI am leaning heavily to opine to not having them at all.  I would really like to do a survey of prior KE's and authentication schemes to justify such an opinion but I just don't have the time to really dive deep into various prior art, identify and provide comment on analogous constructions.  \r\n\r\nAre there any existing survey papers that might touch this particular issue on (A)KEs?  \r\n\r\n",
+          "createdAt": "2021-04-30T06:08:22Z",
+          "updatedAt": "2021-04-30T06:08:57Z"
         }
       ]
     },
@@ -4883,6 +4890,22 @@
       "createdAt": "2021-04-21T21:42:10Z",
       "updatedAt": "2021-04-22T00:08:49Z",
       "closedAt": "2021-04-22T00:08:49Z",
+      "comments": []
+    },
+    {
+      "number": 200,
+      "id": "MDU6SXNzdWU4NzEyNjMxNDA=",
+      "title": "Add implementation considerations section",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/200",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "This should probably include, among other things, how to implement each routine in constant time (in the user secret parameters), and why that's important. ",
+      "createdAt": "2021-04-29T17:21:48Z",
+      "updatedAt": "2021-04-29T17:21:48Z",
+      "closedAt": null,
       "comments": []
     }
   ],
@@ -15972,6 +15995,126 @@
               "body": "\u2764\ufe0f ",
               "createdAt": "2021-04-25T22:19:02Z",
               "updatedAt": "2021-04-25T22:19:02Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 201,
+      "id": "MDExOlB1bGxSZXF1ZXN0NjI4Mjc1NTkx",
+      "title": "Updates based on Hugo's review.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/201",
+      "state": "OPEN",
+      "author": "chris-wood",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2021-04-30T23:24:10Z",
+      "updatedAt": "2021-05-01T00:37:44Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "e221eaf702c2f018ad73bdfd3e043abbf8706b1f",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "caw/hugo-feedback",
+      "headRefOid": "1eaf912d84822d6052686c30b7227409b097dee9",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": [
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ5Njk2NTAy",
+          "commit": {
+            "abbreviatedOid": "4b0a318"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-05-01T00:25:26Z",
+          "updatedAt": "2021-05-01T00:25:27Z",
+          "comments": [
+            {
+              "originalPosition": 163,
+              "body": "` to import or generate`\r\nWhile that's true, it may confuse the reader as it can easily be understood as \"this mode generates keys for the client\". But maybe that's just me :) ",
+              "createdAt": "2021-05-01T00:25:26Z",
+              "updatedAt": "2021-05-01T00:25:27Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ5Njk2NzA4",
+          "commit": {
+            "abbreviatedOid": "4b0a318"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-05-01T00:26:51Z",
+          "updatedAt": "2021-05-01T00:26:51Z",
+          "comments": []
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ5Njk3NTEw",
+          "commit": {
+            "abbreviatedOid": "4b0a318"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2021-05-01T00:32:38Z",
+          "updatedAt": "2021-05-01T00:32:45Z",
+          "comments": [
+            {
+              "originalPosition": 7,
+              "body": "```suggestion\r\n    email: dan@bytema.re\r\n```",
+              "createdAt": "2021-05-01T00:32:38Z",
+              "updatedAt": "2021-05-01T00:32:45Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ5Njk3OTM5",
+          "commit": {
+            "abbreviatedOid": "1eaf912"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-05-01T00:36:04Z",
+          "updatedAt": "2021-05-01T00:36:04Z",
+          "comments": [
+            {
+              "originalPosition": 163,
+              "body": "The point of this change was to to suggest that it doesn't prohibit from key generation to happen _within_ the registration flow. (That is, registration could call DeriveAuthKeyPair or GenerateAuthKeyPair, for example, depending on mode.) \ud83e\udd37 ",
+              "createdAt": "2021-05-01T00:36:04Z",
+              "updatedAt": "2021-05-01T00:36:04Z"
+            }
+          ]
+        },
+        {
+          "id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3NjQ5Njk4MTI4",
+          "commit": {
+            "abbreviatedOid": "1eaf912"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2021-05-01T00:37:44Z",
+          "updatedAt": "2021-05-01T00:37:44Z",
+          "comments": [
+            {
+              "originalPosition": 163,
+              "body": "Ah yes, I see :) thanks!",
+              "createdAt": "2021-05-01T00:37:44Z",
+              "updatedAt": "2021-05-01T00:37:44Z"
             }
           ]
         }
