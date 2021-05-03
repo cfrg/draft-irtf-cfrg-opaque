@@ -10,7 +10,6 @@ config_keys = [
     "MHF",
     "KDF",
     "MAC",
-    "Name",
     "EnvelopeMode",
     "Group",
     "Nh",
@@ -49,7 +48,7 @@ input_keys = [
 intermediate_keys = [
     "client_public_key",
     "auth_key",
-    "random_pwd",
+    "randomized_pwd",
     "pseudorandom_pad",
     "envelope",
     "handshake_secret",
