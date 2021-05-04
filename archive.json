@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2021-05-02T01:08:42.130562+00:00",
+  "timestamp": "2021-05-04T00:59:24.887449+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -4618,7 +4618,7 @@
       ],
       "body": "In the 3DH instantiation, the fields `client_info` and `server_info` are marked as optional and application-specific. \r\n\r\n```\r\nclient_info\r\nOptional application-specific information to exchange during the protocol.\r\n\r\nenc_server_info\r\nOptional application-specific information to exchange during the protocol encrypted under key Ke2, defined below.\r\n```\r\n\r\nThe request here is to highlight in the document what are the possible use cases of these fields, and to remark the relevance of having these fields vs not having them at all.\r\n \r\n",
       "createdAt": "2021-04-01T19:16:52Z",
-      "updatedAt": "2021-04-30T06:08:57Z",
+      "updatedAt": "2021-05-03T20:00:29Z",
       "closedAt": null,
       "comments": [
         {
@@ -4662,6 +4662,13 @@
           "body": ">and to remark the relevance of having these fields vs not having them at all.\r\n\r\nI am leaning heavily to opine to not having them at all.  I would really like to do a survey of prior KE's and authentication schemes to justify such an opinion but I just don't have the time to really dive deep into various prior art, identify and provide comment on analogous constructions.  \r\n\r\nAre there any existing survey papers that might touch this particular issue on (A)KEs?  \r\n\r\n",
           "createdAt": "2021-04-30T06:08:22Z",
           "updatedAt": "2021-04-30T06:08:57Z"
+        },
+        {
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I'd like to take a step back and ask whether we can simply remove these two fields altogether, as @armfazh's initial comment seems to suggest. There's a couple reasons for this:\r\n\r\n1. Server info must be user-agnostic, i.e., of the same size and generated in the same amount of time for all users, otherwise it  can be a potential side channel breaking user enumeration mitigations. (This is very similar to the challenge we face in [TLS ECH](https://tlswg.org/draft-ietf-tls-esni/draft-ietf-tls-esni.html), and so far we've been punting on that in the technical specification.) Any information that is not user-specific seems like it can therefore either be transported outside of the OPAQUE handshake but in the server's first flight, or after the handshake is complete. \r\n2. We have no existing use cases for these fields. (I don't view sending the username in client info as a valid use case, for what it's worth.) Moreover, no existing deployed PAKEs have these fields, and no planned use cases for OPAQUE require, to my knowledge, use of these fields, which leads me to conclude that they're really not needed in practice.\r\n3. [RFC8125](https://tools.ietf.org/html/rfc8125) does not require the PAKE to support this type of \"early\" data, nor does it touch on extensibility. \r\n\r\nThis issue seems sharply focused on how extensible we view the protocol. If we want it totally extensible, then keeping these fields make sense, even if we don't have an existing use case. If we want to keep this protocol rigid yet admit future extensibility, we can remove them and say that future specifications can reintroduce them as needed.\r\n\r\nAs an aside, I'll note that the current way in which the server info is encrypted is really... bespoke. If we are to keep these fields, I think we should strongly consider transitioning to something a bit more like TLS/QUIC, which has separate record and message layers, and encryption happens at the record layer. \r\n\r\ncc @hugokraw ",
+          "createdAt": "2021-05-03T20:00:28Z",
+          "updatedAt": "2021-05-03T20:00:28Z"
         }
       ]
     },
@@ -16005,24 +16012,26 @@
       "id": "MDExOlB1bGxSZXF1ZXN0NjI4Mjc1NTkx",
       "title": "Updates based on Hugo's review.",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/201",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "chris-wood",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "",
       "createdAt": "2021-04-30T23:24:10Z",
-      "updatedAt": "2021-05-01T00:37:44Z",
+      "updatedAt": "2021-05-03T13:51:59Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "e221eaf702c2f018ad73bdfd3e043abbf8706b1f",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "caw/hugo-feedback",
       "headRefOid": "1eaf912d84822d6052686c30b7227409b097dee9",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2021-05-03T13:51:59Z",
+      "mergedAt": "2021-05-03T13:51:59Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "58699b2c6208b7e0668f3b3582f61fb5bf649e17"
+      },
       "comments": [],
       "reviews": [
         {
