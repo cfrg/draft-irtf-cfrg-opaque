@@ -854,6 +854,7 @@ The registration protocol then runs as shown below:
 
  (record, export_key) = FinalizeRequest(client_private_key,
                                         password,
+                                        creds,
                                         blind,
                                         response)
 
@@ -961,10 +962,10 @@ the following function. In the internal key mode, the `client_private_key` is ni
 
 Depending on the mode, implementations are free to leave out the `client_private_key`
 parameter (`internal` mode), or to additionally include `client_public_key`
-(`external` mode). See {#envelope-creation-recovery} for more details.
+(`external` mode). See {{envelope-creation-recovery}} for more details.
 
 ~~~
-FinalizeRequest(client_private_key, password, blind, response)
+FinalizeRequest(client_private_key, password, creds, blind, response)
 
 Input:
 - client_private_key, the client's private key. In internal mode, this is nil.
