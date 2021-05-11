@@ -530,8 +530,8 @@ values.
 
 ~~~
 struct {
-  uint8 server_identity;
-  uint8 client_identity;
+  uint8 server_identity<1..2^16-1>;
+  uint8 client_identity<1..2^16-1>;
 } Credentials;
 ~~~
 
