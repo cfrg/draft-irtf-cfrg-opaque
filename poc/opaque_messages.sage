@@ -61,7 +61,7 @@ class CleartextCredentials(object):
         self.idS = idS
 
     def serialize(self):
-        return self.pkS + encode_vector(self.idU) + encode_vector(self.idS)
+        return self.pkS + encode_vector(self.idS) + encode_vector(self.idU)
 
 class Credentials(object):
     def __init__(self, skU, pkU, idU = None, idS = None):

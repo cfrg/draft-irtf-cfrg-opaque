@@ -10,7 +10,7 @@ import struct
 from hash import scrypt
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, DeriveKeyPair
+    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, DeriveKeyPair, MODE_BASE
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, Envelope, InnerEnvelope, envelope_mode_internal, envelope_mode_external, deserialize_secret_credentials, deserialize_envelope
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes
 except ImportError as e:
@@ -56,7 +56,7 @@ class OPAQUECore(object):
     def create_registration_response(self, request, pkS, oprf_seed, credential_identifier):
         Nok = self.config.oprf_suite.group.scalar_byte_length()
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), Nok)
-        (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
+        (kU, _) = DeriveKeyPair(MODE_BASE, self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
         data, _, _ = oprf_context.evaluate(request.data)
@@ -132,7 +132,7 @@ class OPAQUECore(object):
     def create_credential_response(self, request, pkS, oprf_seed, envU, credential_identifier, masking_key):
         Nok = self.config.oprf_suite.group.scalar_byte_length()
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), Nok)
-        (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
+        (kU, _) = DeriveKeyPair(MODE_BASE, self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
         Z, _, _ = oprf_context.evaluate(request.data)
@@ -172,7 +172,7 @@ class OPAQUECore(object):
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("AuthKey"), Nh)
         export_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("ExportKey"), Nh)
-        
+
         secret_creds, client_public_key = self.recover_keys(random_pwd, envelope.nonce, envelope.inner_env)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
         expected_tag = self.config.mac.mac(auth_key, envelope.nonce + envelope.inner_env.serialize() + cleartext_creds.serialize())
@@ -220,7 +220,7 @@ def identity_harden(pwd):
 class KDF(object):
     def __init__(self, name):
         self.name = name
-    
+
     def extract(self, salt, ikm):
         raise Exception("Not implemented")
 
@@ -255,7 +255,7 @@ class HKDF(KDF):
 class MAC(object):
     def __init__(self, name):
         self.name = name
-    
+
     def mac(self, key, input):
         raise Exception("Not implemented")
 
