@@ -524,17 +524,6 @@ Steps:
 6. Output cleartext_credentials
 ~~~
 
-During protocol execution, the identity values can be stored in an
-implementation-specific `Credentials` object with names matching the
-values.
-
-~~~
-struct {
-  uint8 server_identity;
-  uint8 client_identity;
-} Credentials;
-~~~
-
 ## Envelope Structure {#envelope-structure}
 
 A client `Envelope` is constructed based on the `EnvelopeMode`, consisting
@@ -609,13 +598,15 @@ Clients recover their `Envelope` during authentication with the `RecoverEnvelope
 function defined below.
 
 ~~~
-RecoverEnvelope(randomized_pwd, server_public_key, creds, envelope)
+RecoverEnvelope(randomized_pwd, server_public_key, envelope,
+                server_identity, client_identity)
 
 Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for the AKE protocol.
-- creds, a Credentials structure.
 - envelope, the client's `Envelope` structure.
+- server_identity, The optional encoded server identity.
+- client_identity, The optional encoded client identity.
 
 Output:
 - client_private_key, The encoded client private key for the AKE protocol
@@ -627,8 +618,7 @@ Steps:
 3. (client_private_key, client_public_key) =
     RecoverKeys(randomized_pwd, envelope.nonce, envelope.inner_env)
 4. cleartext_creds = CreateCleartextCredentials(server_public_key,
-                      client_public_key, creds.server_identity,
-                      creds.client_identity)
+                      client_public_key, server_identity, client_identity)
 5. expected_tag = MAC(auth_key, concat(envelope.nonce, inner_env, cleartext_creds))
 6. If !ct_equal(envelope.auth_tag, expected_tag),
      raise MacError
@@ -854,9 +844,10 @@ The registration protocol then runs as shown below:
 
  (record, export_key) = FinalizeRequest(client_private_key,
                                         password,
-                                        creds,
                                         blind,
-                                        response)
+                                        response,
+                                        server_identity,
+                                        client_identity)
 
                         record
               ------------------------->
@@ -965,14 +956,16 @@ parameter (`internal` mode), or to additionally include `client_public_key`
 (`external` mode). See {{envelope-creation-recovery}} for more details.
 
 ~~~
-FinalizeRequest(client_private_key, password, creds, blind, response)
+FinalizeRequest(client_private_key, password, blind, response,
+                server_identity, client_identity)
 
 Input:
 - client_private_key, the client's private key. In internal mode, this is nil.
 - password, an opaque byte string containing the client's password.
-- creds, a Credentials structure.
 - blind, the OPRF scalar value used for blinding.
 - response, a RegistrationResponse structure.
+- server_identity, the optional encoded server identity.
+- client_identity, the optional encoded client identity.
 
 Output:
 - record, a RegistrationUpload structure.
@@ -983,7 +976,7 @@ Steps:
 2. randomized_pwd = Extract("", Harden(y, params))
 3. (envelope, client_public_key, masking_key, export_key) =
     CreateEnvelope(randomized_pwd, response.server_public_key, client_private_key,
-                   creds.server_identity, creds.client_identity)
+                   server_identity, client_identity)
 4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
 5. Output (record, export_key)
 ~~~
@@ -1175,13 +1168,15 @@ that is unable to guess the registered password for the client corresponding to 
 #### RecoverCredentials {#recover-credentials}
 
 ~~~
-RecoverCredentials(password, blind, response, creds)
+RecoverCredentials(password, blind, response,
+                   server_identity, client_identity)
 
 Input:
 - password, an opaque byte string containing the client's password.
 - blind, an OPRF scalar value.
 - response, a CredentialResponse structure.
-- creds, a Credentials structure.
+- server_identity, The optional encoded server identity.
+- client_identity, The optional encoded client identity.
 
 Output:
 - client_private_key, the client's private key for the AKE protocol.
@@ -1197,7 +1192,8 @@ Steps:
 5. concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
 6. (client_private_key, export_key) =
-    RecoverEnvelope(randomized_pwd, server_public_key, creds, envelope)
+    RecoverEnvelope(randomized_pwd, server_public_key, envelope,
+                    server_identity, client_identity)
 7. Output (client_private_key, response.server_public_key, export_key)
 ~~~
 
@@ -1456,13 +1452,13 @@ Output:
 - session_key, the session's shared secret.
 
 Steps:
-1. Create Credentials creds with (client_identity, server_identity)
-2. (client_private_key, server_public_key, export_key) =
-    RecoverCredentials(password, state.blind, ke2.CredentialResponse)
-3. (ke3, server_info, session_key) =
+1. (client_private_key, server_public_key, export_key) =
+    RecoverCredentials(password, state.blind, ke2.CredentialResponse,
+                       server_identity, client_identity)
+2. (ke3, server_info, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
                     server_public_key, ke1, ke2)
-4. Output (ke3, server_info, session_key)
+3. Output (ke3, server_info, session_key)
 ~~~
 
 #### Internal Client Functions {#client-internal}
