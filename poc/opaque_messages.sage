@@ -36,7 +36,9 @@ envelope_mode_external = 0x02
 # } SecretCredentials;
 # 
 # struct {
-#    opaque server_public_key[Npk];
+#   uint8 server_public_key[Npk];
+#   uint8 server_identity<1..2^16-1>;
+#   uint8 client_identity<1..2^16-1>;
 # } CleartextCredentials;
 #
 # struct {
@@ -61,7 +63,7 @@ class CleartextCredentials(object):
         self.idS = idS
 
     def serialize(self):
-        return self.pkS + encode_vector(self.idU) + encode_vector(self.idS)
+        return self.pkS + encode_vector(self.idS) + encode_vector(self.idU)
 
 class Credentials(object):
     def __init__(self, skU, pkU, idU = None, idS = None):

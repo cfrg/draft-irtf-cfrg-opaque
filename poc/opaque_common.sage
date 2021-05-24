@@ -7,6 +7,11 @@ import json
 import hmac
 import hashlib
 import struct
+import random
+
+# Fix a seed so all test vectors are deterministic
+FIXED_SEED = "opaque".encode('utf-8')
+random.seed(int.from_bytes(hashlib.sha256(FIXED_SEED).digest(), 'big'))
 
 if sys.version_info[0] == 3:
     xrange = range
@@ -27,7 +32,7 @@ def to_hex(octet_string):
     return ''.join(format(x, '02x') for x in octet_string)
 
 def random_bytes(n):
-    return os.urandom(n)
+    return I2OSP(random.randrange(2**(8*n)), n)
 
 def xor(a, b):
     if len(a) != len(b):
