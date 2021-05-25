@@ -244,7 +244,7 @@ machine. A secure aPAKE should provide the best possible security for a password
 protocol. Namely, it should only be open to inevitable attacks, such as
 online impersonation attempts with guessed client passwords and offline
 dictionary attacks upon the compromise of a server and leakage of its
-password file. In the latter case, the attacker learns a mapping of
+credential file. In the latter case, the attacker learns a mapping of
 a client's password under a one-way function and uses such a mapping to
 validate potential guesses for the password. Crucially important is
 for the password protocol to use an unpredictable one-way mapping.
@@ -398,7 +398,7 @@ parameters, which includes its private key and other information. The client
 output of this stage is a single value `export_key` that the client may use
 for application-specific purposes, e.g., to encrypt additional information
 to the server. The server output of this stage is a record corresponding to
-the client's registration that it stores in a password file alongside other
+the client's registration that it stores in a credential file alongside other
 client registrations as needed.
 
 Registration is the only part in OPAQUE that requires an authenticated and
@@ -428,7 +428,7 @@ In the second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
 subsequently uses them as input to an AKE protocol. As in the registration
 phase, the client inputs its credentials, including its password and user
-identifier, and the server inputs its parameters and password file record
+identifier, and the server inputs its parameters and the credential file record
 corresponding to the client. The client outputs two values, an `export_key`
 (matching that from registration) and a `session_key`, the latter of which
 is the primary AKE output. The server outputs a single value `session_key`
@@ -1807,7 +1807,7 @@ not the point at infinity.
 ## OPRF Hardening
 
 Hardening the output of the OPRF greatly increases the cost of an offline
-attack upon the compromise of the password file at the server. Applications
+attack upon the compromise of the credential file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
 
 ## Preventing Client Enumeration {#preventing-client-enumeration}
