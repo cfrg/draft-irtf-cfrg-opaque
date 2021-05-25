@@ -1011,8 +1011,6 @@ In this stage, the client inputs the following values:
 
 - password: client password.
 - client_identity: client identity, as described in {{client-credential-storage}}.
-- client_info: optional, application-specific information to send to the server
-  during the handshake.
 
 The server inputs the following values:
 
@@ -1022,8 +1020,6 @@ The server inputs the following values:
 - record: RegistrationUpload corresponding to the client's registration.
 - credential_identifier: client credential identifier.
 - oprf_seed: seed used to derive per-client OPRF keys.
-- server_info: optional, application-specific information to send to the client
-  during the handshake.
 
 The client receives two outputs: a session secret and an export key. The export key
 is only available to the client, and may be used for additional application-specific
@@ -1037,7 +1033,7 @@ The protocol runs as shown below:
 ~~~
   Client                                         Server
  ------------------------------------------------------
-  ke1 = ClientInit(client_identity, password, client_info)
+  ke1 = ClientInit(client_identity, password)
 
                          ke1
               ------------------------->
@@ -1050,7 +1046,6 @@ The protocol runs as shown below:
               <-------------------------
 
     (ke3,
-    server_info,
     session_key,
     export_key) = ClientFinish(password, client_identity,
                               server_identity, ke2)
@@ -1204,15 +1199,13 @@ a 3-message AKE which satisfies the forward secrecy and KCI properties discussed
 {{security-considerations}}. The protocol consists of three messages sent between
 client and server, each computed using the following application APIs:
 
-- ke1 = ClientInit(client_identity, password, client_info)
-- ke2, client_info = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
-- ke3, server_info, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
+- ke1 = ClientInit(client_identity, password)
+- ke2 = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
+- ke3, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
 - session_key = ServerFinish(ke3)
 
 Outputs `ke1`, `ke2`, and `ke3` are the three protocol messages sent between client
-and server. Outputs `client_info` and `server_info` correspond to the optional
-information exchanged between client and server during the key exchange protocol.
-And finally, `session_key` and `export_key` are outputs to be consumed by applications.
+and server. `session_key` and `export_key` are outputs to be consumed by applications.
 Applications can use `session_key` to derive additional keying material as needed.
 
 Both ClientFinish and ServerFinish return an error if authentication failed. In this case,
@@ -1245,7 +1238,6 @@ on a configuration; see {{configurations}} for details.
 struct {
   CredentialRequest request;
   uint8 client_nonce[Nn];
-  uint8 client_info<0..2^16-1>;
   uint8 client_keyshare[Npk];
 } KE1;
 ~~~
@@ -1255,9 +1247,6 @@ request
 
 client_nonce
 : A fresh randomly generated nonce of length `Nn`.
-
-client_info
-: Optional application-specific information to exchange during the protocol.
 
 client_keyshare
 : Client ephemeral key share of fixed size Npk, where Npk depends on the corresponding
@@ -1270,7 +1259,6 @@ struct {
     uint8 server_nonce[Nn];
     uint8 server_keyshare[Npk];
   } inner_ke2;
-  uint8 enc_server_info<0..2^16-1>;
   uint8 server_mac[Nm];
 } KE2;
 ~~~
@@ -1284,10 +1272,6 @@ server_nonce
 server_keyshare
 : Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
 prime order group.
-
-enc_server_info
-: Optional application-specific information to exchange during the protocol encrypted
-under key Ke2, defined below.
 
 server_mac
 : An authentication tag computed over the handshake transcript computed using Km2,
@@ -1390,7 +1374,6 @@ Input:
 Output:
 - Km2, a MAC authentication key.
 - Km3, a MAC authentication key.
-- handshake_encrypt_key, an encryption key for `enc_server_info`.
 - session_key, the shared session secret.
 
 Steps:
@@ -1399,14 +1382,13 @@ Steps:
 3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
 4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
 5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-6. handshake_encrypt_key = Derive-Secret(handshake_secret, "HandshakeKey", "")
-7. Output (Km2, Km3, handshake_encrypt_key, session_key)
+6. Output (Km2, Km3, session_key)
 ~~~
 
 ### External Client API {#opaque-client}
 
 ~~~
-ClientInit(client_identity, password, client_info)
+ClientInit(client_identity, password)
 
 State:
 - state, a ClientState structure.
@@ -1415,8 +1397,6 @@ Input:
 - client_identity, the optional encoded client identity, which is nil
   if not specified.
 - password, an opaque byte string containing the client's password.
-- client_info, the optional client_info sent unencrypted to the server,
-  only authenticated with client_mac in KE3.
 
 Output:
 - ke1, a KE1 message structure.
@@ -1426,7 +1406,7 @@ Output:
 Steps:
 1. request, blind = CreateCredentialRequest(password)
 2. state.blind = blind
-3. ke1 = Start(request, client_info)
+3. ke1 = Start(request)
 4. Output ke1
 ~~~
 
@@ -1447,24 +1427,22 @@ Input:
 
 Output:
 - ke3, a KE3 message structure.
-- server_info, optional application-specific information sent encrypted
-  and authenticated to the client.
 - session_key, the session's shared secret.
 
 Steps:
 1. (client_private_key, server_public_key, export_key) =
     RecoverCredentials(password, state.blind, ke2.CredentialResponse,
                        server_identity, client_identity)
-2. (ke3, server_info, session_key) =
+2. (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
                     server_public_key, ke1, ke2)
-3. Output (ke3, server_info, session_key)
+3. Output (ke3, session_key)
 ~~~
 
 #### Internal Client Functions {#client-internal}
 
 ~~~
-Start(credential_request, client_info)
+Start(credential_request)
 
 Parameters:
 - Nn, the nonce length.
@@ -1474,8 +1452,6 @@ State:
 
 Input:
 - credential_request, a CredentialRequest structure.
-- client_info, the optional client_info sent unencrypted to the server,
-  only authenticated with client_mac in KE3.
 
 Output:
 - ke1, a KE1 structure.
@@ -1483,8 +1459,7 @@ Output:
 Steps:
 1. client_nonce = random(Nn)
 2. client_secret, client_keyshare = GenerateKeyPair()
-3. Create KE1 ke1 with (credential_request, client_nonce,
-                        client_info, client_keyshare)
+3. Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
 4. state.client_secret = client_secret
 5. Output (ke1, client_secret)
 ~~~
@@ -1507,23 +1482,19 @@ Input:
 
 Output:
 - ke3, a KE3 structure.
-- server_info, optional application-specific information sent
-  encrypted and authenticated to the client.
 - session_key, the shared session secret.
 
 Steps:
 1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
     state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
 2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
-3. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
-4. expected_server_mac = MAC(Km2, Hash(concat(preamble, ke2.enc_server_info))
+3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.server_mac, expected_server_mac),
      raise MacError
-6. client_mac = MAC(Km3, Hash(concat(preamble, ke2.enc_server_info, expected_server_mac))
-7. pad = Expand(handshake_encrypt_key, "EncryptionPad", len(ke2.enc_server_info))
-8. server_info = xor(pad, enc_server_info)
-9. Create KE3 ke3 with client_mac
-10. Output (ke3, server_info, session_key)
+6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
+7. Create KE3 ke3 with client_mac
+8. Output (ke3, session_key)
 ~~~
 
 ### External Server API {#opaque-server}
@@ -1537,7 +1508,6 @@ Input:
   server_public_key if nil.
 - server_private_key, the server's private key.
 - server_public_key, the server's public key.
-- server_info, the optional server info sent unencrypted to the client.
 - record, the client's RegistrationUpload structure.
 - credential_identifier, an identifier that uniquely represents the credential
   being registered.
@@ -1546,15 +1516,13 @@ Input:
 
 Output:
 - ke2, a KE2 structure.
-- client_info, the optional client_info sent unencrypted to the server, only
-  authenticated with client_mac in KE3.
 
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-2. (ke2, client_info) = Response(server_identity, server_private_key,
-    client_identity, record.client_public_key, server_info, ke1, response)
-3. Output (ke2, client_info)
+2. ke2 = Response(server_identity, server_private_key,
+    client_identity, record.client_public_key, ke1, response)
+3. Output ke2
 ~~~
 
 ~~~
@@ -1579,7 +1547,7 @@ Steps:
 
 ~~~
 Response(server_identity, server_private_key, client_identity,
-         client_public_key, server_info, ke1, credential_response)
+         client_public_key, ke1, credential_response)
 
 Parameters:
 - Nn, the nonce length.
@@ -1594,15 +1562,11 @@ Input:
 - client_identity, the optional encoded client identity, which is set to
   client_public_key if not specified.
 - client_public_key, the client's public key.
-- server_info, optional application-specific information sent encrypted and
-  authenticated to the client.
 - ke1, a KE1 message structure.
 - credential_response, a CredentialResponse structure.
 
 Output:
 - ke2, A KE2 structure.
-- client_info, the optional client_info sent unencrypted to the server,
-  only authenticated with client_mac in KE3.
 
 Steps:
 1. server_nonce = random(Nn)
@@ -1610,14 +1574,12 @@ Steps:
 3. Create inner_ke2 ike2 with (credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
 5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare, server_private_key, ke1.client_keyshare, server_secret, client_public_key)
-6. Km2, Km3, handshake_encrypt_key, session_key = DeriveKeys(ikm, preamble)
-7. pad = Expand(handshake_encrypt_key, "EncryptionPad", len(server_info))
-8. enc_server_info = xor(pad, server_info)
-9. server_mac = MAC(Km2, Hash(concat(preamble, enc_server_info))
-10. expected_client_mac = MAC(Km3, Hash(concat(preamble, enc_server_info, server_mac))
-11. Populate state with ServerState(expected_client_mac, session_key)
-11. Create KE2 ke2 with (ike2, enc_server_info, server_mac)
-12. Output (ke2, ke1.client_info)
+6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+7. server_mac = MAC(Km2, Hash(preamble))
+8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+9. Populate state with ServerState(expected_client_mac, session_key)
+10. Create KE2 ke2 with (ike2, server_mac)
+11. Output ke2
 ~~~
 
 # Configurations {#configurations}
