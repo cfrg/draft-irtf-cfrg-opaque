@@ -1232,7 +1232,7 @@ and their parameters for clients and servers, respectively.
 Prior to the execution of these functions, both the client and the server MUST agree
 on a configuration; see {{configurations}} for details. This configuration is represented
 internally by the `Context` structure used in the AKE transcript; see
-{{Transcript Functions}} for details.
+{{transcript-functions}} for details.
 
 ### Protocol Messages
 
@@ -1291,7 +1291,7 @@ Km2, defined below.
 
 ### Key Schedule Functions
 
-#### Transcript Functions
+#### Transcript Functions {#transcript-functions}
 
 The OPAQUE-3DH key derivation procedures make use of the functions below, re-purposed
 from TLS 1.3 {{?RFC8446}}.
@@ -1317,7 +1317,7 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 Note that the Label parameter is not a NULL-terminated string.
 
 OPAQUE-3DH integrates configuration and additional information
-in the protocol transcript using the `Context` structure:
+in the protocol transcript using the shared `Context` structure:
 
 ~~~
 struct {
