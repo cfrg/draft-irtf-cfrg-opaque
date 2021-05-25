@@ -1230,7 +1230,9 @@ struct {
 and their parameters for clients and servers, respectively.
 
 Prior to the execution of these functions, both the client and the server MUST agree
-on a configuration; see {{configurations}} for details.
+on a configuration; see {{configurations}} for details. This configuration is represented
+internally by the `Context` structure used in the AKE transcript; see
+{{Transcript Functions}} for details.
 
 ### Protocol Messages
 
@@ -1314,10 +1316,57 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 
 Note that the Label parameter is not a NULL-terminated string.
 
+OPAQUE-3DH integrates configuration and additional information
+in the protocol transcript using the `Context` structure:
+
+~~~
+struct {
+  uint8 version<1..2^16-1>;
+  uint8 oprf_suite<1..2^16-1>;
+  uint8 kdf<1..2^16-1>;
+  uint8 mac<1..2^16-1>;
+  uint8 hash<1..2^16-1>;
+  uint8 mhf<1..2^16-1>;
+  uint8 mode<1..2^16-1>;
+  uint8 ake_group<1..2^16-1>;
+  uint8 extra<0..2^16-1>;
+} Context;
+~~~
+
+version
+: the protocol version identifier, e.g. "RFCXXXX" for OPAQUE-3DH.
+
+oprf_suite
+: the oprf ciphersuite identifier, e.g. "OPRF(ristretto255, SHA-512)" or "01".
+
+kdf
+: the KDF function identifier, e.g. "HKDF-SHA-512".
+
+mac
+: the MAC function identifier, e.g. "HMAC-SHA-512".
+
+hash
+: the HASH function identifier, e.g. "SHA-512".
+
+mhf
+: the MHF function identifier and its parameters, e.g. "Scrypt(32768,8,1)".
+
+mode
+: the EnvelopeMode value, e.g. "internal" or "1".
+
+ake_group
+: the AKE group identifier, e.g. "ristretto255".
+
+extra
+: additional implementation or application information.
+
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
 ~~~
 Preamble(client_identity, ke1, server_identity, inner_ke2)
+
+Parameters:
+- context, a Context structure.
 
 Input:
 - client_identity, the optional encoded client identity, which is set
@@ -1331,7 +1380,7 @@ Output:
 - preamble, the protocol transcript with identities and messages.
 
 Steps:
-1. preamble = concat("3DH",
+1. preamble = concat(context,
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
