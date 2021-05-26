@@ -138,16 +138,13 @@ def test_3DH():
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
         (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupRistretto255()),
-        (oprf_ciphersuites[ciphersuite_decaf448_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupDecaf448()),
         (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, MHF("Identity", identity_harden), GroupP256()),
-        (oprf_ciphersuites[ciphersuite_p384_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupP384()),
-        (oprf_ciphersuites[ciphersuite_p521_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupP521()),
     ]
 
     vectors = []
     for mode in [envelope_mode_internal, envelope_mode_external]:
         for (oprf, fast_hash, mhf, group) in configs:
-            for (idU, idS) in [(None, None), (idU, None), (None, idS), (idU, idS)]:
+            for (idU, idS) in [(None, None), (idU, idS)]:
                 (skU, pkU) = group.key_gen()
                 (skS, pkS) = group.key_gen()
                 skU_bytes = group.serialize_scalar(skU)
@@ -191,6 +188,7 @@ def test_3DH():
                     inputs["client_identity"] = to_hex(idU)
                 if idS:
                     inputs["server_identity"] = to_hex(idS)
+                inputs["context"] = to_hex(context)
                 inputs["oprf_seed"] = to_hex(oprf_seed)
                 inputs["credential_identifier"] = to_hex(credential_identifier)
                 inputs["password"] = to_hex(pwdU)
