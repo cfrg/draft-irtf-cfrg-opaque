@@ -1230,9 +1230,7 @@ struct {
 and their parameters for clients and servers, respectively.
 
 Prior to the execution of these functions, both the client and the server MUST agree
-on a configuration; see {{configurations}} for details. This configuration is represented
-internally by the `Context` structure used in the AKE transcript; see
-{{transcript-functions}} for details.
+on a configuration; see {{configurations}} for details.
 
 ### Protocol Messages
 
@@ -1291,7 +1289,7 @@ Km2, defined below.
 
 ### Key Schedule Functions
 
-#### Transcript Functions {#transcript-functions}
+#### Transcript Functions
 
 The OPAQUE-3DH key derivation procedures make use of the functions below, re-purposed
 from TLS 1.3 {{?RFC8446}}.
@@ -1316,7 +1314,7 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 
 Note that the Label parameter is not a NULL-terminated string.
 
-OPAQUE-3DH can optionally include shared context information in the transcript,
+OPAQUE-3DH can optionally include shared `context` information in the transcript,
 such as configuration parameters or application-specific info, e.g. "appXYZ-v1.2.3".
 This information MUST be encoded with a length-prefix when included in the preamble.
 
@@ -1326,7 +1324,7 @@ The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 Preamble(client_identity, ke1, server_identity, inner_ke2)
 
 Parameters:
-- info, optional shared context information.
+- context, optional shared context information.
 
 Input:
 - client_identity, the optional encoded client identity, which is set
@@ -1340,7 +1338,8 @@ Output:
 - preamble, the protocol transcript with identities and messages.
 
 Steps:
-1. preamble = concat("RFCXXXX", info,
+1. preamble = concat("RFCXXXX",
+                     I2OSP(len(context), 2), context,
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,

@@ -132,7 +132,7 @@ def test_3DH():
     credential_identifier = _as_bytes("1234")
     idS = _as_bytes("bob")
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
-    info = _as_bytes("OPAQUE-POC")
+    context = _as_bytes("OPAQUE-POC")
 
     # Configurations specified here:
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
@@ -158,7 +158,7 @@ def test_3DH():
 
                 kdf = HKDF(fast_hash)
                 mac = HMAC(fast_hash)
-                config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, info)
+                config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, context)
 
                 creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
                 core = OPAQUECore(config)
@@ -198,7 +198,6 @@ def test_3DH():
                     inputs["client_private_key"] = to_hex(skU_bytes)
                 inputs["server_private_key"] = to_hex(skS_bytes)
                 inputs["server_public_key"] = to_hex(pkS_bytes)
-                inputs["info"] = to_hex(info)
                 inputs["client_nonce"] = to_hex(client_kex.nonceU)
                 inputs["server_nonce"] = to_hex(server_kex.nonceS)
                 inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))

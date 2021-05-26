@@ -26,7 +26,7 @@ else:
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
 
 class Configuration(object):
-    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group, info):
+    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group, context):
         self.mode = mode
         self.oprf_suite = oprf_suite
         self.kdf = kdf
@@ -34,7 +34,7 @@ class Configuration(object):
         self.hash = hash
         self.mhf = mhf
         self.group = group
-        self.info = info
+        self.context = context
         self.Npk = group.element_byte_length()
         self.Nsk = group.scalar_byte_length()
         self.Nm = mac.output_size()
@@ -75,7 +75,7 @@ class OPAQUE3DH(KeyExchange):
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
             "MHF": self.config.mhf.name,
-            "Info": to_hex(self.config.info),
+            "Context": to_hex(self.config.context),
             "Nh": str(self.config.Nh),
             "Npk": str(self.config.Npk),
             "Nsk": str(self.config.Nsk),
@@ -120,7 +120,7 @@ class OPAQUE3DH(KeyExchange):
         # cred_request, nonceU, epkU
         hasher = self.config.hash()
         hasher.update(_as_bytes("RFCXXXX"))
-        hasher.update(encode_vector(self.config.info))
+        hasher.update(encode_vector(self.config.context))
         if idU:
             hasher.update(encode_vector_len(idU, 2))
         else:
@@ -160,7 +160,7 @@ class OPAQUE3DH(KeyExchange):
 
         hasher = self.config.hash()
         hasher.update(_as_bytes("RFCXXXX"))
-        hasher.update(encode_vector(self.config.info))
+        hasher.update(encode_vector(self.config.context))
         if idU:
             hasher.update(encode_vector_len(idU, 2))
         else:

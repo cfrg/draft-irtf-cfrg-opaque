@@ -1,10 +1,10 @@
 [
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -25,7 +25,6 @@
       "client_private_keyshare": "4230d62ea740b13e178185fc517cf2c313e6908c4cd9fb42154870ff3490c608",
       "credential_identifier": "31323334",
       "envelope_nonce": "71b8f14b7a1059cdadc414c409064a22cf9e970b0ffc6f1fc6fdd539c4676775",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "54f9341ca183700f6b6acf28dbfe4a86afad788805de49f2d680ab86ff39ed7f",
       "oprf_key": "23d431bab39aea4d2737ac391a50076300210730971788e3a6a8c29ad3c5930e",
       "oprf_seed": "5c4f99877d253be5817b4b03f37b6da680b0d5671d1ec5351fa61c5d82eab28b9de4c4e170f27e433ba377c71c49aa62ad26391ee1cac17011d8a7e9406657c8",
@@ -59,10 +58,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -84,7 +83,6 @@
       "client_private_keyshare": "03b52f066898929f4aca48014b2b97365205ce691ee3444b0a7cecec3c7efb01",
       "credential_identifier": "31323334",
       "envelope_nonce": "d0c7b0f0047682bd87a87e0c3553b9bcdce7e1ae3348570df20bf2747829b2d2",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "30635396b708ddb7fc10fb73c4e3a9258cd9c3f6f761b2c227853b5def228c85",
       "oprf_key": "1e0550d2dbb9ce5dd9bdbb5f808afbb724c573dc03306dcfc7217796465ce607",
       "oprf_seed": "db5c1c16e264b8933d5da56439e7cfed23ab7287b474fe3cdcd58df089a365a426ea849258d9f4bc13573601f2e727c90ecc19d448cf3145a662e0065f157ba5",
@@ -118,10 +116,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -142,7 +140,6 @@
       "client_private_keyshare": "668563b1d0b790de555ec81e23bdc088c6b97aa18f3ae345f50cca913fc1b705",
       "credential_identifier": "31323334",
       "envelope_nonce": "1c467aa331d70f59d9bb63e9afa1e314672a9c7c6e460d5d7b5d31d5e3ebdb12",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "e0092e8ef1bfe338aaa4b65c0563d42fe206269fe3eabd2b6e928b97b901c481",
       "oprf_key": "fb7d1da83004b817d00ebb1c54d5679e3f37746d9979edf5b212e44b3afe020a",
       "oprf_seed": "3e7333531009c11ee6ab46b6111f156d96a160b210256ab078bc1edbaf79bee4cd28dd9db89179dcc9219bc8f388b533f54390985abe5f7e967fcded96ed4698",
@@ -177,10 +174,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -202,7 +199,6 @@
       "client_private_keyshare": "b094980ed7557cc000f9ecb0ffb56766838444835b5f882865d25051ab1bd903",
       "credential_identifier": "31323334",
       "envelope_nonce": "272cdae1976cbfbdfd6ba61de78f9110d61ec1bc5bdc26dc6baf231ac7f119e0",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "61bab11c67048ecfb7a68c657a3df87cff3d09c6af9912a1e231e96cb38425b7",
       "oprf_key": "66e4b3b76bc5902bc39ab62d711210188396e4655558072cd26d94d16470c001",
       "oprf_seed": "76bd06c756aee97ba2912bab9b6a62cddf7d5e3209a2859e5947586f69259e0708bdfab794f689eec14c7deb7edde68c81645156cf278f21161e3aaa50f50e33",
@@ -237,10 +233,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -261,7 +257,6 @@
       "client_private_keyshare": "2b2cd1841430455dfed61aa0e129e478c65dcb9ece240d9f6e55a3efb489e8e55691eacfa2980bc0807bd327239b53f4370eb21d168cd815",
       "credential_identifier": "31323334",
       "envelope_nonce": "bee5803d8010bd3853d4386b13f1d356c5bbde92ffb638587154525469c4fbae",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "1b79fd928ce14142741e463c1441c8d7cae1f4fee4ee4ba509fda550ea0421a8",
       "oprf_key": "ed3f4f484ec42221de090361f71bd964d149685463ae46d61f642bd3d82c43fac9b0ee407f2290bd4d1a16d00434410b2b8e5bd89ec1111c",
       "oprf_seed": "a8952367cf336eb623379e803179547a4489c8718048ba107066398cfe2f8b5b2c0cdd8afa9fcaf662e5f2318e9cd9b82c66388bba6c3bd299e5bf6be21cfe23",
@@ -295,10 +290,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -320,7 +315,6 @@
       "client_private_keyshare": "0972c29064601dfed16a0b1db145827c370e63bef31b74572bcc69b51e2c772b39bae02d8944f9f63572cc87001e0eb571dbef75cee46839",
       "credential_identifier": "31323334",
       "envelope_nonce": "49b6bfcb6bd5b904c095be332181a28a6a754c3ab239351784434b3307f540cb",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "d761c8b636815f62dad9d7ed319efefe641bb4c3d1cc83a6a6600bbadfe603ad",
       "oprf_key": "5b02c350a834cdf5bd622d507d6e955352736fe3023b533886f7450f47dde707e13fd89ad192e3d30eb99e233b6ae804bbda2a2d4ef60a38",
       "oprf_seed": "d67055acf8301fbb910e2afd8769c4334721fc4ff6bab1d67669eff5e0d04374ad9a276620c681abfca7bdb432e63509e5ec96ed2ec5542f6fc7db235bb4d884",
@@ -354,10 +348,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -378,7 +372,6 @@
       "client_private_keyshare": "92c8dc6b2e430eaf250c0961c6521eb294d704e385b8d0d957784db7ba148dc0308a416d395210e98ed0d33749c34db7d01b8573bfb86328",
       "credential_identifier": "31323334",
       "envelope_nonce": "8f080e63b832fa3d48b64a661676a4857526b4e5fe86baf5677e95d5335dbbd7",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "af0023091cb7e3e9c8581d8ca2837e78cd88fb76287d235b919bc757a0a70ab8",
       "oprf_key": "e4f669c558e9db8e372aa73e427d52c35890eeda30ba3b313268ceb2b5ad9d65fee5ce2afd01c52c57c79f5557e9917860fea4f1fde4712a",
       "oprf_seed": "f1a945c34e824e9063e6f2ac4fc8a48af35e4c417ebc43be4717550e6140dc5156c2f4d56bcb3cb24401b182ad275c32713d314a14cd58a6466cfb980f9a2604",
@@ -413,10 +406,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -438,7 +431,6 @@
       "client_private_keyshare": "8dfb962e3938ca043d94a46a6399aa43108f64600cbb863334d90316e12aac4601fbd193ecb0361acc10fe098069bc61baa1d61307b81c2a",
       "credential_identifier": "31323334",
       "envelope_nonce": "e3e49a6ef2275cb65bf8d1d3009948a4ffa09d1ac3bcc98226c54617d3cb0053",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "42516228746821dc8c8530d0e8273ebde81941591d69ca5aea7730908681c613",
       "oprf_key": "0405a6955b269e8680ed2eb9d2071334210ff2a61491c7f064b80dd328e251efe758ae442fd73e70019e179d464b1cd7afc542f996b4c133",
       "oprf_seed": "4e013eef80e5d77cb1251697926e43a66114fbe336f8b371707e75f955933a8c7e4667ba4c7b46d5d940f09508cfe0813c8142ce215e24e7ad7e2d929961c546",
@@ -473,10 +465,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -497,7 +489,6 @@
       "client_private_keyshare": "eef19914c366a615bcdbefd1f04b7208e8f0145438d82409be804f6a9d4cfcd1",
       "credential_identifier": "31323334",
       "envelope_nonce": "e9967690371d527ddad59a633dcf5a8842cd4f606841ca8f403920a8ecf2d603",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "73be6d7cf6aef5d0b6b4c4fd6dd3a55dd797d24fe5ad528130825016bfdc2eea",
       "oprf_key": "0c1917133f119d7601cb4d2acc203801635aae807d448ac250e94f2d704c289b",
       "oprf_seed": "e36bfeaba4c2b939addb8c5d93ac1022e67d606d76e58712a5640495a63ad857",
@@ -531,10 +522,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -556,7 +547,6 @@
       "client_private_keyshare": "77b943db463d334336a31a7b1aeeed9c60ab5a3950eb508ef1a159a931abc977",
       "credential_identifier": "31323334",
       "envelope_nonce": "034443cd9ffba69add4b0d8e519d972c22888bd4f70869d341e97fa9f25de044",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "3b665747d0cb6a886e434de5d40fe2409b8ace4f984c627758e1d70c1edc252c",
       "oprf_key": "3ebf676261b2305caaa8d4cbde6d9243f97f06dd488b676cf08846cbce228012",
       "oprf_seed": "f6b06ed02a1c313d5e76810a77069f28da266f5d612e7ecd0a8625515658dace",
@@ -590,10 +580,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -614,7 +604,6 @@
       "client_private_keyshare": "8f200b8f641a5697233757853f5f9d5184433cfa367aa55e8491fcd37befaf96",
       "credential_identifier": "31323334",
       "envelope_nonce": "e999e2f5ff34201861a5d6794ac5e308392dc5349bb2daed1156e5f1244c13e9",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "c533fc7175763b1f43bc46fc6fd1145e2c24964fd3fd3c88454d0390ca876610",
       "oprf_key": "8dd787b629e489e396cddecc506cfbd9b18cd32ba4e798420825e093d6258c77",
       "oprf_seed": "b8b7a66348d2ce700b43ceb86e8022d1c7eb08b7c9510b2b7cb2b356dc3493f7",
@@ -649,10 +638,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -674,7 +663,6 @@
       "client_private_keyshare": "d82e8a285cc7a8a66d4fa17c936ef8381f768aafc3ae7436a5062cbfe2ad2b25",
       "credential_identifier": "31323334",
       "envelope_nonce": "086073de4572bcc707c8fe7fc297e4e9a8600f4eb8f7730f393557605cd3c471",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "f3b446766b27f3c314f9a2e628b67725f74ca8d11d92a080d917e92be911d836",
       "oprf_key": "9df5a881f54fdeca9e468d821131e82111fa97f05833bd7c5513fa53af9266ab",
       "oprf_seed": "3b52cafbd0d7b4e3ff93a8655e295bed3f5bb93f6acf27f8c44460de7e0bf975",
@@ -709,10 +697,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -733,7 +721,6 @@
       "client_private_keyshare": "aa75e54cb755d39623aba2a2b46ced92e2e07ac455cc71323da9d3192e71d53b3ff5cad64c8761ae833c63d4f727108a",
       "credential_identifier": "31323334",
       "envelope_nonce": "45f71b93b9693340dc2f14bc1df9f8652cd68c7a161bd0c0573423113c8b8185",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "8952959e584205fa53bbbd5ae0887cb13650a4f7532879e25f582d4b4daabced",
       "oprf_key": "d9902763d357e046d95e95b4a20bfa5b1b7d32e6576687a02b316c7487039336286592de807a605b85bfeaa491aecabd",
       "oprf_seed": "16b1234e1b4ae942dfb516898d659bac4a630589a2a08bf40851a40e1f5308ddb102e031071b44f90edfc5fba9ae5cb3401c769aece54760be20ba35d6b9ff91",
@@ -767,10 +754,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -792,7 +779,6 @@
       "client_private_keyshare": "26877c1f0fe2c1c3e8cc745bfc0fff2919d2383ff40bf160654635739cce149b527fe1db69c3b89fe423a4567f45426f",
       "credential_identifier": "31323334",
       "envelope_nonce": "9b9bb493a0d31878d133e21d66e1395f395deb3603c2910887f040897d8e103e",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "d5a756cd5ae43ab4c5b5f7f1d003b831727478189f21947f8622cd607aa56516",
       "oprf_key": "1b37674d49584417329694e1c24c1ff7fb3e4a8ff01276870ba5ff136f972ebdf49631ab13ff8e06219e21521436156c",
       "oprf_seed": "0ce3967da88e1b8d27e816b9514fbdd11a0f070dd56f06717e38a0eaee14eb3dd2a6d47fbc656a805310d60300b2be93e5276ad9df8dd69dfb8f0791db80a327",
@@ -826,10 +812,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -850,7 +836,6 @@
       "client_private_keyshare": "2316496268227458e2af5636a7fc26ccfa61ca8a78d6ed6544e9a3faabbc33c076cb3cf621d9f0249056058d0ff4444a",
       "credential_identifier": "31323334",
       "envelope_nonce": "93bee7e846931f97f6344c22c78aa5dd50d7f0c35c19e04db5ef1ca9e7988add",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "dc10cfc1722e4f709704b60314c891dd2dd1da23800c3d151b235ec4309cfaa1",
       "oprf_key": "9e054ed043dbfe0ef35441302cfee0b0c678dfbd7b478aca41d8023d366e4207c39e78e8ab094f951a8d9102addff4e5",
       "oprf_seed": "664db20983f4716db318380e5da6f3cc6a37bafafe2f53e44804d8f5178693ec0d3a1880549f7cb07c017f178dc1d670fad9228a6830966759c90d92b56e3bc4",
@@ -885,10 +870,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -910,7 +895,6 @@
       "client_private_keyshare": "1f96882a7972a87d3cc3e3674ff916d805304ec96a392388104f62cfa2504b31d3594a44edb5d14c441bc9b2a2084c9b",
       "credential_identifier": "31323334",
       "envelope_nonce": "509fd256a0fab7f4e7296221663efc7baeadb871841e1397ea742b856b67e7a1",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "e0d9f4ca5c8617ff30f54f1f58a52fd6e78b85d1a171bf30351b9b6d6875f9c7",
       "oprf_key": "a1c815d0823955c014636f70c870cf4b28086265799227faac8c154e3c4ac57e1bb95bb3310d7cf0177ce57ac7bca40f",
       "oprf_seed": "10314514d14a3096bea2a172dda90d5409a31515fd3d92c7a5be5023f9292a7e4600d25aa6d42e816ecb74768f27165bcf15a766011c42713709245529c1fc9d",
@@ -945,10 +929,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -969,7 +953,6 @@
       "client_private_keyshare": "0161d14b1a5756fa438afcc363eb5ec0bdd0473305b4e05fe73fa7e5f20655e0f6f5b68043b450f0c6fbb16f5300837307d0bb0d5df5d290a3ab7f0a417ce53483d1",
       "credential_identifier": "31323334",
       "envelope_nonce": "faecda43bc2bf265c3f99e804dca08d773d23c851f6a92d55bb5505ccc043c67",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "7184565fd2cee44f440e8d2ecd0b4cf38776c7b8d3c5eefad55b109f8c2c6d50",
       "oprf_key": "00710e317d5848d82e8ed3d7b7cf94fcfec63d3727552a9235954933d731c914fced1687ee238a5aff5f753f80680dfe31eb500b076500340f3edc6d130685885a51",
       "oprf_seed": "9acc7cbf243959fc81160d41465e5011775a828d70ad0798512b89199e558e490e0395c1177cdeb556990a262a47f3f4faec370b91426549003b9df54394ce18",
@@ -1003,10 +986,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1028,7 +1011,6 @@
       "client_private_keyshare": "01de96246003f6fe56619fff96533077813be970785efd8c6ace9282ecea4020a32178e8d8d199a4e71b0fffcc36bf347b0cf290a15955f9d416a7692952ad4c8084",
       "credential_identifier": "31323334",
       "envelope_nonce": "8242818f0d09b5fdeb2407b7b81497bc1d46992e3ef06eaf4e8edae214566224",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "9cf5e606041ca514c938e46aade7e60001069aaad1b1d2b9d15d100c22e2e4c9",
       "oprf_key": "01cb710992ab116dde9a0eee16cf4bfe427d37d5fc63521ac6696efa5fb58b8b89cfac4fc2393e2c716fafb87fd9bf8fc51569dc543a5d6aa96f2e961ddf30f60d1c",
       "oprf_seed": "750f8609b95ad0ca26e8d6e90d518a813bce5c6039b4a957e24fb4c424643e200da6b3783b9304b08d7570be8aa8afe63d3723cd4e18d1b4f5468254e4597955",
@@ -1062,10 +1044,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1086,7 +1068,6 @@
       "client_private_keyshare": "01245f9b239a307d0d3f5469d6449e2141e54c3382b9ce351b5e973c02c65a4adca760cbd37f6ba88ec20687699e30aac9adf08fb725c5f58103a8e3042137deda5c",
       "credential_identifier": "31323334",
       "envelope_nonce": "e90857e0c9281b4c99cc56e8031eb233e5277a286e96c697c19dad72d099ff97",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "4cfcb72f2d97992ca1c38e5614bfebf5f83244f76c85368a15da9042c44f2228",
       "oprf_key": "001c009f5132ed9349195e38580aea85f129a6ace0f032ced559318211985579554c15f408e101414f3f5e136c51e0aba164a2831444e77ef59c331c1513d657a95f",
       "oprf_seed": "0a17a215504309c9beb11ae2ecead4ccb470b3c61da8220acc35113f8211b777beb18953a42bec61f96528e3aee3945fef5e382a8586d039baa39f4450d5819d",
@@ -1121,10 +1102,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1146,7 +1127,6 @@
       "client_private_keyshare": "01e96c4e79bcd31d458f82f3ab93a38056a1b2834d6c801a78959b6d0f99e83be46f6b55a18109e20d98b024f2f396424cf3c724dcf47736a0d8b0112b6657d3cd1a",
       "credential_identifier": "31323334",
       "envelope_nonce": "34395348c092492ae47cd1e13db22e4c02e58c5d14a8763fda67d308967e0625",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "d24af8a8551526ce4494838c61b0ceae3bd5958818221ea7f3a6581b87893d36",
       "oprf_key": "01639c54590e3d1e611c7f4d7ea36fe565afe53d4099bc45ec93992e9cb8f5390a95a7175743a7c06b4df457a617a9f35b0a861c59a50b1847a07639dfed64798de9",
       "oprf_seed": "1a8e124cdfb3650fffcae72c9117f71c6a146dea8219d6de720bbb2fabe11abebb8ed8e3d4c5d945974ba27c3e3db8226db952fe33976187e476c2f2c340b373",
@@ -1181,10 +1161,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1206,7 +1186,6 @@
       "client_private_keyshare": "b5679348e1bf78a2f14699c342bc054651cc51ef71f433be82011ae7fdfba503",
       "credential_identifier": "31323334",
       "envelope_nonce": "217505e2fbfbe0da83f1ea5cefb2abddbf58e3be888dc137e81b4e62d8d7296d",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "87e06f1e67a06e6009b2649d2c0c0670b9b643f98609778138a3e708faed5d02",
       "oprf_key": "d5a591889556b4785b7daf3022e4548ee2997101b68d78f479709d19542e6b03",
       "oprf_seed": "368a47f6bc4c4e14bb73b1ea01aa83286a20b1a734e73265542a93d394c3c2537007911678db3ce138a67ca882b1d11805a28fcc13c423630d258b0ecec18241",
@@ -1240,10 +1219,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1266,7 +1245,6 @@
       "client_private_keyshare": "6f70dfee764ebae0f0499ba542ce8e971f9c253b106e262ad5652306f6292e08",
       "credential_identifier": "31323334",
       "envelope_nonce": "5f88bbe0b670b6c7e25c460b77f71b43d6c08e0d6b9a6cf896b392f4605b0eff",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "c7892325b0664608b05e4f8c0fd69331f544dd932a8976e0719ae77e60470044",
       "oprf_key": "8f9b5ad5a66f02680d5a1ca4ba264b72b6fcb47b0ab7ca79833f926bd72fca0c",
       "oprf_seed": "dcd0e3026f6e02084b1ff987bc6fc09d00d9b3f89c8c37866b32727e2c453c72be6484ababe669ce63a893e59d46f57465dc4cc07601dd9748203726d2d73b1b",
@@ -1300,10 +1278,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1325,7 +1303,6 @@
       "client_private_keyshare": "088e7a402369927c28e716edb4e54898c2514d0fff29101e5f53d46629506901",
       "credential_identifier": "31323334",
       "envelope_nonce": "61a1194284a8d1cded314329db08d41e1de84367d4e276f3c2319d3ba84851ca",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "685f41ffc4411aadb50271ee2ba85ec9c4b86a08171a4cef1791a091958aeef6",
       "oprf_key": "85c03822387fa916a79e0e329f4530df31700e976b775bf26453ff70cb75170e",
       "oprf_seed": "3ac6699689d43a4f8fb18acf8d0293e7a5a9136cd585d5149b9a7cf70ca71a63736610c77f6dc204f12c218e39b6eb1531fd3c355938c34008e8f8d5db66694f",
@@ -1360,10 +1337,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "ristretto255",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1386,7 +1363,6 @@
       "client_private_keyshare": "b95044b50f6bdec41982cbafe525f89966d2e0afb5aed5f96841b2b3a5f2ef0c",
       "credential_identifier": "31323334",
       "envelope_nonce": "72b41ac0498a3d64022579faaf9b3bcb7c33a2a500e66b097a82f0936d921910",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "16a46c9b9a7068c8383660d3d55cdbc76866ffc8e68878e100b1a8d823014617",
       "oprf_key": "d53a40b55f12df8efd610840a38b0c15a75980d4c91541c77b7d25214fb3e705",
       "oprf_seed": "6b7ed08853422f6a4ba718da294cef757124355180b2ad60dcf59986d257aaefc8fd605fee9c70cfff4632b18d55006b0cd2b80da7149b22b4e76cc4fad0c1c7",
@@ -1421,10 +1397,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1446,7 +1422,6 @@
       "client_private_keyshare": "0e3dffa63caaf7acc28daedebaea85e11fd9678068dd5fffdc39c68a3c2bf899cd7d9138ee8554e5e3aaa64a6a2c4e58e77620a46f51f91b",
       "credential_identifier": "31323334",
       "envelope_nonce": "e8dd452503f28db6eb07d2c864ade27e3fbe724e0280f9a91d31ec32db98b5aa",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "f8b6d62504296af881e7f95acc1fb3f59d490795d719b9592cfaf9772463670d",
       "oprf_key": "9f5f7b1b4f89b4ea9cb0122cd4dd2c73a9c062ab8115e9ce1e92ba7b600df819e719072bc9930b29aa404a2fca690f50536b00b861aaf005",
       "oprf_seed": "9e36ebb93971a0eb7dedeccf78d2d00fe3df9b727fb74fce8f0f51a07382ddd7b37ecc698ce9fc1d645ddc20154d2937097eb39f0ac08e3c72553274ea90539f",
@@ -1480,10 +1455,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1506,7 +1481,6 @@
       "client_private_keyshare": "d5de8f03eccfe722b5e1d8ad14fdc5ba6ac9d3984b5be8a144a8154de6aa45fa474006afbc2996e05385d9385a3304f7638f015566ff790d",
       "credential_identifier": "31323334",
       "envelope_nonce": "313d5610848548228afcaba643096222860048bfa58fb7d01adbe8681189d1a0",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "d5957b4da0d85988eaa9fc613c4e7a048fe15e15bbe75b5c3ce43592f9e163e5",
       "oprf_key": "47898720e218118ac801a3d7d364bcb67283ad71c1569ff45d955c7b491e31ff60b90ca7e2bd2bc15b6dbeaea1280c95af3569fe75f83b0e",
       "oprf_seed": "4c7d7a434689289f51be0d6793cf00583866311bcc5b71ed74cf30b1e0805c8c5d8b2b8b1bf793616f62e73f1770974fa3576229867da8184e96335eb953cbac",
@@ -1540,10 +1514,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1565,7 +1539,6 @@
       "client_private_keyshare": "36864005bad30c22c2303c7771cc42836d5f2393133f897d8bac833afb9a57a5a50c53e9b1c3e7a98de42ee7db7b5282c0ac6303d5dce70b",
       "credential_identifier": "31323334",
       "envelope_nonce": "c9b70b818a0f135a2454bdffaea0eae8ba8ca787bedd0f3513266dba0e668ac0",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "969181328c5374e77053793db3003643e2d14a70d7cf2e44d8af324b13ce490e",
       "oprf_key": "b5a09e5300e57daa75db119862689ced9f2d7b4fa44bcc8b1a5277a0924b8062d552a6f5f76252e1a4f313fcd06cf7fa9f4fc4b413904e06",
       "oprf_seed": "7deadce46d1d73b667f8f22e6e9ff9768eff3b37d8a50e441e12786050f4b2d7b2c52589f8e9167f3b1840e599e98e5504c740183b5a546183726ff27722e392",
@@ -1600,10 +1573,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "decaf448",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1626,7 +1599,6 @@
       "client_private_keyshare": "524a4a0fa95098c9d536d6f24e03e93d642165c5df0c55ef0698c79ecebe2d3ce2d0ab3ccf5f8db743b2ee2385908a5a50a46ff9ef77c63e",
       "credential_identifier": "31323334",
       "envelope_nonce": "96630f9bf9bf19bb4dd9567e4efd776a1edbe84cb33253a887b4a6f57aad797e",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "8d79aacf6e97cddebfb86a721cf936939a068f4a4847f4c71adc8c108bfccdfd",
       "oprf_key": "dc655f6458768f58e40358a0f910d5f81b3b00989305e3ca0429c80cb0701ea0d3db5eb97bc4156fef8addfd4097b1274e21b40431c15319",
       "oprf_seed": "5852d164ed20f80f87fdf902d4f21c448d29eba46fcb0c9f60c7b010659603342eb2af0bd624d23a24a2e39fca3c3a402032c0b553a8a2573fd22138d8221778",
@@ -1661,10 +1633,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -1686,7 +1658,6 @@
       "client_private_keyshare": "f52a714fe7dd7ff858acf78147d729148c8f4e032d2a8dff0d0d600be8580328",
       "credential_identifier": "31323334",
       "envelope_nonce": "47560588adccf4b3b73d2dc0ec5ccb0f8c31b60ecc39fb60e22e13f001b2f30b",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "9ebfb53d24202cd80bdd0da9fd13c0718edd6fe9c9fda184d0506ac325ca97bd",
       "oprf_key": "d4805a875ec91c7370abd4ed59f17003f69091eb4ce918d20d56826b51cf3143",
       "oprf_seed": "2c77d551f03b198be68a425e80b40b3b3e96742e4a87bb32fed166ca0a8b9c71",
@@ -1720,10 +1691,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -1746,7 +1717,6 @@
       "client_private_keyshare": "ac290e361a5d2805daefaf07f3f0844dc498fb91c6b32471ee9952c482bfce9e",
       "credential_identifier": "31323334",
       "envelope_nonce": "964590aed7b72f56580a725f142f4711d13738820f7aa5b12a62ae75eabd999f",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "29f0d80c33642e1463143675b3a8fdc3d7e7beac2f9b90f98466eb13c94fe0b1",
       "oprf_key": "eecbe1880958c88dcbcb2baa7cd37d1d0566b6af499dbc6ae22c45162dffa3ec",
       "oprf_seed": "e38d71957be34060ba95ff1192e04bac88eb92ef14f902ee7451509a19ad3f24",
@@ -1780,10 +1750,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -1805,7 +1775,6 @@
       "client_private_keyshare": "50846ed0c0d926ada140124a4d4c34ebfd4a1238ab2fe77423889b711e724919",
       "credential_identifier": "31323334",
       "envelope_nonce": "9df5b2438e79f4c8822c731f00fcc1aea036a80a87cc54a387256aa515ef5230",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "387e21caa1b2114dc0951f27d64b0a89bbd65317406388602069c368f1d79fde",
       "oprf_key": "91e60bd460a8af758252e97fe16bfaab4809be484e45402aaf14a8021845e736",
       "oprf_seed": "522921a26e66df982a602e59dce07270beb0ed5b7e6190628518b4f2eb8ddacc",
@@ -1840,10 +1809,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA256",
       "MAC": "HMAC-SHA256",
       "MHF": "Identity",
@@ -1866,7 +1835,6 @@
       "client_private_keyshare": "f6506fd1f65533a007ccc09d7245f3dcecf124476f08fdc659b354309778148f",
       "credential_identifier": "31323334",
       "envelope_nonce": "bc7d261ef2f934dcea40567a599549e0756274743fff80e9b08bf86b433fd83b",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "787d2c66f759d7e03822b9b9c67fc903c918a333761d40fa69180b67c4a26b4d",
       "oprf_key": "87a8b65b953d2c2acd87cfef118917c420162ce2cd6557cdc94be3ec25665b55",
       "oprf_seed": "79db5facf919911b811996328e04e466664f43014ec900b489380dd20b507daf",
@@ -1901,10 +1869,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1926,7 +1894,6 @@
       "client_private_keyshare": "e54b3dd15ff268ae3987b414d005c5eab6883e91928f237aa7e3e64750efb95731fd45391f991be724e00662c9aeb4ec",
       "credential_identifier": "31323334",
       "envelope_nonce": "148de3642340bb7a69bfe158588f000c30b1569a24dd07a480638eb4fdbe0e06",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "5754c8f14137da105cdd7d1f78025c2e89c3f8de99b9d05bf75d9e8dcce8187d",
       "oprf_key": "8fa87ee5b20115da3434d8905b1e751e65dd7fd72e43fa80f85faadcdbad7901acfefd1db5db1a9d4b53b1155842f8c6",
       "oprf_seed": "8bbf83fd8fffcc5caa69d80c37158fbbb1df653a4674e25ff1f4c2d8b5cf46dbbe904779b48f8b25f411b90fea006d30ddda3c49b9f9b5466531786473687abc",
@@ -1960,10 +1927,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -1986,7 +1953,6 @@
       "client_private_keyshare": "a9c6774eda4f9b9cbcff9a1e336950442135d41aa1d9c6af6b2107f3a7111d0b7ed1fc24306b2b41775e94e5e82f1d8e",
       "credential_identifier": "31323334",
       "envelope_nonce": "1242b6d2c8306a0dc21e9292c3783adea05fe969639a312aab6272d7703b28f9",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "b92d1981880f4a05a999474b563f7c037d210d0d3d631028fdc90ad5d66c1315",
       "oprf_key": "aabe832eebda97d5c7280661ea6c0f03ed8c856b5e26f12cdb24f592b3d8b04d8ed98cb57f83c9bb0270e291ea1f233b",
       "oprf_seed": "2c717395966a3c66c1cf9e0ff93cb2cd80533ce7f2a86a513d8a98a881dde9f1fbb8bd35f3dc87f79a76ff49d74cb6119827445214ae2182e348487d06c62f90",
@@ -2020,10 +1986,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2045,7 +2011,6 @@
       "client_private_keyshare": "03fb7fa9d176033e48a635a696cbcdf89cfab2192ec3e993073023bc4264a118bcedccd9de5af1104e7368d4e084f8bf",
       "credential_identifier": "31323334",
       "envelope_nonce": "f9ea5a60b501bedbcef4df97961e7f2aa23dcfaa05d5dba75833b6937c61d86e",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "a38f931af850d4ddb7801aff22c9b93f3988488189cb1892427fe0147b36487e",
       "oprf_key": "f4b613e3e38581f34efe1d68665f920c1160afe3b2dbc03195b56f719c410726165ac449b4cede23718ef65ffb23b4e6",
       "oprf_seed": "321cba599fe3fa5267bbc8714099dac00e2bcf65c0cdcfd0a9084ffddb52e26b1d3811da63095e08ccbf06ccd1d3df5e3764fbac15e8ce9cfc5d5102bcf926ed",
@@ -2080,10 +2045,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P384_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2106,7 +2071,6 @@
       "client_private_keyshare": "2d1101a1dfa353dc19a0f90c8ac27b7c0714bc244a52320d61cc37f443d1eb7021a99b0aba7aebd47f2c9fcb19ed05a9",
       "credential_identifier": "31323334",
       "envelope_nonce": "f7aee96fce3dc7adf85ddc93be0e3728409aaf3f97b8566f545991029ef5c2d9",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "05a4829125b88b1514506d222cde3f97f480331a723b4b8aa4e2ffb9eaee30fc",
       "oprf_key": "e8d981aa056e2eeb024a9dcfdeb3187940415946962d91c83c92311988a0ab89460809de133644688a1947cad78e68bd",
       "oprf_seed": "8e659b436841a2a315f4e7ad399839371f34fc50678bad012e3d06a88812516ff9768764f10ff4eb79186b12b24c7b9d3900564837746de432274d2e0515f734",
@@ -2141,10 +2105,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2166,7 +2130,6 @@
       "client_private_keyshare": "0008ff352576c9b5bca0102ad4b489588841e69addfc38b294bf33c7b0eb5195c4352dc3e9fe82ae2c7d45b2e56827c2c0325b61176684ef4a1abad7769ef34c2440",
       "credential_identifier": "31323334",
       "envelope_nonce": "a71fc130e52bfa8c30d36e601b4982bd7f9651c0246e22f74bed5ef60f97b024",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "cd737f2f0b46957cc7256050aecef62aeb3429712d9d82a0ac2e398a9073ae6d",
       "oprf_key": "018d81119ba81feb4273aff69f147fcdecc43068720de915ba09a12065ca99deb9d58e1244b3a80783830198cd120cabe0bc2458ed743cfad4c845617818be90b4e2",
       "oprf_seed": "4475335c42a1d03d3d63474ad4ccaf61fcf67f242195f1c25d94f0e34e4e5128afb2925a403cf50d085e00c7e646b2389eaf46a1b48c78b117c860c663ee30c7",
@@ -2200,10 +2163,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2226,7 +2189,6 @@
       "client_private_keyshare": "009daa6af50ccdef9b1e4cc36b7333c0da9176647a01f5cfbaf5524ed69a731778320f221e839baa1053dda8824ce01d55475a5a98aa89842cb52627c8847f1df781",
       "credential_identifier": "31323334",
       "envelope_nonce": "bd7acb3b459bfa1803e808dfdb40daa2331e6e1a3cb3353ec32a53f6814b6ed4",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "cb413fcdd6991172be61a463d7ead9a2a2fbc17ae752414f88f2d090c73fc584",
       "oprf_key": "00573fa2ced986d1218fa8968c33f50a262b306a95199f102d48af2b90e9a66858c483a1e49415fcd650b95f17312deb98e69a8df425ba97e4c5b0d9179a6e9ed2b8",
       "oprf_seed": "d04c7a154cbe04fc7118689646c5d16103024b379e0dabca550b837cc3000e6c4dcd9672a148af1fcd9db97019b4416a3976e9a80a2a437b49d34f7ab03d0ccc",
@@ -2260,10 +2222,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2285,7 +2247,6 @@
       "client_private_keyshare": "017e45ff1b9e31c97dc2911ad1e46c4113037fe195bb8f66df653d1c4e2b83a10db2f082094c05651cbabaa5dd9fc50362acd25fe3cc40fd5c9e0b89db2256d87cd3",
       "credential_identifier": "31323334",
       "envelope_nonce": "ff32a92d3cfb92f95f4c460df07e6db0a428dc1625dd6a7e04c128543598bcf8",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "16700e2fbb58ccb46ef5ddc3f1fb1be3c806575880d451e3e8556ae5bf5cf5ac",
       "oprf_key": "01c18b90b34544f04fa3a900bf331a20b1e3af624072f2872961f49b979adbcfde4290650ff92faff8027d1414b20799c15b2a9fd3dc21a50f26e2d06764c72a3565",
       "oprf_seed": "fa47e0e0f71dafbd21a46e52f095096309c891060fbd13018be2b7efe6b8cfafff71c10e5a450284bf054d373d389b0d2e6ac4c86c7ffe4f5916b2f5686473b5",
@@ -2320,10 +2281,10 @@
   },
   {
     "config": {
+      "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
       "Group": "P521_XMD:SHA-512_SSWU_RO_",
       "Hash": "SHA512",
-      "Info": "4f50415155452d504f43",
       "KDF": "HKDF-SHA512",
       "MAC": "HMAC-SHA512",
       "MHF": "Identity",
@@ -2346,7 +2307,6 @@
       "client_private_keyshare": "0029d099179ddbef7ebb53865dd1b5beae7c1415ba381bd60645075b18ad385964b889a275086bf31dbbc05b960a5b1c0bbdbe6d4a89a5054440e0176c04b43d2005",
       "credential_identifier": "31323334",
       "envelope_nonce": "602ab385115f97ce5e3acc844c5f09d3ca5c2d08e5002d99e8e5b3c916aebed1",
-      "info": "4f50415155452d504f43",
       "masking_nonce": "6ab6c1f587a4d531cc171c82dd295f363ddc3a1cd081fd7ee55519dd16e33937",
       "oprf_key": "00f213867eb44bf512af7ac1c7069113eee8cffad76d91aaec37f71cff0357e7525b70c4d59112353c8687de0e278bf637d6dce46f9f7e31b8a54defd5f5f71fb712",
       "oprf_seed": "7e6a8e44bdc69d2e082534887768d16b2bf1bb5b983c535da275e6306c61a87dc0e143f23691146d7f05e9165906bdd6bd322ec41c3590f6418e97e747165506",

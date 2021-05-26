@@ -32,7 +32,7 @@ input_keys = [
     "client_public_key",
     "server_private_key",
     "server_public_key",
-    "info",
+    "context",
     "server_nonce",
     "client_nonce",
     "server_keyshare",
