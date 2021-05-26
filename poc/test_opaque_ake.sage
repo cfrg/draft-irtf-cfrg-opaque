@@ -188,7 +188,6 @@ def test_3DH():
                     inputs["client_identity"] = to_hex(idU)
                 if idS:
                     inputs["server_identity"] = to_hex(idS)
-                inputs["context"] = to_hex(context)
                 inputs["oprf_seed"] = to_hex(oprf_seed)
                 inputs["credential_identifier"] = to_hex(credential_identifier)
                 inputs["password"] = to_hex(pwdU)
