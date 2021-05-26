@@ -26,7 +26,7 @@ else:
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
 
 class Configuration(object):
-    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group):
+    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group, context):
         self.mode = mode
         self.oprf_suite = oprf_suite
         self.kdf = kdf
@@ -34,6 +34,7 @@ class Configuration(object):
         self.hash = hash
         self.mhf = mhf
         self.group = group
+        self.context = context
         self.Npk = group.element_byte_length()
         self.Nsk = group.scalar_byte_length()
         self.Nm = mac.output_size()
@@ -54,7 +55,7 @@ class KeyExchange(object):
     def generate_ke2(self, l1, l2, ke1, pkU, skS, pkS):
         raise Exception("Not implemented")
 
-    def generate_ke3(self, l2, handshake_encrypt_key, ke1_state, pkS, skU, pkU):
+    def generate_ke3(self, l2, ake2, ke1_state, pkS, skU, pkU):
         raise Exception("Not implemented")
 
 TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
@@ -74,6 +75,7 @@ class OPAQUE3DH(KeyExchange):
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
             "MHF": self.config.mhf.name,
+            "Context": to_hex(self.config.context),
             "Nh": str(self.config.Nh),
             "Npk": str(self.config.Npk),
             "Nsk": str(self.config.Nsk),
@@ -103,29 +105,28 @@ class OPAQUE3DH(KeyExchange):
         empty_info = bytes([])
         server_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("ServerMAC"), empty_info, Nh)
         client_mac_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("ClientMAC"), empty_info, Nh)
-        handshake_encrypt_key = hkdf_expand_label(self.config, handshake_secret, _as_bytes("HandshakeKey"), empty_info, Nh)
 
-        return server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret
+        return server_mac_key, client_mac_key, session_key, handshake_secret
 
-    def generate_ke1(self, pwdU, info1, idU, pkU, idS, pkS):
+    def generate_ke1(self, pwdU, idU, pkU, idS, pkS):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
         nonceU = random_bytes(32)
         (eskU, epkU) = self.config.group.key_gen()
-        ke1 = TripleDHMessageInit(nonceU, info1, self.config.group.serialize(epkU))
+        ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
         # transcript1 includes the concatenation of the values:
-        # cred_request, nonceU, info1, epkU
+        # cred_request, nonceU, epkU
         hasher = self.config.hash()
-        hasher.update(_as_bytes("3DH"))
+        hasher.update(_as_bytes("RFCXXXX"))
+        hasher.update(encode_vector(self.config.context))
         if idU:
             hasher.update(encode_vector_len(idU, 2))
         else:
             hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
-        hasher.update(encode_vector(info1))
         hasher.update(self.config.group.serialize(epkU))
 
         self.cred_request = cred_request
@@ -143,7 +144,7 @@ class OPAQUE3DH(KeyExchange):
 
         return serialized_request + ke1.serialize()
 
-    def generate_ke2(self, msg, oprf_seed, credential_identifier, envU, masking_key, info2, idS, skS, pkS, idU, pkU):
+    def generate_ke2(self, msg, oprf_seed, credential_identifier, envU, masking_key, idS, skS, pkS, idU, pkU):
         cred_request, offset = deserialize_credential_request(self.config, msg)
         serialized_request = cred_request.serialize()
         ke1 = deserialize_tripleDH_init(self.config, msg[offset:])
@@ -155,18 +156,17 @@ class OPAQUE3DH(KeyExchange):
         nonceS = random_bytes(32)
         (eskS, epkS) = self.config.group.key_gen()
         nonceU = ke1.nonceU
-        info1 = ke1.info1
         epkU = self.config.group.deserialize(ke1.epkU)
 
         hasher = self.config.hash()
-        hasher.update(_as_bytes("3DH"))
+        hasher.update(_as_bytes("RFCXXXX"))
+        hasher.update(encode_vector(self.config.context))
         if idU:
             hasher.update(encode_vector_len(idU, 2))
         else:
             hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
         hasher.update(serialized_request)
         hasher.update(nonceU)
-        hasher.update(encode_vector(info1))
         hasher.update(self.config.group.serialize(epkU))
         if idS:
             hasher.update(encode_vector_len(idS, 2))
@@ -178,35 +178,29 @@ class OPAQUE3DH(KeyExchange):
 
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
         dh_components = TripleDHComponents(epkU, eskS, epkU, skS, pkU, eskS)
-        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
-
-        # Encrypt e_info2
-        pad = hkdf_expand(self.config, handshake_encrypt_key, _as_bytes("EncryptionPad"), len(info2))
-        e_info2 = xor(pad, info2)
-
-        hasher.update(encode_vector(e_info2))
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
         transcript_hash = hasher.digest()
 
         mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
-        handshake_encrypt_key = TripleDHMessageRespond(nonceS, self.config.group.serialize(epkS), e_info2, mac)
+        ake2 = TripleDHMessageRespond(nonceS, self.config.group.serialize(epkS), mac)
 
         self.nonceS = nonceS
         self.hasher = hasher
         self.eskS = eskS
         self.epkS = epkS
         self.server_mac_key = server_mac_key
-        self.handshake_encrypt_key = handshake_encrypt_key
+        self.ake2 = ake2
         self.client_mac_key = client_mac_key
         self.session_key = session_key
         self.server_mac = mac
         self.handshake_secret = handshake_secret
 
-        return serialized_response + handshake_encrypt_key.serialize()
+        return serialized_response + ake2.serialize()
 
     def generate_ke3(self, msg):
         cred_response, offset = deserialize_credential_response(self.config, msg)
         serialized_response = cred_response.serialize()
-        handshake_encrypt_key = deserialize_tripleDH_respond(self.config, msg[offset:])
+        ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
 
         skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, self.idU, self.idS)
         skU = OS2IP(skU_bytes)
@@ -222,10 +216,9 @@ class OPAQUE3DH(KeyExchange):
         pkS = self.pkS
         eskU = self.eskU
         nonceU = self.nonceU
-        nonceS = handshake_encrypt_key.nonceS
-        epkS = self.config.group.deserialize(handshake_encrypt_key.epkS)
-        e_info2 = handshake_encrypt_key.e_info2
-        mac = handshake_encrypt_key.mac
+        nonceS = ake2.nonceS
+        epkS = self.config.group.deserialize(ake2.epkS)
+        mac = ake2.mac
 
         hasher = self.hasher
         if idS:
@@ -238,19 +231,15 @@ class OPAQUE3DH(KeyExchange):
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
         dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
-        server_mac_key, client_mac_key, handshake_encrypt_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
 
-        hasher.update(encode_vector(e_info2))
         transcript_hash = hasher.digest()
 
         server_mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
         assert server_mac == mac
 
-        # TODO(caw): decrypt e_info2 and pass it to the application
-
         self.session_key = session_key
         self.server_mac_key = server_mac_key
-        self.handshake_encrypt_key = handshake_encrypt_key
         self.client_mac_key = client_mac_key
         self.handshake_secret = handshake_secret
 
@@ -277,52 +266,46 @@ class OPAQUE3DH(KeyExchange):
 
 # struct {
 #      opaque nonceU[32];
-#      opaque info<0..2^16-1>;
 #      opaque epkU[LK];
 #  } KE1M;
 def deserialize_tripleDH_init(config, data):
     nonceU = data[0:32]
-    info, offset = decode_vector(data[32:])
-    epkU_bytes = data[32+offset:]
+    epkU_bytes = data[32:]
     length = config.oprf_suite.group.element_byte_length()
     if len(epkU_bytes) != length:
         raise Exception("Invalid epkU length: %d %d" % (len(epkU_bytes), length))
-    return TripleDHMessageInit(nonceU, info, epkU_bytes)
+    return TripleDHMessageInit(nonceU, epkU_bytes)
 
 class TripleDHMessageInit(object):
-    def __init__(self, nonceU, info1, epkU):
+    def __init__(self, nonceU, epkU):
         self.nonceU = nonceU
-        self.info1 = info1
         self.epkU = epkU
 
     def serialize(self):
-        return self.nonceU + encode_vector(self.info1) + self.epkU
+        return self.nonceU + self.epkU
 
 # struct {
 #      opaque nonceS[32];
 #      opaque epkS[LK];
-#      opaque e_info2<0..2^16-1>;
 #      opaque mac[LH];
 #  } KE2M;
 def deserialize_tripleDH_respond(config, data):
     length = config.oprf_suite.group.element_byte_length()
     nonceS = data[0:32]
     epkS = data[32:32+length]
-    e_info2, offset = decode_vector(data[32+length:])
-    mac = data[32+length+offset:]
+    mac = data[32+length:]
     if len(mac) != config.hash().digest_size:
         raise Exception("Invalid MAC length: %d %d" % (len(mac), config.hash().digest_size))
-    return TripleDHMessageRespond(nonceS, epkS, e_info2, mac)
+    return TripleDHMessageRespond(nonceS, epkS, mac)
 
 class TripleDHMessageRespond(object):
-    def __init__(self, nonceS, epkS, e_info2, mac):
+    def __init__(self, nonceS, epkS, mac):
         self.nonceS = nonceS
         self.epkS = epkS
-        self.e_info2 = e_info2
         self.mac = mac
 
     def serialize(self):
-        return self.nonceS + self.epkS + encode_vector(self.e_info2) + self.mac
+        return self.nonceS + self.epkS + self.mac
 
 # struct {
 #      opaque mac[LH];
