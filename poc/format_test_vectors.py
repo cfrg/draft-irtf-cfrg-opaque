@@ -32,8 +32,7 @@ input_keys = [
     "client_public_key",
     "server_private_key",
     "server_public_key",
-    "client_info",
-    "server_info",
+    "info",
     "server_nonce",
     "client_nonce",
     "server_keyshare",
@@ -52,7 +51,6 @@ intermediate_keys = [
     "pseudorandom_pad",
     "envelope",
     "handshake_secret",
-    "handshake_encrypt_key",
     "server_mac_key",
     "client_mac_key",
 ]

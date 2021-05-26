@@ -25,6 +25,7 @@ default_opaque_configuration = Configuration(
     hashlib.sha512, 
     MHF("Identity", identity_harden),
     GroupRistretto255(),
+    _as_bytes("OPAQUE-POC"),
 )
 
 def test_core_protocol_serialization():
@@ -131,8 +132,7 @@ def test_3DH():
     credential_identifier = _as_bytes("1234")
     idS = _as_bytes("bob")
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
-    info1 = _as_bytes("hello bob")
-    info2 = _as_bytes("greetings alice")
+    info = _as_bytes("OPAQUE-POC")
 
     # Configurations specified here:
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
@@ -158,7 +158,7 @@ def test_3DH():
 
                 kdf = HKDF(fast_hash)
                 mac = HMAC(fast_hash)
-                config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group)
+                config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, info)
 
                 creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
                 core = OPAQUECore(config)
@@ -175,8 +175,8 @@ def test_3DH():
                 client_kex = OPAQUE3DH(config)
                 server_kex = OPAQUE3DH(config)
 
-                ke1 = client_kex.generate_ke1(pwdU, info1, idU, pkU, idS, pkS)
-                ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, info2, idS, skS, pkS, idU, pkU)
+                ke1 = client_kex.generate_ke1(pwdU, idU, pkU, idS, pkS)
+                ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, pkU)
                 ke3 = client_kex.generate_ke3(ke2)
                 server_session_key = server_kex.finish(ke3)
 
@@ -198,8 +198,7 @@ def test_3DH():
                     inputs["client_private_key"] = to_hex(skU_bytes)
                 inputs["server_private_key"] = to_hex(skS_bytes)
                 inputs["server_public_key"] = to_hex(pkS_bytes)
-                inputs["client_info"] = to_hex(info1)
-                inputs["server_info"] = to_hex(info2)
+                inputs["info"] = to_hex(info)
                 inputs["client_nonce"] = to_hex(client_kex.nonceU)
                 inputs["server_nonce"] = to_hex(server_kex.nonceS)
                 inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))
@@ -220,7 +219,6 @@ def test_3DH():
                 intermediates["auth_key"] = to_hex(core.auth_key)
                 intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)
                 intermediates["client_mac_key"] = to_hex(client_kex.client_mac_key)
-                intermediates["handshake_encrypt_key"] = to_hex(client_kex.handshake_encrypt_key)
                 intermediates["handshake_secret"] = to_hex(client_kex.handshake_secret)
 
                 # Protocol outputs
