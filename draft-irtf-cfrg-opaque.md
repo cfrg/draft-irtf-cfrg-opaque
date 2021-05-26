@@ -1316,7 +1316,6 @@ Note that the Label parameter is not a NULL-terminated string.
 
 OPAQUE-3DH can optionally include shared `context` information in the transcript,
 such as configuration parameters or application-specific info, e.g. "appXYZ-v1.2.3".
-This information MUST be encoded with a length-prefix when included in the preamble.
 
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
