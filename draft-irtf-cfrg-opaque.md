@@ -1642,12 +1642,14 @@ applications can use to control OPAQUE:
   handle to the client credential being stored. In applications where there are alternate
   client identifiers that accompany an account, such as a username or email address, this
   identifier can be set to those alternate values. Applications SHOULD set the credential
-  identifier to the client identifier.
-- Client and server info: As described in {{online-phase}}, these are application-specific
-  values exchanged during the authenticated key exchange protocol. Applications MAY use
-  these if they need to exchange data before the key exchange protocol completes (for
-  performance reasons). Otherwise, applications SHOULD only send application-specific
-  data after the protocol completes.
+  identifier to the client identifier. Applications MUST NOT use the same credential
+  identifier for multiple clients.
+- Context information: As described in {{configurations}}, applications may include
+  a shared context string that is authenticated as part of the handshake. This parameter
+  SHOULD include any configuration information or parameters that are needed to prevent
+  cross-protocol or downgrade attacks. This context information is not sent over the
+  wire in any key exchange messages. However, applications may choose to send it alongside
+  key exchange messages if needed for their use case.
 - Client and server identifier: As described in {{client-credential-storage}}, clients
   and servers are identified with their public keys by default. However, applications
   may choose alternate identifiers that are pinned to these public keys. For example,
@@ -1656,9 +1658,10 @@ applications can use to control OPAQUE:
   and rely solely on public key information.
 - Enumeration prevention: As described in {{create-credential-response}}, if servers
   receive a credential request for a non-existent client, they SHOULD respond with a
-  "fake" response in order to prevent active client enumeration attacks; see {{preventing-client-enumeration}}.
-  In settings where this attack is not a concern, servers may choose to not support
-  this functionality.
+  "fake" response in order to prevent active client enumeration attacks. Servers that
+  implement this mitigation SHOULD use the same configuration information (such as
+  the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
+  where this attack is not a concern, servers may choose to not support this functionality.
 
 # Security Considerations {#security-considerations}
 
