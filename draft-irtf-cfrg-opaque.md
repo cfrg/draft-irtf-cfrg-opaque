@@ -1819,6 +1819,7 @@ SHOULD select parameters that balance cost and complexity.
 Client enumeration refers to attacks where the attacker tries to learn
 extra information about the behavior of clients that have registered with
 the server. There are two types of attacks we consider:
+
 1) An attacker tries to learn whether a given client identity is registered
 with a server, and
 2) An attacker tries to learn whether a given client identity has recently
@@ -1832,9 +1833,9 @@ CredentialResponse for unregistered clients through the sampling of a
 random masking_key value and relying on the semantic security provided by
 the XOR-based pad over the envelope.
 
-Implementations must employ care to avoid side-channel leakage (e.g.,
-timing attacks) from helping differentiate these operations from a regular
-server response.
+Implementations must take care to avoid side-channel leakage (e.g., timing
+attacks) from helping differentiate these operations from a regular server
+response.
 
 Preventing the second type of attack requires the server to supply a
 credential_identifier value for a given client identity, consistently between the
@@ -1851,9 +1852,18 @@ Applications must use the same envelope mode when using this prevention
 throughout their lifecycle. The envelope size varies from one to another,
 and a switch in envelope mode could then be detected.
 
-Finally, note that server implementations may choose to forego the construction
-of a simulated credential response message for an unregistered client if these client
-enumeration attacks can be mitigated through other application-specific means.
+Note that server implementations may choose to forego the construction of a
+simulated credential response message for an unregistered client if these client
+enumeration attacks can be mitigated through other application-specific means
+or are otherwise not applicable for their threat model.
+
+Finally, OPAQUE does not prevent prevent enumeration via the registration flow.
+For example, if an attacker tries to register with a given client identity that
+is also in use, the server will not complete the protocol. This allows an attacker
+to use the server's response during registration as an oracle for whether a
+given client identity is registered. Applications should mitigate against
+this type of attack by rate limiting or otherwise restricting the registration
+flow.
 
 ## Password Salt and Storage Implications
 
