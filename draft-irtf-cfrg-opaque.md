@@ -1859,7 +1859,7 @@ or are otherwise not applicable for their threat model.
 
 Finally, OPAQUE does not prevent prevent enumeration via the registration flow.
 For example, if an attacker tries to register with a given client identity that
-is also in use, the server will not complete the protocol. This allows an attacker
+is already in use, the server will not complete the protocol. This allows an attacker
 to use the server's response during registration as an oracle for whether a
 given client identity is registered. Applications should mitigate against
 this type of attack by rate limiting or otherwise restricting the registration
@@ -2904,4 +2904,3 @@ export_key: d06b749af4739bfbf4422aba432cdb607c54a769b9d5543e9107d477f
 session_key: 41f5201e8e537b961cea8ff9dbf1d30bcc02833eee233af99d5eeddc
 448a526f
 ~~~
-
