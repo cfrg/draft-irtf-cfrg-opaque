@@ -1825,45 +1825,41 @@ with a server, and
 2) An attacker tries to learn whether a given client identity has recently
 completed registration, or has re-registered (e.g. after a password change).
 
-Preventing the first type of attack requires the server to act with
-unregistered client identities in a way that is indistinguishable from its
-behavior with existing registered clients. This is achieved in
-{{create-credential-response}} for an unregistered client by simulating a
-CredentialResponse for unregistered clients through the sampling of a
-random masking_key value and relying on the semantic security provided by
-the XOR-based pad over the envelope.
-
-Implementations must take care to avoid side-channel leakage (e.g., timing
+OPAQUE prevents the first type of attack during the authentication flow. This
+is done by requiring servers to act with unregistered client identities in a
+way that is indistinguishable from its behavior with existing registered clients.
+Servers do this for an unregistered client by simulating a fake
+CredentialResponse as specified in {{create-credential-response}}.
+Implementations must also take care to avoid side-channel leakage (e.g., timing
 attacks) from helping differentiate these operations from a regular server
-response.
+response. Note that server implementations may choose to forego the construction
+of a simulated credential response message for an unregistered client if these
+client enumeration attacks can be mitigated through other application-specific
+means or are otherwise not applicable for their threat model.
+
+OPAQUE does not prevent the first type of attack during the registration flow.
+Servers must necessarily react differently during the registration flow between
+registered and unregistered clients. This allows an attacker to use the server's
+response during registration as an oracle for whether a given client identity is
+registered. Applications should mitigate against this type of attack by rate
+limiting or otherwise restricting the registration flow.
 
 Preventing the second type of attack requires the server to supply a
-credential_identifier value for a given client identity, consistently between the
-{{create-reg-response}} and {{create-credential-response}} steps.
-Note that credential_identifier can be set to client_identity, for simplicity.
+credential_identifier value for a given client identity, consistently between
+the registration response and credential response; see {{create-reg-response}}
+and {{create-credential-response}}. Note that credential_identifier can be set
+to client_identity for simplicity.
 
 In the event of a server compromise that results in a re-registration of
-credentials for all compromised clients, the oprf_seed value must be resampled,
+credentials for all compromised clients, the oprf_seed value MUST be resampled,
 resulting in a change in the oprf_key value for each client. Although this
 change can be detected by an adversary, it is only leaked upon password rotation
-after the exposure of the credential files.
+after the exposure of the credential files, and equally affects all registered
+clients.
 
-Applications must use the same envelope mode when using this prevention
-throughout their lifecycle. The envelope size varies from one to another,
-and a switch in envelope mode could then be detected.
-
-Note that server implementations may choose to forego the construction of a
-simulated credential response message for an unregistered client if these client
-enumeration attacks can be mitigated through other application-specific means
-or are otherwise not applicable for their threat model.
-
-Finally, OPAQUE does not prevent prevent enumeration via the registration flow.
-For example, if an attacker tries to register with a given client identity that
-is also in use, the server will not complete the protocol. This allows an attacker
-to use the server's response during registration as an oracle for whether a
-given client identity is registered. Applications should mitigate against
-this type of attack by rate limiting or otherwise restricting the registration
-flow.
+Finally, applications must use the same envelope mode when using this prevention
+throughout their lifecycle. The envelope size varies between modes, so a switch
+in mode could then be detected.
 
 ## Password Salt and Storage Implications
 
