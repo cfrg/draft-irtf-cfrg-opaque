@@ -12,11 +12,9 @@ from hash import scrypt
 try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, DeriveKeyPair
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, Envelope, InnerEnvelope, envelope_mode_internal, envelope_mode_external, deserialize_secret_credentials, deserialize_envelope
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
-
-OPAQUE_NONCE_LENGTH = 32
 
 class OPAQUECore(object):
     def __init__(self, config):
@@ -138,9 +136,8 @@ class OPAQUECore(object):
         Z, _, _ = oprf_context.evaluate(request.data)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nm + 32
+        Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)
@@ -187,9 +184,8 @@ class OPAQUECore(object):
     def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind)
         masking_key = self.derive_masking_key(random_pwd)
-        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nm + 32
+        Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, response.masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)

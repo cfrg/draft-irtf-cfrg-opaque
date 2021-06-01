@@ -13,6 +13,8 @@ import random
 FIXED_SEED = "opaque".encode('utf-8')
 random.seed(int.from_bytes(hashlib.sha256(FIXED_SEED).digest(), 'big'))
 
+OPAQUE_NONCE_LENGTH = 32
+
 if sys.version_info[0] == 3:
     xrange = range
     def _as_bytes(x): return x if isinstance(x, bytes) else bytes(x, "utf-8")

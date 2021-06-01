@@ -12,7 +12,7 @@ try:
             deserialize_credential_request, deserialize_credential_response, \
             Credentials, SecretCredentials, CleartextCredentials
     from sagelib.groups import GroupRistretto255, GroupDecaf448, GroupP256, GroupP384, GroupP521
-    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
+    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
@@ -226,6 +226,28 @@ def test_3DH():
                 outputs["KE3"] = to_hex(ke3)
                 outputs["session_key"] = to_hex(server_session_key)
                 outputs["export_key"] = to_hex(export_key)
+
+                # Fake Credentials
+                if idU != None :
+                    _, fake_pkC = group.key_gen()
+                    fake_pkC_bytes = group.serialize(fake_pkC)
+                    if mode == envelope_mode_external:
+                        inner = InnerEnvelope(bytes(bytearray(config.Nsk)))
+                    else:
+                        inner = InnerEnvelope()
+                    fake_envU = Envelope(bytes(bytearray(OPAQUE_NONCE_LENGTH)), inner, bytes(bytearray(config.Nm)))
+                    fake_masking_key = random_bytes(config.Nh)
+
+                    fake_idU = _as_bytes("alice")
+                    fake_ke2, fake_masking_nonce = server_kex.generate_fake_credentials(ke1, oprf_seed, fake_idU, fake_envU, fake_masking_key, idS, skS, pkS, fake_idU, fake_pkC)
+
+                    inputs["fake_client_public_key"] = to_hex(fake_pkC_bytes)
+                    inputs["fake_masking_nonce"] = to_hex(fake_masking_nonce)
+                    inputs["fake_masking_key"] = to_hex(fake_masking_key)
+                    intermediates["fake_server_mac_key"] = to_hex(server_kex.server_mac_key)
+                    intermediates["fake_client_mac_key"] = to_hex(server_kex.client_mac_key)
+                    intermediates["fake_handshake_secret"] = to_hex(server_kex.handshake_secret)
+                    outputs["fake_KE2"] = to_hex(fake_ke2)
 
                 vector = {}
                 vector["config"] = client_kex.json()

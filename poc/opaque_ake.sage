@@ -11,9 +11,9 @@ import struct
 from collections import namedtuple
 
 try:
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_core import OPAQUECore
-    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, InnerEnvelope, Envelope, envelope_mode_internal, envelope_mode_external
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -112,7 +112,7 @@ class OPAQUE3DH(KeyExchange):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
-        nonceU = random_bytes(32)
+        nonceU = random_bytes(OPAQUE_NONCE_LENGTH)
         (eskU, epkU) = self.config.group.key_gen()
         ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
@@ -153,7 +153,7 @@ class OPAQUE3DH(KeyExchange):
         cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key)
         serialized_response = cred_response.serialize()
 
-        nonceS = random_bytes(32)
+        nonceS = random_bytes(OPAQUE_NONCE_LENGTH)
         (eskS, epkS) = self.config.group.key_gen()
         nonceU = ke1.nonceU
         epkU = self.config.group.deserialize(ke1.epkU)
@@ -196,6 +196,49 @@ class OPAQUE3DH(KeyExchange):
         self.handshake_secret = handshake_secret
 
         return serialized_response + ake2.serialize()
+
+    def generate_fake_credentials(self, msg, oprf_seed, credential_identifier, envU, masking_key, idS, skS, pkS, idU, pkU):
+        cred_request, offset = deserialize_credential_request(self.config, msg)
+        serialized_request = cred_request.serialize()
+        ke1 = deserialize_tripleDH_init(self.config, msg[offset:])
+
+        pkS_bytes = self.config.group.serialize(pkS)
+        cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key)
+        serialized_response = cred_response.serialize()
+
+        epkU = self.config.group.deserialize(ke1.epkU)
+
+        hasher = self.config.hash()
+        hasher.update(_as_bytes("RFCXXXX"))
+        hasher.update(encode_vector(self.config.context))
+        if idU:
+            hasher.update(encode_vector_len(idU, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
+        hasher.update(serialized_request)
+        hasher.update(ke1.nonceU)
+        hasher.update(self.config.group.serialize(epkU))
+        if idS:
+            hasher.update(encode_vector_len(idS, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkS), 2))
+        hasher.update(serialized_response)
+        hasher.update(self.nonceS)
+        hasher.update(self.config.group.serialize(self.epkS))
+
+        # K3dh = epkU^self.eskS || epkU^skS || pkU^self.eskS
+        dh_components = TripleDHComponents(epkU, self.eskS, epkU, skS, pkU, self.eskS)
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, hasher.digest())
+        transcript_hash = hasher.digest()
+
+        mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
+        ake2 = TripleDHMessageRespond(self.nonceS, self.config.group.serialize(self.epkS), mac)
+
+        self.server_mac_key = server_mac_key
+        self.client_mac_key = client_mac_key
+        self.handshake_secret = handshake_secret
+
+        return serialized_response + ake2.serialize(), cred_response.masking_nonce
 
     def generate_ke3(self, msg):
         cred_response, offset = deserialize_credential_response(self.config, msg)
@@ -269,8 +312,8 @@ class OPAQUE3DH(KeyExchange):
 #      opaque epkU[LK];
 #  } KE1M;
 def deserialize_tripleDH_init(config, data):
-    nonceU = data[0:32]
-    epkU_bytes = data[32:]
+    nonceU = data[0:OPAQUE_NONCE_LENGTH]
+    epkU_bytes = data[OPAQUE_NONCE_LENGTH:]
     length = config.oprf_suite.group.element_byte_length()
     if len(epkU_bytes) != length:
         raise Exception("Invalid epkU length: %d %d" % (len(epkU_bytes), length))
@@ -291,9 +334,9 @@ class TripleDHMessageInit(object):
 #  } KE2M;
 def deserialize_tripleDH_respond(config, data):
     length = config.oprf_suite.group.element_byte_length()
-    nonceS = data[0:32]
-    epkS = data[32:32+length]
-    mac = data[32+length:]
+    nonceS = data[0:OPAQUE_NONCE_LENGTH]
+    epkS = data[OPAQUE_NONCE_LENGTH:OPAQUE_NONCE_LENGTH+length]
+    mac = data[OPAQUE_NONCE_LENGTH+length:]
     if len(mac) != config.hash().digest_size:
         raise Exception("Invalid MAC length: %d %d" % (len(mac), config.hash().digest_size))
     return TripleDHMessageRespond(nonceS, epkS, mac)
