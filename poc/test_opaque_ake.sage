@@ -305,29 +305,7 @@ def test_3DH():
                 params = TestVectorParams(False, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
                 vector = run_test_vector(params)
                 vectors.append(vector)
-                
-                # # Fake Credentials
-                # if idU != None:
-                    # _, fake_pkC = group.key_gen()
-                    # fake_pkC_bytes = group.serialize(fake_pkC)
-                    # if mode == envelope_mode_external:
-                    #     inner = InnerEnvelope(bytes(bytearray(config.Nsk)))
-                    # else:
-                    #     inner = InnerEnvelope()
-                    # fake_envU = Envelope(bytes(bytearray(OPAQUE_NONCE_LENGTH)), inner, bytes(bytearray(config.Nm)))
-                    # fake_masking_key = random_bytes(config.Nh)
 
-                #     fake_idU = _as_bytes("alice")
-                #     fake_ke2, fake_masking_nonce = server_kex.generate_fake_credentials(ke1, oprf_seed, fake_idU, fake_envU, fake_masking_key, idS, skS, pkS, fake_idU, fake_pkC)
-
-                #     inputs["fake_client_public_key"] = to_hex(fake_pkC_bytes)
-                #     inputs["fake_masking_nonce"] = to_hex(fake_masking_nonce)
-                #     inputs["fake_masking_key"] = to_hex(fake_masking_key)
-                #     intermediates["fake_server_mac_key"] = to_hex(server_kex.server_mac_key)
-                #     intermediates["fake_client_mac_key"] = to_hex(server_kex.client_mac_key)
-                #     intermediates["fake_handshake_secret"] = to_hex(server_kex.handshake_secret)
-                #     outputs["fake_KE2"] = to_hex(fake_ke2)
-    
     for mode in [envelope_mode_internal, envelope_mode_external]:
         for (oprf, fast_hash, mhf, group) in configs:
             fake_params = TestVectorParams(True, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
