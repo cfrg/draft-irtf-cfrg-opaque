@@ -5,6 +5,7 @@ import sys
 import json
 
 config_keys = [
+    "Fake",
     "OPRF",
     "Hash",
     "MHF",

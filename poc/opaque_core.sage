@@ -31,20 +31,6 @@ class OPAQUECore(object):
         masking_key = self.config.kdf.expand(random_pwd, _as_bytes("MaskingKey"), Nh)
         return masking_key
 
-    def derive_keys(self, random_pwd, nonce, Npt):
-        Nh = self.config.hash().digest_size
-        pseudorandom_pad = self.config.kdf.expand(random_pwd, nonce + _as_bytes("Pad"), Npt)
-        auth_key = self.config.kdf.expand(random_pwd, nonce + _as_bytes("AuthKey"), Nh)
-        export_key = self.config.kdf.expand(random_pwd, nonce + _as_bytes("ExportKey"), Nh)
-        return pseudorandom_pad, auth_key, export_key
-
-    def derive_secrets(self, pwdU, response, blind, nonce, Npt):
-        random_pwd = self.derive_random_pwd(pwdU, response, blind)
-        masking_key = self.derive_masking_key(random_pwd)
-        pseudorandom_pad, auth_key, export_key = self.derive_keys(random_pwd, nonce, Npt)
-
-        return random_pwd, pseudorandom_pad, auth_key, export_key, masking_key
-
     def create_registration_request(self, pwdU):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
         blind, blinded_element = oprf_context.blind(pwdU)
@@ -169,15 +155,15 @@ class OPAQUECore(object):
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("AuthKey"), Nh)
         export_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("ExportKey"), Nh)
+
+        self.credential_auth_key = auth_key
+        self.credential_export_key = export_key
         
         secret_creds, client_public_key = self.recover_keys(random_pwd, envelope.nonce, envelope.inner_env)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
         expected_tag = self.config.mac.mac(auth_key, envelope.nonce + envelope.inner_env.serialize() + cleartext_creds.serialize())
         if expected_tag != envelope.auth_tag:
             raise Exception("Invalid tag")
-
-        self.credential_auth_key = auth_key
-        self.credential_export_key = export_key
 
         return secret_creds, export_key
 
@@ -194,11 +180,11 @@ class OPAQUECore(object):
         server_public_key = data[0:Npk]
         envelope, _ = deserialize_envelope(self.config, data[Npk:])
 
-        secret_creds, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
-
-        self.credential_prk = random_pwd
+        self.credential_rwd = random_pwd
         self.credential_decryption_pad = credential_response_pad
         self.credential_masking_key = masking_key
+
+        secret_creds, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
 
         return secret_creds.skU, server_public_key, export_key
 

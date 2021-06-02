@@ -36,6 +36,9 @@ def to_hex(octet_string):
 def random_bytes(n):
     return I2OSP(random.randrange(2**(8*n)), n)
 
+def zero_bytes(n):
+    return bytearray([0] * n)
+
 def xor(a, b):
     if len(a) != len(b):
         print(len(a), len(b))

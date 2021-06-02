@@ -4,15 +4,17 @@
 import sys
 import json
 import hashlib
+from collections import namedtuple
+
 try:
     from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_sha512, ciphersuite_p256_sha256, ciphersuite_p384_sha512, ciphersuite_p521_sha512
     from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
-    from sagelib.opaque_messages import InnerEnvelope, deserialize_inner_envelope, envelope_mode_internal, envelope_mode_external, \
+    from sagelib.opaque_messages import RegistrationUpload, InnerEnvelope, deserialize_inner_envelope, envelope_mode_internal, envelope_mode_external, \
         Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
             deserialize_credential_request, deserialize_credential_response, \
             Credentials, SecretCredentials, CleartextCredentials
     from sagelib.groups import GroupRistretto255, GroupDecaf448, GroupP256, GroupP384, GroupP521
-    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, zero_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
@@ -127,6 +129,161 @@ def test_registration_and_authentication():
         # We expect the MAC authentication tag to fail, so should get here
         pass
 
+TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identifier idS pwdU context mode oprf fast_hash mhf group")
+
+def run_test_vector(params):
+    is_fake = params.is_fake
+    idU = params.idU
+    credential_identifier = params.credential_identifier
+    idS = params.idS
+    pwdU = params.pwdU
+    context = params.context
+    mode = params.mode
+    oprf = params.oprf
+    fast_hash = params.fast_hash
+    mhf = params.mhf
+    group = params.group
+
+    (skU, pkU) = group.key_gen()
+    (skS, pkS) = group.key_gen()
+    skU_bytes = group.serialize_scalar(skU)
+    pkU_bytes = group.serialize(pkU)
+    skS_bytes = group.serialize_scalar(skS)
+    pkS_bytes = group.serialize(pkS)
+    oprf_seed = random_bytes(fast_hash().digest_size)
+
+    kdf = HKDF(fast_hash)
+    mac = HMAC(fast_hash)
+    config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, context)
+    creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
+    core = OPAQUECore(config)
+
+    if not is_fake:
+        reg_request, metadata = core.create_registration_request(pwdU)
+        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier)
+        record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
+    else:
+        _, fake_pkC = group.key_gen()
+        fake_pkC_bytes = group.serialize(fake_pkC)
+        if mode == envelope_mode_external:
+            inner = InnerEnvelope(zero_bytes(config.Nsk))
+        else:
+            inner = InnerEnvelope()
+        fake_envU = Envelope(zero_bytes(OPAQUE_NONCE_LENGTH), inner, zero_bytes(config.Nm))
+        fake_masking_key = zero_bytes(config.Nh)
+        record = RegistrationUpload(fake_pkC_bytes, fake_masking_key, fake_envU)
+
+    # TODO(caw): do something else with this
+    pkU_enc = record.pkU
+    pkU = group.deserialize(pkU_enc)
+    pkU_bytes = pkU_enc
+
+    client_kex = OPAQUE3DH(config)
+    server_kex = OPAQUE3DH(config)
+
+    ke1 = client_kex.generate_ke1(pwdU, idU, pkU, idS, pkS)
+    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, pkU)
+    if is_fake:
+        try:
+            ke3 = client_kex.generate_ke3(ke2)
+            assert False
+        except:
+            # Expected since the MAC was generated using garbage
+            pass
+    else:
+        ke3 = client_kex.generate_ke3(ke2)
+        server_session_key = server_kex.finish(ke3)
+        assert server_session_key == client_kex.session_key
+
+    inputs = {}
+    intermediates = {}
+    outputs = {}
+
+    # Protocol inputs
+    if not is_fake:
+        if idU:
+            inputs["client_identity"] = to_hex(idU)
+        if idS:
+            inputs["server_identity"] = to_hex(idS)
+        inputs["oprf_seed"] = to_hex(oprf_seed)
+        inputs["credential_identifier"] = to_hex(credential_identifier)
+        inputs["password"] = to_hex(pwdU)
+        if mode == envelope_mode_external:
+            inputs["client_private_key"] = to_hex(skU_bytes)
+        inputs["server_private_key"] = to_hex(skS_bytes)
+        inputs["server_public_key"] = to_hex(pkS_bytes)
+        inputs["client_nonce"] = to_hex(client_kex.nonceU)
+        inputs["server_nonce"] = to_hex(server_kex.nonceS)
+        inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))
+        inputs["client_keyshare"] = to_hex(group.serialize(client_kex.epkU))
+        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.eskS))
+        inputs["server_keyshare"] = to_hex(group.serialize(server_kex.epkS))
+        inputs["envelope_nonce"] = to_hex(core.envelope_nonce)
+        inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
+        inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
+        inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
+        inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
+
+        # Intermediate computations
+        intermediates["client_public_key"] = to_hex(pkU_bytes)
+        intermediates["envelope"] = to_hex(record.envU.serialize())
+        intermediates["randomized_pwd"] = to_hex(client_kex.core.credential_rwd)
+        intermediates["masking_key"] = to_hex(client_kex.core.credential_masking_key)
+        intermediates["auth_key"] = to_hex(client_kex.core.credential_auth_key)
+        intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)
+        intermediates["client_mac_key"] = to_hex(client_kex.client_mac_key)
+        intermediates["handshake_secret"] = to_hex(client_kex.handshake_secret)
+
+        # Protocol outputs
+        outputs["registration_request"] = to_hex(reg_request.serialize())
+        outputs["registration_response"] = to_hex(reg_response.serialize())
+        outputs["registration_upload"] = to_hex(record.serialize())
+        outputs["KE1"] = to_hex(ke1)
+        outputs["KE2"] = to_hex(ke2)
+        outputs["KE3"] = to_hex(ke3)
+        outputs["session_key"] = to_hex(server_session_key)
+        outputs["export_key"] = to_hex(export_key)
+    else:
+        # pkU, pkS, ke1, record.envU, record.masking_key, idS, skS, pkS, idU, pkU
+        if idU:
+            inputs["client_identity"] = to_hex(idU)
+        if idS:
+            inputs["server_identity"] = to_hex(idS)
+        inputs["oprf_seed"] = to_hex(oprf_seed)
+        inputs["credential_identifier"] = to_hex(credential_identifier)
+        inputs["password"] = to_hex(pwdU)
+        inputs["server_private_key"] = to_hex(skS_bytes)
+        inputs["server_public_key"] = to_hex(pkS_bytes)
+        inputs["client_nonce"] = to_hex(client_kex.nonceU)
+        inputs["server_nonce"] = to_hex(server_kex.nonceS)
+        inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))
+        inputs["client_keyshare"] = to_hex(group.serialize(client_kex.epkU))
+        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.eskS))
+        inputs["server_keyshare"] = to_hex(group.serialize(server_kex.epkS))
+        inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
+        inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
+
+        # Intermediate computations
+        intermediates["envelope"] = to_hex(record.envU.serialize())
+        intermediates["randomized_pwd"] = to_hex(client_kex.core.credential_rwd)
+        intermediates["masking_key"] = to_hex(client_kex.core.credential_masking_key)
+        intermediates["auth_key"] = to_hex(client_kex.core.credential_auth_key)
+        intermediates["server_mac_key"] = to_hex(server_kex.server_mac_key)
+        intermediates["handshake_secret"] = to_hex(server_kex.handshake_secret)
+
+        # Protocol outputs
+        outputs["KE1"] = to_hex(ke1)
+        outputs["KE2"] = to_hex(ke2)
+
+    vector = {}
+    vector["config"] = client_kex.json()
+    vector["config"]["Fake"] = str(is_fake)
+    vector["inputs"] = inputs
+    vector["intermediates"] = intermediates
+    vector["outputs"] = outputs
+    
+    return vector
+
 def test_3DH():
     idU = _as_bytes("alice")
     credential_identifier = _as_bytes("1234")
@@ -145,116 +302,37 @@ def test_3DH():
     for mode in [envelope_mode_internal, envelope_mode_external]:
         for (oprf, fast_hash, mhf, group) in configs:
             for (idU, idS) in [(None, None), (idU, idS)]:
-                (skU, pkU) = group.key_gen()
-                (skS, pkS) = group.key_gen()
-                skU_bytes = group.serialize_scalar(skU)
-                pkU_bytes = group.serialize(pkU)
-                skS_bytes = group.serialize_scalar(skS)
-                pkS_bytes = group.serialize(pkS)
-                oprf_seed = random_bytes(fast_hash().digest_size)
-
-                kdf = HKDF(fast_hash)
-                mac = HMAC(fast_hash)
-                config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, context)
-
-                creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
-                core = OPAQUECore(config)
-
-                reg_request, metadata = core.create_registration_request(pwdU)
-                reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier)
-                record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
-
-                # TODO(caw): do something else with this
-                pkU_enc = record.pkU
-                pkU = group.deserialize(pkU_enc)
-                pkU_bytes = pkU_enc
-
-                client_kex = OPAQUE3DH(config)
-                server_kex = OPAQUE3DH(config)
-
-                ke1 = client_kex.generate_ke1(pwdU, idU, pkU, idS, pkS)
-                ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, pkU)
-                ke3 = client_kex.generate_ke3(ke2)
-                server_session_key = server_kex.finish(ke3)
-
-                assert server_session_key == client_kex.session_key
-
-                inputs = {}
-                intermediates = {}
-                outputs = {}
-
-                # Protocol inputs
-                if idU:
-                    inputs["client_identity"] = to_hex(idU)
-                if idS:
-                    inputs["server_identity"] = to_hex(idS)
-                inputs["oprf_seed"] = to_hex(oprf_seed)
-                inputs["credential_identifier"] = to_hex(credential_identifier)
-                inputs["password"] = to_hex(pwdU)
-                if mode == envelope_mode_external:
-                    inputs["client_private_key"] = to_hex(skU_bytes)
-                inputs["server_private_key"] = to_hex(skS_bytes)
-                inputs["server_public_key"] = to_hex(pkS_bytes)
-                inputs["client_nonce"] = to_hex(client_kex.nonceU)
-                inputs["server_nonce"] = to_hex(server_kex.nonceS)
-                inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))
-                inputs["client_keyshare"] = to_hex(group.serialize(client_kex.epkU))
-                inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.eskS))
-                inputs["server_keyshare"] = to_hex(group.serialize(server_kex.epkS))
-                inputs["envelope_nonce"] = to_hex(core.envelope_nonce)
-                inputs["masking_nonce"] = to_hex(server_kex.core.masking_nonce)
-                inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
-                inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
-                inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
-
-                # Intermediate computations
-                intermediates["client_public_key"] = to_hex(pkU_bytes)
-                intermediates["envelope"] = to_hex(record.envU.serialize())
-                intermediates["randomized_pwd"] = to_hex(core.registration_rwdU)
-                intermediates["masking_key"] = to_hex(core.masking_key)
-                intermediates["auth_key"] = to_hex(core.auth_key)
-                intermediates["server_mac_key"] = to_hex(client_kex.server_mac_key)
-                intermediates["client_mac_key"] = to_hex(client_kex.client_mac_key)
-                intermediates["handshake_secret"] = to_hex(client_kex.handshake_secret)
-
-                # Protocol outputs
-                outputs["registration_request"] = to_hex(reg_request.serialize())
-                outputs["registration_response"] = to_hex(reg_response.serialize())
-                outputs["registration_upload"] = to_hex(record.serialize())
-                outputs["KE1"] = to_hex(ke1)
-                outputs["KE2"] = to_hex(ke2)
-                outputs["KE3"] = to_hex(ke3)
-                outputs["session_key"] = to_hex(server_session_key)
-                outputs["export_key"] = to_hex(export_key)
-
-                # Fake Credentials
-                if idU != None :
-                    _, fake_pkC = group.key_gen()
-                    fake_pkC_bytes = group.serialize(fake_pkC)
-                    if mode == envelope_mode_external:
-                        inner = InnerEnvelope(bytes(bytearray(config.Nsk)))
-                    else:
-                        inner = InnerEnvelope()
-                    fake_envU = Envelope(bytes(bytearray(OPAQUE_NONCE_LENGTH)), inner, bytes(bytearray(config.Nm)))
-                    fake_masking_key = random_bytes(config.Nh)
-
-                    fake_idU = _as_bytes("alice")
-                    fake_ke2, fake_masking_nonce = server_kex.generate_fake_credentials(ke1, oprf_seed, fake_idU, fake_envU, fake_masking_key, idS, skS, pkS, fake_idU, fake_pkC)
-
-                    inputs["fake_client_public_key"] = to_hex(fake_pkC_bytes)
-                    inputs["fake_masking_nonce"] = to_hex(fake_masking_nonce)
-                    inputs["fake_masking_key"] = to_hex(fake_masking_key)
-                    intermediates["fake_server_mac_key"] = to_hex(server_kex.server_mac_key)
-                    intermediates["fake_client_mac_key"] = to_hex(server_kex.client_mac_key)
-                    intermediates["fake_handshake_secret"] = to_hex(server_kex.handshake_secret)
-                    outputs["fake_KE2"] = to_hex(fake_ke2)
-
-                vector = {}
-                vector["config"] = client_kex.json()
-                vector["inputs"] = inputs
-                vector["intermediates"] = intermediates
-                vector["outputs"] = outputs
+                params = TestVectorParams(False, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
+                vector = run_test_vector(params)
                 vectors.append(vector)
+                
+                # # Fake Credentials
+                # if idU != None:
+                    # _, fake_pkC = group.key_gen()
+                    # fake_pkC_bytes = group.serialize(fake_pkC)
+                    # if mode == envelope_mode_external:
+                    #     inner = InnerEnvelope(bytes(bytearray(config.Nsk)))
+                    # else:
+                    #     inner = InnerEnvelope()
+                    # fake_envU = Envelope(bytes(bytearray(OPAQUE_NONCE_LENGTH)), inner, bytes(bytearray(config.Nm)))
+                    # fake_masking_key = random_bytes(config.Nh)
+
+                #     fake_idU = _as_bytes("alice")
+                #     fake_ke2, fake_masking_nonce = server_kex.generate_fake_credentials(ke1, oprf_seed, fake_idU, fake_envU, fake_masking_key, idS, skS, pkS, fake_idU, fake_pkC)
+
+                #     inputs["fake_client_public_key"] = to_hex(fake_pkC_bytes)
+                #     inputs["fake_masking_nonce"] = to_hex(fake_masking_nonce)
+                #     inputs["fake_masking_key"] = to_hex(fake_masking_key)
+                #     intermediates["fake_server_mac_key"] = to_hex(server_kex.server_mac_key)
+                #     intermediates["fake_client_mac_key"] = to_hex(server_kex.client_mac_key)
+                #     intermediates["fake_handshake_secret"] = to_hex(server_kex.handshake_secret)
+                #     outputs["fake_KE2"] = to_hex(fake_ke2)
+    
+    for mode in [envelope_mode_internal, envelope_mode_external]:
+        for (oprf, fast_hash, mhf, group) in configs:
+            fake_params = TestVectorParams(True, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
+            vector = run_test_vector(fake_params)
+            vectors.append(vector)
 
     return json.dumps(vectors, sort_keys=True, indent=2)
 
