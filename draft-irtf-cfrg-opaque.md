@@ -654,7 +654,7 @@ The size of the envelope may vary between modes. If applications implement
 {{preventing-client-enumeration}}, they MUST use the same envelope mode throughout
 their lifecycle in order to avoid activity leaks due to mode switching.
 
-### Internal mode {#internal-mode}
+### Internal Mode {#internal-mode}
 
 In this mode, the client's private and public keys are deterministically derived
 from the OPRF output.
@@ -727,7 +727,7 @@ Steps:
 Note that implementations are free to leave out the `inner_env` parameter,
 as it is not used.
 
-### External mode {#external-mode}
+### External Mode {#external-mode}
 
 This mode allows applications to import or generate keys for the client. This
 specification only imports the client's private key and internally recovers the
@@ -1005,7 +1005,8 @@ message encoding, and helper functions. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
 client and server credentials established during registration; see {{offline-phase}}.
 In the end, the client proves its knowledge of the password, and both client and
-server agree on a mutually authenticated shared secret key.
+server agree on (1) a mutually authenticated shared secret key and (2) any optional
+application information exchange during the handshake.
 
 In this stage, the client inputs the following values:
 
@@ -1151,7 +1152,7 @@ Steps:
 8. Output response
 ~~~
 
-In the case of a record that does not exist, the server invokes the
+In the case of a record that does not exist, the server SHOULD invoke the
 CreateCredentialResponse function where the record argument is configured so that:
 
 - record.client_public_key is set to a randomly generated public key of length Npk
@@ -1633,6 +1634,36 @@ See {{RFC5869}} for details.
 MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be the
 32 bytes.
 
+# Application Considerations {#app-considerations}
+
+Beyond choosing an appropriate configuration, there are several parameters which
+applications can use to control OPAQUE:
+
+- Client credential identifier: As described in {{offline-phase}}, this is a unique
+  handle to the client credential being stored. In applications where there are alternate
+  client identifiers that accompany an account, such as a username or email address, this
+  identifier can be set to those alternate values. Applications SHOULD set the credential
+  identifier to the client identifier. Applications MUST NOT use the same credential
+  identifier for multiple clients.
+- Context information: As described in {{configurations}}, applications may include
+  a shared context string that is authenticated as part of the handshake. This parameter
+  SHOULD include any configuration information or parameters that are needed to prevent
+  cross-protocol or downgrade attacks. This context information is not sent over the
+  wire in any key exchange messages. However, applications may choose to send it alongside
+  key exchange messages if needed for their use case.
+- Client and server identifier: As described in {{client-credential-storage}}, clients
+  and servers are identified with their public keys by default. However, applications
+  may choose alternate identifiers that are pinned to these public keys. For example,
+  servers may use a domain name instead of a public key as their identifier. Absent
+  alternate notions of an identity, applications SHOULD set these identifiers to nil
+  and rely solely on public key information.
+- Enumeration prevention: As described in {{create-credential-response}}, if servers
+  receive a credential request for a non-existent client, they SHOULD respond with a
+  "fake" response in order to prevent active client enumeration attacks. Servers that
+  implement this mitigation SHOULD use the same configuration information (such as
+  the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
+  where this attack is not a concern, servers may choose to not support this functionality.
+
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
@@ -1789,41 +1820,47 @@ SHOULD select parameters that balance cost and complexity.
 Client enumeration refers to attacks where the attacker tries to learn
 extra information about the behavior of clients that have registered with
 the server. There are two types of attacks we consider:
+
 1) An attacker tries to learn whether a given client identity is registered
 with a server, and
 2) An attacker tries to learn whether a given client identity has recently
 completed registration, or has re-registered (e.g. after a password change).
 
-Preventing the first type of attack requires the server to act with
-unregistered client identities in a way that is indistinguishable from its
-behavior with existing registered clients. This is achieved in
-{{create-credential-response}} for an unregistered client by simulating a
-CredentialResponse for unregistered clients through the sampling of a
-random masking_key value and relying on the semantic security provided by
-the XOR-based pad over the envelope.
+OPAQUE prevents the first type of attack during the authentication flow. This
+is done by requiring servers to act with unregistered client identities in a
+way that is indistinguishable from its behavior with existing registered clients.
+Servers do this for an unregistered client by simulating a fake
+CredentialResponse as specified in {{create-credential-response}}.
+Implementations must also take care to avoid side-channel leakage (e.g., timing
+attacks) from helping differentiate these operations from a regular server
+response. Note that server implementations may choose to forego the construction
+of a simulated credential response message for an unregistered client if these
+client enumeration attacks can be mitigated through other application-specific
+means or are otherwise not applicable for their threat model.
 
-Implementations must employ care to avoid side-channel leakage (e.g.,
-timing attacks) from helping differentiate these operations from a regular
-server response.
+OPAQUE does not prevent the first type of attack during the registration flow.
+Servers must necessarily react differently during the registration flow between
+registered and unregistered clients. This allows an attacker to use the server's
+response during registration as an oracle for whether a given client identity is
+registered. Applications should mitigate against this type of attack by rate
+limiting or otherwise restricting the registration flow.
 
 Preventing the second type of attack requires the server to supply a
-credential_identifier value for a given client identity, consistently between the
-{{create-reg-response}} and {{create-credential-response}} steps.
-Note that credential_identifier can be set to client_identity, for simplicity.
+credential_identifier value for a given client identity, consistently between
+the registration response and credential response; see {{create-reg-response}}
+and {{create-credential-response}}. Note that credential_identifier can be set
+to client_identity for simplicity.
 
 In the event of a server compromise that results in a re-registration of
-credentials for all compromised clients, the oprf_seed value must be resampled,
+credentials for all compromised clients, the oprf_seed value MUST be resampled,
 resulting in a change in the oprf_key value for each client. Although this
 change can be detected by an adversary, it is only leaked upon password rotation
-after the exposure of the credential files.
+after the exposure of the credential files, and equally affects all registered
+clients.
 
-Applications must use the same envelope mode when using this prevention
-throughout their lifecycle. The envelope size varies from one to another,
-and a switch in envelope mode could then be detected.
-
-Finally, note that server implementations may choose to forego the construction
-of a simulated credential response message for an unregistered client if these client
-enumeration attacks can be mitigated through other application-specific means.
+Finally, applications must use the same envelope mode when using this prevention
+throughout their lifecycle. The envelope size varies between modes, so a switch
+in mode could then be detected.
 
 ## Password Salt and Storage Implications
 
