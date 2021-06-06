@@ -985,6 +985,8 @@ blind_login: a701d1bfb8e4dad3011c184f101ae3629ba31e0354a31e81659218c1
 ### Intermediate Values
 
 ~~~
+client_public_key: 56717b74a5e1770edb14c65f22cee0487046bd96e122ba97da
+ffed06c4bf4052
 auth_key: 3e3bbb767c3a825b8e51aa263103b6ecfe6c2d2873ac2be51b3c339d033
 535a9e5ee8bd942a157e74108ac22a9e4a9cafb9a52e1380d1615ae410b309c939267
 randomized_pwd: 1b10088ee0171bd28fbec35c2022a04fcc037993e725887a2eeb7
@@ -1075,6 +1077,8 @@ blind_login: 4a09ffafd1efd97b3b97c34cd2efade2a8f8ab8dcbe5785c96df26b4
 ### Intermediate Values
 
 ~~~
+client_public_key: 037fe5b0efbad57e6ec507e2f348448a07d7580810bb34ddeb
+3c182050422870b5
 auth_key: 231c84ec4ddd4290d6d2751a96c4e9b69761285fe183384097f52e22e80
 6b25b
 randomized_pwd: 11146c872142cecc65d2cefb3d7a3d95f8eff253c2f21e3406ebf
@@ -1160,6 +1164,8 @@ blind_login: f08abe3f366736c1ca6a58ac3acf5910a0c556e6daa4557272be8677
 ### Intermediate Values
 
 ~~~
+client_public_key: d06f59341a43ddf511adf88e1a3e6d42a125cf56cf9e54c5a4
+5ff3cdb4c1a543
 auth_key: b2e8b7fc4a9203ee8959d2d11b656f01d982a1bcc7efaada91245d3e9a9
 6d5cfbe9a75e43e1c1a8e8aff850414155f492f6f18939f1ef9fa60fbcbc2f7d9140a
 randomized_pwd: 042740149d81246d71477e5e6521aba535b3633d61309d72b1f75
@@ -1252,6 +1258,8 @@ b0c51019
 ### Intermediate Values
 
 ~~~
+client_public_key: 0251a3c4e73402bf0e6da738c15b882d14c7ee8183f256c7d4
+b6db8d3c2158f4cf
 auth_key: 571c5009a07427786ceecfc726224079f50a2ef8ff4d8b131d25ee4f20d
 f53eb
 randomized_pwd: 9b72191feda9ad76093c4d7d36c60d2df29bd7962d828cf322aec

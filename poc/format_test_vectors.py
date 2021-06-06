@@ -43,9 +43,6 @@ input_keys = [
     "blind_registration",
     "blind_login",
     "oprf_key",
-    "fake_client_public_key",
-    "fake_masking_nonce",
-    "fake_masking_key",
 ]
 
 intermediate_keys = [
@@ -57,9 +54,6 @@ intermediate_keys = [
     "handshake_secret",
     "server_mac_key",
     "client_mac_key",
-    "fake_server_mac_key",
-    "fake_client_mac_key",
-    "fake_handshake_secret",
 ]
 
 output_keys = [
@@ -68,7 +62,6 @@ output_keys = [
     "registration_upload",
     "KE1",
     "KE2",
-    "fake_KE2",
     "KE3",
     "export_key",
     "session_key",
