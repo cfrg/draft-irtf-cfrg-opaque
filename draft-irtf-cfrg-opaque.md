@@ -339,8 +339,8 @@ OPAKE was taken.
 OPAQUE relies on the following cryptographic protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF, {{!I-D.irtf-cfrg-voprf}}, version -06):
-  - Blind(x): Convert input `x` into an element of the OPRF group, multiply it
-    with some random scalar `r`, producing `M`, and output (`r`, `M`).
+  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+    by some scalar `r`, producing `M`, and output (`r`, `M`).
   - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
     output element `Z`.
   - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
