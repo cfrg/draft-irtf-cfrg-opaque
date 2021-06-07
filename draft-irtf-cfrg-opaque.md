@@ -199,8 +199,8 @@ protocols"
     date: 2020
 
   SIGNAL:
-    title: "Signal recommended cryptographic algorithms"
-    seriesinfo: https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms
+    title: "Simplifying OTR deniability"
+    seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
 
   RFC2945:
