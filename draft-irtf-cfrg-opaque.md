@@ -377,14 +377,15 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
 
 OPAQUE additionally depends on an Authenticated Key Exchange (AKE) protocol.
 This specification defines one particular AKE based on 3DH; see {{ake-protocol}}.
+3DH assumes a prime-order group as described in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
 We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
 used in the AKE. The AKE protocol must provide the following functions:
 
 - RecoverPublicKey(private_key): Recover the public key related to the input `private_key`.
+- GenerateAuthKeyPair(): Return a randomly generated private and public key pair. This can be
+  implemented by generating a random private key `sk`, then computing `pk = RecoverPublicKey(sk)`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`.
-- GenerateKeyPair(): Return a randomly generated private and public key pair. This can be
-  implemented by generating a random private key `sk`, then computing `pk = RecoverPublicKey(sk)`.
 
 Finally, all random nonces used in this protocol are of length `Nn` = 32 bytes.
 
@@ -612,6 +613,9 @@ Output:
 - client_private_key, The encoded client private key for the AKE protocol.
 - export_key, an additional client key.
 
+Exceptions:
+- EnvelopeRecoveryError, when the envelope fails to be recovered
+
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
 2. export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
@@ -621,7 +625,7 @@ Steps:
                       client_public_key, server_identity, client_identity)
 5. expected_tag = MAC(auth_key, concat(envelope.nonce, inner_env, cleartext_creds))
 6. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise MacError
+     raise EnvelopeRecoveryError
 7. Output (client_private_key, export_key)
 ~~~
 
@@ -676,7 +680,7 @@ Output:
 
 Steps:
 1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
-2. public_key = private_key * G
+2. public_key = ScalarBaseMult(private_key)
 3. Output (private_key, public_key)
 ~~~
 
@@ -1466,7 +1470,7 @@ Output:
 
 Steps:
 1. client_nonce = random(Nn)
-2. client_secret, client_keyshare = GenerateKeyPair()
+2. client_secret, client_keyshare = GenerateAuthKeyPair()
 3. Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
 4. state.client_secret = client_secret
 5. Output (ke1, client_secret)
@@ -1492,6 +1496,9 @@ Output:
 - ke3, a KE3 structure.
 - session_key, the shared session secret.
 
+Exceptions:
+- HandshakeError, when the handshake fails
+
 Steps:
 1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
     state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
@@ -1499,7 +1506,7 @@ Steps:
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.server_mac, expected_server_mac),
-     raise MacError
+     raise HandshakeError
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
 7. Create KE3 ke3 with client_mac
 8. Output (ke3, session_key)
@@ -1543,12 +1550,15 @@ Input:
 - ke3, a KE3 structure.
 
 Output:
-- session_key, the shared session secret if, and only if, KE3 is valid, nil otherwise.
+- session_key, the shared session secret if and only if KE3 is valid.
+
+Exceptions:
+- HandshakeError, when the handshake fails
 
 Steps:
-1. if ct_equal(ke3.client_mac, state.expected_client_mac):
-2.    Output state.session_key
-3. Output nil
+1. if !ct_equal(ke3.client_mac, state.expected_client_mac):
+2.    raise HandshakeError
+3. Output state.session_key
 ~~~
 
 #### Internal Server Functions {#server-internal}
@@ -1578,7 +1588,7 @@ Output:
 
 Steps:
 1. server_nonce = random(Nn)
-2. server_secret, server_keyshare = GenerateKeyPair()
+2. server_secret, server_keyshare = GenerateAuthKeyPair()
 3. Create inner_ke2 ike2 with (credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
 5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare, server_private_key, ke1.client_keyshare, server_secret, client_public_key)
