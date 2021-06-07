@@ -199,8 +199,8 @@ protocols"
     date: 2020
 
   SIGNAL:
-    title: "Signal recommended cryptographic algorithms"
-    seriesinfo: https://signal.org/docs/specifications/doubleratchet/#recommended-cryptographic-algorithms
+    title: "Simplifying OTR deniability"
+    seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
 
   RFC2945:
@@ -482,7 +482,7 @@ application credential information are considered:
 - client_public_key: The encoded client public key for the AKE protocol.
 - server_public_key: The encoded server public key for the AKE protocol.
 - client_identity: The client identity. This is an application-specific value,
-  e.g., an e-mail address or normal account name. If not specified, it defaults
+  e.g., an e-mail address or an account name. If not specified, it defaults
   to the client's public key.
 - server_identity: The server identity. This is typically a domain name, e.g., example.com.
   If not specified, it defaults to the server's public key. See {{identities}} for
@@ -541,10 +541,10 @@ struct {
 
 nonce: A unique nonce of length `Nn` used to protect this Envelope.
 
+inner_env: A mode dependent `InnerEnvelope` structure. See {{envelope-modes}} for its specifications.
+
 auth_tag: Authentication tag protecting the contents of the envelope, covering the envelope nonce,
 `InnerEnvelope`, and `CleartextCredentials`.
-
-inner_env: A mode dependent `InnerEnvelope` structure. See {{envelope-modes}} for its specifications.
 
 The size of the serialized envelope is denoted `Ne` and varies based on the mode.
 The exact value for `Ne` is specified in {{internal-mode}} and {{external-mode}}.
@@ -609,8 +609,8 @@ Input:
 - client_identity, The optional encoded client identity.
 
 Output:
-- client_private_key, The encoded client private key for the AKE protocol
-- export_key, an additional client key
+- client_private_key, The encoded client private key for the AKE protocol.
+- export_key, an additional client key.
 
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -671,8 +671,8 @@ Input:
 - seed, pseudo-random byte sequence used as a seed.
 
 Output:
-- private_key, a private key
-- public_key, the associated public key
+- private_key, a private key.
+- public_key, the associated public key.
 
 Steps:
 1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
@@ -715,8 +715,8 @@ Input:
   function, it only serves to comply with the API.
 
 Output:
-- client_private_key, The encoded client private key for the AKE protocol
-- client_public_key, The encoded client public key for the AKE protocol
+- client_private_key, The encoded client private key for the AKE protocol.
+- client_public_key, The encoded client public key for the AKE protocol.
 
 Steps:
 1. seed = Expand(randomized_pwd, concat(nonce, "PrivateKey"), Nsk)
@@ -1087,10 +1087,10 @@ data
 : A serialized OPRF group element.
 
 masking_nonce
-: A nonce used for the confidentiality of the masked_response field
+: A nonce used for the confidentiality of the masked_response field.
 
 masked_response
-: An encrypted form of the server's public key and the client's `Envelope` structure
+: An encrypted form of the server's public key and the client's `Envelope` structure.
 
 ### Credential Retrieval Functions
 
@@ -1143,7 +1143,7 @@ Steps:
 1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
 2. (oprf_key, _) = DeriveKeyPair(ikm)
 3. Z = Evaluate(oprf_key, request.data)
-4. masking_nonce = random(32)
+4. masking_nonce = random(Nn)
 5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
 6. masked_response = xor(credential_response_pad,
