@@ -1550,7 +1550,7 @@ Input:
 - ke3, a KE3 structure.
 
 Output:
-- session_key, the shared session secret if, and only if, KE3 is valid, nil otherwise.
+- session_key, the shared session secret if and only if KE3 is valid.
 
 Exceptions:
 - HandshakeError, when the handshake fails
