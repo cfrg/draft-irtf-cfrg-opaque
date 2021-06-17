@@ -1673,6 +1673,21 @@ applications can use to control OPAQUE:
   the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
   where this attack is not a concern, servers may choose to not support this functionality.
 
+# Implementation Considerations {#implementation-considerations}
+
+Implementations of OPAQUE should consider addressing the following:
+
+- Clearing secrets out of memory: All private key material and intermediate values,
+including the outputs of the key exchange phase, should not be retained in memory after
+deallocation.
+- Constant-time operations: All operations, particularly the cryptographic and group
+arithmetic operations, should be constant-time and independent of the bits of any secrets.
+This includes any conditional branching during the creation of the credential response,
+to support implementations which provide mitigations against client enumeration attacks.
+- Deserialization checks: When parsing messages that have crossed trust boundaries (e.g.
+a network wire), implementations should properly handle all error conditions covered in
+{{I-D.irtf-cfrg-voprf}} and abort accordingly.
+
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined and proven as the composition of two
