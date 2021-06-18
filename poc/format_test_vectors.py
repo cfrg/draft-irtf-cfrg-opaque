@@ -141,6 +141,6 @@ with open(sys.argv[1], "r") as fh:
         format_vector(vector, i)
 
     print("## Fake Test Vectors {#fake-vectors}\n")
-    for i, vector in enumerate(real_vectors):
+    for i, vector in enumerate(fake_vectors):
         print("### " + format_vector_name(vector) + " Fake Test Vector " + str(i+1))
         format_vector(vector, i)
