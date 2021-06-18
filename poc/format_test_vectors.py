@@ -5,7 +5,6 @@ import sys
 import json
 
 config_keys = [
-    "Fake",
     "OPRF",
     "Hash",
     "MHF",
@@ -31,7 +30,6 @@ input_keys = [
     "envelope_nonce",
     "masking_nonce",
     "client_private_key",
-    "client_public_key",
     "server_private_key",
     "server_public_key",
     "server_nonce",
@@ -110,19 +108,19 @@ def print_vector_outputs(vector):
                 wrap_print(key + ":", vector["outputs"][key])
 
 def format_vector(vector, i):
-    print("\n### Configuration\n")
+    print("\n#### Configuration\n")
     print("~~~")
     print_vector_config(vector)
     print("~~~")
-    print("\n### Input Values\n")
+    print("\n#### Input Values\n")
     print("~~~")
     print_vector_inputs(vector)
     print("~~~")
-    print("\n### Intermediate Values\n")
+    print("\n#### Intermediate Values\n")
     print("~~~")
     print_vector_intermediates(vector)
     print("~~~")
-    print("\n### Output Values\n")
+    print("\n#### Output Values\n")
     print("~~~")
     print_vector_outputs(vector)
     print("~~~")
@@ -130,6 +128,19 @@ def format_vector(vector, i):
 
 with open(sys.argv[1], "r") as fh:
     vectors = json.loads(fh.read())
+    real_vectors = []
+    fake_vectors = []
     for i, vector in enumerate(vectors):
-        print("## " + format_vector_name(vector) + " Test Vector " + str(i+1))
+        if vector["config"]["Fake"] == "True":
+            fake_vectors.append(vector)
+        else:
+            real_vectors.append(vector)
+    print("## Real Test Vectors {#real-vectors}\n")
+    for i, vector in enumerate(real_vectors):
+        print("### " + format_vector_name(vector) + " Real Test Vector " + str(i+1))
+        format_vector(vector, i)
+
+    print("## Fake Test Vectors {#fake-vectors}\n")
+    for i, vector in enumerate(real_vectors):
+        print("### " + format_vector_name(vector) + " Fake Test Vector " + str(i+1))
         format_vector(vector, i)

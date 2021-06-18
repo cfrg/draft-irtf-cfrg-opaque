@@ -252,6 +252,7 @@ def run_test_vector(params):
         inputs["oprf_seed"] = to_hex(oprf_seed)
         inputs["credential_identifier"] = to_hex(credential_identifier)
         inputs["password"] = to_hex(pwdU)
+        inputs["client_private_key"] = to_hex(skU_bytes)
         inputs["server_private_key"] = to_hex(skS_bytes)
         inputs["server_public_key"] = to_hex(pkS_bytes)
         inputs["client_nonce"] = to_hex(client_kex.nonceU)
