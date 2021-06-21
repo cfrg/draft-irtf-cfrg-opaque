@@ -145,6 +145,7 @@ def run_test_vector(params):
     group = params.group
 
     (skU, pkU) = group.key_gen()
+
     (skS, pkS) = group.key_gen()
     skU_bytes = group.serialize_scalar(skU)
     pkU_bytes = group.serialize(pkU)
@@ -162,27 +163,27 @@ def run_test_vector(params):
         reg_request, metadata = core.create_registration_request(pwdU)
         reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier)
         record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response)
+        pkU_enc = record.pkU
+        pkU = group.deserialize(pkU_enc)
+        pkU_bytes = pkU_enc
     else:
-        _, fake_pkC = group.key_gen()
-        fake_pkC_bytes = group.serialize(fake_pkC)
+        (fake_skU, fake_pkU) = group.key_gen()
+        fake_skU_bytes = group.serialize_scalar(fake_skU)
+        fake_pkU_bytes = group.serialize(fake_pkU)
+
+        fake_masking_key = random_bytes(config.Nh)
         if mode == envelope_mode_external:
             inner = InnerEnvelope(zero_bytes(config.Nsk))
         else:
             inner = InnerEnvelope()
         fake_envU = Envelope(zero_bytes(OPAQUE_NONCE_LENGTH), inner, zero_bytes(config.Nm))
-        fake_masking_key = zero_bytes(config.Nh)
-        record = RegistrationUpload(fake_pkC_bytes, fake_masking_key, fake_envU)
-
-    # TODO(caw): do something else with this
-    pkU_enc = record.pkU
-    pkU = group.deserialize(pkU_enc)
-    pkU_bytes = pkU_enc
+        record = RegistrationUpload(fake_pkU_bytes, fake_masking_key, fake_envU)
 
     client_kex = OPAQUE3DH(config)
     server_kex = OPAQUE3DH(config)
 
-    ke1 = client_kex.generate_ke1(pwdU, idU, pkU, idS, pkS)
-    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, pkU)
+    ke1 = client_kex.generate_ke1(pwdU, idU, fake_pkU if is_fake else pkU, idS, pkS)
+    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, fake_pkU if is_fake else pkU)
     if is_fake:
         try:
             ke3 = client_kex.generate_ke3(ke2)
@@ -251,30 +252,18 @@ def run_test_vector(params):
             inputs["server_identity"] = to_hex(idS)
         inputs["oprf_seed"] = to_hex(oprf_seed)
         inputs["credential_identifier"] = to_hex(credential_identifier)
-        inputs["password"] = to_hex(pwdU)
-        inputs["client_private_key"] = to_hex(skU_bytes)
+        inputs["client_private_key"] = to_hex(fake_skU_bytes)
+        inputs["client_public_key"] = to_hex(fake_pkU_bytes)
         inputs["server_private_key"] = to_hex(skS_bytes)
         inputs["server_public_key"] = to_hex(pkS_bytes)
-        inputs["client_nonce"] = to_hex(client_kex.nonceU)
         inputs["server_nonce"] = to_hex(server_kex.nonceS)
-        inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.eskU))
-        inputs["client_keyshare"] = to_hex(group.serialize(client_kex.epkU))
         inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.eskS))
         inputs["server_keyshare"] = to_hex(group.serialize(server_kex.epkS))
+        inputs["masking_key"] = to_hex(fake_masking_key)
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
-        inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
-
-        # Intermediate computations
-        intermediates["client_public_key"] = to_hex(pkU_bytes)
-        intermediates["envelope"] = to_hex(record.envU.serialize())
-        intermediates["randomized_pwd"] = to_hex(client_kex.core.credential_rwd)
-        intermediates["masking_key"] = to_hex(client_kex.core.credential_masking_key)
-        intermediates["auth_key"] = to_hex(client_kex.core.credential_auth_key)
-        intermediates["server_mac_key"] = to_hex(server_kex.server_mac_key)
-        intermediates["handshake_secret"] = to_hex(server_kex.handshake_secret)
+        inputs["KE1"] = to_hex(ke1)
 
         # Protocol outputs
-        outputs["KE1"] = to_hex(ke1)
         outputs["KE2"] = to_hex(ke2)
 
     vector = {}
