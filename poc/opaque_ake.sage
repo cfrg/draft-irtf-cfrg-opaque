@@ -11,9 +11,9 @@ import struct
 from collections import namedtuple
 
 try:
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_core import OPAQUECore
-    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, InnerEnvelope, Envelope, envelope_mode_internal, envelope_mode_external
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -41,6 +41,11 @@ class Configuration(object):
         self.Nx = hash().digest_size
         self.Nok = oprf_suite.group.scalar_byte_length()
         self.Nh = hash().digest_size
+        self.Nn = OPAQUE_NONCE_LENGTH
+        if mode == envelope_mode_internal:
+            self.Ne = self.Nn + self.Nm
+        else:
+            self.Ne = self.Nn + self.Nm + self.Nsk
 
 class KeyExchange(object):
     def __init__(self):
@@ -112,7 +117,7 @@ class OPAQUE3DH(KeyExchange):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
-        nonceU = random_bytes(32)
+        nonceU = random_bytes(OPAQUE_NONCE_LENGTH)
         (eskU, epkU) = self.config.group.key_gen()
         ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
@@ -153,7 +158,7 @@ class OPAQUE3DH(KeyExchange):
         cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key)
         serialized_response = cred_response.serialize()
 
-        nonceS = random_bytes(32)
+        nonceS = random_bytes(OPAQUE_NONCE_LENGTH)
         (eskS, epkS) = self.config.group.key_gen()
         nonceU = ke1.nonceU
         epkU = self.config.group.deserialize(ke1.epkU)
@@ -194,6 +199,7 @@ class OPAQUE3DH(KeyExchange):
         self.session_key = session_key
         self.server_mac = mac
         self.handshake_secret = handshake_secret
+        self.masking_nonce = cred_response.masking_nonce
 
         return serialized_response + ake2.serialize()
 
@@ -207,15 +213,10 @@ class OPAQUE3DH(KeyExchange):
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)
         pkS = self.config.group.deserialize(pkS_bytes)
-        pkU = skU * self.config.group.generator()
-        pkU_bytes = self.config.group.serialize(pkU)
         
-        idU = self.idU
         idS = self.idS
-        pkU = self.pkU
         pkS = self.pkS
         eskU = self.eskU
-        nonceU = self.nonceU
         nonceS = ake2.nonceS
         epkS = self.config.group.deserialize(ake2.epkS)
         mac = ake2.mac
@@ -269,8 +270,8 @@ class OPAQUE3DH(KeyExchange):
 #      opaque epkU[LK];
 #  } KE1M;
 def deserialize_tripleDH_init(config, data):
-    nonceU = data[0:32]
-    epkU_bytes = data[32:]
+    nonceU = data[0:OPAQUE_NONCE_LENGTH]
+    epkU_bytes = data[OPAQUE_NONCE_LENGTH:]
     length = config.oprf_suite.group.element_byte_length()
     if len(epkU_bytes) != length:
         raise Exception("Invalid epkU length: %d %d" % (len(epkU_bytes), length))
@@ -291,9 +292,9 @@ class TripleDHMessageInit(object):
 #  } KE2M;
 def deserialize_tripleDH_respond(config, data):
     length = config.oprf_suite.group.element_byte_length()
-    nonceS = data[0:32]
-    epkS = data[32:32+length]
-    mac = data[32+length:]
+    nonceS = data[0:OPAQUE_NONCE_LENGTH]
+    epkS = data[OPAQUE_NONCE_LENGTH:OPAQUE_NONCE_LENGTH+length]
+    mac = data[OPAQUE_NONCE_LENGTH+length:]
     if len(mac) != config.hash().digest_size:
         raise Exception("Invalid MAC length: %d %d" % (len(mac), config.hash().digest_size))
     return TripleDHMessageRespond(nonceS, epkS, mac)

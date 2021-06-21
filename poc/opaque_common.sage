@@ -13,6 +13,8 @@ import random
 FIXED_SEED = "opaque".encode('utf-8')
 random.seed(int.from_bytes(hashlib.sha256(FIXED_SEED).digest(), 'big'))
 
+OPAQUE_NONCE_LENGTH = 32
+
 if sys.version_info[0] == 3:
     xrange = range
     def _as_bytes(x): return x if isinstance(x, bytes) else bytes(x, "utf-8")
@@ -33,6 +35,9 @@ def to_hex(octet_string):
 
 def random_bytes(n):
     return I2OSP(random.randrange(2**(8*n)), n)
+
+def zero_bytes(n):
+    return bytearray([0] * n)
 
 def xor(a, b):
     if len(a) != len(b):

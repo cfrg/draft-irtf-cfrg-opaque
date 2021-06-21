@@ -12,11 +12,9 @@ from hash import scrypt
 try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, DeriveKeyPair
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, Envelope, InnerEnvelope, envelope_mode_internal, envelope_mode_external, deserialize_secret_credentials, deserialize_envelope
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
-
-OPAQUE_NONCE_LENGTH = 32
 
 class OPAQUECore(object):
     def __init__(self, config):
@@ -32,20 +30,6 @@ class OPAQUECore(object):
         Nh = self.config.hash().digest_size
         masking_key = self.config.kdf.expand(random_pwd, _as_bytes("MaskingKey"), Nh)
         return masking_key
-
-    def derive_keys(self, random_pwd, nonce, Npt):
-        Nh = self.config.hash().digest_size
-        pseudorandom_pad = self.config.kdf.expand(random_pwd, nonce + _as_bytes("Pad"), Npt)
-        auth_key = self.config.kdf.expand(random_pwd, nonce + _as_bytes("AuthKey"), Nh)
-        export_key = self.config.kdf.expand(random_pwd, nonce + _as_bytes("ExportKey"), Nh)
-        return pseudorandom_pad, auth_key, export_key
-
-    def derive_secrets(self, pwdU, response, blind, nonce, Npt):
-        random_pwd = self.derive_random_pwd(pwdU, response, blind)
-        masking_key = self.derive_masking_key(random_pwd)
-        pseudorandom_pad, auth_key, export_key = self.derive_keys(random_pwd, nonce, Npt)
-
-        return random_pwd, pseudorandom_pad, auth_key, export_key, masking_key
 
     def create_registration_request(self, pwdU):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
@@ -138,9 +122,8 @@ class OPAQUECore(object):
         Z, _, _ = oprf_context.evaluate(request.data)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
-        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nm + 32
+        Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)
@@ -172,6 +155,9 @@ class OPAQUECore(object):
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("AuthKey"), Nh)
         export_key = self.config.kdf.expand(random_pwd, envelope.nonce + _as_bytes("ExportKey"), Nh)
+
+        self.credential_auth_key = auth_key
+        self.credential_export_key = export_key
         
         secret_creds, client_public_key = self.recover_keys(random_pwd, envelope.nonce, envelope.inner_env)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
@@ -179,17 +165,13 @@ class OPAQUECore(object):
         if expected_tag != envelope.auth_tag:
             raise Exception("Invalid tag")
 
-        self.credential_auth_key = auth_key
-        self.credential_export_key = export_key
-
         return secret_creds, export_key
 
     def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind)
         masking_key = self.derive_masking_key(random_pwd)
-        Nm = self.config.hash().digest_size
         Npk = self.config.Npk
-        Ne = Nm + 32
+        Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
         if self.config.mode == envelope_mode_external:
             Ne = Ne + self.config.Nsk
         credential_response_pad = self.config.kdf.expand(masking_key, response.masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)
@@ -198,11 +180,11 @@ class OPAQUECore(object):
         server_public_key = data[0:Npk]
         envelope, _ = deserialize_envelope(self.config, data[Npk:])
 
-        secret_creds, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
-
-        self.credential_prk = random_pwd
+        self.credential_rwd = random_pwd
         self.credential_decryption_pad = credential_response_pad
         self.credential_masking_key = masking_key
+
+        secret_creds, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
 
         return secret_creds.skU, server_public_key, export_key
 

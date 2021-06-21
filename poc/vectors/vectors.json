@@ -3,6 +3,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
+      "Fake": "False",
       "Group": "ristretto255",
       "Hash": "SHA512",
       "KDF": "HKDF-SHA512",
@@ -60,6 +61,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
+      "Fake": "False",
       "Group": "ristretto255",
       "Hash": "SHA512",
       "KDF": "HKDF-SHA512",
@@ -119,6 +121,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
+      "Fake": "False",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
       "KDF": "HKDF-SHA256",
@@ -176,6 +179,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "01",
+      "Fake": "False",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
       "KDF": "HKDF-SHA256",
@@ -235,6 +239,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
+      "Fake": "False",
       "Group": "ristretto255",
       "Hash": "SHA512",
       "KDF": "HKDF-SHA512",
@@ -293,6 +298,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
+      "Fake": "False",
       "Group": "ristretto255",
       "Hash": "SHA512",
       "KDF": "HKDF-SHA512",
@@ -353,6 +359,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
+      "Fake": "False",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
       "KDF": "HKDF-SHA256",
@@ -411,6 +418,7 @@
     "config": {
       "Context": "4f50415155452d504f43",
       "EnvelopeMode": "02",
+      "Fake": "False",
       "Group": "P256_XMD:SHA-256_SSWU_RO_",
       "Hash": "SHA256",
       "KDF": "HKDF-SHA256",
@@ -465,6 +473,166 @@
       "registration_response": "0332a6c93b45b41c4f73ee7261fb5fdb22c9a32b1490af7a910b98b2dff6a4d9ad03512bae40ee42c0fce71f447611b39f2e91d68437f75fc1f171e80ae8a09d30ce",
       "registration_upload": "030833fa0933e79ed8dafa9cf3d537eec06987fb1c064d74f4d45a480de9a179c9dcc1c99a1b1eecb38d8e1a9013be3ac6b6500db38c3033e2975a87e8e3e879bb6244563994473ca960143fe2de622464f00e607813de02e1784fa9f7d6e3b7bc168b8289d9fb356cf773e5bff34b907bb58f5a4fd60a40877097bb6d72343a3068d69abc263b9b20dfb9006fda428511949459d57470eb76903aee9dd06a8464",
       "session_key": "41f5201e8e537b961cea8ff9dbf1d30bcc02833eee233af99d5eeddc448a526f"
+    }
+  },
+  {
+    "config": {
+      "Context": "4f50415155452d504f43",
+      "EnvelopeMode": "01",
+      "Fake": "True",
+      "Group": "ristretto255",
+      "Hash": "SHA512",
+      "KDF": "HKDF-SHA512",
+      "MAC": "HMAC-SHA512",
+      "MHF": "Identity",
+      "Name": "3DH",
+      "Nh": "64",
+      "Nm": "64",
+      "Nok": "32",
+      "Npk": "32",
+      "Nsk": "32",
+      "Nx": "64",
+      "OPRF": "0001"
+    },
+    "inputs": {
+      "KE1": "480b6c0066c9320c50dce20f8b6b63e4ded7681defd9da3f70ecdc15770f9e6805603c1acb64ea417c0dabaab858a5f9da046d4a0cdbf092034c00451ccdc6e1ee8355c91d5ed7aa5ea75b8a730ba8dc45f6b41ae9713e6aa7126211346e8754",
+      "client_identity": "616c696365",
+      "client_private_key": "83c9bcc31a9da0ffa4489900d3d1f85bb65c27f26e9ae4e3b66f6e02e098c503",
+      "client_public_key": "56717b74a5e1770edb14c65f22cee0487046bd96e122ba97daffed06c4bf4052",
+      "credential_identifier": "31323334",
+      "masking_key": "e968bfe56ad934c3e1088115bcbf1af8b405fd0de94cdf301f9192cc2781de00617e568b14b7235cc1189265811ea354031ea39b62e31a104f181c01d3dae4b8",
+      "masking_nonce": "3058799f42516228746821dc8c8530d0e8273ebde81941591d69ca5aea773090",
+      "oprf_seed": "d3cb00535339fe4063c7ba5506a990c243a2b5c77b06848a0be9a0568c252fb0d7425382babd267deeed669e56d1d5654c036211f49b42f4489f96f37100779f",
+      "server_identity": "626f62",
+      "server_keyshare": "0e247410004d83d7cbe3af89c62ff03f942127aec4b0084c9eb588e74ce6dd06",
+      "server_nonce": "4e2a8098173efa2968036f1762f2e5df41ab976fb1bfb91dae29950f8526de4c",
+      "server_private_key": "8d3a9355f9757e7071b3f836e3fb1461a6436e92971625b17cd7e580dd27c009",
+      "server_private_keyshare": "326345820acc8aacf4948fce775a1fd265e4e93fd579cec8177d6389ee379b0a",
+      "server_public_key": "7a464761cb19c8b6e832fdfcfd18779b0edc246fe808f5de6ce7bdb54df41b67"
+    },
+    "intermediates": {},
+    "outputs": {
+      "KE2": "04013bca360b4b9ba95b2f494927375e0f234dac23053822e466a9738f7815223058799f42516228746821dc8c8530d0e8273ebde81941591d69ca5aea7730907857713efdc95f69166737cd7a80ead60e1a1f805c1da9cccbc0d29120f34be291518798c700793f232374e66182495b76b388d9e11f479580cc2297da02fecee88a99cea6bc411b9467e8bfa9a4006aba7f21b74b4ce3bccd686785878b0ec9b3fc4200228014d5d07369d42d1d1b1669ecd2ad8905734ca0a641d8f16667ca4e2a8098173efa2968036f1762f2e5df41ab976fb1bfb91dae29950f8526de4c0e247410004d83d7cbe3af89c62ff03f942127aec4b0084c9eb588e74ce6dd06fb1a0fd81da51bc1d87c740c186d881ed7971fdba5ad1d5cfc94ffe6a731241c78ea7ea5dae503e987edc37355b7348883dc65cdb57aec04e64593007f98a405"
+    }
+  },
+  {
+    "config": {
+      "Context": "4f50415155452d504f43",
+      "EnvelopeMode": "01",
+      "Fake": "True",
+      "Group": "P256_XMD:SHA-256_SSWU_RO_",
+      "Hash": "SHA256",
+      "KDF": "HKDF-SHA256",
+      "MAC": "HMAC-SHA256",
+      "MHF": "Identity",
+      "Name": "3DH",
+      "Nh": "32",
+      "Nm": "32",
+      "Nok": "32",
+      "Npk": "33",
+      "Nsk": "32",
+      "Nx": "32",
+      "OPRF": "0003"
+    },
+    "inputs": {
+      "KE1": "03e9b410a23d0b14539a6404273794d28d97109b53cc6d8e2b0df973ed3a1b78ebd797d24fe5ad528130825016bfdc2eeaeef19914c366a615bcdbefd1f04b7208023843b78440c0e79d828ac4c2658d1cedf7e9795f2242527a4c1a254501d2ca1a",
+      "client_identity": "616c696365",
+      "client_private_key": "0e6b97ef90ea8cedbada0e1295233ba417790ed8e9967690371d527ddad59a64",
+      "client_public_key": "033043e30c3dd5fb22d0b3d167acc28878ea7c3ac49cf82b2eb4b60a8299a67f7a",
+      "credential_identifier": "31323334",
+      "masking_key": "5b8caab90accd4f239e85ec978f6a6346edc0019c5671e81034ead615ce096fc",
+      "masking_nonce": "d3974af728aeafc9e5af4b4cab57d7e7dfbe0ef6b08df28fae5269229cac2332",
+      "oprf_seed": "42cd4f606841ca8f403920a8ecf2d60399962f49d83f857ca86676b2721c4366",
+      "server_identity": "626f62",
+      "server_keyshare": "03eefd21dd74c665064ebcbf63ac5ebce9a45097d47dfc08d84552a105419b44aa",
+      "server_nonce": "1a60a3e31bb007db74b7114aab2f196ef6bec942a9b4fe6c61143fac34d42143",
+      "server_private_key": "b08b686382820021a7d32ad3cb8ff60f15437b5cb00c53f21f3fa17ac31d2bc0",
+      "server_private_keyshare": "751e5012ba0c535e008b2389bea166a5d59a49353f1220f5e345f0546463ccdf",
+      "server_public_key": "03983ac5783e6a460a526066f1398cdc648518a985cc26a66fc7573a71ce36dbe5"
+    },
+    "intermediates": {},
+    "outputs": {
+      "KE2": "023462c77648a978d71df1c8eeb9ed05353d4a1df6a91c56fe739673f50c701b88d3974af728aeafc9e5af4b4cab57d7e7dfbe0ef6b08df28fae5269229cac23329a993151e43ac41ce18939444cea5d012b8a8316ed439d6fccf06b064f7564722f55575061897fbb6051f37e3247d08804437259fb9b022cc12715caca4ac12ef7a8b2f10126937619ce4725e6b821de5f44ddb71a8582883aa9b5aaefa9e3d0231a60a3e31bb007db74b7114aab2f196ef6bec942a9b4fe6c61143fac34d4214303eefd21dd74c665064ebcbf63ac5ebce9a45097d47dfc08d84552a105419b44aada4e57551627f1730e7c8c7b6186b7c6ea70c11e5bd1f841a0f31569e34390f4"
+    }
+  },
+  {
+    "config": {
+      "Context": "4f50415155452d504f43",
+      "EnvelopeMode": "02",
+      "Fake": "True",
+      "Group": "ristretto255",
+      "Hash": "SHA512",
+      "KDF": "HKDF-SHA512",
+      "MAC": "HMAC-SHA512",
+      "MHF": "Identity",
+      "Name": "3DH",
+      "Nh": "64",
+      "Nm": "64",
+      "Nok": "32",
+      "Npk": "32",
+      "Nsk": "32",
+      "Nx": "64",
+      "OPRF": "0001"
+    },
+    "inputs": {
+      "KE1": "a4686159ffff3ff6e184dc0804d01dd9641ff67a6eaa57e3ebce96a27fe263131854ee25966eeee2c830ac3f6e212b97809eced53f0d503d4c96c7e27257f4132ce348e52135164b0e7c16fd09b304686c39b90cb04091a1048c399b2e9d4270",
+      "client_identity": "616c696365",
+      "client_private_key": "6c1ce31656eb5fee3ead7db7565a3618a0c38fd7b4fdcfdff48868c519ff2a0f",
+      "client_public_key": "7894b12117db10b45476e45c8d3de597c3a410287524d7b368961afa0a556c28",
+      "credential_identifier": "31323334",
+      "masking_key": "463d334336a31a7b1aeeed9c60ab5a3950eb508ef1a159a931abc976049df4afb6cc6fea0f95ae3e34c802bdcc4da208c4dd68402b708c0ebb6ae0a72d59cb90",
+      "masking_nonce": "af63872227d860610466d7e3772e2092c5f770bc56d3b4961919c4ad92059537",
+      "oprf_seed": "f25de0448fe47b0e58b656838ca98ab353a8ad48d9d2594ab586bb07b2aa57e125b63f13483a9999240c192f735821167786be727255a4dae656c5a01059cf3a",
+      "server_identity": "626f62",
+      "server_keyshare": "e21b0c1506869330ada34bfcec71862762853fc95476543a0abd89a0a3ee556d",
+      "server_nonce": "244c13e9e741425fef935fbfb85c70d69b4154e77bf116bdfc92cbe93d7598f0",
+      "server_private_key": "3777b07d6e40562f0789806a6244d71f68a66fe4eca45ab4138c1933d7065d02",
+      "server_private_keyshare": "eedab29b34c52d3908e3c54a79d6a561182034fff5e299e9fcf9317fda782106",
+      "server_public_key": "ce0f4be418e606efb13cc01415b35c775e546a75e539762d6310a268bb64bb1e"
+    },
+    "intermediates": {},
+    "outputs": {
+      "KE2": "ec0f6ff7b1a3fba606ed464112c2ef52c6cca7b70ec23a9721277cf468d2302daf63872227d860610466d7e3772e2092c5f770bc56d3b4961919c4ad92059537e2df9d67a4caab9b89d824a40a41d8c1e594b6c404e548abb83e47ce48b91b7905c575892c985d33173f2c23cb1431b7ed0696f43853fde720a012a87a818b10e77787cd9a747ad972537f6849795409a4515665783230bfc41c657f8fac5bbe78ab842cbedc3ef2df7990cfa9d01dcacc177b9a779b5b1a453464eea16a294552c214f34c85ce3a9961b80d91ec028ec0f1bdf01b047989a5ee575ec7983736244c13e9e741425fef935fbfb85c70d69b4154e77bf116bdfc92cbe93d7598f0e21b0c1506869330ada34bfcec71862762853fc95476543a0abd89a0a3ee556dc52993272b77b26545c4599b6855ad6aea34f5358d86cacf63b87d58ef3e95acd224c084c76ba4af0cc18dc1d321b3752497d19019893ac848fbe54af198054f"
+    }
+  },
+  {
+    "config": {
+      "Context": "4f50415155452d504f43",
+      "EnvelopeMode": "02",
+      "Fake": "True",
+      "Group": "P256_XMD:SHA-256_SSWU_RO_",
+      "Hash": "SHA256",
+      "KDF": "HKDF-SHA256",
+      "MAC": "HMAC-SHA256",
+      "MHF": "Identity",
+      "Name": "3DH",
+      "Nh": "32",
+      "Nm": "32",
+      "Nok": "32",
+      "Npk": "33",
+      "Nsk": "32",
+      "Nx": "32",
+      "OPRF": "0003"
+    },
+    "inputs": {
+      "KE1": "02dcd177ed9fedec32a337d27c7f2f7a36630dfbc6571ca6bec49bd91de615537eb30e7bfbc1054696ddbc54accfea2cf8a46ab37ba489e28504f3ca7a3267d8d70363c36c15a1593205f26ca2d31c7a61c83a138943a5754f85d249da210bb71406",
+      "client_identity": "616c696365",
+      "client_private_key": "c46a5d117c6ffdebb3b958328884c080eb922b9d8ecae5d6bf001b9670f2851a",
+      "client_public_key": "0244fe5b332845cca6b44101ea04d4c7d52108b5b7a2afd22aed2c2d9e555035f4",
+      "credential_identifier": "31323334",
+      "masking_key": "c533fc7175763b1f43bc46fc6fd1145e2c24964fd3fd3c88454d0390ca876610",
+      "masking_nonce": "5cd3c47180f435d1387c5541d2cbaca3ff3818b0e1875a9b006ac7c78ae01b6c",
+      "oprf_seed": "8f200b8f641a5697233757853f5f9d5184433cfa367aa55e8491fcd37befaf95",
+      "server_identity": "626f62",
+      "server_keyshare": "02bf50c918a085c33c8fdfb3d346c4f4959401cdc1c5870567f8947040af079d2d",
+      "server_nonce": "68498d0a3bcbf95d086073de4572bcc707c8fe7fc297e4e9a8600f4eb8f7730f",
+      "server_private_key": "046e8097602a7b16b1ed184c65c208d14792a661a7a99c495049b803e18da601",
+      "server_private_keyshare": "c0a9b2285356d0b6ceb9c29a7932ea8039d3170a496385b65eee17df9e7119cf",
+      "server_public_key": "02071a35268c772719bc31f9533f9d3665d4ed96a6780894bd99f6910059a62807"
+    },
+    "intermediates": {},
+    "outputs": {
+      "KE2": "03980bb18515bae8a7edf94c3175d5fcc03ca5e5bc099dd4dbdd3d4f28ab4b831a5cd3c47180f435d1387c5541d2cbaca3ff3818b0e1875a9b006ac7c78ae01b6c95c700af3a8ad87e16b2b20f23cf596305f21d23ba619d53d4b19d1604f9347bf944f84bcab9373990c8b3ba517cc6418a834c946acd543079256413dd25db9ebf9f009b7da2f4cd6b73c450d7ec779405a3198e516d11afc103e9cd782a937ba813d4627d5c76ef7b6afe4273abe2bc76b489a0a2d2d31050f004434771de9f5068498d0a3bcbf95d086073de4572bcc707c8fe7fc297e4e9a8600f4eb8f7730f02bf50c918a085c33c8fdfb3d346c4f4959401cdc1c5870567f8947040af079d2dc1ef1f3b71364e2cbe3eb0c563f402a30423ea766cd29606fd47d8b42067262c"
     }
   }
 ]

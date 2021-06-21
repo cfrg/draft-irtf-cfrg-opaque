@@ -9,7 +9,7 @@ import hashlib
 import struct
 
 try:
-    from sagelib.opaque_common import I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len
+    from sagelib.opaque_common import I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -108,14 +108,14 @@ def deserialize_envelope(config, data):
     if config.mode == envelope_mode_external:
         inner_length = config.Nsk
     Nm = config.hash().digest_size
-    if len(data) != 32 + inner_length + Nm:
+    if len(data) != OPAQUE_NONCE_LENGTH + inner_length + Nm:
          raise Exception("Invalid envelope length")
 
-    nonce = data[:32]
-    inner_env, offset = deserialize_inner_envelope(config, data[32:])
-    auth_tag = data[32+offset:]
+    nonce = data[:OPAQUE_NONCE_LENGTH]
+    inner_env, offset = deserialize_inner_envelope(config, data[OPAQUE_NONCE_LENGTH:])
+    auth_tag = data[OPAQUE_NONCE_LENGTH+offset:]
 
-    return Envelope(nonce, inner_env, auth_tag), 32+offset+Nm
+    return Envelope(nonce, inner_env, auth_tag), OPAQUE_NONCE_LENGTH+offset+Nm
 
     # contents, offset = deserialize_inner_envelope(config, data)
     # Nh = config.hash().digest_size
@@ -245,15 +245,15 @@ class CredentialRequest(ProtocolMessage):
 def deserialize_credential_response(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
     data = msg_bytes[0:length]
-    masking_nonce = msg_bytes[length:length+32]
+    masking_nonce = msg_bytes[length:length+OPAQUE_NONCE_LENGTH]
 
     Nm = config.hash().digest_size
     Npk = config.Npk
-    Ne = Nm + 32
+    Ne = Nm + OPAQUE_NONCE_LENGTH
     if config.mode == envelope_mode_external:
         Ne = Ne + config.Nsk
-    masked_response = msg_bytes[length+32:length+32+Npk+Ne]
-    return CredentialResponse(data, masking_nonce, masked_response), length+32+Npk+Ne
+    masked_response = msg_bytes[length+OPAQUE_NONCE_LENGTH:length+OPAQUE_NONCE_LENGTH+Npk+Ne]
+    return CredentialResponse(data, masking_nonce, masked_response), length+OPAQUE_NONCE_LENGTH+Npk+Ne
 
 class CredentialResponse(ProtocolMessage):
     def __init__(self, data, masking_nonce, masked_response):
