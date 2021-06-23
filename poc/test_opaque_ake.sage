@@ -223,10 +223,10 @@ def run_test_vector(params):
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
         inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
         inputs["blind_login"] = to_hex(config.oprf_suite.group.serialize_scalar(client_kex.cred_metadata))
-        inputs["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
 
         # Intermediate computations
         intermediates["client_public_key"] = to_hex(pkU_bytes)
+        intermediates["oprf_key"] = to_hex(config.oprf_suite.group.serialize_scalar(kU))
         intermediates["envelope"] = to_hex(record.envU.serialize())
         intermediates["randomized_pwd"] = to_hex(client_kex.core.credential_rwd)
         intermediates["masking_key"] = to_hex(client_kex.core.credential_masking_key)
