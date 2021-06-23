@@ -1163,7 +1163,7 @@ CreateCredentialResponse function where the record argument is configured so tha
 - record.masking_key is set to a random byte string of length Nh
 - record.envelope is set to the byte string consisting only of zeros of length Ne
 
-In the generated test vectors from {{fake-vectors}}, we use `fake_client_public_key` for the record's public key, and `fake_masking_key` for the record's masking key parameter.
+In the generated test vectors from {{fake-vectors}}, we use `client_public_key` for the record's public key, and `masking_key` for the record's masking key parameter.
 
 Note that the responses output by either scenario are indistinguishable to an adversary
 that is unable to guess the registered password for the client corresponding to credential_identifier.
@@ -2006,8 +2006,8 @@ and protocol outputs.
 
 Similarly, each fake test vector in {{fake-vectors}} specifies
 the configuration information, protocol inputs, and protocol
-outputs computed during authentication of an unknown or unregistered user. Note that `fake_masking_key`, `fake_client_private_key`, and
-`fake_client_public_key` are used as additional inputs as described in
+outputs computed during authentication of an unknown or unregistered user. Note that `masking_key`, `client_private_key`, and
+`client_public_key` are used as additional inputs as described in
 {{create-credential-response}}.
 
 All values are encoded in hexadecimal strings. The configuration information
@@ -2973,8 +2973,10 @@ f
 credential_identifier: 31323334
 masking_nonce: 3058799f42516228746821dc8c8530d0e8273ebde81941591d69ca
 5aea773090
-fake_client_private_key: 83c9bcc31a9da0ffa4489900d3d1f85bb65c27f26e9a
-e4e3b66f6e02e098c503
+client_private_key: 83c9bcc31a9da0ffa4489900d3d1f85bb65c27f26e9ae4e3b
+66f6e02e098c503
+client_public_key: 56717b74a5e1770edb14c65f22cee0487046bd96e122ba97da
+ffed06c4bf4052
 server_private_key: 8d3a9355f9757e7071b3f836e3fb1461a6436e92971625b17
 cd7e580dd27c009
 server_public_key: 7a464761cb19c8b6e832fdfcfd18779b0edc246fe808f5de6c
@@ -2985,9 +2987,9 @@ server_keyshare: 0e247410004d83d7cbe3af89c62ff03f942127aec4b0084c9eb5
 88e74ce6dd06
 server_private_keyshare: 326345820acc8aacf4948fce775a1fd265e4e93fd579
 cec8177d6389ee379b0a
-fake_masking_key: e968bfe56ad934c3e1088115bcbf1af8b405fd0de94cdf301f9
-192cc2781de00617e568b14b7235cc1189265811ea354031ea39b62e31a104f181c01
-d3dae4b8
+masking_key: e968bfe56ad934c3e1088115bcbf1af8b405fd0de94cdf301f9192cc
+2781de00617e568b14b7235cc1189265811ea354031ea39b62e31a104f181c01d3dae
+4b8
 KE1: 480b6c0066c9320c50dce20f8b6b63e4ded7681defd9da3f70ecdc15770f9e68
 05603c1acb64ea417c0dabaab858a5f9da046d4a0cdbf092034c00451ccdc6e1ee835
 5c91d5ed7aa5ea75b8a730ba8dc45f6b41ae9713e6aa7126211346e8754
@@ -3039,8 +3041,10 @@ oprf_seed: 42cd4f606841ca8f403920a8ecf2d60399962f49d83f857ca86676b272
 credential_identifier: 31323334
 masking_nonce: d3974af728aeafc9e5af4b4cab57d7e7dfbe0ef6b08df28fae5269
 229cac2332
-fake_client_private_key: 0e6b97ef90ea8cedbada0e1295233ba417790ed8e996
-7690371d527ddad59a64
+client_private_key: 0e6b97ef90ea8cedbada0e1295233ba417790ed8e99676903
+71d527ddad59a64
+client_public_key: 033043e30c3dd5fb22d0b3d167acc28878ea7c3ac49cf82b2e
+b4b60a8299a67f7a
 server_private_key: b08b686382820021a7d32ad3cb8ff60f15437b5cb00c53f21
 f3fa17ac31d2bc0
 server_public_key: 03983ac5783e6a460a526066f1398cdc648518a985cc26a66f
@@ -3051,8 +3055,8 @@ server_keyshare: 03eefd21dd74c665064ebcbf63ac5ebce9a45097d47dfc08d845
 52a105419b44aa
 server_private_keyshare: 751e5012ba0c535e008b2389bea166a5d59a49353f12
 20f5e345f0546463ccdf
-fake_masking_key: 5b8caab90accd4f239e85ec978f6a6346edc0019c5671e81034
-ead615ce096fc
+masking_key: 5b8caab90accd4f239e85ec978f6a6346edc0019c5671e81034ead61
+5ce096fc
 KE1: 03e9b410a23d0b14539a6404273794d28d97109b53cc6d8e2b0df973ed3a1b78
 ebd797d24fe5ad528130825016bfdc2eeaeef19914c366a615bcdbefd1f04b7208023
 843b78440c0e79d828ac4c2658d1cedf7e9795f2242527a4c1a254501d2ca1a
@@ -3103,8 +3107,10 @@ a
 credential_identifier: 31323334
 masking_nonce: af63872227d860610466d7e3772e2092c5f770bc56d3b4961919c4
 ad92059537
-fake_client_private_key: 6c1ce31656eb5fee3ead7db7565a3618a0c38fd7b4fd
-cfdff48868c519ff2a0f
+client_private_key: 6c1ce31656eb5fee3ead7db7565a3618a0c38fd7b4fdcfdff
+48868c519ff2a0f
+client_public_key: 7894b12117db10b45476e45c8d3de597c3a410287524d7b368
+961afa0a556c28
 server_private_key: 3777b07d6e40562f0789806a6244d71f68a66fe4eca45ab41
 38c1933d7065d02
 server_public_key: ce0f4be418e606efb13cc01415b35c775e546a75e539762d63
@@ -3115,9 +3121,9 @@ server_keyshare: e21b0c1506869330ada34bfcec71862762853fc95476543a0abd
 89a0a3ee556d
 server_private_keyshare: eedab29b34c52d3908e3c54a79d6a561182034fff5e2
 99e9fcf9317fda782106
-fake_masking_key: 463d334336a31a7b1aeeed9c60ab5a3950eb508ef1a159a931a
-bc976049df4afb6cc6fea0f95ae3e34c802bdcc4da208c4dd68402b708c0ebb6ae0a7
-2d59cb90
+masking_key: 463d334336a31a7b1aeeed9c60ab5a3950eb508ef1a159a931abc976
+049df4afb6cc6fea0f95ae3e34c802bdcc4da208c4dd68402b708c0ebb6ae0a72d59c
+b90
 KE1: a4686159ffff3ff6e184dc0804d01dd9641ff67a6eaa57e3ebce96a27fe26313
 1854ee25966eeee2c830ac3f6e212b97809eced53f0d503d4c96c7e27257f4132ce34
 8e52135164b0e7c16fd09b304686c39b90cb04091a1048c399b2e9d4270
@@ -3170,8 +3176,10 @@ efaf95
 credential_identifier: 31323334
 masking_nonce: 5cd3c47180f435d1387c5541d2cbaca3ff3818b0e1875a9b006ac7
 c78ae01b6c
-fake_client_private_key: c46a5d117c6ffdebb3b958328884c080eb922b9d8eca
-e5d6bf001b9670f2851a
+client_private_key: c46a5d117c6ffdebb3b958328884c080eb922b9d8ecae5d6b
+f001b9670f2851a
+client_public_key: 0244fe5b332845cca6b44101ea04d4c7d52108b5b7a2afd22a
+ed2c2d9e555035f4
 server_private_key: 046e8097602a7b16b1ed184c65c208d14792a661a7a99c495
 049b803e18da601
 server_public_key: 02071a35268c772719bc31f9533f9d3665d4ed96a6780894bd
@@ -3182,8 +3190,8 @@ server_keyshare: 02bf50c918a085c33c8fdfb3d346c4f4959401cdc1c5870567f8
 947040af079d2d
 server_private_keyshare: c0a9b2285356d0b6ceb9c29a7932ea8039d3170a4963
 85b65eee17df9e7119cf
-fake_masking_key: c533fc7175763b1f43bc46fc6fd1145e2c24964fd3fd3c88454
-d0390ca876610
+masking_key: c533fc7175763b1f43bc46fc6fd1145e2c24964fd3fd3c88454d0390
+ca876610
 KE1: 02dcd177ed9fedec32a337d27c7f2f7a36630dfbc6571ca6bec49bd91de61553
 7eb30e7bfbc1054696ddbc54accfea2cf8a46ab37ba489e28504f3ca7a3267d8d7036
 3c36c15a1593205f26ca2d31c7a61c83a138943a5754f85d249da210bb71406
