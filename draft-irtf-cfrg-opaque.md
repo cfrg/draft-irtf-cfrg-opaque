@@ -472,14 +472,13 @@ obtain its authentication material.
 OPAQUE allows applications to either provide custom client private and public keys
 for authentication, or to generate them internally. Each public and private key
 value is encoded as a byte string, specific to the AKE protocol in which OPAQUE
-is instantiated. These two options are defined as the `internal` and `external`
+is instantiated. These two options are defined as the `external` and `internal`
 modes, respectively. See {{envelope-modes}} for their specifications.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
 application credential information are considered:
 
-- client_private_key: The encoded client private key for the AKE protocol.
 - client_public_key: The encoded client public key for the AKE protocol.
 - server_public_key: The encoded server public key for the AKE protocol.
 - client_identity: The client identity. This is an application-specific value,
