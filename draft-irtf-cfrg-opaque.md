@@ -838,10 +838,10 @@ The registration protocol then runs as shown below:
                         request
               ------------------------->
 
-(response, oprf_key) = CreateRegistrationResponse(request,
-                          server_public_key,
-                          credential_identifier,
-                          oprf_seed)
+ response = CreateRegistrationResponse(request,
+                                       server_public_key,
+                                       credential_identifier,
+                                       oprf_seed)
 
                         response
               <-------------------------
@@ -936,18 +936,17 @@ Input:
 - server_public_key, the server's public key.
 - credential_identifier, an identifier that uniquely represents the credential being
   registered.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
 
 Output:
 - response, a RegistrationResponse structure.
-- oprf_key, the per-client OPRF key known only to the server.
 
 Steps:
 1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
 2. (oprf_key, _) = DeriveKeyPair(ikm)
 3. Z = Evaluate(oprf_key, request.data)
 4. Create RegistrationResponse response with (Z, server_public_key)
-5. Output (response, oprf_key)
+5. Output response
 ~~~
 
 #### FinalizeRequest {#finalize-request}

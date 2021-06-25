@@ -40,7 +40,6 @@ input_keys = [
     "client_private_keyshare",
     "blind_registration",
     "blind_login",
-    "oprf_key",
 ]
 
 intermediate_keys = [
@@ -52,6 +51,7 @@ intermediate_keys = [
     "handshake_secret",
     "server_mac_key",
     "client_mac_key",
+    "oprf_key",
 ]
 
 output_keys = [
@@ -87,7 +87,6 @@ fake_input_keys = [
     "client_private_keyshare",
     "blind_registration",
     "blind_login",
-    "oprf_key",
     "masking_key",
     "KE1",
 ]

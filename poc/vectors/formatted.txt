@@ -53,8 +53,6 @@ blind_registration: c62937d17dc9aa213c9038f84fe8c5bf3d953356db01c4d48
 acb7cae48e6a504
 blind_login: b5f458822ea11c900ad776e38e29d7be361f75b4d79b55ad74923299
 bf8d6503
-oprf_key: 23d431bab39aea4d2737ac391a50076300210730971788e3a6a8c29ad3c
-5930e
 ~~~
 
 #### Intermediate Values
@@ -79,6 +77,8 @@ e91232297fdbb51e875cd37167d5ce661ebccf0004dbbf96311daf64ddec7faae04c4
 client_mac_key: 4bce132daa031fff2a6e5ac29287c4641e3b9dc2560394b8c73f3
 b748f1e51e577b932a960b236981217b33bee220b0bce2696638cfb7791f427ade292
 d60f55
+oprf_key: 23d431bab39aea4d2737ac391a50076300210730971788e3a6a8c29ad3c
+5930e
 ~~~
 
 #### Output Values
@@ -173,8 +173,6 @@ blind_registration: a66ffb41ccf1194a8d7dda900f8b6b0652e4c7fac4610066f
 e0489a804d3bb05
 blind_login: e6f161ac189e6873a19a54efca4baa0719e801e336d929d35ca28b5b
 4f60560e
-oprf_key: 1e0550d2dbb9ce5dd9bdbb5f808afbb724c573dc03306dcfc7217796465
-ce607
 ~~~
 
 #### Intermediate Values
@@ -199,6 +197,8 @@ e3fa03cd3ab72f1f5e81473318f9c01f990263d885dfce4b6ac8630fdc8ee8abc6a36
 client_mac_key: ebb3693bac6310075a89922c7a40599d14d03d9104b7a331106e8
 a578a32a4944751f9d3c230a6690a5747137388a86159cf587969d13dadc0a3830218
 dfbca5
+oprf_key: 1e0550d2dbb9ce5dd9bdbb5f808afbb724c573dc03306dcfc7217796465
+ce607
 ~~~
 
 #### Output Values
@@ -290,8 +290,6 @@ blind_registration: d50e29b581d716c3c05c4a0d6110b510cb5c9959bee817fde
 b1eabd7ccd74fee
 blind_login: 503d8495c6d04efaee8370c45fa1dfad70201edd140cec8ed6c73b5f
 cd15c478
-oprf_key: 5bce459c307cd013dcbb295e303e2749b815d37a416f7db3859fbead356
-ac139
 ~~~
 
 #### Intermediate Values
@@ -311,6 +309,8 @@ server_mac_key: bef218a8076f646ad9ac954d4e191280bb5a58460668affe0c13a
 6786b48d103
 client_mac_key: 89a406c125cf1b2f57e235339e7c58a00435a66154e1982253065
 6da15ea5e48
+oprf_key: 5bce459c307cd013dcbb295e303e2749b815d37a416f7db3859fbead356
+ac139
 ~~~
 
 #### Output Values
@@ -398,8 +398,6 @@ blind_registration: 9280e203ef27d9ef0d1d189bb3c02a66ef9a72d48cca6c1f9
 afc1fedea22567c
 blind_login: 4308682dc1bdab92ff91bb1a5fc5bc084223fe4369beddca3f1640a6
 645455ad
-oprf_key: e5e9bdc66fb1fb8235ba6e2da193f43aa2ea30098257f1600585af2fd54
-6e675
 ~~~
 
 #### Intermediate Values
@@ -419,6 +417,8 @@ server_mac_key: 7417c7daf044f762475911c7737288f94cab148afc5e28d51faf1
 dcac753b315
 client_mac_key: 1f5ac945caed1a6a27740bdd0278c2a57e692aefc6bb4db2e729f
 65427712a13
+oprf_key: e5e9bdc66fb1fb8235ba6e2da193f43aa2ea30098257f1600585af2fd54
+6e675
 ~~~
 
 #### Output Values
@@ -507,8 +507,6 @@ blind_registration: 21c97ffc56be5d93f86441023b7c8a4b629399933b3f845f5
 852e8c716a60408
 blind_login: f3fbfd52953b95ae7567d2590ecd8b0defe05a0321ec8230137157c1
 6cc06b09
-oprf_key: 606df815763ed4fd56e96e0133fd2142e7f732a0703c6538c44d2778107
-a9a01
 ~~~
 
 #### Intermediate Values
@@ -534,6 +532,8 @@ d85a33
 client_mac_key: 21b665d6b15dbb9682be949a8f34a048bb0e7ef9dca0258417f8f
 ad934047a09a22ccc4ad675fd8ddc8f375b0259b658e00c81fc03d84cc03c6e03c5b2
 043c54
+oprf_key: 606df815763ed4fd56e96e0133fd2142e7f732a0703c6538c44d2778107
+a9a01
 ~~~
 
 #### Output Values
@@ -632,8 +632,6 @@ blind_registration: a8fe808852933dec78a535ad1cd3a6e64b82b5302a5a99f16
 66c3cce1c4f2408
 blind_login: ec58b546968ed476e1a55a9dff9c80cc9c56cc9021a662d5cb7d5d37
 109b760b
-oprf_key: 174df334e2cde01a6fbd987ac279799c068d4e465427a5d1eff0a863fb1
-ac005
 ~~~
 
 #### Intermediate Values
@@ -659,6 +657,8 @@ a89bb084e483f974155efcd8b243cfe6431b549ff44268668f962e80653cd49cc5ffa
 client_mac_key: ae2f19f91640bf582545e29e52f3ce8f1677e01457c8c626404ab
 5c9b4358b2eda4bc819bfe80f2274ac3cb4b4f65a39b88914a063e838c33c168173f6
 e5ea58
+oprf_key: 174df334e2cde01a6fbd987ac279799c068d4e465427a5d1eff0a863fb1
+ac005
 ~~~
 
 #### Output Values
@@ -754,8 +754,6 @@ blind_registration: e147f60270fc68fd0990c1fd9b34b9187adfc0b6e485f8fc6
 ab6fea7ba043862
 blind_login: 417fe2da072d4eccf379adfb08f7f8ec28aadd14a78b68466e51a251
 d13299f2
-oprf_key: eb8e7898b5f1d9af9fdbb68ad4ea14e9912c7a26195e86f85830c45b7d9
-a2c58
 ~~~
 
 #### Intermediate Values
@@ -776,6 +774,8 @@ server_mac_key: 2b9a10366f931384ecf351deea83e51c18a057548d7cceacc0039
 c560c699988
 client_mac_key: 34d182fd055784c76dfb44606d0043eeff7a25407576d0c553e20
 a97c58d4a43
+oprf_key: eb8e7898b5f1d9af9fdbb68ad4ea14e9912c7a26195e86f85830c45b7d9
+a2c58
 ~~~
 
 #### Output Values
@@ -866,8 +866,6 @@ blind_registration: 677e95d5335dbbd7d468a4bc0750ce4672a5b3e9098e8263f
 37dea986a921e99
 blind_login: e304d794b21e52c661090c25af0e432e6bdcc891568226adab56bf02
 dd0ea391
-oprf_key: e2f616cf2e16b6b731bf9b5ab9fd75dbb5c30ef7443465d4662e144c342
-fe74e
 ~~~
 
 #### Intermediate Values
@@ -888,6 +886,8 @@ server_mac_key: 1a6bdc07970adcf6098d05acdee53929902579fbc8ec7a5e0ef7f
 1eae5cd8e53
 client_mac_key: 9ed05257c961118165d9e279ed31aee488a004b39da3c162a5e76
 65c043221cd
+oprf_key: e2f616cf2e16b6b731bf9b5ab9fd75dbb5c30ef7443465d4662e144c342
+fe74e
 ~~~
 
 #### Output Values
