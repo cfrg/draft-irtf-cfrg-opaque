@@ -1155,14 +1155,18 @@ Steps:
 8. Output response
 ~~~
 
-In the case of a record that does not exist, the server SHOULD invoke the
-CreateCredentialResponse function where the record argument is configured so that:
+In the case of a record that does not exist and if client enumeration prevention is desired,
+the server MUST respond to the credential request to fake the existence of the record.
+The server SHOULD invoke the CreateCredentialResponse function with a fake client record
+argument that is configured so that:
 
 - record.client_public_key is set to a randomly generated public key of length Npk
 - record.masking_key is set to a random byte string of length Nh
 - record.envelope is set to the byte string consisting only of zeros of length Ne
 
-In the generated test vectors from {{fake-vectors}}, we use `client_public_key` for the record's public key, and `masking_key` for the record's masking key parameter.
+It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
+of the application) and stored alongside legitimate client records. This allows servers to locate
+the record in time comparable to that of a legitimate client record.
 
 Note that the responses output by either scenario are indistinguishable to an adversary
 that is unable to guess the registered password for the client corresponding to credential_identifier.
@@ -2007,7 +2011,8 @@ Similarly, each fake test vector in {{fake-vectors}} specifies
 the configuration information, protocol inputs, and protocol
 outputs computed during authentication of an unknown or unregistered user. Note that `masking_key`, `client_private_key`, and
 `client_public_key` are used as additional inputs as described in
-{{create-credential-response}}.
+{{create-credential-response}}. `client_public_key` is used as the fake record's public key, and
+`masking_key` for the fake record's masking key parameter.
 
 All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, MHF, EnvelopeMode, Group) tuple, where the Group
