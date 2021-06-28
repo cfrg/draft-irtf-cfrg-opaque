@@ -479,6 +479,7 @@ Applications may pin key material to identities if desired. If no identity is gi
 for a party, its value MUST default to its public key. The following types of
 application credential information are considered:
 
+- client_private_key: The encoded client private key for the AKE protocol.
 - client_public_key: The encoded client public key for the AKE protocol.
 - server_public_key: The encoded server public key for the AKE protocol.
 - client_identity: The client identity. This is an application-specific value,
