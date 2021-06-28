@@ -331,6 +331,9 @@ a cryptographically strong pseudorandom generator, according to the requirements
 in {{!RFC4086}}, or pseudorandom function. For convenience, we define `nil` as a
 lack of value.
 
+All protocol messages and structures defined in this document use the syntax from
+{{?RFC8446, Section 3}}.
+
 The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
 OPAKE was taken.
 
