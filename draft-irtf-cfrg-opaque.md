@@ -1054,7 +1054,7 @@ The protocol runs as shown below:
 
     (ke3,
     session_key,
-    export_key) = ClientFinish(password, client_identity,
+    export_key) = ClientFinish(client_identity, password,
                               server_identity, ke2)
 
                          ke3
@@ -1376,9 +1376,9 @@ Output:
 - ikm, input key material.
 
 Steps:
-1. dh1 = sk1 * pk1
-2. dh2 = sk2 * pk2
-3. dh3 = sk3 * pk3
+1. dh1 = SerializeElement(sk1 * pk1)
+2. dh2 = SerializeElement(sk2 * pk2)
+3. dh3 = SerializeElement(sk3 * pk3)
 4. Output concat(dh1, dh2, dh3)
 ~~~
 
@@ -1432,15 +1432,15 @@ Steps:
 ~~~
 
 ~~~
-ClientFinish(password, client_identity, server_identity, ke1, ke2)
+ClientFinish(client_identity, password, server_identity, ke1, ke2)
 
 State:
 - state, a ClientState structure
 
 Input:
-- password, an opaque byte string containing the client's password.
 - client_identity, the optional encoded client identity, which is set
   to client_public_key if not specified.
+- password, an opaque byte string containing the client's password.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
 - ke1, a KE1 message structure.
