@@ -1848,7 +1848,7 @@ Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
 SHOULD select parameters that balance cost and complexity.
 
-## Preventing Client Enumeration {#preventing-client-enumeration}
+## Client Enumeration {#preventing-client-enumeration}
 
 Client enumeration refers to attacks where the attacker tries to learn
 extra information about the behavior of clients that have registered with
@@ -1857,10 +1857,11 @@ the server. There are two types of attacks we consider:
 1) An attacker tries to learn whether a given client identity is registered
 with a server, and
 2) An attacker tries to learn whether a given client identity has recently
-completed registration, or has re-registered (e.g. after a password change).
+completed registration, re-registered (e.g. after a password change), or
+changed its identity.
 
-OPAQUE prevents the first type of attack during the authentication flow. This
-is done by requiring servers to act with unregistered client identities in a
+OPAQUE prevents these attacks during the authentication flow. The first is
+done by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from its behavior with existing registered clients.
 Servers do this for an unregistered client by simulating a fake
 CredentialResponse as specified in {{create-credential-response}}.
@@ -1870,13 +1871,6 @@ response. Note that server implementations may choose to forego the construction
 of a simulated credential response message for an unregistered client if these
 client enumeration attacks can be mitigated through other application-specific
 means or are otherwise not applicable for their threat model.
-
-OPAQUE does not prevent the first type of attack during the registration flow.
-Servers must necessarily react differently during the registration flow between
-registered and unregistered clients. This allows an attacker to use the server's
-response during registration as an oracle for whether a given client identity is
-registered. Applications should mitigate against this type of attack by rate
-limiting or otherwise restricting the registration flow.
 
 Preventing the second type of attack requires the server to supply a
 credential_identifier value for a given client identity, consistently between
@@ -1894,6 +1888,13 @@ clients.
 Finally, applications must use the same envelope mode when using this prevention
 throughout their lifecycle. The envelope size varies between modes, so a switch
 in mode could then be detected.
+
+OPAQUE does not prevent either type of attack during the registration flow.
+Servers necessarily react differently during the registration flow between
+registered and unregistered clients. This allows an attacker to use the server's
+response during registration as an oracle for whether a given client identity is
+registered. Applications should mitigate against this type of attack by rate
+limiting or otherwise restricting the registration flow.
 
 ## Password Salt and Storage Implications
 
