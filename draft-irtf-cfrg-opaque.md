@@ -291,8 +291,9 @@ based on post-quantum techniques.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
-its encrypted credentials on the server. In the second stage, a client obtains
-those credentials, recovers them using the client's password, and subsequently
+information used to recover authentication credentials on the server. Recovering these
+credentials can only be done with knowledge of the client password. In the second
+stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol.
 
 Currently, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}}, which is
