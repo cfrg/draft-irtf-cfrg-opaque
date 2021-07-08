@@ -309,7 +309,7 @@ This draft complies with the requirements for PAKE protocols set forth in
 
 {::boilerplate bcp14}
 
-## Notation
+## Notation {#notation}
 
 The following functions are used throughout this document:
 
@@ -340,44 +340,95 @@ OPAKE was taken.
 
 # Cryptographic Dependencies {#dependencies}
 
-OPAQUE relies on the following cryptographic protocols and primitives:
+OPAQUE depends on the following cryptographic protocol and primitives:
 
-- Oblivious Pseudorandom Function (OPRF, {{!I-D.irtf-cfrg-voprf}}, version -06):
-  - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-    by some scalar `r`, producing `M`, and output (`r`, `M`).
-  - Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
-    output element `Z`.
-  - Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
-    random scalar `r`, and evaluation output `Z`, yielding output `y`.
-  - DeriveKeyPair(seed): Derive a private and public key pair deterministically
-    from a seed.
-  - Noe: The size of a serialized OPRF group element.
-  - Nok: The size of an OPRF private key.
+- Oblivious Pseudorandom Function (OPRF); {{deps-oprf}}
+- Key Derivation Function (KDF); {{deps-symmetric}}
+- Message Authenticate Code (MAC); {{deps-symmetric}}
+- Cryptographic Hash Function; {{deps-hash}}
+- Memory-Hard Function (MHF); {{deps-hash}}
+- Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
+
+This section describes these protocols and primitives in more detail. Unless said
+otherwise, all random nonces used in these dependencies and the rest of the OPAQUE
+protocol are of length `Nn` = 32 bytes.
+
+## Oblivious Pseudorandom Function {#deps-oprf}
+
+An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
+server for computing a PRF such that the server does not learn anything about the
+client's input. This specification uses the the OPRF defined in {{!I-D.irtf-cfrg-voprf}},
+Version -07, with the following API and parameters:
+
+- Blind(x): Convert input `x` into an element of the OPRF group, randomize it
+  by some scalar `r`, producing `M`, and output (`r`, `M`).
+- Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
+  output element `Z`.
+- Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
+  random scalar `r`, and evaluation output `Z`, yielding output `y`.
+- DeriveKeyPair(seed): Derive a private and public key pair deterministically
+  from a seed.
+- Noe: The size of a serialized OPRF group element.
+- Nok: The size of an OPRF private key.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
-variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}.
+variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. The implementation of
+DeriveKeyPair based on {{I-D.irtf-cfrg-voprf}} is below:
 
-- Key Derivation Function (KDF):
-  - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
-    input keying material `ikm` and an optional byte string `salt`.
-  - Expand(prk, info, L): Expand a pseudorandom key `prk` using optional string `info`
-    into `L` bytes of output keying material.
-  - Nx: The output size of the `Extract()` function in bytes.
+~~~
+DeriveKeyPair(seed)
 
-- Message Authentication Code (MAC):
-  - MAC(key, msg): Compute a message authentication code over input `msg` with key
-    `key`, producing a fixed-length output of `Nm` bytes.
-  - Nm: The output size of the `MAC()` function in bytes.
+Input:
+- seed, pseudo-random byte sequence used as a seed.
 
-- Hash Function:
-  - Hash(msg): Apply a cryptographic hash function to input `msg`, producing a
-    fixed-length digest of size `Nh` bytes.
-  - Nh: The output size of the `Hash()` function in bytes.
+Output:
+- private_key, a private key.
+- public_key, the associated public key.
 
-- Memory Hard Function (MHF):
-  - Harden(msg, params): Repeatedly apply a memory-hard function with parameters
-    `params` to strengthen the input `msg` against offline dictionary attacks.
-    This function also needs to satisfy collision resistance.
+Steps:
+1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveKeyPair")
+2. public_key = ScalarBaseMult(private_key)
+3. Output (private_key, public_key)
+~~~
+
+HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
+
+## Key Derivation Function and Message Authentication Code {#deps-symmetric}
+
+A Key Derivation Function (KDF) is a cryptographic function that takes some
+source of intiial keying material and uses it to derive one or more cryptographically
+strong keys. This specification uses a KDF with the following API and parameters:
+
+- Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
+  input keying material `ikm` and an optional byte string `salt`.
+- Expand(prk, info, L): Expand a pseudorandom key `prk` using optional string `info`
+  into `L` bytes of output keying material.
+- Nx: The output size of the `Extract()` function in bytes.
+
+This specification also makes use of a Message Authentication Code (MAC) with
+the following API and parameters:
+
+- MAC(key, msg): Compute a message authentication code over input `msg` with key
+  `key`, producing a fixed-length output of `Nm` bytes.
+- Nm: The output size of the `MAC()` function in bytes.
+
+## Hash Functions {#deps-hash}
+
+This specification makes use of a cryptographic hash function with the following
+API and parameters:
+
+- Hash(msg): Apply a cryptographic hash function to input `msg`, producing a
+  fixed-length digest of size `Nh` bytes.
+- Nh: The output size of the `Hash()` function in bytes.
+
+A Memory Hard Function (MHF) is a slow and expensive cryptographic hash function
+with the following API:
+
+- Harden(msg, params): Repeatedly apply a memory-hard function with parameters
+  `params` to strengthen the input `msg` against offline dictionary attacks.
+  This function also needs to satisfy collision resistance.
+
+## Authenticated Key Exchange (AKE) Protocol {#deps-ake}
 
 OPAQUE additionally depends on an Authenticated Key Exchange (AKE) protocol.
 This specification defines one particular AKE based on 3DH; see {{ake-protocol}}.
@@ -391,7 +442,25 @@ used in the AKE. The AKE protocol must provide the following functions:
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`.
 
-Finally, all random nonces used in this protocol are of length `Nn` = 32 bytes.
+The implementation of DeriveAuthKeyPair is as follows:
+
+~~~
+DeriveAuthKeyPair(seed)
+
+Input:
+- seed, pseudo-random byte sequence used as a seed.
+
+Output:
+- private_key, a private key.
+- public_key, the associated public key.
+
+Steps:
+1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+2. public_key = ScalarBaseMult(private_key)
+3. Output (private_key, public_key)
+~~~
+
+HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
 
 # Protocol Overview {#protocol-overview}
 
@@ -669,27 +738,6 @@ from the OPRF output.
 
 With the internal key mode the `EnvelopeMode` value MUST be `internal` and the
 `InnerEnvelope` is empty, and the size `Ne` of the serialized `Envelope` is `Nn + Nm`.
-
-To generate the private key OPAQUE-3DH implements `DeriveAuthKeyPair(seed)` as follows:
-
-~~~
-DeriveAuthKeyPair(seed)
-
-Input:
-- seed, pseudo-random byte sequence used as a seed.
-
-Output:
-- private_key, a private key.
-- public_key, the associated public key.
-
-Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
-2. public_key = ScalarBaseMult(private_key)
-3. Output (private_key, public_key)
-~~~
-
-HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf}},
-except that the `dst` parameter is "OPAQUE-HashToScalar".
 
 ~~~
 BuildInnerEnvelope(randomized_pwd, nonce, client_private_key)

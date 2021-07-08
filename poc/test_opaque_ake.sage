@@ -7,7 +7,7 @@ import hashlib
 from collections import namedtuple
 
 try:
-    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_sha512, ciphersuite_p256_sha256, ciphersuite_p384_sha512, ciphersuite_p521_sha512
+    from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_shake256, ciphersuite_p256_sha256, ciphersuite_p384_sha512, ciphersuite_p521_sha512
     from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
     from sagelib.opaque_messages import RegistrationUpload, InnerEnvelope, deserialize_inner_envelope, envelope_mode_internal, envelope_mode_external, \
         Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \

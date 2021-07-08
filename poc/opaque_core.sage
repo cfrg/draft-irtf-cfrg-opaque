@@ -10,11 +10,16 @@ import struct
 from hash import scrypt
 
 try:
-    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation, DeriveKeyPair
+    from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, SecretCredentials, CleartextCredentials, Envelope, InnerEnvelope, envelope_mode_internal, envelope_mode_external, deserialize_secret_credentials, deserialize_envelope
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
+
+def DeriveKeyPair(suite, seed):
+    skS = suite.group.hash_to_scalar(seed, _as_bytes("OPAQUE-DeriveKeyPair"))
+    pkS = skS * suite.group.generator()
+    return skS, pkS
 
 class OPAQUECore(object):
     def __init__(self, config):
