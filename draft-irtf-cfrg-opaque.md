@@ -1905,7 +1905,10 @@ disclose their passwords to the server, even during registration. Note that a co
 server can run an exhaustive offline dictionary attack to validate guesses for the client's
 password; this is inevitable in any aPAKE protocol. (OPAQUE enables defense against such
 offline dictionary attacks by distributing the server so that an offline attack is only
-possible if all - or a minimal number of - servers are compromised {{OPAQUE}}.)
+possible if all - or a minimal number of - servers are compromised {{OPAQUE}}.) Furthermore,
+if the server does not sample this OPRF key with sufficiently high entropy, or if it is not
+kept hidden from an adversary, then any derivatives from the client's password may also be
+susceptible to an offline dictionary attack to recover the original password.
 
 Some applications may require learning the client's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
