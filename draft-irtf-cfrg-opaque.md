@@ -356,8 +356,8 @@ protocol are of length `Nn` = 32 bytes.
 ## Oblivious Pseudorandom Function {#deps-oprf}
 
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
-server for computing a PRF such that the server does not learn anything about the
-client's input. This specification uses the the OPRF defined in {{!I-D.irtf-cfrg-voprf}},
+server for computing a PRF such that the client learns the PRF output and neither party learns
+the input of the other. This specification uses the the OPRF defined in {{!I-D.irtf-cfrg-voprf}},
 Version -07, with the following API and parameters:
 
 - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
