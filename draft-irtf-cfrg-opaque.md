@@ -396,7 +396,7 @@ HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
 ## Key Derivation Function and Message Authentication Code {#deps-symmetric}
 
 A Key Derivation Function (KDF) is a cryptographic function that takes some
-source of intiial keying material and uses it to derive one or more cryptographically
+source of initial keying material and uses it to derive one or more cryptographically
 strong keys. This specification uses a KDF with the following API and parameters:
 
 - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
@@ -455,7 +455,7 @@ Output:
 - public_key, the associated public key.
 
 Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
 2. public_key = ScalarBaseMult(private_key)
 3. Output (private_key, public_key)
 ~~~
@@ -468,12 +468,16 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its encrypted credentials on the server. The client inputs its credentials,
 which includes its password and user identifier, and the server inputs its
-parameters, which includes its private key and other information. The client
-output of this stage is a single value `export_key` that the client may use
-for application-specific purposes, e.g., to encrypt additional information
-to the server. The server output of this stage is a record corresponding to
-the client's registration that it stores in a credential file alongside other
-client registrations as needed.
+parameters, which includes its private key and other information.
+
+The client output of this stage is a single value `export_key` that the client
+may use for application-specific purposes, e.g., to encrypt additional
+information for storage on the server. The server does not have access to this
+`export_key`.
+
+The server output of this stage is a record corresponding to the client's
+registration that it stores in a credential file alongside other client
+registrations as needed.
 
 Registration is the only part in OPAQUE that requires an authenticated and
 confidential channel, either physical, out-of-band, PKI-based, etc.
@@ -547,6 +551,11 @@ for authentication, or to generate them internally. Each public and private key
 value is encoded as a byte string, specific to the AKE protocol in which OPAQUE
 is instantiated. These two options are defined as the `external` and `internal`
 modes, respectively. See {{envelope-modes}} for their specifications.
+
+The internal mode is RECOMMENDED. Applications can use the external mode if there
+are additional requirements for how private keys are generated, e.g., in the case
+of compliance, or if applications have pre-existing private keys they wish to
+register for use with OPAQUE.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
@@ -823,7 +832,7 @@ Output:
 - client_public_key, The encoded client public key for the AKE protocol.
 
 Steps:
-1. pseudorandom_pad = Expand(randomized_pwd, concat(nonce, "Pad"), len(client_private_key))
+1. pseudorandom_pad = Expand(randomized_pwd, concat(nonce, "Pad"), Nsk)
 2. encrypted_creds = xor(client_private_key, pseudorandom_pad)
 3. Create InnerEnvelope inner_env with encrypted_creds
 4. client_public_key = RecoverPublicKey(client_private_key)
@@ -946,7 +955,7 @@ struct {
   uint8 client_public_key[Npk];
   uint8 masking_key[Nh];
   Envelope envelope;
-} RegistrationUpload;
+} RegistrationRecord;
 ~~~
 
 client_public_key
@@ -986,8 +995,7 @@ CreateRegistrationResponse(request, server_public_key, credential_identifier, op
 Input:
 - request, a RegistrationRequest structure.
 - server_public_key, the server's public key.
-- credential_identifier, an identifier that uniquely represents the credential being
-  registered.
+- credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
 
 Output:
@@ -1023,7 +1031,7 @@ Input:
 - client_identity, the optional encoded client identity.
 
 Output:
-- record, a RegistrationUpload structure.
+- record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
 Steps:
@@ -1032,7 +1040,7 @@ Steps:
 3. (envelope, client_public_key, masking_key, export_key) =
     CreateEnvelope(randomized_pwd, response.server_public_key, client_private_key,
                    server_identity, client_identity)
-4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+4. Create RegistrationRecord record with (client_public_key, masking_key, envelope)
 5. Output (record, export_key)
 ~~~
 
@@ -1045,7 +1053,9 @@ Upon completion of this function, the client MUST send `record` to the server.
 The server stores the `record` object as the credential file for each client
 along with the associated `credential_identifier` and `client_identity` (if
 different). Note that the values `oprf_seed` and `server_private_key` from the
-server's setup phase must also be persisted.
+server's setup phase must also be persisted. The `oprf_seed` value SHOULD be used
+for all clients; see {{preventing-client-enumeration}}. The `server_private_key`
+may be unique for each client.
 
 # Online Authenticated Key Exchange {#online-phase}
 
@@ -1073,7 +1083,7 @@ The server inputs the following values:
 - server_private_key: server private for the AKE protocol.
 - server_public_key: server public for the AKE protocol.
 - server_identity: server identity, as described in {{client-credential-storage}}.
-- record: RegistrationUpload corresponding to the client's registration.
+- record: RegistrationRecord corresponding to the client's registration.
 - credential_identifier: client credential identifier.
 - oprf_seed: seed used to derive per-client OPRF keys.
 
@@ -1089,7 +1099,7 @@ The protocol runs as shown below:
 ~~~
   Client                                         Server
  ------------------------------------------------------
-  ke1 = ClientInit(client_identity, password)
+  ke1 = ClientInit(password)
 
                          ke1
               ------------------------->
@@ -1185,7 +1195,7 @@ CreateCredentialResponse(request, server_public_key, record,
 Input:
 - request, a CredentialRequest structure.
 - server_public_key, the public key of the server.
-- record, an instance of RegistrationUpload which is the server's
+- record, an instance of RegistrationRecord which is the server's
   output from registration.
 - credential_identifier, an identifier that uniquely represents the credential
   being registered.
@@ -1252,7 +1262,7 @@ Steps:
 6. (client_private_key, export_key) =
     RecoverEnvelope(randomized_pwd, server_public_key, envelope,
                     server_identity, client_identity)
-7. Output (client_private_key, response.server_public_key, export_key)
+7. Output (client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
@@ -1262,7 +1272,7 @@ a 3-message AKE which satisfies the forward secrecy and KCI properties discussed
 {{security-considerations}}. The protocol consists of three messages sent between
 client and server, each computed using the following application APIs:
 
-- ke1 = ClientInit(client_identity, password)
+- ke1 = ClientInit(password)
 - ke2 = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
 - ke3, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
 - session_key = ServerFinish(ke3)
@@ -1458,14 +1468,12 @@ Steps:
 ### External Client API {#opaque-client}
 
 ~~~
-ClientInit(client_identity, password)
+ClientInit(password)
 
 State:
 - state, a ClientState structure.
 
 Input:
-- client_identity, the optional encoded client identity, which is nil
-  if not specified.
 - password, an opaque byte string containing the client's password.
 
 Output:
@@ -1581,7 +1589,7 @@ Input:
   server_public_key if nil.
 - server_private_key, the server's private key.
 - server_public_key, the server's public key.
-- record, the client's RegistrationUpload structure.
+- record, the client's RegistrationRecord structure.
 - credential_identifier, an identifier that uniquely represents the credential
   being registered.
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
@@ -1698,7 +1706,7 @@ to the output length limitations of the KDF Expand function. If HKDF is used, th
 Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
 See {{RFC5869}} for details.
 1. The output size of the Hash function SHOULD be long enough to produce a key for
-MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be the
+MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 32 bytes.
 
 # Application Considerations {#app-considerations}
@@ -1819,14 +1827,15 @@ determined. A natural approach is to tie client_identity to the identity the ser
 to fetch envelope (hence determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session. server_identity and client_identity can also
-be part of the envelope or be tied to the parties' public keys. In principle, identities may change across different sessions as long as there is a policy that
+be part of the envelope or be tied to the parties' public keys. In principle, identities
+may change across different sessions as long as there is a policy that
 can establish if the identity is acceptable or not to the peer. However, we note
 that the public keys of both the server and the client must always be those defined
 at the time of password registration.
 
 The client identity (client_identity) and server identity (server_identity) are
-optional parameters that are left to the application to designate as monikers for the client
-and server. If the application layer does not supply values for these
+optional parameters that are left to the application to designate as aliases for
+the client and server. If the application layer does not supply values for these
 parameters, then they will be omitted from the creation of the envelope
 during the registration stage. Furthermore, they will be substituted with
 client_identity = client_public_key and server_identity = server_public_key during
@@ -1910,7 +1919,7 @@ completed registration, re-registered (e.g. after a password change), or
 changed its identity.
 
 OPAQUE prevents these attacks during the authentication flow. The first is
-done by requiring servers to act with unregistered client identities in a
+prevented by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from its behavior with existing registered clients.
 Servers do this for an unregistered client by simulating a fake
 CredentialResponse as specified in {{create-credential-response}}.
