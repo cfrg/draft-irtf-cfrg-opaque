@@ -1481,7 +1481,7 @@ Steps:
 ~~~
 
 ~~~
-ClientFinish(client_identity, password, server_identity, ke1, ke2)
+ClientFinish(client_identity, password, server_identity, ke2)
 
 State:
 - state, a ClientState structure
@@ -1492,7 +1492,6 @@ Input:
 - password, an opaque byte string containing the client's password.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
-- ke1, a KE1 message structure.
 - ke2, a KE2 message structure.
 
 Output:
@@ -1505,7 +1504,7 @@ Steps:
                        server_identity, client_identity)
 2. (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, ke1, ke2)
+                    server_public_key, ke2)
 3. Output (ke3, session_key)
 ~~~
 
@@ -1531,12 +1530,13 @@ Steps:
 2. client_secret, client_keyshare = GenerateAuthKeyPair()
 3. Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
 4. state.client_secret = client_secret
-5. Output (ke1, client_secret)
+5. state.ke1 = ke1
+6. Output (ke1, client_secret)
 ~~~
 
 ~~~
 ClientFinalize(client_identity, client_private_key, server_identity,
-               server_public_key, ke1, ke2)
+               server_public_key, ke2)
 
 State:
 - state, a ClientState structure.
