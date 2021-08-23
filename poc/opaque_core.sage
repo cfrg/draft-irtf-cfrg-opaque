@@ -60,7 +60,7 @@ class OPAQUECore(object):
         return self.config.group.serialize(pk)
 
     def derive_group_key_pair(self, seed):
-        skS = self.config.group.hash_to_scalar(seed, dst=_as_bytes("OPAQUE-HashToScalar"))
+        skS = self.config.group.hash_to_scalar(seed, dst=_as_bytes("OPAQUE-DeriveAuthKeyPair"))
         pkS = skS * self.config.group.generator()
         return (skS, pkS)
 
