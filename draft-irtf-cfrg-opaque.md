@@ -229,19 +229,19 @@ ID and password to the server over a secure connection. This makes
 the password vulnerable to server mishandling, including accidentally
 logging the password or storing it in plaintext in a database. Server
 compromise resulting in access to these plaintext passwords is not an
-uncommon security incident, even among security-conscious companies.
-Moreover, plaintext password authentication over secure channels like
+uncommon security incident, even among security-conscious organizations.
+Moreover, plaintext password authentication over secure channels such as
 TLS is also vulnerable to cases where TLS may fail, including PKI
 attacks, certificate mishandling, termination outside the security
-perimeter, visibility to middleboxes, and more.
+perimeter, visibility to TLS-terminating intermediaries, and more.
 
 Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without
-relying on PKI (except during client/password registration) and without
+relying on PKI (except during client registration) and without
 disclosing passwords to servers or other entities other than the client
-machine. A secure aPAKE should provide the best possible security for a password
-protocol. Namely, it should only be open to inevitable attacks, such as
+machine. A secure aPAKE should provide the best possible security for a
+password protocol. Indeed, some attacks are inevitable, such as
 online impersonation attempts with guessed client passwords and offline
 dictionary attacks upon the compromise of a server and leakage of its
 credential file. In the latter case, the attacker learns a mapping of
@@ -252,30 +252,14 @@ Otherwise, the attacker can pre-compute a deterministic list of mapped
 passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
-Despite the existence of multiple designs for
-(PKI-free) aPAKE protocols, none of these protocols are secure against
-pre-computation attacks. In particular, none of these protocols can
-use the standard technique against pre-computation that combines
-_secret_ random values ("salt") into the one-way password mappings.
-Either these protocols do not use a salt at all or, if they do, they
-transmit the salt from server to client in the clear, hence losing the
-secrecy of the salt and its defense against pre-computation. Furthermore,
-transmitting the salt may require additional protocol messages.
-
 This document describes OPAQUE, a PKI-free secure aPAKE that is secure
-against pre-computation attacks. OPAQUE provides forward secrecy (essential
-for protecting past communications in case of password leakage) and the
-ability to hide the password from the server, even during password
-registration. Furthermore, OPAQUE enjoys good performance and an array
-of additional features including the ability to increase
-the difficulty of offline dictionary attacks via iterated hashing
-or other hardening schemes, and offloading these operations to the
-client (that also helps against online guessing attacks); extensibility of
-the protocol to support storage and retrieval of client secrets solely
-based on a password; being amenable to a multi-server distributed
-implementation where offline dictionary attacks are not possible without
-breaking into a threshold of servers (such a distributed solution requires
-no change or awareness on the client-side relative to a single-server implementation).
+against pre-computation attacks. OPAQUE provides forward secrecy with
+respect to password leakage while also hiding the password from the
+server, even during password registration. OPAQUE allows applications
+to increase the difficulty of offline dictionary attacks via iterated
+hashing or other hardening schemes. OPAQUE is also extensible, allowing
+clients to safely store and retrieve arbitrary application data on servers
+using only their password.
 
 OPAQUE is defined and proven as the composition of three functionalities:
 an oblivious pseudorandom function (OPRF), a key recovery mechanism,
@@ -286,8 +270,8 @@ OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
 based on 3DH {{SIGNAL}}. Other instantiations are possible, as discussed in
 {{alternate-akes}}, but their details are out of scope for this document.
 In general, the modularity of OPAQUE's design makes it easy to integrate
-with additional AKE protocols, e.g., TLS, and with future ones such as those
-based on post-quantum techniques.
+with additional AKE protocols, e.g., TLS or HMQV, and with future ones such
+as those based on post-quantum techniques.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
@@ -295,12 +279,6 @@ information used to recover authentication credentials on the server. Recovering
 credentials can only be done with knowledge of the client password. In the second
 stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol.
-
-Currently, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}}, which is
-vulnerable to pre-computation attacks, lacks proof of security, and is less efficient
-relative to OPAQUE. Moreover, SRP requires a ring as it mixes addition and
-multiplication operations, and thus does not work over plain elliptic curves.
-OPAQUE is therefore a suitable replacement for applications that use SRP.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
@@ -320,10 +298,11 @@ The following functions are used throughout this document:
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a cryptographically secure pseudorandom byte string of length `n` bytes.
 - xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
-  It is an error to call this function with two arguments of unequal length.
+  It is an error to call this function with arguments of unequal length.
 - ct_equal(a, b): Return `true` if `a` is equal to `b`, and false otherwise.
-  This function is constant-time in the length of `a` and `b`, which are assumed
-  to be of equal length, irrespective of the values `a` or `b`.
+  The implementation of this function must be constant-time in the length of `a`
+  and `b`, which are assumed to be of equal length, irrespective of the values `a`
+  or `b`.
 
 Except if said otherwise, random choices in this specification refer to
 drawing with uniform distribution from a given set (i.e., "random" is short
@@ -340,7 +319,7 @@ OPAKE was taken.
 
 # Cryptographic Dependencies {#dependencies}
 
-OPAQUE depends on the following cryptographic protocol and primitives:
+OPAQUE depends on the following cryptographic protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF); {{deps-oprf}}
 - Key Derivation Function (KDF); {{deps-symmetric}}
@@ -396,9 +375,9 @@ HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
 
 ## Key Derivation Function and Message Authentication Code {#deps-symmetric}
 
-A Key Derivation Function (KDF) is a cryptographic function that takes some
-source of initial keying material and uses it to derive one or more cryptographically
-strong keys. This specification uses a KDF with the following API and parameters:
+A Key Derivation Function (KDF) is a function that takes some source of initial
+keying material and uses it to derive one or more cryptographically strong keys.
+This specification uses a KDF with the following API and parameters:
 
 - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
   input keying material `ikm` and an optional byte string `salt`.
@@ -415,7 +394,7 @@ the following API and parameters:
 
 ## Hash Functions {#deps-hash}
 
-This specification makes use of a cryptographic hash function with the following
+This specification makes use of a collision-resistant hash function with the following
 API and parameters:
 
 - Hash(msg): Apply a cryptographic hash function to input `msg`, producing a
@@ -468,17 +447,21 @@ used in the AKE.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
-its encrypted credentials on the server. The client inputs its credentials,
+its credential file on the server. The client inputs its credentials,
 which includes its password and user identifier, and the server inputs its
-parameters, which includes its private key and other information. The client
-output of this stage is a single value `export_key` that the client may use
-for application-specific purposes, e.g., to encrypt additional information
-to the server. The server output of this stage is a record corresponding to
-the client's registration that it stores in a credential file alongside other
-client registrations as needed.
+parameters, which includes its private key and other information.
 
-Registration is the only part in OPAQUE that requires an authenticated and
-confidential channel, either physical, out-of-band, PKI-based, etc.
+The client output of this stage is a single value `export_key` that the client
+may use for application-specific purposes, e.g., to encrypt additional
+information for storage on the server. The server does not have access to this
+`export_key`.
+
+The server output of this stage is a record corresponding to the client's
+registration that it stores in a credential file alongside other client
+registrations as needed.
+
+Registration is the only part in OPAQUE that requires a server-authenticated
+and confidential channel, either physical, out-of-band, PKI-based, etc.
 
 The registration flow is shown below:
 
@@ -502,7 +485,7 @@ The registration flow is shown below:
 
 In the second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
-subsequently uses them as input to an AKE protocol. As in the registration
+subsequently uses them as input to the AKE protocol. As in the registration
 phase, the client inputs its credentials, including its password and user
 identifier, and the server inputs its parameters and the credential file record
 corresponding to the client. The client outputs two values, an `export_key`
@@ -666,7 +649,7 @@ Steps:
 ### Envelope Recovery {#envelope-recovery}
 
 Clients recover their `Envelope` during login with the `Recover` function defined below.
-
+=======
 ~~~
 Recover(randomized_pwd, server_public_key, envelope,
                 server_identity, client_identity)
@@ -790,7 +773,7 @@ struct {
   uint8 client_public_key[Npk];
   uint8 masking_key[Nh];
   Envelope envelope;
-} RegistrationUpload;
+} RegistrationRecord;
 ~~~
 
 client_public_key
@@ -830,16 +813,15 @@ CreateRegistrationResponse(request, server_public_key, credential_identifier, op
 Input:
 - request, a RegistrationRequest structure.
 - server_public_key, the server's public key.
-- credential_identifier, an identifier that uniquely represents the credential being
-  registered.
+- credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
 
 Output:
 - response, a RegistrationResponse structure.
 
 Steps:
-1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
-2. (oprf_key, _) = DeriveKeyPair(ikm)
+1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(seed)
 3. Z = Evaluate(oprf_key, request.data)
 4. Create RegistrationResponse response with (Z, server_public_key)
 5. Output response
@@ -865,7 +847,7 @@ Input:
 - client_identity, the optional encoded client identity.
 
 Output:
-- record, a RegistrationUpload structure.
+- record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
 Steps:
@@ -887,7 +869,9 @@ Upon completion of this function, the client MUST send `record` to the server.
 The server stores the `record` object as the credential file for each client
 along with the associated `credential_identifier` and `client_identity` (if
 different). Note that the values `oprf_seed` and `server_private_key` from the
-server's setup phase must also be persisted.
+server's setup phase must also be persisted. The `oprf_seed` value SHOULD be used
+for all clients; see {{preventing-client-enumeration}}. The `server_private_key`
+may be unique for each client.
 
 # Online Authenticated Key Exchange {#online-phase}
 
@@ -924,14 +908,14 @@ is only available to the client, and may be used for additional application-spec
 purposes, as outlined in {{export-key-usage}}. The output `export_key` MUST NOT be
 used in any way before the protocol completes successfully. See {{envelope-encryption}}
 for more details about this requirement. The server receives a single output: a session
-secret matching that of the client's.
+secret matching the client's.
 
 The protocol runs as shown below:
 
 ~~~
   Client                                         Server
  ------------------------------------------------------
-  ke1 = ClientInit(client_identity, password)
+  ke1 = ClientInit(password)
 
                          ke1
               ------------------------->
@@ -1027,7 +1011,7 @@ CreateCredentialResponse(request, server_public_key, record,
 Input:
 - request, a CredentialRequest structure.
 - server_public_key, the public key of the server.
-- record, an instance of RegistrationUpload which is the server's
+- record, an instance of RegistrationRecord which is the server's
   output from registration.
 - credential_identifier, an identifier that uniquely represents the credential
   being registered.
@@ -1037,8 +1021,8 @@ Output:
 - response, a CredentialResponse structure.
 
 Steps:
-1. ikm = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
-2. (oprf_key, _) = DeriveKeyPair(ikm)
+1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+2. (oprf_key, _) = DeriveKeyPair(seed)
 3. Z = Evaluate(oprf_key, request.data)
 4. masking_nonce = random(Nn)
 5. credential_response_pad = Expand(record.masking_key,
@@ -1094,7 +1078,7 @@ Steps:
 6. (client_private_key, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
                     server_identity, client_identity)
-7. Output (client_private_key, response.server_public_key, export_key)
+7. Output (client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
@@ -1104,7 +1088,7 @@ a 3-message AKE which satisfies the forward secrecy and KCI properties discussed
 {{security-considerations}}. The protocol consists of three messages sent between
 client and server, each computed using the following application APIs:
 
-- ke1 = ClientInit(client_identity, password)
+- ke1 = ClientInit(password)
 - ke2 = ServerInit(server_identity, server_private_key, server_public_key, record, credential_identifier, oprf_seed, ke1)
 - ke3, session_key, export_key = ClientFinish(password, client_identity, server_identity, ke2)
 - session_key = ServerFinish(ke3)
@@ -1112,27 +1096,26 @@ client and server, each computed using the following application APIs:
 Outputs `ke1`, `ke2`, and `ke3` are the three protocol messages sent between client
 and server. `session_key` and `export_key` are outputs to be consumed by applications.
 Applications can use `session_key` to derive additional keying material as needed.
+Applications can use `export_key` for further application-specific purposes;
+see {{export-key-usage}}.
 
 Both ClientFinish and ServerFinish return an error if authentication failed. In this case,
 clients and servers MUST NOT use any outputs from the protocol, such as `session_key` or
 `export_key`. ClientInit and ServerInit both implicitly return internal state objects
-`client_state` and `server_state`, respectively, with the following named fields:
+`client_state` and `server_state`, respectively. The client state has the following
+named fields:
 
-~~~
-struct {
-  uint8 blind[Nok];
-  uint8 client_secret[Nsk];
-  KE1 ke1;
-} ClientState;
+- blind, an opaque byte string of length Nok;
+- client_sescret, an opaque byte string of length Nsk; and
+- ke1, a value of type KE1.
 
-struct {
-  uint8 expected_client_mac[Nm];
-  uint8 session_key[Nx];
-} ServerState;
-~~~
+The server state has the following fields:
 
-{{opaque-client}} and {{opaque-server}} specify the inner working of these functions
-and their parameters for clients and servers, respectively.
+- expected_client_mac, an opaque byte string of length Nm; and
+- session_key, an opaque byte string of length Nx.
+
+{{opaque-client}} and {{opaque-server}} specify the inner workings of client and
+server functions, respectively.s
 
 Prior to the execution of these functions, both the client and the server MUST agree
 on a configuration; see {{configurations}} for details.
@@ -1154,8 +1137,7 @@ client_nonce
 : A fresh randomly generated nonce of length `Nn`.
 
 client_keyshare
-: Client ephemeral key share of fixed size Npk, where Npk depends on the corresponding
-prime order group.
+: Client ephemeral key share of fixed size Npk.
 
 ~~~
 struct {
@@ -1297,9 +1279,9 @@ Output:
 - ikm, input key material.
 
 Steps:
-1. dh1 = SerializeElement(sk1 * pk1)
-2. dh2 = SerializeElement(sk2 * pk2)
-3. dh3 = SerializeElement(sk3 * pk3)
+1. dh1 = SerializePublicKey(sk1 * pk1)
+2. dh2 = SerializePublicKey(sk2 * pk2)
+3. dh3 = SerializePublicKey(sk3 * pk3)
 4. Output concat(dh1, dh2, dh3)
 ~~~
 
@@ -1330,14 +1312,12 @@ Steps:
 ### External Client API {#opaque-client}
 
 ~~~
-ClientInit(client_identity, password)
+ClientInit(password)
 
 State:
 - state, a ClientState structure.
 
 Input:
-- client_identity, the optional encoded client identity, which is nil
-  if not specified.
 - password, an opaque byte string containing the client's password.
 
 Output:
@@ -1453,7 +1433,7 @@ Input:
   server_public_key if nil.
 - server_private_key, the server's private key.
 - server_public_key, the server's public key.
-- record, the client's RegistrationUpload structure.
+- record, the client's RegistrationRecord structure.
 - credential_identifier, an identifier that uniquely represents the credential
   being registered.
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
@@ -1568,7 +1548,7 @@ to the output length limitations of the KDF Expand function. If HKDF is used, th
 Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
 See {{RFC5869}} for details.
 1. The output size of the Hash function SHOULD be long enough to produce a key for
-MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be the
+MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 32 bytes.
 
 # Application Considerations {#app-considerations}
@@ -1618,10 +1598,9 @@ a network wire), implementations should properly handle all error conditions cov
 
 # Security Considerations {#security-considerations}
 
-OPAQUE is defined and proven as the composition of two
-functionalities: an OPRF and an AKE protocol.
-It can be seen as a "compiler" for transforming any AKE
-protocol (with KCI security and forward secrecy - see below)
+OPAQUE is defined as the composition of two functionalities: an OPRF and
+an AKE protocol. It can be seen as a "compiler" for transforming any AKE
+protocol (with KCI security and forward secrecy; see below)
 into a secure aPAKE protocol. In OPAQUE, the client stores a secret private key at the
 server during password registration and retrieves this key each time
 it needs to authenticate to the server. The OPRF security properties
@@ -1629,12 +1608,25 @@ ensure that only the correct password can unlock the private key
 while at the same time avoiding potential offline guessing attacks.
 This general composability property provides great flexibility and
 enables a variety of OPAQUE instantiations, from optimized
-performance to integration with TLS. The latter aspect is of prime
-importance as the use of OPAQUE with TLS constitutes a major security
-improvement relative to the standard password-over-TLS practice.
-At the same time, the combination with TLS builds OPAQUE as a fully functional
-secure communications protocol and can help provide privacy to
-account information sent by the client to the server prior to authentication.
+performance to integration with existing authenticated key exchange
+protocols such as TLS.
+
+## Security Analysis
+
+Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
+in a strong aPAKE model that ensures security against pre-computation attacks
+and is formulated in the Universal Composability (UC) framework {{Canetti01}}
+under the random oracle model. This assumes security of the OPRF
+function and the underlying key exchange protocol. In turn, the
+security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
+in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
+
+OPAQUE's design builds on a line of work initiated in the seminal
+paper of Ford and Kaliski {{FK00}} and is based on the HPAKE protocol
+of Xavier Boyen {{Boyen09}} and the (1,1)-PPSS protocol from Jarecki
+et al. {{JKKX16}}. None of these papers considered security against
+pre-computation attacks or presented a proof of aPAKE security
+(not even in a weak model).
 
 The KCI property required from AKE protocols for use with OPAQUE
 states that knowledge of a party's private key does not allow an attacker
@@ -1651,31 +1643,27 @@ server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
 
-## Related Analysis
+## Related Protocols
 
-Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
-in a strong aPAKE model that ensures security against pre-computation attacks
-and is formulated in the Universal Composability (UC) framework {{Canetti01}}
-under the random oracle model. This assumes security of the OPRF
-function and the underlying key exchange protocol. In turn, the
-security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
-in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
+Despite the existence of multiple designs for (PKI-free) aPAKE protocols,
+none of these protocols are secure against pre-computation attacks.
+This includes protocols that have recent analyses in the UC model such
+as AuCPace {{AuCPace}} and SPAKE2+ {{SPAKE2plus}}. In particular, none
+of these protocols can use the standard technique against pre-computation
+that combines secret random values ("salt") into the one-way password mappings.
+Either these protocols do not use a salt at all or, if they do, they
+transmit the salt from server to client in the clear, hence losing the
+secrecy of the salt and its defense against pre-computation.
 
-Very few aPAKE protocols have been proven formally, and those proven were analyzed
-in a weak security model that allows for pre-computation attacks (e.g.,
-{{GMR06}}). This is not just a formal issue: these protocols are
-actually vulnerable to such attacks. This includes protocols that have recent
-analyses in the UC model such as AuCPace {{AuCPace}} and SPAKE2+ {{SPAKE2plus}}.
-We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+sWe note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
 in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
-OPAQUE's design builds on a line of work initiated in the seminal
-paper of Ford and Kaliski {{FK00}} and is based on the HPAKE protocol
-of Xavier Boyen {{Boyen09}} and the (1,1)-PPSS protocol from Jarecki
-et al. {{JKKX16}}. None of these papers considered security against
-pre-computation attacks or presented a proof of aPAKE security
-(not even in a weak model).
+Beyond AuCPace and SPAKE2+, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}},
+which is vulnerable to pre-computation attacks, lacks proof of security, and is
+less efficient than OPAQUE. Moreover, SRP requires a ring as it mixes addition and
+multiplication operations, and thus does not work over standard elliptic curves.
+OPAQUE is therefore a suitable replacement for applications that use SRP.
 
 ## Identities {#identities}
 
@@ -1689,14 +1677,15 @@ determined. A natural approach is to tie client_identity to the identity the ser
 to fetch envelope (hence determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session. server_identity and client_identity can also
-be part of the envelope or be tied to the parties' public keys. In principle, identities may change across different sessions as long as there is a policy that
+be part of the envelope or be tied to the parties' public keys. In principle, identities
+may change across different sessions as long as there is a policy that
 can establish if the identity is acceptable or not to the peer. However, we note
 that the public keys of both the server and the client must always be those defined
 at the time of password registration.
 
 The client identity (client_identity) and server identity (server_identity) are
-optional parameters that are left to the application to designate as monikers for the client
-and server. If the application layer does not supply values for these
+optional parameters that are left to the application to designate as aliases for
+the client and server. If the application layer does not supply values for these
 parameters, then they will be omitted from the creation of the envelope
 during the registration stage. Furthermore, they will be substituted with
 client_identity = client_public_key and server_identity = server_public_key during
@@ -1767,16 +1756,19 @@ completed registration, re-registered (e.g. after a password change), or
 changed its identity.
 
 OPAQUE prevents these attacks during the authentication flow. The first is
-done by requiring servers to act with unregistered client identities in a
+prevented by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from its behavior with existing registered clients.
 Servers do this for an unregistered client by simulating a fake
 CredentialResponse as specified in {{create-credential-response}}.
 Implementations must also take care to avoid side-channel leakage (e.g., timing
 attacks) from helping differentiate these operations from a regular server
-response. Note that server implementations may choose to forego the construction
-of a simulated credential response message for an unregistered client if these
-client enumeration attacks can be mitigated through other application-specific
-means or are otherwise not applicable for their threat model.
+response. Note that this may introduce possible abuse vectors since the
+server's cost of generating a CredentialResponse is less than that of the
+client's cost of generating a CredentialRequest. Server implementations
+may choose to forego the construction of a simulated credential response
+message for an unregistered client if these client enumeration attacks can
+be mitigated through other application-specific means or are otherwise not
+applicable for their threat model.
 
 Preventing the second type of attack requires the server to supply a
 credential_identifier value for a given client identity, consistently between
@@ -2100,25 +2092,25 @@ bf8d6503
 #### Intermediate Values
 
 ~~~
-client_public_key: 100f6f945b57e4a316e46ed7169b6e9e533c35b29128368a9a
-40534b09227428
+client_public_key: 2046d15924599adbcb7c03abe00350e9dde62267037eb0d2a9
+59a17b2210eb0f
 auth_key: 0ee186ac3a0fe0ec45d36c7cc9786934918a58d6a1abce6842a2b7bd0ec
 1c0626e64d887622e8937e987bfbe042f904728966e121b01c739c8dbe66beb6241eb
 randomized_pwd: 22f5e31fbbbf4649f77ebfc92a2ef555fc30a09edc903123d978d
 e3ca356b85ce2120b0d2735bd772011ecb573e614cd7b1aeeb86ca0ac6b8732c33cdf
 7a6816
 envelope: 71b8f14b7a1059cdadc414c409064a22cf9e970b0ffc6f1fc6fdd539c46
-767754ed20356eabd714970fc0058aad92414cc26131c7c3f9a0f5baa76c8fc410984
-0921d83e26786e9c5b6a1cbc4458925fd65415547ffd61d2afbcb593a3a82fb1
-handshake_secret: 9dc2e984200002626dac10f89b9d2efe967f68c8eb19612dd6c
-2592d531ca5bd443c0548b8cef946f6e99998d810838c0ee99219fe13052beae3dc2c
-b157c991
-server_mac_key: 66739820f04e1cddc7090b05d510baf0de4273ebd9e26f6da961b
-687dfdc05c6a68a93f81fd6ed7ff19c1c7f95cc76ceb2c680ed4ab2d6a5eb53088abd
-3f7a36
-client_mac_key: e0d836ea8e158a50a7cc610ca27eee2fb92187aa7273cb46ee21d
-230be82e7efddf742fe127bc95eb6e034a01efe38ae3c4240b0d0f7fa395dfa52032a
-0c1cb5
+767759f0fe7ab535b75ff4a01887e30a733091b05cc6ace0fd49309fe3758f57f4d01
+71b270e309d14e59413849c3ed672e076d97d71ceace93dcade9f26712461611
+handshake_secret: 036b0351f1b041d4e2eb6f4104833e3d13db721b9e9ec85d797
+daf354e8e13ce55ceb3756b9a781439e15015712ce9bc0d66caddb5d5d19c4aa6d03b
+fd075301
+server_mac_key: 95592913b88470536b3dc7ecb514a17fbb1916e3efa8e64d55639
+7acbc5ed37f654bf860bfa8ae106f73ef9df92f303715bf29c7dc67d49598d8d6640c
+4c7ce3
+client_mac_key: bbb5ee19ec9d491094878dd4a458a776557be3d79d078f40bb294
+01f74b80eb8102c65e2cc203c79740bc0e5bb71a138a9efda58f35a486da1835abe63
+38838b
 oprf_key: 3f76113135e6ca7e51ac5bb3e8774eb84709ad36b8907ec8f7bc3537828
 71906
 ~~~
@@ -2131,33 +2123,33 @@ b7a0606d74bc58b03
 registration_response: 865f3305ff73be7388313e7a74b5fc277a165ff2895f92
 60391057b84c7bc72718d5035fd0a9c1d6412226df037125901a43f4dff660c0549d4
 02f672bcc0933
-registration_upload: 100f6f945b57e4a316e46ed7169b6e9e533c35b29128368a
-9a40534b09227428dc3b0057603d1c23df7e6f239984604c4b0dfa111528ab0ba3c7f
+registration_upload: 2046d15924599adbcb7c03abe00350e9dde62267037eb0d2
+a959a17b2210eb0fdc3b0057603d1c23df7e6f239984604c4b0dfa111528ab0ba3c7f
 6ab1ceb11d10aa85433f63bbf30b9b0ae8951653bcd3beb12aa61cf942e6e5b442282
 0d810871b8f14b7a1059cdadc414c409064a22cf9e970b0ffc6f1fc6fdd539c467677
-54ed20356eabd714970fc0058aad92414cc26131c7c3f9a0f5baa76c8fc4109840921
-d83e26786e9c5b6a1cbc4458925fd65415547ffd61d2afbcb593a3a82fb1
+59f0fe7ab535b75ff4a01887e30a733091b05cc6ace0fd49309fe3758f57f4d0171b2
+70e309d14e59413849c3ed672e076d97d71ceace93dcade9f26712461611
 KE1: e47c1c5e5eed1910a1cbb6420c5edf26ea3c099aaaedcb03599fc311a724d84f
 804133133e7ee6836c8515752e24bb44d323fef4ead34cde967798f2e9784f69f6792
 6bd036c5dc4971816b9376e9f64737f361ef8269c18f69f1ab555e96d4a
 KE2: 9692d473e0bde7a1fbb6d2c0e4001ccc58902102857d0e67e5fa44f4b902b17f
 54f9341ca183700f6b6acf28dbfe4a86afad788805de49f2d680ab86ff39ed7f7b11e
 e2cb784efa8e6cbbb9cc6b52b16290e3906235d71b773534c3da1575a00708219fa81
-05b3d2a1292d58d6ea6b0e464c752df6f957a9e34a66de7e5d44db0e48648d414f7b1
-54e52d5f664c1b88dd42a8117b048fb26428a3b86885d2157a7136708494fd92f50c1
-c3f63bd60d0b458254ac54c6e64841be63f1c4459d3bf9c5ec75a8cd571370add249e
+05b3d2a1292d58d6ea6b0e464c752df6f957a9e34a66de7e5d44dbdf958070f8a97fa
+374af5dd0febfaf9003095e610278b5ba10de7a16816365d2df80cfd566e6f9ea4a93
+968992e9b153fe4196e4c1f5144643eb240575aba49bf9c5ec75a8cd571370add249e
 99cb8a8c43f6ef05610ac6e354642bf4fedbf696e77d4749eb304c4d74be9457c5975
-46bc22aed699225499910fc913b3e907129491571e3137ff950f905e6c83db79e5103
-bd8b7c27799d1eac8d8c57fd2f0b913e81411c02bc722b30b4eb4ee3a53fc1b21232b
-4218eb0ed00996dc8c841a96
-KE3: 5a4e48d857196ce709b054f7be4e3973f0892abfafc030762bd4be5dbeb342af
-b5bf1fd24a7b355f556f9d53f146ebb3729ae693f69fc1f7862a0c11c8ee7c9d
+46bc22aed699225499910fc913b3e90712b085f3437e22abbf37e997f507589944fbc
+ccb0128441680382a3eec27d1a80bb154296a1f00e10e984dfa7434a7c7db09284261
+12bd54a0063fff8584da1261
+KE3: faac852789872a58c40e406c301655a55806b117c61c5070364561ecdc5f0951
+8c745ca87a13ca20b41116957066aa040a69786b247e811fb92cbc85d8b3d9bb
 export_key: 47d742be256471ec7a7b0ebc022d6ca016b022a7dcbdd41fa1b6dbfcd
 6f88285aee60db87e7c5e5aff87b55904b07137b3d85648bb62d70a18954dd1c66cdd
 c2
-session_key: e132b5c83951919bc0f22aa4e3b12b4af81831ccf770f318d11c8c0a
-854fddf6bbeee72e24114402ff9012cf117bac95dda241b24d055f7ce2750e6975fa2
-22d
+session_key: 01905d1312467beaca17c20e64c50c91ca6e756067adebbc38a89efd
+9c1305f8eff3c641062755ba156749ea4ac7d9e9a6187791c40adc13473538b470b20
+a67
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 2
@@ -2220,8 +2212,8 @@ blind_login: e6f161ac189e6873a19a54efca4baa0719e801e336d929d35ca28b5b
 #### Intermediate Values
 
 ~~~
-client_public_key: c8c9f3a9adab66971bbdb230bd44512741a489e333624186ac
-a1b0e967011e06
+client_public_key: 64b38be7d1b6cb0e7c50644acb8b326f67167eb164899b1867
+970ab770628643
 auth_key: 494f1326c65c057e301f15e619b9e3de553c77132987828ba20026062da
 a1f18d516ac2e37b1dfc296e21137623856fb3ccba48cc511f143110944848764dfb7
 randomized_pwd: a4853e726d14efb03c35686ee2bc67665d02bdccb0c4c02523bf4
@@ -2230,15 +2222,15 @@ e1398e78b1094195a082b5ebb1b62ac75d06711643e9990c2be0071a42bc21a2b766b
 envelope: d0c7b0f0047682bd87a87e0c3553b9bcdce7e1ae3348570df20bf274782
 9b2d21a6d25b3a1b8a541f47fc4bbe5783c2cc61c77ed389280a05ed2ef8c2c2d03fe
 2066bd22ea959c7bb14b5259ee136e86f4d956fbaa2af2f6a326785f21262909
-handshake_secret: aacad16f4fb6ff90e3a6afb4e430a550000f0351cd30aab930c
-3118c8aebbf8bcaa5252809b065d19a26ab475214a1c4dd60c28e91ce310b5a79968d
-bb87938c
-server_mac_key: 58edbb9aa5489765c102470a5287b5036893b8cea58ecc836bd0c
-df4a818f41d6cd58c46d64db3548774f2cc651d10f8e152a7fdd47493c90a28b1106c
-8d329b
-client_mac_key: 57be496bd6fa74ecfed7a8c30a9ee085f3e56dbf0d5c18c9ad8c3
-8799f0ededd9a8af85e59276935da7bc3ddd2a8cf4fa9ea723ea70b6dba1db2872815
-27944a
+handshake_secret: 39ec65469f2bbabfa47bdf29f5d3c2f655009cc9ffffa423688
+6b6b0c25cf0e7f677bc2a4f2454ffaa916b1abf3d53c8a76df2b8ec32cd6a579daf09
+e9606088
+server_mac_key: d47c287732202807e20f9309201019fd167aeadb41d6cc28dc7a3
+eb05dd385a9fa2d1737e8719e89ecd3cc1db0bf53dc084bd8a5ab4586d1927679d11e
+c42d69
+client_mac_key: e2ff0e615fb1283856e8d68d284245c5e3790272fc83db97f784e
+6f90d2c54a0123459c1d5f75c904ee191c5d535dcbbb1df6c1a900f32d3458dfc30dc
+518f93
 oprf_key: 531b0c7b0a3f90060c28d3d96ef5fecf56e25b8e4bf71c14bc770804c3f
 b4507
 ~~~
@@ -2251,8 +2243,8 @@ registration_request: ec2927a03ced1220168b6d5a54f0372f813ced8ad3673d5
 registration_response: f6e244e131f8cd14bc37a856a933c91128b2498c06540d
 2dba3a197ed7d8bd778aa90cb321a38759fc253c444f317782962ca18d33101eab2c8
 cda04405a181f
-registration_upload: c8c9f3a9adab66971bbdb230bd44512741a489e333624186
-aca1b0e967011e069fabb8544108ec64de2b992935dd5fd9a98441412ccf724bf4853
+registration_upload: 64b38be7d1b6cb0e7c50644acb8b326f67167eb164899b18
+67970ab7706286439fabb8544108ec64de2b992935dd5fd9a98441412ccf724bf4853
 c28749d9fd33fb1824b964f616a7fce654e05bb15133bd4a69441dcbfe6a02b8a546e
 1b32dbd0c7b0f0047682bd87a87e0c3553b9bcdce7e1ae3348570df20bf2747829b2d
 21a6d25b3a1b8a541f47fc4bbe5783c2cc61c77ed389280a05ed2ef8c2c2d03fe2066
@@ -2267,17 +2259,17 @@ e7cfa2857bdc95991bfccc09b69ed53fd5f173389f4d8786b261b6dfd2fc7c18968dd
 d283c009a736227e9c1913b394d0d88419c6463970c0c2887bd5890eac805e8657903
 f7f8887f5eab9e700414af99bbabe3b6594418e2a3723fa57f7ef652185f89114109f
 5a61cc8c9216fdd7398246bb7a0c20e2fbca2d8ae070cdffe5bb4b1c373e71be8e7d8
-f356ee5de37881533f10397bcd84d354450f1409ae0d487a21921d7edbfe34f9e16a8
-ac94f6f83b0d4a78c1fe567ea4bda594d375917e22fe0fc203773bf728eff0309f259
-4ac3f4dc2cf066f4febcca0e
-KE3: c3dc494d69ef860b348714fd67a3e6490e5afd493d7212729a96d61e9502f7a8
-202a18be10b513f236b3e7e2e2f62ff25a61525991c81c030836cb1933b7a13d
+f356ee5de37881533f10397bcd84d354456350043199df4e4d9b338cbc2314a9f67e5
+9f4334595f5ae18954bfcc2815ba19a0682403d2f1a62bd050851a038a3c0fb5a8179
+6f627dbae98c7e1e4a9a46ff
+KE3: 328b7fdd7d94b63093184409b850c7af99a24dd2a4e14dc9c758ed4c7ada94a6
+5a81d394b881e00d99dc6e71cf7acba03d8235f6e681b802b9a48be03f23991f
 export_key: 7f2e5b749ec5f6ab34663655184f3653275aafd5db070b6aac6afd80a
 78309a8ec0f97a2f2cfcc7a971983a914ead081a8a642b65d298c579d3526d2219381
 8d
-session_key: a07bb20c5ad960af8caf83b112a008a61e10e2475456fd0620a11ea5
-a75706750b72c4943c3985cae5f31969dea9c74192c8bf601e2d062fcb141c89234ff
-7be
+session_key: 70d8c538c371757e5e63d522a5f5e1329d7024f73fa854f5899733e3
+d2b5afa800e6db4727aec02ca58cee310c7e8f8193f7cdb5a667fe32247711a3c72ca
+06a
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 3
@@ -2337,20 +2329,20 @@ cd15c478
 #### Intermediate Values
 
 ~~~
-client_public_key: 02680493263d3bc4c7af455ba1219fd9bbe329fd0c2a0248e8
-7321ded8ff17b386
+client_public_key: 0234cb18fb529a1cd33b4cf6b9330e4a429d8b8fbe8b2c43a0
+d130713a190b3eb7
 auth_key: 570a8105a7d86679b4c9d009edc9627af6b17e8b2d2f0d50cbd13ea8a00
 82cd7
 randomized_pwd: 04f1615bc400765f22f7af1277a0814b5665ad1d4ef9bf1829880
 2a0f6b4636b
 envelope: 2527e48c983deeb54c9c6337fdd9e120de85343dc7887f00248f1acacc4
-a8319890e251c4b6397fb35900ff46ae1df1e86eed2d23005c6b9c61caa4e12af8bf5
-handshake_secret: 56212ac60eca9f917f6a4ce6aefe762743da701b008ec986cd1
-87ff75df5df84
-server_mac_key: 8c7f132b6cd9a7e4ce9171cd469d02dc1ab0e8d96f4e1ddca1718
-55fc723203f
-client_mac_key: 348cb4526417423090d386ce43459d652a6489122e27d3953ed47
-5b3ab9cd336
+a831916a15211679ac4d0731e49058f79917d87536c617ab8d7192ac87826a8f76b5f
+handshake_secret: 72f5c4fa597d8b722fa6aa5ae837df06fd7a568a1584489c51d
+11b1d43b68e46
+server_mac_key: ec74ece1dce2352dd92693f0bcdb543e97d85d9a778078bad935b
+ffb6b2b9a65
+client_mac_key: f680934996037732c95caacc9f15910b60e5ebdba63b915ba9eaa
+64c944ed47e
 oprf_key: d153d662a1e7dd4383837aa7125685d2be6f8041472ecbfd610e46952a6
 a24f1
 ~~~
@@ -2363,27 +2355,27 @@ e2f0742c8dce85d5fa8
 registration_response: 0244211a4d2a067f7a61ed88dff6764856d347465f330d
 0e15502700afd1865911025b95a6add1f2f3d038811b5ad3494bed73b1e2500d8dade
 c592d88406e25c2f2
-registration_upload: 02680493263d3bc4c7af455ba1219fd9bbe329fd0c2a0248
-e87321ded8ff17b3868efb26f2bb390fd23b90c49ae680c4560fbd2b3c4f32891505c
+registration_upload: 0234cb18fb529a1cd33b4cf6b9330e4a429d8b8fbe8b2c43
+a0d130713a190b3eb78efb26f2bb390fd23b90c49ae680c4560fbd2b3c4f32891505c
 ad7d95b7bc58e2527e48c983deeb54c9c6337fdd9e120de85343dc7887f00248f1aca
-cc4a8319890e251c4b6397fb35900ff46ae1df1e86eed2d23005c6b9c61caa4e12af8
-bf5
+cc4a831916a15211679ac4d0731e49058f79917d87536c617ab8d7192ac87826a8f76
+b5f
 KE1: 03884e56429f1ee53559f2e244392eb8f994fd46c8fd9ffdd24ac5a7af963a66
 3b967fcded96ed46986e60fcbdf985232639f537377ca3fcf07ad489956b2e9019033
 58b4eae039953116889466bfddeb40168e39ed83809fd5f0d5f2de9c5234398
 KE2: 0383fff1b3e8003723dff1b1f90a7934a036bd6691aca0366b07a100bf2bb3dc
 2acb792f3657240ce5296dd5633e7333531009c11ee6ab46b6111f156d96a160b23b6
 a5ff1ce8035a1dca4776f32f43c7ce626d796da0f27fc9897522fc1fab70d2fb443d8
-2a4333770057e929c2f9977d40a64e8b4a5a553d25a8b8392b4adbf0a0a6e87f26165
-0d04084823b23b07d351e3b947778a43859be3ba218b22d054edf8018e88ecfc53891
+2a4333770057e929c2f9977d40a64e8b4a5a553d25a8b8392b4adbf0a03947082b3aa
+9836bc20c7dd255e57b7d3a29c9cbee85481ed776cada975dae758018e88ecfc53891
 529278c47239f8fe6f1be88972721898ef81cc0a76a0b5500242bc29993976185dacf
-6be815cbfa923aac80fad8b7f020c9d4f18e0b6867a171e7fda886b9fd9f3bc9e37c4
-04ca07f7a5c9a6f98df20a5cac42371162731faa
-KE3: 86a57a3e1a2e537ea667031091c025cb539826dbbb1756683220dd239d4a7bff
+6be815cbfa923aac80fad8b7f020c9d4f18e0b6867a177d92ce531ed6f48a6592d14a
+a9e7fee37fa1e8ef1ffb85181e66661196447dc0
+KE3: 00afa7c015df8f9e9dcd491c88a41663320549b163761e11ea5aefb398e470be
 export_key: a83a3fe26af0dadb63d15ed808a4dc2edb57f45212554ecc1af5e0273
 50651de
-session_key: e26d54798ce8a66fb415cb67f4d87647dcd3d8aa79a7ab6a5f701b82
-f037b1e3
+session_key: 9cbab7cb765fe14d3a6bbcba0945ff6aaee8db71877842502fd61c24
+2a12384e
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 4
@@ -2445,20 +2437,20 @@ blind_login: 4308682dc1bdab92ff91bb1a5fc5bc084223fe4369beddca3f1640a6
 #### Intermediate Values
 
 ~~~
-client_public_key: 02e89507b3a1a946e8096cd7e1e8fbc31e2dd39fecc49580ed
-2659262c08ea33eb
+client_public_key: 028e38bb4030255ad81d48afba0ae8f8f65169a6ff17f536c8
+91816cd2f47c9e89
 auth_key: 76cba5b349c60c5a19ab06b70a3191d3418318b5a203fd298b18a0eda53
 efd1a
 randomized_pwd: 74649c9c7b0d7436c4873984732fe45e19dabd1a96d7e9175468a
 85ed16bea65
 envelope: 75c245690f9669a9af5699e8b23d6d1fa9e697aeb4526267d942b842e44
 26e423938d818ea53f58fdaab8541765d5171e99b1bdc2c63e8e1eaf62d3a60aacabe
-handshake_secret: 22f608959308cb4dff55cf77c006ea8e9bc66df75d7076a927a
-3d21d3fce5562
-server_mac_key: 76e1415cfcf0ff271533fdd4ce4fffb4110ba1ff4aa9a02a1734d
-9ae0e0ce47a
-client_mac_key: 9341b0b36ac36875910cd1260cd8dc6d6cd58e0fb6503fece6524
-11b6f627bf7
+handshake_secret: 77ef201cd5f558cd2b184d5bc63e28ad2fe6171c4967e8962b7
+83f0c9e9c5aea
+server_mac_key: accc90a00130230aaee45ed5ff69dcb257d3dda31519ef7ed3fa7
+575b6c8072d
+client_mac_key: 8471a38dd92988b8d5139ffac80873921c01f34b9be332d819624
+73218e10578
 oprf_key: f14e1fc34ba1218bfd3f7373f036889bf4f35a8fbc9e8c9c07ccf2d2388
 79d9c
 ~~~
@@ -2471,8 +2463,8 @@ b6783170c9ad68f6052
 registration_response: 03cc3491b4bcb3e4804f3eadbc6a04c8fff18cc9ca5a4f
 eeb577fdfebd71f5060f029a2c6097fbbcf3457fe3ff7d4ef8e89dab585a67dfed090
 5c9f104d909138bae
-registration_upload: 02e89507b3a1a946e8096cd7e1e8fbc31e2dd39fecc49580
-ed2659262c08ea33eb260603b2690f3d466fb0b747e256283bed94836ac98c10d4588
+registration_upload: 028e38bb4030255ad81d48afba0ae8f8f65169a6ff17f536
+c891816cd2f47c9e89260603b2690f3d466fb0b747e256283bed94836ac98c10d4588
 1372046d3b1e875c245690f9669a9af5699e8b23d6d1fa9e697aeb4526267d942b842
 e4426e423938d818ea53f58fdaab8541765d5171e99b1bdc2c63e8e1eaf62d3a60aac
 abe
@@ -2485,13 +2477,13 @@ KE2: 035115b21dde0992cb812926d65c7dccd5e0f8ffff573da4a7c1e603e0e40827
 f97ced10bd1592793497e58b5d05a02ebf003f8a8949a2f8a22a09e4d1b8ba19c9e77
 4b6f31545ac4c02aba4ad8e26b4f43d65319f8d1c5a5a04668d4b581ac468101aee52
 8cc6b69daac7a90de8837d49708e76310767cbe4af18594d022aa8746ab4329d59129
-6652d44f6dfb04470103311bacd7ad51060ef5abac41bbe51a3c1deeeab8ded9273ad
-681001416cbb6d1f0976548f36d1ddb1d3b1f948
-KE3: 5770a1ce912fecf1fa339fe1646b2abfe8dd683767c885a0f1dedba8dfab653e
+6652d44f6dfb04470103311bacd7ad51060ef5abac41b2a2eb8e68a375b1d2f55c77c
+db2d1cb355df3ca50a966c3582f16a76e518e2ad
+KE3: 9656352a2ae1c1569ff6bb69c5d533fff9aa174faad1f3980eaa3e6d0df2102e
 export_key: 5b92e3454d59062460a87ad2ff6546d862f722c6fbd7678a0997b3c9d
 c61e9a0
-session_key: 3a04636e2c14b4ef3a01070a2ff129cd2248318d8b85d6c4368f5115
-0f0348ff
+session_key: 7d9430d675055a95b323a012be00690382618f4f687cbe0c5f7c4d20
+b1fb71c1
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 5
