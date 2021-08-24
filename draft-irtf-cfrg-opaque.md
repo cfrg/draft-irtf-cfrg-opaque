@@ -412,7 +412,7 @@ with the following API:
 
 OPAQUE relies on a key recovery mechanism for storing authentication
 material on the server and recovering it on the client. This material
-is encapsulated in an envelope 'Envelope', whose structure, encoding,
+is encapsulated in an envelope, whose structure, encoding,
 and size must be specified by the key recovery mechanism. The size of
 the envelope is denoted `Ne` and may vary between mechanisms.
 
@@ -424,19 +424,18 @@ are as follows:
 - Store(private_seed): build and return an `Envelope` structure and the client's
 public key.
 - Recover(private_seed, envelope): recover and return the authentication
-material for the AKE from the Envelope.
+material for the AKE from the Envelope. This function raises an error if the
+private seed cannot be used for recovering authentication material from the
+input envelope.
 
-The key recovery mechanism MUST provide means for the client to verify the
-recovered authentication material is the same it generated on registration.
-This ensures the client can uncover a invalid OPRF evaluations and envelopes,
-and the client MUST abort in that case.
+The key recovery mechanism MUST return an error when trying to recover authentication
+material from an envelope with a private seed that was not used in producing the envelope.
 
 Moreover, it MUST be compatible with the chosen AKE. For example, the key
 recovery mechanism specified in {{key-recovery}} directly recovers a private key
 from a seed, and the cryptographic primitive in the AKE must therefore support
 such a possibility.
 
-[TODO Dan]: <> (Anything else? What defines a perfectly sound and secure keyrec?)
 
 If applications implement {{preventing-client-enumeration}}, they MUST use the
 same mechanism throughout their lifecycle in order to avoid activity leaks due
@@ -605,7 +604,7 @@ See {{alternate-key-recovery}} for more information.
 
 ### Envelope Structure {#envelope-structure}
 
-The `internal` key recovery mechanism defines its `Envelope` as follows:
+The key recovery mechanism defines its `Envelope` as follows:
 
 ~~~
 struct {
@@ -689,7 +688,7 @@ Steps:
 6. expected_tag = MAC(auth_key,
                       concat(envelope.nonce, inner_env, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise EnvelopeRecoveryError
+     raise KeyRecoveryError
 8. Output (client_private_key, export_key)
 ~~~
 
@@ -839,10 +838,6 @@ Steps:
 
 To create the user record used for further authentication, the client executes
 the following function.
-
-Depending on the key recovery mechanism used, implementations are free to add
-other arguments as needed (e.g. the client's key material).
-See {{key-recovery}} for more details.
 
 ~~~
 FinalizeRequest(password, blind, response, server_identity, client_identity)
@@ -1844,65 +1839,22 @@ Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
 
-Client authentication material can be recovered in different ways. They MUST
-respect the requirements specified in {{deps-keyrec}}. However, they may
-augment the `Store()` and `Recover()` signatures for accommodation.
+Client authentication material can be stored and retrieved using different key
+recovery mechanisms, provided these mechanisms adhere to the requirements 
+specified in {{deps-keyrec}}. Any key recovery mechanism that encrypts data
+in the envelope MUST use an authenticated encryption scheme with random
+key-robustness (or key-committing). Deviating from the key-robustness 
+requirement may open the protocol to attacks, e.g., {{LGR20}}.
+This specification enforces this property by using a MAC over the envelope 
+contents. 
 
-In the following we outline an alternative key recovery mechanism. 
+We remark that export_key for authentication or encryption requires 
+no special properties from the authentication or encryption schemes 
+as long as export_key is used only after authentication material is successfully
+recovered, i.e., after the MAC in RecoverCredentials passes verification.
 
-## Encrypted Private key {#keyrec-encrypted}
 
-The original definition of OPAQUE allows applications to import existing keys
-for the client. Here, the OPRF output is used to derive an encryption key, use
-it to encrypt a generated or imported private key, and include the result in the
-envelope.
 
-~~~
-struct {
-  uint8 nonce[Nn];
-  uint8 encrypted_creds[Nsk];
-  uint8 auth_tag[Nm];
-} Envelope;
-~~~
-nonce: A unique nonce of length `Nn` used to protect this Envelope.
-
-encrypted_creds : Encrypted client_private_key. Authentication of this field is
-ensured with the `auth_tag` field in the envelope.
-
-auth_tag: Authentication tag protecting the contents of the envelope, covering
-the envelope nonce, the encrypted private key, and `CleartextCredentials`.
-
-The interface described in {{deps-keyrec}} must be adapted to import a private
-key.
-
-The `encrypted_creds` value is generated with the following process:
-
-~~~
-1. pad = Expand(randomized_pwd, concat(nonce, "Pad"), len(client_private_key))
-2. encrypted_creds = xor(client_private_key, pad)
-~~~
-
-nonce: The envelope nonce. 
-
-randomized_pwd: A MHF hardened OPRF seed.
-
-For recovery, the same sequence applied on `encrypted_creds` instead of
-`client_private_key` yields the client's private key. The client's public key
-can be recovered using the private key to avoid sending it with the envelope.
-
-### Envelope Encryption {#envelope-encryption}
-
-The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption
-scheme used to produce the encrypted envelope to have a special property called
-random key-robustness (or key-committing). This specification enforces this
-property by utilizing encrypt-then-MAC in the construction of the envelope.
-There is no option to use another authenticated encryption scheme with this
-specification. (Deviating from the key-robustness requirement may open the
-protocol to attacks, e.g., {{LGR20}}.) We remark that export_key for
-authentication or encryption requires no special properties from the
-authentication or encryption schemes as long as export_key is used only after
-the envelope is validated, i.e., after the MAC in RecoverCredentials passes
-verification.
 
 # Alternate AKE Instantiations {#alternate-akes}
 
