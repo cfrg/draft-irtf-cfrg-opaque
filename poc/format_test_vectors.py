@@ -10,7 +10,6 @@ config_keys = [
     "MHF",
     "KDF",
     "MAC",
-    "EnvelopeMode",
     "Group",
     "Context",
     "Nh",

@@ -9,10 +9,9 @@ from collections import namedtuple
 try:
     from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_shake256, ciphersuite_p256_sha256, ciphersuite_p384_sha512, ciphersuite_p521_sha512
     from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
-    from sagelib.opaque_messages import RegistrationUpload, InnerEnvelope, deserialize_inner_envelope, envelope_mode_internal, envelope_mode_external, \
-        Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
+    from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
             deserialize_credential_request, deserialize_credential_response, \
-            Credentials, SecretCredentials, CleartextCredentials
+            Credentials, CleartextCredentials
     from sagelib.groups import GroupRistretto255, GroupDecaf448, GroupP256, GroupP384, GroupP521
     from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, zero_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
@@ -20,7 +19,6 @@ except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
 default_opaque_configuration = Configuration(
-    envelope_mode_internal, 
     oprf_ciphersuites[ciphersuite_ristretto255_sha512], 
     HKDF(hashlib.sha512),
     HMAC(hashlib.sha512),
@@ -85,9 +83,6 @@ def test_core_protocol_serialization():
 
     # Check that recovered credentials match the registered credentials
     assert export_key == recovered_export_key
-    if config.mode == envelope_mode_external:
-        assert recovered_skU == skU_enc
-        assert recovered_pkS == pkS_enc
 
 def test_registration_and_authentication():
     idU = _as_bytes("Username")
@@ -116,9 +111,6 @@ def test_registration_and_authentication():
     recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response)
 
     assert export_key == recovered_export_key
-    if config.mode == envelope_mode_external:
-        assert recovered_skU == skU_enc
-        assert recovered_pkS == pkS_enc
 
     cred_request, cred_metadata = core.create_credential_request(badPwdU)
     cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
@@ -129,7 +121,7 @@ def test_registration_and_authentication():
         # We expect the MAC authentication tag to fail, so should get here
         pass
 
-TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identifier idS pwdU context mode oprf fast_hash mhf group")
+TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identifier idS pwdU context oprf fast_hash mhf group")
 
 def run_test_vector(params):
     is_fake = params.is_fake
@@ -138,7 +130,6 @@ def run_test_vector(params):
     idS = params.idS
     pwdU = params.pwdU
     context = params.context
-    mode = params.mode
     oprf = params.oprf
     fast_hash = params.fast_hash
     mhf = params.mhf
@@ -155,7 +146,7 @@ def run_test_vector(params):
 
     kdf = HKDF(fast_hash)
     mac = HMAC(fast_hash)
-    config = Configuration(mode, oprf, kdf, mac, fast_hash, mhf, group, context)
+    config = Configuration(oprf, kdf, mac, fast_hash, mhf, group, context)
     creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
     core = OPAQUECore(config)
 
@@ -172,11 +163,7 @@ def run_test_vector(params):
         fake_pkU_bytes = group.serialize(fake_pkU)
 
         fake_masking_key = random_bytes(config.Nh)
-        if mode == envelope_mode_external:
-            inner = InnerEnvelope(zero_bytes(config.Nsk))
-        else:
-            inner = InnerEnvelope()
-        fake_envU = Envelope(zero_bytes(OPAQUE_NONCE_LENGTH), inner, zero_bytes(config.Nm))
+        fake_envU = Envelope(zero_bytes(OPAQUE_NONCE_LENGTH), zero_bytes(config.Nm))
         record = RegistrationUpload(fake_pkU_bytes, fake_masking_key, fake_envU)
 
     client_kex = OPAQUE3DH(config)
@@ -209,8 +196,6 @@ def run_test_vector(params):
         inputs["oprf_seed"] = to_hex(oprf_seed)
         inputs["credential_identifier"] = to_hex(credential_identifier)
         inputs["password"] = to_hex(pwdU)
-        if mode == envelope_mode_external:
-            inputs["client_private_key"] = to_hex(skU_bytes)
         inputs["server_private_key"] = to_hex(skS_bytes)
         inputs["server_public_key"] = to_hex(pkS_bytes)
         inputs["client_nonce"] = to_hex(client_kex.nonceU)
@@ -290,18 +275,16 @@ def test_3DH():
     ]
 
     vectors = []
-    for mode in [envelope_mode_internal, envelope_mode_external]:
-        for (oprf, fast_hash, mhf, group) in configs:
-            for (idU, idS) in [(None, None), (idU, idS)]:
-                params = TestVectorParams(False, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
-                vector = run_test_vector(params)
-                vectors.append(vector)
-
-    for mode in [envelope_mode_internal, envelope_mode_external]:
-        for (oprf, fast_hash, mhf, group) in configs:
-            fake_params = TestVectorParams(True, idU, credential_identifier, idS, pwdU, context, mode, oprf, fast_hash, mhf, group)
-            vector = run_test_vector(fake_params)
+    for (oprf, fast_hash, mhf, group) in configs:
+        for (idU, idS) in [(None, None), (idU, idS)]:
+            params = TestVectorParams(False, idU, credential_identifier, idS, pwdU, context, oprf, fast_hash, mhf, group)
+            vector = run_test_vector(params)
             vectors.append(vector)
+
+    for (oprf, fast_hash, mhf, group) in configs:
+        fake_params = TestVectorParams(True, idU, credential_identifier, idS, pwdU, context, oprf, fast_hash, mhf, group)
+        vector = run_test_vector(fake_params)
+        vectors.append(vector)
 
     return json.dumps(vectors, sort_keys=True, indent=2)
 
