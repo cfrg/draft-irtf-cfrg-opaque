@@ -436,7 +436,7 @@ mechanism throughout their lifecycle in order to avoid activity leaks due to swi
 ## Authenticated Key Exchange (AKE) Protocol {#deps-ake}
 
 OPAQUE additionally depends on a three-message Authenticated Key Exchange (AKE) protocol 
-which satisfies the forward secrecy and KCI properties discussed in {{sec-considerations}}.
+which satisfies the forward secrecy and KCI properties discussed in {{security-considerations}}.
 
 This specification defines one particular AKE based on 3DH; see {{ake-protocol}}.
 3DH assumes a prime-order group as described in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
