@@ -428,14 +428,14 @@ material for the AKE from the Envelope. This function raises an error if the
 private seed cannot be used for recovering authentication material from the
 input envelope.
 
-The key recovery mechanism MUST return an error when trying to recover authentication
-material from an envelope with a private seed that was not used in producing the envelope.
+The key recovery mechanism MUST return an error when trying to recover
+authentication material from an envelope with a private seed that was not used
+in producing the envelope.
 
 Moreover, it MUST be compatible with the chosen AKE. For example, the key
 recovery mechanism specified in {{key-recovery}} directly recovers a private key
 from a seed, and the cryptographic primitive in the AKE must therefore support
 such a possibility.
-
 
 If applications implement {{preventing-client-enumeration}}, they MUST use the
 same mechanism throughout their lifecycle in order to avoid activity leaks due
@@ -594,13 +594,6 @@ Steps:
 This specification defines a key recovery mechanism that uses the hardened OPRF output
 as a seed to directly derive the private and public key using the `DeriveAuthKeyPair()`
 function defined in {{key-creation}}.
-
-We believe this mechanism to be optimal in terms of envelope size and API complexity.
-The private key never leaves in the internal representation of the implementation and
-thus discourages its re-use across protocol.
-
-Future specifications MAY introduce alternate methods and their `Envelope` contents.
-See {{alternate-key-recovery}} for more information.
 
 ### Envelope Structure {#envelope-structure}
 
