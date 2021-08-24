@@ -426,9 +426,16 @@ public key.
 - Recover(private_seed, envelope): recover and return the authentication material
 for the AKE from the Envelope.
 
-The key recovery mechanism MUST be compatible with the chosen AKE. For example, the key
+The key recovery mechanism MUST provide means for the client to verify the recovered
+authentication material is the same it generated on registration. This ensures the
+client can uncover a invalid OPRF evaluations and envelopes, and the client MUST
+abort in that case.
+
+Moreover, it MUST be compatible with the chosen AKE. For example, the key
 recovery mechanism specified in {{key-recovery}} directly recovers a private key from a seed,
 and the cryptographic primitive in the AKE must therefore support such a possibility.
+
+[TODO Dan]: <> (Anything else? What defines a perfectly sound and secure keyrec?)
 
 If applications implement {{preventing-client-enumeration}}, they MUST use the same
 mechanism throughout their lifecycle in order to avoid activity leaks due to switching.
