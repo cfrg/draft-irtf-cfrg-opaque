@@ -899,12 +899,13 @@ The server inputs the following values:
 - credential_identifier: client credential identifier.
 - oprf_seed: seed used to derive per-client OPRF keys.
 
-The client receives two outputs: a session secret and an export key. The export key
-is only available to the client, and may be used for additional application-specific
-purposes, as outlined in {{export-key-usage}}. The output `export_key` MUST NOT be
-used in any way before the protocol completes successfully. See {{envelope-encryption}}
-for more details about this requirement. The server receives a single output: a session
-secret matching the client's.
+The client receives two outputs: a session secret and an export key. The export
+key is only available to the client, and may be used for additional
+application-specific purposes, as outlined in {{export-key-usage}}. The output
+`export_key` MUST NOT be used in any way before the protocol completes
+successfully. See {{alternate-key-recovery}} for more details about this
+requirement. The server receives a single output: a session secret matching the
+client's.
 
 The protocol runs as shown below:
 
@@ -1845,9 +1846,6 @@ We remark that export_key for authentication or encryption requires
 no special properties from the authentication or encryption schemes 
 as long as export_key is used only after authentication material is successfully
 recovered, i.e., after the MAC in RecoverCredentials passes verification.
-
-
-
 
 # Alternate AKE Instantiations {#alternate-akes}
 
