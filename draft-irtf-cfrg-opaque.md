@@ -261,9 +261,9 @@ hashing or other hardening schemes. OPAQUE is also extensible, allowing
 clients to safely store and retrieve arbitrary application data on servers
 using only their password.
 
-OPAQUE is defined and proven as the composition of two functionalities:
-an oblivious pseudorandom function (OPRF) and an authenticated key
-exchange (AKE) protocol. It can be seen
+OPAQUE is defined and proven as the composition of three functionalities:
+an oblivious pseudorandom function (OPRF), a key recovery mechanism,
+and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
@@ -326,6 +326,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Message Authenticate Code (MAC); {{deps-symmetric}}
 - Cryptographic Hash Function; {{deps-hash}}
 - Memory-Hard Function (MHF); {{deps-hash}}
+- Key Recovery Mechanism; {{deps-keyrec}}
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
@@ -407,41 +408,49 @@ with the following API:
   `params` to strengthen the input `msg` against offline dictionary attacks.
   This function also needs to satisfy collision resistance.
 
+## Key Recovery Method {#deps-keyrec}
+
+OPAQUE relies on a key recovery mechanism for storing authentication
+material on the server and recovering it on the client. This material
+is encapsulated in an envelope, whose structure, encoding,
+and size must be specified by the key recovery mechanism. The size of
+the envelope is denoted `Ne` and may vary between mechanisms.
+
+The key recovery storage mechanism takes as input a private seed and outputs
+an envelope. The retrieval process takes as input a private seed and envelope
+and outputs authentication material. The signatures for these functionalities
+are as follows:
+
+- Store(private_seed): build and return an `Envelope` structure and the client's
+public key.
+- Recover(private_seed, envelope): recover and return the authentication
+material for the AKE from the Envelope. This function raises an error if the
+private seed cannot be used for recovering authentication material from the
+input envelope.
+
+The key recovery mechanism MUST return an error when trying to recover
+authentication material from an envelope with a private seed that was not used
+in producing the envelope.
+
+Moreover, it MUST be compatible with the chosen AKE. For example, the key
+recovery mechanism specified in {{key-recovery}} directly recovers a private key
+from a seed, and the cryptographic primitive in the AKE must therefore support
+such a possibility.
+
+If applications implement {{preventing-client-enumeration}}, they MUST use the
+same mechanism throughout their lifecycle in order to avoid activity leaks due
+to switching.
+
 ## Authenticated Key Exchange (AKE) Protocol {#deps-ake}
 
-OPAQUE additionally depends on a mutually Authenticated Key Exchange (AKE) protocol.
+OPAQUE additionally depends on a three-message Authenticated Key Exchange (AKE)
+protocol which satisfies the forward secrecy and KCI properties discussed in
+{{security-considerations}}.
+
 This specification defines one particular AKE based on 3DH; see {{ake-protocol}}.
-3DH assumes a prime-order group as described in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
-We let `Npk` and `Nsk` denote the size of public and private keys, respectively,
-used in the AKE. The AKE protocol must provide the following functions:
-
-- RecoverPublicKey(private_key): Recover the public key related to the input `private_key`.
-- SerializePublicKey(public_key): Serialize a public key to a byte string of length Npk.
-- GenerateAuthKeyPair(): Return a randomly generated private and public key pair. This can be
-  implemented by generating a random private key `sk`, then computing `pk = RecoverPublicKey(sk)`.
-- DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
-  deterministically from the input `seed`.
-
-For the AKE sspecified in this document, the implementation of DeriveAuthKeyPair
-is as follows:
-
-~~~
-DeriveAuthKeyPair(seed)
-
-Input:
-- seed, pseudo-random byte sequence used as a seed.
-
-Output:
-- private_key, a private key.
-- public_key, the associated public key.
-
-Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
-2. public_key = ScalarBaseMult(private_key)
-3. Output (private_key, public_key)
-~~~
-
-HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
+3DH assumes a prime-order group as described in
+{{I-D.irtf-cfrg-voprf, Section 2.1}}. We let `Npk` and `Nsk` denote the size of
+public and private keys, respectively, used in the AKE.
 
 # Protocol Overview {#protocol-overview}
 
@@ -515,27 +524,20 @@ The authenticated key exchange flow is shown below:
 ~~~
 
 The rest of this document describes the details of these stages in detail.
-{{client-credential-storage}} describes how client credential information is
-generated, encoded, encrypted, and stored on the server. {{offline-phase}} describes the
+{{client-material}} describes how client credential information is
+generated, encoded, stored on the server on registration, and recovered on login. {{offline-phase}} describes the
 first registration stage of the protocol, and {{online-phase}} describes the
 second authentication stage of the protocol. {{configurations}} describes how
 to instantiate OPAQUE using different cryptographic dependencies and parameters.
 
-# Client Credential Storage {#client-credential-storage}
+# Client Credential Storage and Key Recovery {#client-material}
 
-OPAQUE makes use of a structure `Envelope` to manage client credentials.
-Clients uses this envelope to recover private keys used for authentication.
+OPAQUE makes use of a structure called `Envelope` to manage client credentials.
+The client creates its `Envelope` on registration and sends it to the server for
+storage. On every login, the server sends this `Envelope` to the client so it can
+recover its key material for use in the AKE.
 
-OPAQUE allows applications to either provide custom client private and public keys
-for authentication, or to generate them internally. Each public and private key
-value is encoded or serialized as a byte string, specific to the AKE protocol in
-which OPAQUE is instantiated. These two options are defined as the `external` and
-`internal` modes, respectively. See {{envelope-modes}} for their specifications.
-
-The internal mode is RECOMMENDED. Applications can use the external mode if there
-are additional requirements for how private keys are generated, e.g., in the case
-of compliance, or if applications have pre-existing private keys they wish to
-register for use with OPAQUE.
+Future variants of OPAQUE may use different key recovery mechanisms. See {{key-recovery}} for details.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
@@ -587,54 +589,42 @@ Steps:
 6. Output cleartext_credentials
 ~~~
 
-## Envelope Structure {#envelope-structure}
+## Key Recovery {#key-recovery}
 
-A client `Envelope` is constructed based on the `EnvelopeMode`, consisting
-of an `InnerEnvelope` entry whose structure is determined by the mode. Future
-modes MAY introduce alternate `InnerEnvelope` contents. `Envelope` is
-defined as follows:
+This specification defines a key recovery mechanism that uses the hardened OPRF output
+as a seed to directly derive the private and public key using the `DeriveAuthKeyPair()`
+function defined in {{key-creation}}.
+
+### Envelope Structure {#envelope-structure}
+
+The key recovery mechanism defines its `Envelope` as follows:
 
 ~~~
 struct {
   uint8 nonce[Nn];
-  InnerEnvelope inner_env;
   uint8 auth_tag[Nm];
 } Envelope;
 ~~~
 
 nonce: A unique nonce of length `Nn` used to protect this Envelope.
 
-inner_env: A mode dependent `InnerEnvelope` structure. See {{envelope-modes}} for its specifications.
-
 auth_tag: Authentication tag protecting the contents of the envelope, covering the envelope nonce,
-`InnerEnvelope`, and `CleartextCredentials`.
+and `CleartextCredentials`.
 
-The size of the serialized InnerEnvelope is denoted `Ne` and varies based on the mode.
-The exact value for `Ne` is specified in {{internal-mode}} and {{external-mode}}.
+### Envelope Creation {#envelope-creation}
 
-## Envelope Creation and Recovery {#envelope-creation-recovery}
-
-Clients create an `Envelope` at registration with the function `CreateEnvelope` defined below.
-
-For the `internal` mode, implementations can choose to leave out the `client_private_key`
-parameter, as it is not used. For the `external` mode, implementations are free to
-additionally provide `client_public_key` to this function. With this, the public key does
-not need to be recovered by `BuildInnerEnvelope()` and that function should be adapted
-accordingly.
+Clients create an `Envelope` at registration with the function `Store` defined below.
 
 ~~~
-CreateEnvelope(randomized_pwd, server_public_key, client_private_key,
+Store(randomized_pwd, server_public_key, client_private_key,
                server_identity, client_identity)
-
-Parameter:
-- mode, the EnvelopeMode mode
 
 Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for
   the AKE protocol.
 - client_private_key, The encoded client private key for
-  the AKE protocol. This is nil in the internal key mode.
+  the AKE protocol.
 - server_identity, The optional encoded server identity.
 - client_identity, The optional encoded client identity.
 
@@ -647,22 +637,24 @@ Output:
 
 Steps:
 1. envelope_nonce = random(Nn)
-2. auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
-3. export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
-4. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-5. inner_env, client_public_key = BuildInnerEnvelope(randomized_pwd, envelope_nonce, client_private_key)
-6. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
-7. auth_tag = MAC(auth_key, concat(envelope_nonce, inner_env, cleartext_creds))
-8. Create Envelope envelope with (envelope_nonce, inner_env, auth_tag)
-9. Output (envelope, client_public_key, masking_key, export_key)
+2. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+3. auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
+4. export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
+5. seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nsk)
+6. _, client_public_key = DeriveAuthKeyPair(seed)
+7. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
+8. auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_creds))
+9. Create Envelope envelope with (envelope_nonce, auth_tag)
+10. Output (envelope, client_public_key, masking_key, export_key)
 ~~~
 
-Clients recover their `Envelope` during authentication with the `RecoverEnvelope`
-function defined below. The `RecoverKeys` implementation is defined in the
-following sections.
+### Envelope Recovery {#envelope-recovery}
+
+Clients recover their `Envelope` during login with the `Recover` function
+defined below.
 
 ~~~
-RecoverEnvelope(randomized_pwd, server_public_key, envelope,
+Recover(randomized_pwd, server_public_key, envelope,
                 server_identity, client_identity)
 
 Input:
@@ -682,162 +674,15 @@ Exceptions:
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
 2. export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
-3. (client_private_key, client_public_key) =
-    RecoverKeys(randomized_pwd, envelope.nonce, envelope.inner_env)
-4. cleartext_creds = CreateCleartextCredentials(server_public_key,
+3. seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nsk)
+4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
+5. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-5. expected_tag = MAC(auth_key, concat(envelope.nonce, inner_env, cleartext_creds))
-6. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise EnvelopeRecoveryError
-7. Output (client_private_key, export_key)
-~~~
-
-## Envelope Modes {#envelope-modes}
-
-The `EnvelopeMode` specifies the structure and encoding of the
-corresponding `InnerEnvelope`. This document specifies the values
-of the two aforementioned modes:
-
-~~~
-enum {
-  internal(1),
-  external(2),
-  (255)
-} EnvelopeMode;
-~~~
-
-Each `EnvelopeMode` defines its own `InnerEnvelope` structure and must implement
-the following interface:
-
-- `inner_env, client_public_key = BuildInnerEnvelope(randomized_pwd, nonce, client_private_key)`:
-  Build and return the mode's `InnerEnvelope` structure and the client's public key.
-- `client_private_key, client_public_key = RecoverKeys(randomized_pwd, nonce, inner_env)`:
-  Recover and return the client's private and public keys for the AKE protocol.
-
-The implementations of this interface for `internal` and `external` modes
-are in {{internal-mode}} and {{external-mode}}, respectively.
-
-The size of the envelope may vary between modes. If applications implement
-{{preventing-client-enumeration}}, they MUST use the same envelope mode throughout
-their lifecycle in order to avoid activity leaks due to mode switching.
-
-### Internal Mode {#internal-mode}
-
-In this mode, the client's private and public keys are deterministically derived
-from the OPRF output.
-
-With the internal key mode the `EnvelopeMode` value MUST be `internal` and the
-`InnerEnvelope` is empty, and the size `Ne` of the serialized `Envelope` is `Nn + Nm`.
-
-~~~
-BuildInnerEnvelope(randomized_pwd, nonce, client_private_key)
-
-Input:
-- randomized_pwd, randomized password.
-- nonce, a unique nonce of length `Nn`.
-- client_private_key, empty value. Not used in this function,
-  it only serves to comply with the API.
-
-Output:
-- inner_env, nil value (serves to comply with the API).
-- client_public_key, the client's AKE public key.
-
-Steps:
-1. seed = Expand(randomized_pwd, concat(nonce, "PrivateKey"), Nsk)
-2. _, client_public_key = DeriveAuthKeyPair(seed)
-3. Output (nil, client_public_key)
-~~~
-
-Note that implementations are free to leave out the `client_private_key`
-parameter, as it is not used.
-
-~~~
-RecoverKeys(randomized_pwd, nonce, inner_env)
-
-Input:
-- randomized_pwd, randomized password.
-- nonce, a unique nonce of length `Nn`.
-- inner_env, an InnerEnvelope structure. Not used in this
-  function, it only serves to comply with the API.
-
-Output:
-- client_private_key, The encoded client private key for the AKE protocol.
-- client_public_key, The encoded client public key for the AKE protocol.
-
-Steps:
-1. seed = Expand(randomized_pwd, concat(nonce, "PrivateKey"), Nsk)
-2. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
-4. Output (client_private_key, client_public_key)
-~~~
-
-Note that implementations are free to leave out the `inner_env` parameter,
-as it is not used.
-
-### External Mode {#external-mode}
-
-This mode allows applications to import or generate keys for the client. This
-specification only imports the client's private key and internally recovers the
-corresponding public key. Implementations are free to import both, in which case
-the functions `FinalizeRequest()`, `CreateEnvelope()`, and `BuildInnerEnvelope()`
-must be adapted accordingly.
-
-With the external key mode the `EnvelopeMode` value MUST be `external`, and the
-size `Ne` of the serialized `Envelope` is `Nn + Nm + Nsk`.
-
-An encryption key is generated from the hardened OPRF output and used to encrypt
-the client's private key, which is then stored encrypted in the `InnerEnvelope`.
-On key recovery, the client's public key is recovered using the private key.
-
-~~~
-struct {
-  uint8 encrypted_creds[Nsk];
-} InnerEnvelope;
-~~~
-
-encrypted_creds : Encrypted client_private_key. Authentication of this field is
-ensured with the `auth_tag` field in the envelope that covers this `InnerEnvelope`.
-
-If the implementation provides the `client_public_key`, then `BuildInnerEnvelope()`
-can skip the `RecoverPublicKey()` call.
-
-~~~
-BuildInnerEnvelope(randomized_pwd, nonce, client_private_key)
-
-Input:
-- randomized_pwd, randomized password.
-- nonce, a unique nonce of length `Nn`.
-- client_private_key, the encoded client private key for the AKE protocol.
-
-Output:
-- inner_env, an InnerEnvelope structure.
-- client_public_key, The encoded client public key for the AKE protocol.
-
-Steps:
-1. pseudorandom_pad = Expand(randomized_pwd, concat(nonce, "Pad"), Nsk)
-2. encrypted_creds = xor(client_private_key, pseudorandom_pad)
-3. Create InnerEnvelope inner_env with encrypted_creds
-4. client_public_key = RecoverPublicKey(client_private_key)
-5. Output (inner_env, client_public_key)
-~~~
-
-~~~
-RecoverKeys(randomized_pwd, nonce, inner_env)
-
-Input:
-- randomized_pwd, randomized password.
-- nonce, a unique nonce of length `Nn`.
-- inner_env, an InnerEnvelope structure.
-
-Output:
-- client_private_key, the encoded client private key for the AKE protocol.
-- client_public_key, the client's AKE public key.
-
-Steps:
-1. encrypted_creds = inner_env.encrypted_creds
-2. pseudorandom_pad = Expand(randomized_pwd, concat(nonce, "Pad"), len(encrypted_creds))
-3. client_private_key = xor(encrypted_creds, pseudorandom_pad)
-4. client_public_key = RecoverPublicKey(client_private_key)
-5. Output (client_private_key, client_public_key)
+6. expected_tag = MAC(auth_key,
+                      concat(envelope.nonce, inner_env, cleartext_creds))
+7. If !ct_equal(envelope.auth_tag, expected_tag),
+     raise KeyRecoveryError
+8. Output (client_private_key, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
@@ -849,19 +694,11 @@ AKE, along with a Nh-byte oprf_seed. The server can use the same pair of keys wi
 clients and can opt to use multiple seeds (so long as they are kept consistent for
 each client). These steps can happen offline, i.e., before the registration phase.
 
-If using `external` mode, the client provides a key pair
-(client_private_key, client_public_key)
-for an AKE protocol which is suitable for use with OPAQUE; See {{online-phase}}.
-The private-public keys (client_private_key, client_public_key) may be randomly
-generated (using a cryptographically secure pseudorandom number generator) for the
-account or provided by the calling client. Clients MUST NOT use the same key pair
-(client_private_key, client_public_key) for two different accounts.
-
 Once complete, the registration process proceeds as follows. The client inputs
 the following values:
 
 - password: client password.
-- creds: client credentials, as described in {{client-credential-storage}}.
+- creds: client credentials, as described in {{client-material}}.
 
 The server inputs the following values:
 
@@ -993,15 +830,12 @@ Steps:
 #### FinalizeRequest {#finalize-request}
 
 To create the user record used for further authentication, the client executes
-the following function. In the internal key mode, the `client_private_key` is nil.
-See {{envelope-creation-recovery}} for more details.
+the following function.
 
 ~~~
-FinalizeRequest(client_private_key, password, blind, response,
-                server_identity, client_identity)
+FinalizeRequest(password, blind, response, server_identity, client_identity)
 
 Input:
-- client_private_key, the client's private key. In internal mode, this is nil.
 - password, an opaque byte string containing the client's password.
 - blind, the OPRF scalar value used for blinding.
 - response, a RegistrationResponse structure.
@@ -1016,9 +850,9 @@ Steps:
 1. y = Finalize(password, blind, response.data)
 2. randomized_pwd = Extract("", Harden(y, params))
 3. (envelope, client_public_key, masking_key, export_key) =
-    CreateEnvelope(randomized_pwd, response.server_public_key, client_private_key,
-                   server_identity, client_identity)
-4. Create RegistrationRecord record with (client_public_key, masking_key, envelope)
+    Store(randomized_pwd, response.server_public_key,
+                    server_identity, client_identity)
+4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
 5. Output (record, export_key)
 ~~~
 
@@ -1054,23 +888,24 @@ application information exchange during the handshake.
 In this stage, the client inputs the following values:
 
 - password: client password.
-- client_identity: client identity, as described in {{client-credential-storage}}.
+- client_identity: client identity, as described in {{client-material}}.
 
 The server inputs the following values:
 
 - server_private_key: server private for the AKE protocol.
 - server_public_key: server public for the AKE protocol.
-- server_identity: server identity, as described in {{client-credential-storage}}.
-- record: RegistrationRecord corresponding to the client's registration.
+- server_identity: server identity, as described in {{client-material}}.
+- record: RegistrationUpload corresponding to the client's registration.
 - credential_identifier: client credential identifier.
 - oprf_seed: seed used to derive per-client OPRF keys.
 
-The client receives two outputs: a session secret and an export key. The export key
-is only available to the client, and may be used for additional application-specific
-purposes, as outlined in {{export-key-usage}}. The output `export_key` MUST NOT be
-used in any way before the protocol completes successfully. See {{envelope-encryption}}
-for more details about this requirement. The server receives a single output: a session
-secret matching the client's.
+The client receives two outputs: a session secret and an export key. The export
+key is only available to the client, and may be used for additional
+application-specific purposes, as outlined in {{export-key-usage}}. The output
+`export_key` MUST NOT be used in any way before the protocol completes
+successfully. See {{alternate-key-recovery}} for more details about this
+requirement. The server receives a single output: a session secret matching the
+client's.
 
 The protocol runs as shown below:
 
@@ -1238,7 +1073,7 @@ Steps:
 5. concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
 6. (client_private_key, export_key) =
-    RecoverEnvelope(randomized_pwd, server_public_key, envelope,
+    Recover(randomized_pwd, server_public_key, envelope,
                     server_identity, client_identity)
 7. Output (client_private_key, server_public_key, export_key)
 ~~~
@@ -1336,12 +1171,45 @@ client_mac
 : An authentication tag computed over the handshake transcript computed using
 Km2, defined below.
 
+### Key Creation {#key-creation}
+
+We assume the following functions to exist for all candidate groups in this
+setting:
+
+- RecoverPublicKey(private_key): Recover the public key related to the input
+`private_key`.
+- DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
+  deterministically from the input `seed`.
+- GenerateAuthKeyPair(): Return a randomly generated private and public key
+pair. This can be implemented by generating a random private key `sk`, then
+computing `pk = RecoverPublicKey(sk)`.
+
+The implementation of DeriveAuthKeyPair is as follows:
+
+~~~
+DeriveAuthKeyPair(seed)
+
+Input:
+- seed, pseudo-random byte sequence used as a seed.
+
+Output:
+- private_key, a private key.
+- public_key, the associated public key.
+
+Steps:
+1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+2. public_key = ScalarBaseMult(private_key)
+3. Output (private_key, public_key)
+~~~
+
+HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
+
 ### Key Schedule Functions
 
 #### Transcript Functions {#transcript-functions}
 
-The OPAQUE-3DH key derivation procedures make use of the functions below, re-purposed
-from TLS 1.3 {{?RFC8446}}.
+The OPAQUE-3DH key derivation procedures make use of the functions below,
+re-purposed from TLS 1.3 {{?RFC8446}}.
 
 ~~~
 Expand-Label(Secret, Label, Context, Length) =
@@ -1363,8 +1231,9 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 
 Note that the Label parameter is not a NULL-terminated string.
 
-OPAQUE-3DH can optionally include shared `context` information in the transcript,
-such as configuration parameters or application-specific info, e.g. "appXYZ-v1.2.3".
+OPAQUE-3DH can optionally include shared `context` information in the
+transcript, such as configuration parameters or application-specific info, e.g.
+"appXYZ-v1.2.3".
 
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
@@ -1633,7 +1502,9 @@ Steps:
 2. server_secret, server_keyshare = GenerateAuthKeyPair()
 3. Create inner_ke2 ike2 with (credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
-5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare, server_private_key, ke1.client_keyshare, server_secret, client_public_key)
+5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
+                    server_private_key, ke1.client_keyshare,
+                    server_secret, client_public_key)
 6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 7. server_mac = MAC(Km2, Hash(preamble))
 8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
@@ -1644,7 +1515,7 @@ Steps:
 
 # Configurations {#configurations}
 
-An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, EnvelopeMode, Group, Context)
+An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, Group, Context)
 such that the following conditions are met:
 
 - The OPRF protocol uses the "base mode" variant of {{I-D.irtf-cfrg-voprf}} and implements
@@ -1659,8 +1530,6 @@ such that the following conditions are met:
 - The MHF has fixed parameters, chosen by the application, and implements the
   interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
   scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
-- EnvelopeMode value is as defined in {{client-credential-storage}}, and is one of
-  `internal` or `external`.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
   then Group SHOULD be ristretto255.
@@ -1702,7 +1571,7 @@ applications can use to control OPAQUE:
   cross-protocol or downgrade attacks. This context information is not sent over the
   wire in any key exchange messages. However, applications may choose to send it alongside
   key exchange messages if needed for their use case.
-- Client and server identifier: As described in {{client-credential-storage}}, clients
+- Client and server identifier: As described in {{client-material}}, clients
   and servers are identified with their public keys by default. However, applications
   may choose alternate identifiers that are pinned to these public keys. For example,
   servers may use a domain name instead of a public key as their identifier. Absent
@@ -1836,19 +1705,6 @@ However, if this extra layer of verification is unnecessary for the application,
 leaving client_identity and server_identity unspecified (and using client_public_key and
 server_public_key instead) is acceptable.
 
-## Envelope Encryption {#envelope-encryption}
-
-The analysis of OPAQUE from {{OPAQUE}} requires the authenticated encryption scheme
-used to produce the envelope in the external mode to have a special property called random key-robustness
-(or key-committing). This specification enforces this property by utilizing
-encrypt-then-MAC in the construction of the envelope. There is no option to use another
-authenticated encryption scheme with this specification. (Deviating from the
-key-robustness requirement may open the protocol to attacks, e.g., {{LGR20}}.)
-We remark that export_key for authentication or encryption requires no special
-properties from the authentication or encryption schemes as long as export_key
-is used only after the envelope is validated, i.e., after the MAC in RecoverCredentials
-passes verification.
-
 ## Export Key Usage {#export-key-usage}
 
 The export key can be used (separately from the OPAQUE protocol) to provide
@@ -1930,9 +1786,9 @@ change can be detected by an adversary, it is only leaked upon password rotation
 after the exposure of the credential files, and equally affects all registered
 clients.
 
-Finally, applications must use the same envelope mode when using this prevention
-throughout their lifecycle. The envelope size varies between modes, so a switch
-in mode could then be detected.
+Finally, applications must use the same key recovery mechanism when using this
+prevention throughout their lifecycle. The envelope size may vary between
+mechanisms, so a switch could then be detected.
 
 OPAQUE does not prevent either type of attack during the registration flow.
 Servers necessarily react differently during the registration flow between
@@ -1968,12 +1824,28 @@ This document makes no IANA requests.
 
 # Acknowledgments
 
-The OPAQUE protocol and its analysis is joint work of the author with Stas
+The OPAQUE protocol and its analysis is joint work of the author with Stanislaw
 Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+
+# Alternate Key Recovery Mechanisms {#alternate-key-recovery}
+
+Client authentication material can be stored and retrieved using different key
+recovery mechanisms, provided these mechanisms adhere to the requirements 
+specified in {{deps-keyrec}}. Any key recovery mechanism that encrypts data
+in the envelope MUST use an authenticated encryption scheme with random
+key-robustness (or key-committing). Deviating from the key-robustness 
+requirement may open the protocol to attacks, e.g., {{LGR20}}.
+This specification enforces this property by using a MAC over the envelope 
+contents. 
+
+We remark that export_key for authentication or encryption requires 
+no special properties from the authentication or encryption schemes 
+as long as export_key is used only after authentication material is successfully
+recovered, i.e., after the MAC in RecoverCredentials passes verification.
 
 # Alternate AKE Instantiations {#alternate-akes}
 
@@ -2083,7 +1955,6 @@ Hash: SHA512
 MHF: Identity
 KDF: HKDF-SHA512
 MAC: HMAC-SHA512
-EnvelopeMode: 01
 Group: ristretto255
 Context: 4f50415155452d504f43
 Nh: 64
@@ -2201,7 +2072,6 @@ Hash: SHA512
 MHF: Identity
 KDF: HKDF-SHA512
 MAC: HMAC-SHA512
-EnvelopeMode: 01
 Group: ristretto255
 Context: 4f50415155452d504f43
 Nh: 64
@@ -2321,7 +2191,6 @@ Hash: SHA256
 MHF: Identity
 KDF: HKDF-SHA256
 MAC: HMAC-SHA256
-EnvelopeMode: 01
 Group: P256_XMD:SHA-256_SSWU_RO_
 Context: 4f50415155452d504f43
 Nh: 32
@@ -2427,7 +2296,6 @@ Hash: SHA256
 MHF: Identity
 KDF: HKDF-SHA256
 MAC: HMAC-SHA256
-EnvelopeMode: 01
 Group: P256_XMD:SHA-256_SSWU_RO_
 Context: 4f50415155452d504f43
 Nh: 32
@@ -2525,476 +2393,6 @@ session_key: 7d9430d675055a95b323a012be00690382618f4f687cbe0c5f7c4d20
 b1fb71c1
 ~~~
 
-### OPAQUE-3DH Real Test Vector 5
-
-#### Configuration
-
-~~~
-OPRF: 0001
-Hash: SHA512
-MHF: Identity
-KDF: HKDF-SHA512
-MAC: HMAC-SHA512
-EnvelopeMode: 02
-Group: ristretto255
-Context: 4f50415155452d504f43
-Nh: 64
-Npk: 32
-Nsk: 32
-Nm: 64
-Nx: 64
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-oprf_seed: 98ee70b2c51d3e89d9c08b00889a1fa8f3947a48dac9ad994e946f408a
-2c31250ee34f9d04a7d85661bab11c67048ecfb7a68c657a3df87cff3d09c6af9912a
-1
-credential_identifier: 31323334
-password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 13e74aa6263b562b9764bfbcbbe54081383f3057c26fead2a8b3d
-5910e25fd29
-masking_nonce: 8837b6c0709160251cbebe0d55e4423554c45da7a8952367cf336e
-b623379e80
-client_private_key: 74f3dec61a0126d02343c90d62c0399789041c71e44d15c05
-bc8182bc764e903
-server_private_key: 030c7634ae24b9c6d4e2c07176719e7a246850b8e019f1c71
-a23af6bdb847b0b
-server_public_key: 1ac449e9cdd633788069cca1aaea36ea359d7c2d493b254e5f
-fe8d64212dcc59
-server_nonce: ff26a6386c0a4077f512138e2203f247d56cbe900310cd43b4a55e4
-c54231cc6
-client_nonce: 077adba76f768fd0979f8dc006ca297e7954ebf0e81a893021ee24a
-cc35e1a3f
-server_keyshare: 046a0fce623dc08f253b239bfc96850e7ed02dc87f3e29830ccd
-128aaa365840
-client_keyshare: f27ab6cb55389234dd3f045713b6fc7c1f3de0e84140ee8b07be
-e138ba587d79
-server_private_keyshare: 26d7584722349b4670cbddb025f5e3e830b8bff4e482
-80bab53db37c34bf0b06
-client_private_keyshare: 32f2e562f6ca9ffa8add0c2c5b8b2ffe8c39667010ba
-488071c889448f2a2f06
-blind_registration: 21c97ffc56be5d93f86441023b7c8a4b629399933b3f845f5
-852e8c716a60408
-blind_login: f3fbfd52953b95ae7567d2590ecd8b0defe05a0321ec8230137157c1
-6cc06b09
-~~~
-
-#### Intermediate Values
-
-~~~
-client_public_key: cef8fa52ed24697b25418aa4703deb80a1e8f2caca405e2aaf
-6758718ac7e33f
-auth_key: 760cf1c679e1599d4ac3a8278f01c4494750c4038a713e7854b1d72af8f
-9dd754e4e2819456f9d8a38b178d6472d4e893aff415ad93a7546c1dacb9b19fc9d25
-randomized_pwd: 6df3b91dd1cf81df3b0b72998374dc446a8ade0fdc7eea49cb7a6
-21ae27b90b883d94e7d528378e8f665977b5e03909511ee729c36f16fd6aba83613d8
-c25142
-envelope: 13e74aa6263b562b9764bfbcbbe54081383f3057c26fead2a8b3d5910e2
-5fd293005c607b1e9e20601905d07de4b195e9f3812a14faa21bc7ec6b3aaeb4ff833
-e36d0ea6c1c575161a16d3de1052fd1bca6d387a6dd0947d5284f1c27010dbc771b93
-e986d552e1c808c4506d430532d01cfa6c577edbe2230f2b1d68899af19
-handshake_secret: 5d37e08f982c39e4edf75d23d6c8e412c56eff600a1d2baf02e
-3c8d67c41490ee34477e2bb6a58f5c555ac2a1292bdbfbbea9940d958dafa968ca6c4
-a70b6933
-server_mac_key: fb738205ec3bf99dce71a809f61c68f52d507260abb3ad67c7d7c
-c6f6b673affce4b5166c965b0d1ad37aa0429ee6cc09c0063c5eff062e53db4d2adc8
-fb7d4f
-client_mac_key: f6f3c6826a01c16003ae99fa38a9efd63459e14a57071f3177f44
-c3d4cd726db61c0de0297bb5c8ebb9c26cc9474899d92b453e8232e3feab9e8aba119
-71ee46
-oprf_key: ea5421a9d7d562bce7d5541d716a45e2e28430c33b50e2c54dee998e328
-35503
-~~~
-
-#### Output Values
-
-~~~
-registration_request: f0c2f72afd000afa4cfde5eb4122f42c4082332d8783204
-6dc4f7f9691e86c3f
-registration_response: f033a257a3f77f2df98a46036738c20706b4d70015b59f
-1c74a2606d03725b121ac449e9cdd633788069cca1aaea36ea359d7c2d493b254e5ff
-e8d64212dcc59
-registration_upload: cef8fa52ed24697b25418aa4703deb80a1e8f2caca405e2a
-af6758718ac7e33fb3ab72316071ee2799c26865b8fbdbc87a0d861cc0b9f5bd9cb1e
-a97569472896ee0bfc2a25f9d2031f409c323df56a5c2bd9c6317874c5a17935dfd79
-26b2f413e74aa6263b562b9764bfbcbbe54081383f3057c26fead2a8b3d5910e25fd2
-93005c607b1e9e20601905d07de4b195e9f3812a14faa21bc7ec6b3aaeb4ff833e36d
-0ea6c1c575161a16d3de1052fd1bca6d387a6dd0947d5284f1c27010dbc771b93e986
-d552e1c808c4506d430532d01cfa6c577edbe2230f2b1d68899af19
-KE1: dea559cab899a46d045370d26c2551e74f1d0da2b090ca860c1379241d5f2900
-077adba76f768fd0979f8dc006ca297e7954ebf0e81a893021ee24acc35e1a3ff27ab
-6cb55389234dd3f045713b6fc7c1f3de0e84140ee8b07bee138ba587d79
-KE2: 8433d62cb0db1a06942ce70567ea1b28ce01972d577fcc997b3951deadda5677
-8837b6c0709160251cbebe0d55e4423554c45da7a8952367cf336eb623379e80db22c
-f683b95f135f5ca1a9c2ee5af15577eb567303c95f7ea18355fb7f8c7cd209f0c156b
-232d143d5b7aec3c9a495a5223017d18e4281e41b89456803f8eca42b419daee26218
-1d43ad1794b467043bd882f1a19f3155d7d30fd1b5cdc2dd13aece79fd2f8905da3ab
-1a98c3a0ef50995b4e30a8cc3e9882384e9576fb85ee4c1dabbbe1dd967f2ec96e6ba
-df1a20a2ce6d583747feabd690992a44f5a4798ff26a6386c0a4077f512138e2203f2
-47d56cbe900310cd43b4a55e4c54231cc6046a0fce623dc08f253b239bfc96850e7ed
-02dc87f3e29830ccd128aaa365840ccaba8d6b2056626d9ac6b8983148f7685ebb5f0
-31823e575e3ac75f4bc88086084f6f1a6ae2662a5079f6167ec55f52811a81e6d0a3c
-8fafa337d66ac737d55
-KE3: ce0d378f6590de86be61608c42a7a1379c58a0a8cf6f1ce6af0164fff7a65162
-265f78e1ddbf056af34694b609d59ece78c101a0dcbb5ce2e0ff3f5cc39ea1c9
-export_key: a656dd5acbaae4d7149d2edc825bd23b7b3505218c2dd3240f16c2a60
-29d9d2837c8beed8467491e936fed5139a750bc979902017156aed40b6b2f8eae6c04
-32
-session_key: 0940f92334f093f39da5a9f36b76a137c4446796d5cb9f272a3d85e7
-01f3b0160301bde0761dc96f8a8da0241c9f88afdc5d614d270c86d8249b0f425fa19
-39e
-~~~
-
-### OPAQUE-3DH Real Test Vector 6
-
-#### Configuration
-
-~~~
-OPRF: 0001
-Hash: SHA512
-MHF: Identity
-KDF: HKDF-SHA512
-MAC: HMAC-SHA512
-EnvelopeMode: 02
-Group: ristretto255
-Context: 4f50415155452d504f43
-Nh: 64
-Npk: 32
-Nsk: 32
-Nm: 64
-Nx: 64
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-client_identity: 616c696365
-server_identity: 626f62
-oprf_seed: 41723264b8bb2700cdd47e339d95404519f2fb3da58c93d84cbb4d51de
-6757a31919382ba65c10e80cbb7f50a43e32782b08f8bee3ffaba39407660179105ac
-5
-credential_identifier: 31323334
-password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 86e2b0916361fb6a69f9a097e3ef2f83f8fd5f95cc79432eabf3e
-01f0020bac6
-masking_nonce: f551feeed04ea7967c2d6c8847b6ca8bc09eced6848f0a73208e71
-e3f1b688e6
-client_private_key: f51ea8d2b529ab39f6e6c883a14c38941c81115856ef6ef92
-c0a0aacf1449e05
-server_private_key: 5791eacfa2980bc0807bd327239b53f4370eb21d5b306257a
-82104eaaab43f01
-server_public_key: 846c28da13144e5908f1db4c8ba2c848ac34ae6b9a8855dcdb
-08d5ecfb000d73
-server_nonce: f35483b457e208972f1cbffbb70249fa31064a8883002d3b8024a02
-3b4feac41
-client_nonce: e0d04374ad9a276620c681abfca7bdb432e63509e5ec96ed2ec5542
-f6fc7db23
-server_keyshare: d856f10de218fc035faad7dddd3f3f01e2f27ff589ebbe605fa8
-e4659652fa52
-client_keyshare: 1c48ce65e44088bb7f7503f7ad7f3a050177b727e9b490aac3d4
-e639be06e157
-server_private_keyshare: 381fbcf62f24a60451e6ca6a9b8cffdacb40f507334b
-4384173539b287a94e0d
-client_private_keyshare: d7b1baf64ffc214733c46987fd2a0e91bb1f30f8ac55
-70d636293675879c6900
-blind_registration: a8fe808852933dec78a535ad1cd3a6e64b82b5302a5a99f16
-66c3cce1c4f2408
-blind_login: ec58b546968ed476e1a55a9dff9c80cc9c56cc9021a662d5cb7d5d37
-109b760b
-~~~
-
-#### Intermediate Values
-
-~~~
-client_public_key: 262321548e1fbb06525167181fb3ca34409410120c7feb4144
-26b4176f519264
-auth_key: b89cd540fb9e954e7a622723120bcb9f82c5006570ca36d44424dcc4805
-e4f7b90ce47c31e8a8c809fc666006a377ce68b19431378c68776ddbfa0617490f16a
-randomized_pwd: b2828519c684910131dad09652c589fc77a307a7560fe78d2c8c7
-02c8eeece38f470e695185e45be762c6e4732980715e535f411f02b916e18bf3d9f0c
-249e69
-envelope: 86e2b0916361fb6a69f9a097e3ef2f83f8fd5f95cc79432eabf3e01f002
-0bac600880f67a9cc7800800677a52179746eb1426db885097a0d0a05f93d64f93ff1
-498d75c646f7f836c53ca43e93ddccd0e8225e3d608d01e8620a4a71b1a5ee9be6219
-79afc8c0114626fdd78fb1ee4bf7537a1743964b364b02ff7851284ae00
-handshake_secret: 3d925e90f1b621e6e6c896c87d565a8ff6f6fc9ea375b46cd97
-edc0ea8a576eb1e6bd1d202ff0f767302f21812b4f99186025f237f8f7778e8e27768
-9ddfda11
-server_mac_key: 40628b867618de054b613cb1d6563dba6dded5ba4dd10f6113b22
-2744aa5252b68d5fc07442c30be318ff2c675e3d4cee5c76d66aa468c5b3c2f69ed7e
-e2a8ee
-client_mac_key: 3d3d749f7406a8e81eb431ab38e1bf1c5a4dfabec6a4e93ad8aa3
-6671d81f18c167e8806a6c8ff62e2b263243acb6b4f36d2706e108b2fd7ddb34e0372
-2c2ed8
-oprf_key: 66234277859d85dc708f57e1f66448303ab5853c26f7f82f67bcfb2deaa
-75c03
-~~~
-
-#### Output Values
-
-~~~
-registration_request: 34b611a08a5f7aff96a7a0f069c96c63db4018508da4589
-b741ed538e1416234
-registration_response: 1e96d9c134a103f1f961f16079f62a5468cc5b06a59d43
-e20d37babea5043714846c28da13144e5908f1db4c8ba2c848ac34ae6b9a8855dcdb0
-8d5ecfb000d73
-registration_upload: 262321548e1fbb06525167181fb3ca34409410120c7feb41
-4426b4176f519264846d97893ee0b033b318b220e7c9b3a6e63c05accae0929e086c7
-7ffb9359fe9a17fffa244e400950c86a75ba7c4badbb87db74998c9f5d40967f38914
-93738c86e2b0916361fb6a69f9a097e3ef2f83f8fd5f95cc79432eabf3e01f0020bac
-600880f67a9cc7800800677a52179746eb1426db885097a0d0a05f93d64f93ff1498d
-75c646f7f836c53ca43e93ddccd0e8225e3d608d01e8620a4a71b1a5ee9be621979af
-c8c0114626fdd78fb1ee4bf7537a1743964b364b02ff7851284ae00
-KE1: 703d6738685624f122e72d457bc966edbbf4a74ff8eeb530becb528762c89f7c
-e0d04374ad9a276620c681abfca7bdb432e63509e5ec96ed2ec5542f6fc7db231c48c
-e65e44088bb7f7503f7ad7f3a050177b727e9b490aac3d4e639be06e157
-KE2: 222a32fe68ee4bc87992ab9eee9bca419aee14e3ca120020758459d85d59e639
-f551feeed04ea7967c2d6c8847b6ca8bc09eced6848f0a73208e71e3f1b688e6877df
-f33abacd0c5877dac42c7ebfb625a7bc11af54dc1fcc5ee9186a132e0032a49615db5
-4038d2d75552e3c71188ce364e5967d6c419724b6b4d94eca4cf625c6289e300d63a7
-0483156af8070f4ae27cfb2a2fc7f77405cf2431784c4c5117ceb4cb086f95fe87301
-63ce6686a15a5ebd75785c973055a903cd49a90f7d98c350a8b7017c11d8f2b9c8393
-241971b51e53a6a5d18f6001b4085f5a2ae62b6f35483b457e208972f1cbffbb70249
-fa31064a8883002d3b8024a023b4feac41d856f10de218fc035faad7dddd3f3f01e2f
-27ff589ebbe605fa8e4659652fa5286aa76afc3fc0f0d7a282848a8e49279949abb29
-216a8a9105f3c419388ada5e0bba5ea621d540acd3ab0d2030cf9ba1b805571a971f9
-b7b1e9cd3b422adc26c
-KE3: e794a1d0ec961cf944e251270bff61ad8b262c59d7e60d465241ada6bed420bc
-f1885458846463b551b9ab4ce687e0592e4f7335f46ad9dd3bb0028c0dc14225
-export_key: 50235404f5212db6aa62b419e64607ab27a7070120491891ef290aa1d
-d87e221a6cf8a2bb72302dd756776d1fb08da1d90bf1957d3154c76917a955fa41b95
-a0
-session_key: 9be2659064b28f5353414c37fff5f4f8a8f7e4c951b0637373bab2f5
-75d805f02d87d34921ace763e185fa8b5ca47e98b25313195719cbc1602ef6ef61b2d
-d06
-~~~
-
-### OPAQUE-3DH Real Test Vector 7
-
-#### Configuration
-
-~~~
-OPRF: 0003
-Hash: SHA256
-MHF: Identity
-KDF: HKDF-SHA256
-MAC: HMAC-SHA256
-EnvelopeMode: 02
-Group: P256_XMD:SHA-256_SSWU_RO_
-Context: 4f50415155452d504f43
-Nh: 32
-Npk: 33
-Nsk: 32
-Nm: 32
-Nx: 32
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-oprf_seed: 26bf796e5e24e879ebb50b60b2569a3cefa279126183be8b798dc8a346
-5fab30
-credential_identifier: 31323334
-password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: d761c8b636815f62dad9d7ed319efefe641bb4c3d1cc83a6a6600
-bbadfe603ad
-masking_nonce: 65ebd00e208f7a1c679eb9edc4b8943b0ffbe09577ecdb625726cb
-333292ebc7
-client_private_key: 185f462ce1eec52f588a8e392f36915849b6bfcb6bd5b904c
-095be332181a28b
-server_private_key: df77e28c3c1a1ef8821fb7db7020bdd866ab6f771482b58ca
-91c9485d74c9011
-server_public_key: 03d264f0e386387704da3d82a32883d2045326b32296ed1028
-12dd3ed6d26f3b8b
-server_nonce: 6819cd5cca28ea3ed382a155205669141c9bcbdca0a2c66ad0adc66
-f43e4e82c
-client_nonce: b9e5e27d7077eec3be075d20ac4e145572a45beeeb6066b9533421c
-2cd4fee72
-server_keyshare: 02e47a5f856e1ad51f3c0e9e34b620c2f7e2d4b70c59db7c1d0a
-3a108322242baa
-client_keyshare: 02778a3a12ae78faf76c59723a0b72ee134ac3977d297ce65d59
-b41a12a385975d
-server_private_keyshare: c25d83d1a98a38717e97bfde3b1dd8eb8d3346ca21d8
-a6439465aea2b4b54c1e
-client_private_keyshare: cc99d1ec838306ac17f68550b99cea1bc58b89723c0d
-fada6c3dcb53ee14b2d8
-blind_registration: e147f60270fc68fd0990c1fd9b34b9187adfc0b6e485f8fc6
-ab6fea7ba043862
-blind_login: 417fe2da072d4eccf379adfb08f7f8ec28aadd14a78b68466e51a251
-d13299f2
-~~~
-
-#### Intermediate Values
-
-~~~
-client_public_key: 026be6ae76a078ed03bada87b595104050b65951dbd2f4160b
-7fe0153494e9dc9b
-auth_key: df9b4d68e993a3ea006d592636c8f855952e467e1cf95eb74c65b6ed8d9
-fda9a
-randomized_pwd: b884ee3cb8ba6e559fad6c5a4fc90612e753e98096d111724beb9
-ef28aa7d8f2
-envelope: d761c8b636815f62dad9d7ed319efefe641bb4c3d1cc83a6a6600bbadfe
-603adb4a1813f859cc062290962b036202f889e59c281dda3979b474117a4cf86566e
-18b577bacfbf0a2d9952ee1a86a49aa05fb7535871c2289480845e6667a389f6
-handshake_secret: 293c040ae3ba21f683e0322cfd437d883da62920d613ee14eec
-d40f5ba50f95d
-server_mac_key: 2f8eaaf0719aa329a2189f1a53ef467e601a2e5fc4536956ecbb1
-8a98af74352
-client_mac_key: 9c07ba7f8d3639820e4c457abcd0c80884a5d212e6df2a9d55643
-e6445bb8c4d
-oprf_key: 7d6f3b70621307fe8f1546f736fea87d9de2c3a05a6e0526dab36c04907
-8a314
-~~~
-
-#### Output Values
-
-~~~
-registration_request: 02aa62e9c8e75283c03ac512eb720cfaabf4e8b880e3b19
-2a2aecf44000fdf4556
-registration_response: 03e09f760f9f24cee3d66fabf1abdbb2ec87933f8c7fb9
-6a4d7be1227b874afd3a03d264f0e386387704da3d82a32883d2045326b32296ed102
-812dd3ed6d26f3b8b
-registration_upload: 026be6ae76a078ed03bada87b595104050b65951dbd2f416
-0b7fe0153494e9dc9b489718a412643a0c432d5263a7f186229856e6369c6ff90b1f6
-463481fac03f8d761c8b636815f62dad9d7ed319efefe641bb4c3d1cc83a6a6600bba
-dfe603adb4a1813f859cc062290962b036202f889e59c281dda3979b474117a4cf865
-66e18b577bacfbf0a2d9952ee1a86a49aa05fb7535871c2289480845e6667a389f6
-KE1: 036ddd62a3852518a45d35bfdc610bd8d479817af6d522f753c5fb8d773b1008
-8cb9e5e27d7077eec3be075d20ac4e145572a45beeeb6066b9533421c2cd4fee72027
-78a3a12ae78faf76c59723a0b72ee134ac3977d297ce65d59b41a12a385975d
-KE2: 02a0230a874e88e6361474924de4e674af5231547c5ab8b786aab29d71bda9f0
-ab65ebd00e208f7a1c679eb9edc4b8943b0ffbe09577ecdb625726cb333292ebc77d8
-17dadce52c16c0543ab1e42c5b7bf8a007facf4084cadb74740071c02bc801c152b54
-22b29073ec39a52bf8752814e7525552dd79f4196360362e68fd8ce6a96d6577e6f02
-ce6203f2b848a1794027bdeefc7e6b38b29d5b19a4786303546e8bcd0225a254e2840
-18922507d5f0a49b29b2b8d7e7dacfbc5b0a527ea752adcb6819cd5cca28ea3ed382a
-155205669141c9bcbdca0a2c66ad0adc66f43e4e82c02e47a5f856e1ad51f3c0e9e34
-b620c2f7e2d4b70c59db7c1d0a3a108322242baa47ebb98243f0c332def12af18492c
-68b133ab65b6ce280f08d9ff56f09b15d64
-KE3: 8390976f35482624243d818f663fe572c861b38c11e079768e6513e95f1055a7
-export_key: 22e0e8c776040c794313e61ea682c7b0625a13482e1fe2a8f53fafbba
-2a66893
-session_key: a6fff7dfb587e64683ecb38ef21be99e87c8e2f9a7b9cca92363bef8
-a2c69bed
-~~~
-
-### OPAQUE-3DH Real Test Vector 8
-
-#### Configuration
-
-~~~
-OPRF: 0003
-Hash: SHA256
-MHF: Identity
-KDF: HKDF-SHA256
-MAC: HMAC-SHA256
-EnvelopeMode: 02
-Group: P256_XMD:SHA-256_SSWU_RO_
-Context: 4f50415155452d504f43
-Nh: 32
-Npk: 33
-Nsk: 32
-Nm: 32
-Nx: 32
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-client_identity: 616c696365
-server_identity: 626f62
-oprf_seed: 14aa8d5a418b130dafb6513ad917000c83c70199f3202b928f355704e3
-a25dc7
-credential_identifier: 31323334
-password: 436f7272656374486f72736542617474657279537461706c65
-envelope_nonce: 6244563994473ca960143fe2de622464f00e607813de02e1784fa
-9f7d6e3b7bc
-masking_nonce: c68c15bf920702323ae20c552cdaefac7e1d665da7cc705485b75a
-3514b967a3
-client_private_key: 56c2f4d56bcb3cb24401b182ad275c32713d314a14cd58a64
-66cfb980f9a2605
-server_private_key: f1a945c34e824e9063e6f2ac4fc8a48af35e4c417ebc43be4
-717550e6140dc52
-server_public_key: 03512bae40ee42c0fce71f447611b39f2e91d68437f75fc1f1
-71e80ae8a09d30ce
-server_nonce: dc4ff822a5e5865d2f9e86117a7480a8a64a166e1cb724f59c39f93
-a802f7f70
-client_nonce: af0023091cb7e3e9c8581d8ca2837e78cd88fb76287d235b919bc75
-7a0a70ab8
-server_keyshare: 03ba9d8ad954f80f5ee6053c6c51f70a7ef7a65cc9f73c6e809d
-0eac701f412acb
-client_keyshare: 02ef46b931a4b8a017235597c595090dac6f059f599a00f46e08
-c62fc266e28d04
-server_private_keyshare: 1af9e9958dbf9198484561119bff18efc1f931f08888
-9520195d6a0e47b7ce91
-client_private_keyshare: f3f58965653b1dcdbf269eabb52782056318551fd0f9
-48617aac77ab942f2817
-blind_registration: 677e95d5335dbbd7d468a4bc0750ce4672a5b3e9098e8263f
-37dea986a921e99
-blind_login: e304d794b21e52c661090c25af0e432e6bdcc891568226adab56bf02
-dd0ea391
-~~~
-
-#### Intermediate Values
-
-~~~
-client_public_key: 030833fa0933e79ed8dafa9cf3d537eec06987fb1c064d74f4
-d45a480de9a179c9
-auth_key: 635d3868cdfc288fd140f838f441cb7a12c15f4340791f2eea3d84abc14
-c7e87
-randomized_pwd: 40b63dd7162516849eacc4e9ba4a8a18ec56ccc8420b29b2963a5
-29b3d1bf88c
-envelope: 6244563994473ca960143fe2de622464f00e607813de02e1784fa9f7d6e
-3b7bc7728fba39864da738a24a6d48a3941ebd0106ceea73d9cb14357fb3a11a80533
-1745ac05fdedbcabd3d50f6e1064d2140918843fe71964cd0d6b380b783f5443
-handshake_secret: c2c9412d7a7f789383e0dab5a3872a22b1485fe92ec5a6ccb70
-c0573f0a61621
-server_mac_key: 517bf63a14053d17ff76030b0646d7eb2c7cf337f68241e9a49ff
-a4f312cbcb7
-client_mac_key: d04bf6600a7286ffb4438a5c05ec1d0be439d19833786cf1033dc
-a23e1a78b4e
-oprf_key: 2ec7a8d9f98c0b936e38b56d802de8a663883588afba3f3e02b152a9e6d
-12627
-~~~
-
-#### Output Values
-
-~~~
-registration_request: 033db40e9dfcd60acbb2aa08f5dcabd2e8bb8a0d7cd24a7
-39ae669ddb7b6915eae
-registration_response: 02d7007b0aee071ddaa1c5a61f52f7426a72daa071548b
-597b4bd8fd0e4539330603512bae40ee42c0fce71f447611b39f2e91d68437f75fc1f
-171e80ae8a09d30ce
-registration_upload: 030833fa0933e79ed8dafa9cf3d537eec06987fb1c064d74
-f4d45a480de9a179c9d15ebd9bcb3301043e0487e01bce0b4f7cdf142de83c9522b23
-c734d863d86dc6244563994473ca960143fe2de622464f00e607813de02e1784fa9f7
-d6e3b7bc7728fba39864da738a24a6d48a3941ebd0106ceea73d9cb14357fb3a11a80
-5331745ac05fdedbcabd3d50f6e1064d2140918843fe71964cd0d6b380b783f5443
-KE1: 035d2d3a97256fd02c323405c66e25ccf2298998fd3bc8cbbf92664f9ac50b38
-16af0023091cb7e3e9c8581d8ca2837e78cd88fb76287d235b919bc757a0a70ab802e
-f46b931a4b8a017235597c595090dac6f059f599a00f46e08c62fc266e28d04
-KE2: 02249df93cafad8cdb0450827ddd6d35c3c289a8093e00e58e93c8a7f53767f9
-78c68c15bf920702323ae20c552cdaefac7e1d665da7cc705485b75a3514b967a3b1c
-efc1ba51c2cfaf32cd4e5aca3d5e2bc16ab5906680acc41efef0c7e728ad66c6afcdd
-e89bc9a7b7c3cc2938aa97a28edc48761877b31c41d8c8c8904bde90d70b2d0d8cd57
-58984f0f1314279ce2bb41f2be7ee04c8a7dc07241b14045509220f0f4e1008eda6ce
-fadd21a4017c61e8d5d4082b88e0f189563da374c039ddb2dc4ff822a5e5865d2f9e8
-6117a7480a8a64a166e1cb724f59c39f93a802f7f7003ba9d8ad954f80f5ee6053c6c
-51f70a7ef7a65cc9f73c6e809d0eac701f412acbff584d94c888c14c84b82142ab60c
-ab13ccfdcdfd2d7e07d34a8ea9b60cad807
-KE3: 375521e87d669af1f619c5083b05ee12174a054a25c08d7088b30fd3fb3f271d
-export_key: de041d0b4eb5b5a67ac994bef8836fb1402acc03fe3e3a21fdc97592e
-54f52c1
-session_key: a7ee3765471893e0983f373e3a49899a9212318e35adb1fde922e657
-2254566b
-~~~
-
 ## Fake Test Vectors {#fake-vectors}
 
 ### OPAQUE-3DH Fake Test Vector 1
@@ -3007,7 +2405,6 @@ Hash: SHA512
 MHF: Identity
 KDF: HKDF-SHA512
 MAC: HMAC-SHA512
-EnvelopeMode: 01
 Group: ristretto255
 Context: 4f50415155452d504f43
 Nh: 64
@@ -3023,47 +2420,47 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: d3cb00535339fe4063c7ba5506a990c243a2b5c77b06848a0be9a0568c
-252fb0d7425382babd267deeed669e56d1d5654c036211f49b42f4489f96f37100779
-f
+oprf_seed: 98ee70b2c51d3e89d9c08b00889a1fa8f3947a48dac9ad994e946f408a
+2c31250ee34f9d04a7d85661bab11c67048ecfb7a68c657a3df87cff3d09c6af9912a
+1
 credential_identifier: 31323334
-masking_nonce: 3058799f42516228746821dc8c8530d0e8273ebde81941591d69ca
-5aea773090
-client_private_key: 83c9bcc31a9da0ffa4489900d3d1f85bb65c27f26e9ae4e3b
-66f6e02e098c503
-client_public_key: 56717b74a5e1770edb14c65f22cee0487046bd96e122ba97da
-ffed06c4bf4052
-server_private_key: 8d3a9355f9757e7071b3f836e3fb1461a6436e92971625b17
-cd7e580dd27c009
-server_public_key: 7a464761cb19c8b6e832fdfcfd18779b0edc246fe808f5de6c
-e7bdb54df41b67
-server_nonce: 4e2a8098173efa2968036f1762f2e5df41ab976fb1bfb91dae29950
-f8526de4c
-server_keyshare: 0e247410004d83d7cbe3af89c62ff03f942127aec4b0084c9eb5
-88e74ce6dd06
-server_private_keyshare: 326345820acc8aacf4948fce775a1fd265e4e93fd579
-cec8177d6389ee379b0a
-masking_key: e968bfe56ad934c3e1088115bcbf1af8b405fd0de94cdf301f9192cc
-2781de00617e568b14b7235cc1189265811ea354031ea39b62e31a104f181c01d3dae
-4b8
-KE1: b61bfe5997b644e9654b7796203831ea9b9e86499c17db3331a40673832c9729
-05603c1acb64ea417c0dabaab858a5f9da046d4a0cdbf092034c00451ccdc6e1ee835
-5c91d5ed7aa5ea75b8a730ba8dc45f6b41ae9713e6aa7126211346e8754
+masking_nonce: 7cb33db5ba8082e4f4bfb830e8e3f525b0ddcb70469b34224758d7
+25ce53ac76
+client_private_key: 21c97ffc56be5d93f86441023b7c8a4b629399933b3f845f5
+852e8c716a60408
+client_public_key: 5cc46fdc0337a684e126f8663deacc67872a7daffc75312a1d
+6377783935f932
+server_private_key: 030c7634ae24b9c6d4e2c07176719e7a246850b8e019f1c71
+a23af6bdb847b0b
+server_public_key: 1ac449e9cdd633788069cca1aaea36ea359d7c2d493b254e5f
+fe8d64212dcc59
+server_nonce: cae1f4fee4ee4ba509fda550ea0421a85762305b1db20e37f4539b2
+327d37b80
+server_keyshare: 5e5c0ac2904c7d9bf38f99e0050594e484b4d8ded8038ef6e0c1
+41a985fa6b35
+server_private_keyshare: a4abffe3bef8082b78323ea4507fbb0ce8105ca62b38
+1919a35767deaa699709
+masking_key: 077adba76f768fd0979f8dc006ca297e7954ebf0e81a893021ee24ac
+c35e1a3f4b5e0366c15771133082ec21035ae0ef0d8bcd0e59d26775ae953b9552fdf
+bf2
+KE1: 1ef5fc13fa7695e81b5fcadf57eb49a579b10e4f51bbee11afb278608592456b
+8837b6c0709160251cbebe0d55e4423554c45da7a8952367cf336eb623379e80dae2f
+1e0cd79b733131d499fb9e77efe0f235d73c1f920bdc5816259ad3a7429
 ~~~
 
 #### Output Values
 
 ~~~
-KE2: 0826f0581be79672ccf51276e4b4079bf05aa94530591b24acbf4106cf2fa34e
-3058799f42516228746821dc8c8530d0e8273ebde81941591d69ca5aea77309078577
-13efdc95f69166737cd7a80ead60e1a1f805c1da9cccbc0d29120f34be291518798c7
-00793f232374e66182495b76b388d9e11f479580cc2297da02fecee88a99cea6bc411
-b9467e8bfa9a4006aba7f21b74b4ce3bccd686785878b0ec9b3fc4200228014d5d073
-69d42d1d1b1669ecd2ad8905734ca0a641d8f16667ca4e2a8098173efa2968036f176
-2f2e5df41ab976fb1bfb91dae29950f8526de4c0e247410004d83d7cbe3af89c62ff0
-3f942127aec4b0084c9eb588e74ce6dd0689ffd826511fa128dc90837369bb9ed14d0
-794aa3a6e45d2ef533cf6b7e3b47d963eed736c71c8ca933af078af45f573bd3fb790
-336c9b47cc40f3d7c091a552
+KE2: 2e1bb024ff255d0f35eb7b1f11174b3e60d8aaabb11ea347a6da0c1964594f4f
+7cb33db5ba8082e4f4bfb830e8e3f525b0ddcb70469b34224758d725ce53ac76094c0
+aa800d9a0884392e4efbc0479e3cb84a38c9ead879f1ff755ad762c06812b9858f82c
+9722acc61b8eb1d156bc994839bf9ed8a760615258d23e0f94fa2cffadc655ed0d6ff
+6914066427366019d4e6989b65d13e38e8edc5ae6f82aa1b6a46bfe6ca0256c64d0cf
+db50a3eb7676e1d212e155e152e3bbc9d1fae3c679aacae1f4fee4ee4ba509fda550e
+a0421a85762305b1db20e37f4539b2327d37b805e5c0ac2904c7d9bf38f99e0050594
+e484b4d8ded8038ef6e0c141a985fa6b3528ef79e28dbd3783322ab69900a43be8919
+a840cfcc5aa31a8f42b6f2a0c1ce1f9fa50c58dc5787a957af588580117b70d304639
+dc68851224301bbbae9cd654
 ~~~
 
 ### OPAQUE-3DH Fake Test Vector 2
@@ -3076,7 +2473,6 @@ Hash: SHA256
 MHF: Identity
 KDF: HKDF-SHA256
 MAC: HMAC-SHA256
-EnvelopeMode: 01
 Group: P256_XMD:SHA-256_SSWU_RO_
 Context: 4f50415155452d504f43
 Nh: 32
@@ -3092,177 +2488,41 @@ Nok: 32
 ~~~
 client_identity: 616c696365
 server_identity: 626f62
-oprf_seed: 42cd4f606841ca8f403920a8ecf2d60399962f49d83f857ca86676b272
-1c4366
+oprf_seed: f7664fae89be455ee3350b04a85eab390b2dc63256fbd311d8de944b45
+b859e6
 credential_identifier: 31323334
-masking_nonce: d3974af728aeafc9e5af4b4cab57d7e7dfbe0ef6b08df28fae5269
-229cac2332
-client_private_key: 0e6b97ef90ea8cedbada0e1295233ba417790ed8e99676903
-71d527ddad59a64
-client_public_key: 033043e30c3dd5fb22d0b3d167acc28878ea7c3ac49cf82b2e
-b4b60a8299a67f7a
-server_private_key: b08b686382820021a7d32ad3cb8ff60f15437b5cb00c53f21
-f3fa17ac31d2bc0
-server_public_key: 03983ac5783e6a460a526066f1398cdc648518a985cc26a66f
-c7573a71ce36dbe5
-server_nonce: 1a60a3e31bb007db74b7114aab2f196ef6bec942a9b4fe6c61143fa
-c34d42143
-server_keyshare: 03eefd21dd74c665064ebcbf63ac5ebce9a45097d47dfc08d845
-52a105419b44aa
-server_private_keyshare: 751e5012ba0c535e008b2389bea166a5d59a49353f12
-20f5e345f0546463ccdf
-masking_key: 5b8caab90accd4f239e85ec978f6a6346edc0019c5671e81034ead61
-5ce096fc
-KE1: 028bc054fff79a9e0f0315e31cc035384aedd9d50ea8ee36630d39876ca4e592
-93d797d24fe5ad528130825016bfdc2eeaeef19914c366a615bcdbefd1f04b7208023
-843b78440c0e79d828ac4c2658d1cedf7e9795f2242527a4c1a254501d2ca1a
+masking_nonce: 21cd364318a92b2afbfccea5d80d337f07defe40d92673a52f3844
+058f5d949a
+client_private_key: 41ffab7c86e2b0916361fb6a69f9a097e3ef2f83f8fd5f95c
+c79432eabf3e020
+client_public_key: 0251bc2a7e0cb7c043eec5ee7d1b769b69f85b0fa19d1ae907
+5416e93fa01689de
+server_private_key: 61764783412278e6ce3c6c66f1995a2a30b5824be6a6d31ca
+d35a578ec3d9353
+server_public_key: 03727dd31712275905b1a3cca3bbb33bc71034a1d0c3801be0
+20541933dd497f18
+server_nonce: 2b772c1eb569cc2b57741bf3be630e377c8245b11d0b6ad1fe1d606
+490c27208
+server_keyshare: 02a59205c836a2ab86e19dbd9a417818052179e9a5c99221e2d1
+d8a780dfe4734d
+server_private_keyshare: e8c25741b201c2ba00abe390e5a3933a75efdb71b50e
+1e0087cc7235f6f9448a
+masking_key: 5bb4d884375d7dcbd562a62190cc569ccc809cff9d5aa5e176d48e96
+46b558eb
+KE1: 031ac7e5c8099fcb7de5ad5b6cf33ff53078dbee1da64f15f6cd53b2afe6e332
+06a91c9485d74c9010185f462ce1eec52f588a8e392f36915849b6bfcb6bd5b904037
+6a35db8f7e582569dba2e573c4af1462f91c59a9bdee253ed13f60108746252
 ~~~
 
 #### Output Values
 
 ~~~
-KE2: 0353685a152940706b1ed877b2da12f3c9f417d38fab56f3228c60f72429f602
-d9d3974af728aeafc9e5af4b4cab57d7e7dfbe0ef6b08df28fae5269229cac23329a9
-93151e43ac41ce18939444cea5d012b8a8316ed439d6fccf06b064f7564722f555750
-61897fbb6051f37e3247d08804437259fb9b022cc12715caca4ac12ef7a8b2f101269
-37619ce4725e6b821de5f44ddb71a8582883aa9b5aaefa9e3d0231a60a3e31bb007db
-74b7114aab2f196ef6bec942a9b4fe6c61143fac34d4214303eefd21dd74c665064eb
-cbf63ac5ebce9a45097d47dfc08d84552a105419b44aadb37380855acdd939b7eb300
-708d78b17ff0f99cee4ca4777c7628fb8ff591d1
-~~~
-
-### OPAQUE-3DH Fake Test Vector 3
-
-#### Configuration
-
-~~~
-OPRF: 0001
-Hash: SHA512
-MHF: Identity
-KDF: HKDF-SHA512
-MAC: HMAC-SHA512
-EnvelopeMode: 02
-Group: ristretto255
-Context: 4f50415155452d504f43
-Nh: 64
-Npk: 32
-Nsk: 32
-Nm: 64
-Nx: 64
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-client_identity: 616c696365
-server_identity: 626f62
-oprf_seed: f25de0448fe47b0e58b656838ca98ab353a8ad48d9d2594ab586bb07b2
-aa57e125b63f13483a9999240c192f735821167786be727255a4dae656c5a01059cf3
-a
-credential_identifier: 31323334
-masking_nonce: af63872227d860610466d7e3772e2092c5f770bc56d3b4961919c4
-ad92059537
-client_private_key: 6c1ce31656eb5fee3ead7db7565a3618a0c38fd7b4fdcfdff
-48868c519ff2a0f
-client_public_key: 7894b12117db10b45476e45c8d3de597c3a410287524d7b368
-961afa0a556c28
-server_private_key: 3777b07d6e40562f0789806a6244d71f68a66fe4eca45ab41
-38c1933d7065d02
-server_public_key: ce0f4be418e606efb13cc01415b35c775e546a75e539762d63
-10a268bb64bb1e
-server_nonce: 244c13e9e741425fef935fbfb85c70d69b4154e77bf116bdfc92cbe
-93d7598f0
-server_keyshare: e21b0c1506869330ada34bfcec71862762853fc95476543a0abd
-89a0a3ee556d
-server_private_keyshare: eedab29b34c52d3908e3c54a79d6a561182034fff5e2
-99e9fcf9317fda782106
-masking_key: 463d334336a31a7b1aeeed9c60ab5a3950eb508ef1a159a931abc976
-049df4afb6cc6fea0f95ae3e34c802bdcc4da208c4dd68402b708c0ebb6ae0a72d59c
-b90
-KE1: 986d70a47ec6b689e2deafdf5f799be248e244e976f102b5ff4c9d1164351b6e
-1854ee25966eeee2c830ac3f6e212b97809eced53f0d503d4c96c7e27257f4132ce34
-8e52135164b0e7c16fd09b304686c39b90cb04091a1048c399b2e9d4270
-~~~
-
-#### Output Values
-
-~~~
-KE2: 28ae606956cc5c4bdcb854814993ef611eeaae6a8200a6ce484de35ff40f2073
-af63872227d860610466d7e3772e2092c5f770bc56d3b4961919c4ad92059537e2df9
-d67a4caab9b89d824a40a41d8c1e594b6c404e548abb83e47ce48b91b7905c575892c
-985d33173f2c23cb1431b7ed0696f43853fde720a012a87a818b10e77787cd9a747ad
-972537f6849795409a4515665783230bfc41c657f8fac5bbe78ab842cbedc3ef2df79
-90cfa9d01dcacc177b9a779b5b1a453464eea16a294552c214f34c85ce3a9961b80d9
-1ec028ec0f1bdf01b047989a5ee575ec7983736244c13e9e741425fef935fbfb85c70
-d69b4154e77bf116bdfc92cbe93d7598f0e21b0c1506869330ada34bfcec718627628
-53fc95476543a0abd89a0a3ee556d697cee3e6d2ac62405776abe1bc3ac76c71da021
-9fc91ecae4806a444a0c3a8a6311671764d4d507f99cc4b57523ff5d1a8af7628ff29
-dd4dfc8d223749290e1
-~~~
-
-### OPAQUE-3DH Fake Test Vector 4
-
-#### Configuration
-
-~~~
-OPRF: 0003
-Hash: SHA256
-MHF: Identity
-KDF: HKDF-SHA256
-MAC: HMAC-SHA256
-EnvelopeMode: 02
-Group: P256_XMD:SHA-256_SSWU_RO_
-Context: 4f50415155452d504f43
-Nh: 32
-Npk: 33
-Nsk: 32
-Nm: 32
-Nx: 32
-Nok: 32
-~~~
-
-#### Input Values
-
-~~~
-client_identity: 616c696365
-server_identity: 626f62
-oprf_seed: 8f200b8f641a5697233757853f5f9d5184433cfa367aa55e8491fcd37b
-efaf95
-credential_identifier: 31323334
-masking_nonce: 5cd3c47180f435d1387c5541d2cbaca3ff3818b0e1875a9b006ac7
-c78ae01b6c
-client_private_key: c46a5d117c6ffdebb3b958328884c080eb922b9d8ecae5d6b
-f001b9670f2851a
-client_public_key: 0244fe5b332845cca6b44101ea04d4c7d52108b5b7a2afd22a
-ed2c2d9e555035f4
-server_private_key: 046e8097602a7b16b1ed184c65c208d14792a661a7a99c495
-049b803e18da601
-server_public_key: 02071a35268c772719bc31f9533f9d3665d4ed96a6780894bd
-99f6910059a62807
-server_nonce: 68498d0a3bcbf95d086073de4572bcc707c8fe7fc297e4e9a8600f4
-eb8f7730f
-server_keyshare: 02bf50c918a085c33c8fdfb3d346c4f4959401cdc1c5870567f8
-947040af079d2d
-server_private_keyshare: c0a9b2285356d0b6ceb9c29a7932ea8039d3170a4963
-85b65eee17df9e7119cf
-masking_key: c533fc7175763b1f43bc46fc6fd1145e2c24964fd3fd3c88454d0390
-ca876610
-KE1: 03bb16bcad5d9b7bce9f9e157f732c3d78e74cf1b1eace86a32d92400ce25b7e
-e7b30e7bfbc1054696ddbc54accfea2cf8a46ab37ba489e28504f3ca7a3267d8d7036
-3c36c15a1593205f26ca2d31c7a61c83a138943a5754f85d249da210bb71406
-~~~
-
-#### Output Values
-
-~~~
-KE2: 02f0e6fbda156524e87f9639fffbf98e75cd78b9c756c67bf1bea24054688ba8
-485cd3c47180f435d1387c5541d2cbaca3ff3818b0e1875a9b006ac7c78ae01b6c95c
-700af3a8ad87e16b2b20f23cf596305f21d23ba619d53d4b19d1604f9347bf944f84b
-cab9373990c8b3ba517cc6418a834c946acd543079256413dd25db9ebf9f009b7da2f
-4cd6b73c450d7ec779405a3198e516d11afc103e9cd782a937ba813d4627d5c76ef7b
-6afe4273abe2bc76b489a0a2d2d31050f004434771de9f5068498d0a3bcbf95d08607
-3de4572bcc707c8fe7fc297e4e9a8600f4eb8f7730f02bf50c918a085c33c8fdfb3d3
-46c4f4959401cdc1c5870567f8947040af079d2d96e9d294c33a0dd233e902982fe82
-4106b9424f8df5ced750012489bbfb6b805
+KE2: 02200f91b03819f6a4b0957216fc94a2230d75d0e1be1fe0ced9434b0ec9d23a
+5621cd364318a92b2afbfccea5d80d337f07defe40d92673a52f3844058f5d949a604
+39294e7567fc29643e0d5c8799d0dffbbfc8609558b982012fa90aef2ce52b1ffdd8f
+96bda49f5306ae346cd745812d3a953ff94712e4ed0acc67c99b432860e337fe3234b
+ba88415ac55368b938106cca4049b5c13496fe167d3a092bd990e2b772c1eb569cc2b
+57741bf3be630e377c8245b11d0b6ad1fe1d606490c2720802a59205c836a2ab86e19
+dbd9a417818052179e9a5c99221e2d1d8a780dfe4734d7325a81225091665460460ec
+37fcf0431f738ba6cb80b63756ee70c6e43aeae5
 ~~~

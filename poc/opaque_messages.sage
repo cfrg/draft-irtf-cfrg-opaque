@@ -23,38 +23,11 @@ else:
     def _strxor(str1, str2): return ''.join(chr(ord(s1) ^ ord(s2))
                                             for (s1, s2) in zip(str1, str2))
 
-# enum {
-#   internal(1),
-#   external(2),
-#   (255)
-# } EnvelopeMode;
-envelope_mode_internal = 0x01
-envelope_mode_external = 0x02
-
-# struct {
-#    opaque client_private_key[Nsk];
-# } SecretCredentials;
-# 
 # struct {
 #   uint8 server_public_key[Npk];
 #   uint8 server_identity<1..2^16-1>;
 #   uint8 client_identity<1..2^16-1>;
 # } CleartextCredentials;
-#
-# struct {
-#   SecretCredentials secret_credentials;
-#   CleartextCredentials cleartext_credentials;
-# } Credentials;
-
-def deserialize_secret_credentials(data):
-    return SecretCredentials(data), len(data)
-
-class SecretCredentials(object):
-    def __init__(self, skU):
-        self.skU = skU
-
-    def serialize(self):
-        return self.skU
 
 class CleartextCredentials(object):
     def __init__(self, pkS, idU, idS):
@@ -73,65 +46,28 @@ class Credentials(object):
         self.idS = idS
 
 # struct {
-#   select (EnvelopeMode) {
-#     case internal:
-#       // empty in internal mode
-#     case external:
-#       opaque encrypted_creds[Nsk];  
-#   }
-# } InnerEnvelope;
-def deserialize_inner_envelope(config, data):
-    if config.mode == envelope_mode_internal:
-        return InnerEnvelope(), 0
-    elif len(data) >= config.Nsk:
-        return InnerEnvelope(data[0:config.Nsk]), config.Nsk
-
-class InnerEnvelope(object):
-    def __init__(self, encrypted_creds = None):
-        self.encrypted_creds = encrypted_creds
-
-    def serialize(self):
-        if self.encrypted_creds == None:
-            return bytes([])
-        else:
-            return self.encrypted_creds
-
-# struct {
 #   opaque nonce[Nn];
-#   InnerEnvelope inner_env;
 #   opaque auth_tag[Nm];
 # } Envelope;
 def deserialize_envelope(config, data):
 
     # TODO(caw): put Nm in the config
-    inner_length = 0
-    if config.mode == envelope_mode_external:
-        inner_length = config.Nsk
     Nm = config.hash().digest_size
-    if len(data) != OPAQUE_NONCE_LENGTH + inner_length + Nm:
+    if len(data) != OPAQUE_NONCE_LENGTH + Nm:
          raise Exception("Invalid envelope length")
 
     nonce = data[:OPAQUE_NONCE_LENGTH]
-    inner_env, offset = deserialize_inner_envelope(config, data[OPAQUE_NONCE_LENGTH:])
-    auth_tag = data[OPAQUE_NONCE_LENGTH+offset:]
+    auth_tag = data[OPAQUE_NONCE_LENGTH:]
 
-    return Envelope(nonce, inner_env, auth_tag), OPAQUE_NONCE_LENGTH+offset+Nm
-
-    # contents, offset = deserialize_inner_envelope(config, data)
-    # Nh = config.hash().digest_size
-    # if offset + Nh > len(data):
-    #     raise Exception("Insufficient bytes")
-    # auth_tag = data[offset:offset+Nh]
-    # return Envelope(contents, auth_tag), offset+Nh
+    return Envelope(nonce, auth_tag), OPAQUE_NONCE_LENGTH+Nm
 
 class Envelope(object):
-    def __init__(self, nonce, inner_env, auth_tag):
+    def __init__(self, nonce, auth_tag):
         self.nonce = nonce
-        self.inner_env = inner_env
         self.auth_tag = auth_tag
 
     def serialize(self):
-        return self.nonce + self.inner_env.serialize() + self.auth_tag
+        return self.nonce + self.auth_tag
 
     def __eq__(self, other):
         if isinstance(other, Envelope):
@@ -250,8 +186,6 @@ def deserialize_credential_response(config, msg_bytes):
     Nm = config.hash().digest_size
     Npk = config.Npk
     Ne = Nm + OPAQUE_NONCE_LENGTH
-    if config.mode == envelope_mode_external:
-        Ne = Ne + config.Nsk
     masked_response = msg_bytes[length+OPAQUE_NONCE_LENGTH:length+OPAQUE_NONCE_LENGTH+Npk+Ne]
     return CredentialResponse(data, masking_nonce, masked_response), length+OPAQUE_NONCE_LENGTH+Npk+Ne
 

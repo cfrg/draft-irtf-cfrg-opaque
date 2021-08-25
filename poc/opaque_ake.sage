@@ -13,7 +13,7 @@ from collections import namedtuple
 try:
     from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_core import OPAQUECore
-    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, InnerEnvelope, Envelope, envelope_mode_internal, envelope_mode_external
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, Envelope
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -26,8 +26,7 @@ else:
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
 
 class Configuration(object):
-    def __init__(self, mode, oprf_suite, kdf, mac, hash, mhf, group, context):
-        self.mode = mode
+    def __init__(self, oprf_suite, kdf, mac, hash, mhf, group, context):
         self.oprf_suite = oprf_suite
         self.kdf = kdf
         self.mac = mac
@@ -42,10 +41,7 @@ class Configuration(object):
         self.Nok = oprf_suite.group.scalar_byte_length()
         self.Nh = hash().digest_size
         self.Nn = OPAQUE_NONCE_LENGTH
-        if mode == envelope_mode_internal:
-            self.Ne = self.Nn + self.Nm
-        else:
-            self.Ne = self.Nn + self.Nm + self.Nsk
+        self.Ne = self.Nn + self.Nm
 
 class KeyExchange(object):
     def __init__(self):
@@ -74,7 +70,6 @@ class OPAQUE3DH(KeyExchange):
         return {
             "Name": "3DH",
             "Group": self.config.group.name,
-            "EnvelopeMode": to_hex(I2OSP(self.config.mode, 1)),
             "OPRF": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
             "KDF": self.config.kdf.name,
             "MAC": self.config.mac.name,
