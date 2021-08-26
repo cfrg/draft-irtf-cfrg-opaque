@@ -1831,6 +1831,69 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
+# Flowchart
+
+## Login
+
+~~~
+              Server                             Client
+                                        |
+                                        |    | ID  | Password
+                                        |    |     |
+                                        |    |     v
+                                        |    |   +---------+ +---------+
+                                        |    |   | OPRF    | | AKE     |
+                                        |    |   | Blind() | | Start() |
+                                        |    |   +-------+-+ +----+----+
+                                        |    v     OPRF-1|        |
+                                        |  +-----+ <-----+        |
++-------+----------+-----------------------+ KE1 |         AKE-1  |
+|       |          |                    |  +-----+ <--------------+
+|       v ID       | OPRF-1             |
+| +-------------+  |                    |
+| | User Lookup |  |                    |
+| ++-+-+--------+  |                    |
+|  | | |           v                    |
+|  | | |    +-----------+               |
+|  | | | kU | OPRF      |               |
+|  | | +--> | Evaluate()+-+ OPRF-2      |
+|  | |      +-----------+ |             |
+|  | |                    v             |
+|  | |         +------------+           |
+|  | |Envelope | Credential |   +-----+ |
+|  | +-------> | Response   +-> | KE2 +----+---+---------------+
+|  |           +------------+   +-----+ |  |   |               | OPRF-2
+|  |  pkc                          ^    |  |   |          +----+------+
+|  +------> +------------+         |    |  |   |          | OPRF      |
+|           | AKE        | AKE-1   |    |  |   |          | Unblind() |
+|           | Response() +---------+    |  |   |          +----+------+
++---------> +------------+              |  |   | Masking       |
+   AKE-1                                |  |   | - nonce       | OPRF
+                                        |  |   | - response    | Output
+                                        |  |   |               v
+                                        |  |   |           +----------+
+                                        |  |   v           | Harden() |
+                                        |  | +--------+    +---+------+
+                                        |  | | Unmask |        |
+                                        |  | +-+------+ <------+ randomized_pwd
+                                        |  |   |               |
+                                        |  |   | - pkc         |
+                                        |  |   | - Envelope    v
+                                        |  |   +------------> +----------+
+                                        |  |                  | Key      |
+                                        |  | AKE-2            | Recovery |
+                                        |  +--------------->  ++--------++
+                                        |                      | sku    |
+                                        |                      v        |
+               +---------+              | +-----+   AKE-3  +----------+ |
+               | AKE     | <--------------+ KE3 | <--------+ AKE      | |
+               | Finish()|              | +-----+          | Finish() | |
+               +----+----+              |                  +-+--------+ |
+                    |                   |                    |          |
+                    v                   |                    v          v
+             Session Key                |             Session Key  Export Key
+~~~
+
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
 
 Client authentication material can be stored and retrieved using different key
