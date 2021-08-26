@@ -1743,7 +1743,11 @@ not the point at infinity.
 
 Hardening the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
-SHOULD select parameters that balance cost and complexity.
+SHOULD select parameters that balance cost and complexity. Note that in
+OPAQUE, the hardening function is executed by the client, as opposed to
+the server. This means that applications must consider a tradeoff between the
+performance of the protocol on clients (specifically low-end devices) and
+protection against offline attacks after a server compromise.
 
 ## Client Enumeration {#preventing-client-enumeration}
 
