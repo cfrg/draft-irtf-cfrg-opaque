@@ -607,9 +607,7 @@ The client state may have the following named fields:
 
 The server state may have the following fields:
 
-- expected_auth, material allowing the server to authenticate the client using
- KE3, an opaque byte string of length Nm; and
-- session_key, the AKEan opaque byte string of length Nx.
+- server_ake_state, the server's AKE state if necessary.
 
 ## External Client API {#opaque-client}
 
