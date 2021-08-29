@@ -1469,58 +1469,7 @@ Steps:
 4. Output concat(dh1, dh2, dh3)
 ~~~
 
-### External Client API {#opaque-client}
-
-~~~
-ClientInit(password)
-
-State:
-- state, a ClientState structure.
-
-Input:
-- password, an opaque byte string containing the client's password.
-
-Output:
-- ke1, a KE1 message structure.
-- blind, the OPRF blinding scalar.
-- client_secret, the client's Diffie-Hellman secret share for the session.
-
-Steps:
-1. request, blind = CreateCredentialRequest(password)
-2. state.blind = blind
-3. ke1 = Start(request)
-4. Output ke1
-~~~
-
-~~~
-ClientFinish(client_identity, password, server_identity, ke2)
-
-State:
-- state, a ClientState structure
-
-Input:
-- client_identity, the optional encoded client identity, which is set
-  to client_public_key if not specified.
-- password, an opaque byte string containing the client's password.
-- server_identity, the optional encoded server identity, which is set
-  to server_public_key if not specified.
-- ke2, a KE2 message structure.
-
-Output:
-- ke3, a KE3 message structure.
-- session_key, the session's shared secret.
-
-Steps:
-1. (client_private_key, server_public_key, export_key) =
-    RecoverCredentials(password, state.blind, ke2.CredentialResponse,
-                       server_identity, client_identity)
-2. (ke3, session_key) =
-    ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, ke2)
-3. Output (ke3, session_key)
-~~~
-
-#### 3DH Client Functions {#3dh-client}
+### 3DH Client Functions {#3dh-client}
 
 ~~~
 Start(credential_request)
