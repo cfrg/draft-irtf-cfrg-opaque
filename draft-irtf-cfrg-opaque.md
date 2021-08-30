@@ -591,9 +591,9 @@ Steps:
 
 ## Key Recovery {#key-recovery}
 
-This specification defines a key recovery mechanism that uses the hardened OPRF output
-as a seed to directly derive the private and public key using the `DeriveAuthKeyPair()`
-function defined in {{key-creation}}.
+This specification defines a key recovery mechanism that uses the hardened OPRF
+output as a seed to directly derive the private and public key using the
+`DeriveAuthKeyPair()` function defined in {{key-creation}}.
 
 ### Envelope Structure {#envelope-structure}
 
@@ -608,22 +608,20 @@ struct {
 
 nonce: A unique nonce of length `Nn` used to protect this Envelope.
 
-auth_tag: Authentication tag protecting the contents of the envelope, covering the envelope nonce,
-and `CleartextCredentials`.
+auth_tag: Authentication tag protecting the contents of the envelope, covering
+the envelope nonce, and `CleartextCredentials`.
 
 ### Envelope Creation {#envelope-creation}
 
-Clients create an `Envelope` at registration with the function `Store` defined below.
+Clients create an `Envelope` at registration with the function `Store` defined
+below.
 
 ~~~
-Store(randomized_pwd, server_public_key, client_private_key,
-               server_identity, client_identity)
+Store(randomized_pwd, server_public_key, server_identity, client_identity)
 
 Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for
-  the AKE protocol.
-- client_private_key, The encoded client private key for
   the AKE protocol.
 - server_identity, The optional encoded server identity.
 - client_identity, The optional encoded client identity.
