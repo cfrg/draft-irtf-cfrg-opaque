@@ -456,9 +456,18 @@ public and private keys, respectively, used in the AKE.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
-its credential file on the server. The client inputs its credentials,
-which includes its password and user identifier, and the server inputs its
-parameters, which includes its private key and other information.
+its credential file on the server. In the second stage the client recovers its
+authentication material and uses it to perform a mutually authenticated key
+exchange.
+
+## Registration
+
+Registration is the only part in OPAQUE that requires a server-authenticated
+and confidential channel, either physical, out-of-band, PKI-based, etc.
+
+The client inputs its credentials, which includes its password and user
+identifier, and the server inputs its parameters, which includes its private key
+and other information.
 
 The client output of this stage is a single value `export_key` that the client
 may use for application-specific purposes, e.g., to encrypt additional
@@ -468,9 +477,6 @@ information for storage on the server. The server does not have access to this
 The server output of this stage is a record corresponding to the client's
 registration that it stores in a credential file alongside other client
 registrations as needed.
-
-Registration is the only part in OPAQUE that requires a server-authenticated
-and confidential channel, either physical, out-of-band, PKI-based, etc.
 
 The registration flow is shown below:
 
@@ -492,7 +498,13 @@ The registration flow is shown below:
   export_key                                 record
 ~~~
 
-In the second stage, a client obtains credentials previously registered
+These messages are named `RegistrationRequest`, `RegistrationResponse`, and
+`Record`, respectively. Their contents and wire format are defined in
+{{registration-messages}}.
+
+## Online Authentication
+
+In this second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
 subsequently uses them as input to the AKE protocol. As in the registration
 phase, the client inputs its credentials, including its password and user
@@ -523,12 +535,25 @@ The authenticated key exchange flow is shown below:
 (export_key, session_key)                  session_key
 ~~~
 
+These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
+messages of the concurrent execution of the key recovery process (OPRF) and the
+authenticated key exchange (AKE):
+
+- `KE1` is composed of the `CredentialRequest` and `AKE_Init` messages
+- `KE2` is composed of the `CredentialResponse` and `AKE_Response` messages
+- `KE3` represents the `AKE_Finalize` message
+
+The `CredentialRequest` and `CredentialResponse` message contents and wire
+format are specified in {{cred-retrieval}}, and those of `AKE_Init`,
+`AKE_Response` and `AKE_Finalize` are specified in {{ake-messages}}.
+
 The rest of this document describes the details of these stages in detail.
 {{client-material}} describes how client credential information is
-generated, encoded, stored on the server on registration, and recovered on login. {{offline-phase}} describes the
-first registration stage of the protocol, and {{online-phase}} describes the
-second authentication stage of the protocol. {{configurations}} describes how
-to instantiate OPAQUE using different cryptographic dependencies and parameters.
+generated, encoded, stored on the server on registration, and recovered on
+login. {{offline-phase}} describes the first registration stage of the protocol,
+and {{online-phase}} describes the second authentication stage of the protocol.
+{{configurations}} describes how to instantiate OPAQUE using different
+cryptographic dependencies and parameters.
 
 # Client Credential Storage and Key Recovery {#client-material}
 
@@ -743,7 +768,7 @@ See {{validation}} for more details. Upon completion, the server stores
 the client's credentials for later use. Moreover, the client MAY use the output
 `export_key` for further application-specific purposes; see {{export-key-usage}}.
 
-### Registration Messages
+## Registration Messages {#registration-messages}
 
 ~~~
 struct {
@@ -784,9 +809,9 @@ masking_key
 envelope
 : The client's `Envelope` structure.
 
-### Registration Functions {#registration-functions}
+## Registration Functions {#registration-functions}
 
-#### CreateRegistrationRequest
+### CreateRegistrationRequest
 
 ~~~
 CreateRegistrationRequest(password)
@@ -804,7 +829,7 @@ Steps:
 3. Output (request, blind)
 ~~~
 
-#### CreateRegistrationResponse {#create-reg-response}
+### CreateRegistrationResponse {#create-reg-response}
 
 ~~~
 CreateRegistrationResponse(request, server_public_key, credential_identifier, oprf_seed)
@@ -826,7 +851,7 @@ Steps:
 5. Output response
 ~~~
 
-#### FinalizeRequest {#finalize-request}
+### FinalizeRequest {#finalize-request}
 
 To create the user record used for further authentication, the client executes
 the following function.
@@ -859,7 +884,7 @@ See {{online-phase}} for details about the output export_key usage.
 
 Upon completion of this function, the client MUST send `record` to the server.
 
-#### Finalize Registration {#finalize-registration}
+## Finalize Registration {#finalize-registration}
 
 The server stores the `record` object as the credential file for each client
 along with the associated `credential_identifier` and `client_identity` (if
@@ -967,7 +992,8 @@ masking_nonce
 : A nonce used for the confidentiality of the masked_response field.
 
 masked_response
-: An encrypted form of the server's public key and the client's `Envelope` structure.
+: An encrypted form of the server's public key and the client's `Envelope`
+structure.
 
 ### Credential Retrieval Functions
 
@@ -1109,65 +1135,49 @@ The server state has the following fields:
 - expected_client_mac, an opaque byte string of length Nm; and
 - session_key, an opaque byte string of length Nx.
 
-{{opaque-client}} and {{opaque-server}} specify the inner workings of client and
+{{ake-client}} and {{ake-server}} specify the inner workings of client and
 server functions, respectively.s
 
 Prior to the execution of these functions, both the client and the server MUST agree
 on a configuration; see {{configurations}} for details.
 
-### Protocol Messages
+### AKE Messages {#ake-messages}
 
 ~~~
 struct {
-  CredentialRequest request;
   uint8 client_nonce[Nn];
   uint8 client_keyshare[Npk];
-} KE1;
+} AKE_Init;
 ~~~
 
-request
-: A `CredentialRequest` generated according to {{create-credential-request}}.
+client_nonce : A fresh randomly generated nonce of length Nn.
 
-client_nonce
-: A fresh randomly generated nonce of length `Nn`.
-
-client_keyshare
-: Client ephemeral key share of fixed size Npk.
+client_keyshare : Client ephemeral key share of fixed size Npk.
 
 ~~~
 struct {
-  struct {
-    CredentialResponse response;
-    uint8 server_nonce[Nn];
-    uint8 server_keyshare[Npk];
-  } inner_ke2;
+  uint8 server_nonce[Nn];
+  uint8 server_keyshare[Npk];
   uint8 server_mac[Nm];
-} KE2;
+} AKE_Response;
 ~~~
 
-response
-: A `CredentialResponse` generated according to {{create-credential-response}}.
+server_nonce : A fresh randomly generated nonce of length Nn.
 
-server_nonce
-: A fresh randomly generated nonce of length `Nn`.
+server_keyshare : Server ephemeral key share of fixed size Npk, where Npk
+depends on the corresponding prime order group.
 
-server_keyshare
-: Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
-prime order group.
-
-server_mac
-: An authentication tag computed over the handshake transcript computed using Km2,
-defined below.
+server_mac : An authentication tag computed over the handshake transcript
+computed using Km2, defined below.
 
 ~~~
 struct {
   uint8 client_mac[Nm];
-} KE3;
+} AKE_Finalize;
 ~~~
 
-client_mac
-: An authentication tag computed over the handshake transcript computed using
-Km2, defined below.
+client_mac : An authentication tag computed over the handshake transcript
+computed using Km2, defined below.
 
 ### Key Creation {#key-creation}
 
@@ -1308,7 +1318,7 @@ Steps:
 6. Output (Km2, Km3, session_key)
 ~~~
 
-### External Client API {#opaque-client}
+### External Client API {#ake-client}
 
 ~~~
 ClientInit(password)
@@ -1421,7 +1431,7 @@ Steps:
 8. Output (ke3, session_key)
 ~~~
 
-### External Server API {#opaque-server}
+### External Server API {#ake-server}
 
 ~~~
 ServerInit(server_identity, server_private_key, server_public_key,
