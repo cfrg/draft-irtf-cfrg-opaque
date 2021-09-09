@@ -547,14 +547,6 @@ The `CredentialRequest` and `CredentialResponse` message contents and wire
 format are specified in {{cred-retrieval}}, and those of `AKE_Init`,
 `AKE_Response` and `AKE_Finalize` are specified in {{ake-messages}}.
 
-The rest of this document describes the details of these stages in detail.
-{{client-material}} describes how client credential information is
-generated, encoded, stored on the server on registration, and recovered on
-login. {{offline-phase}} describes the first registration stage of the protocol,
-and {{online-phase}} describes the second authentication stage of the protocol.
-{{configurations}} describes how to instantiate OPAQUE using different
-cryptographic dependencies and parameters.
-
 ## Protocol State {#protocol-state}
 
 Both client and server may use implicit internal state objects to keep necessary
@@ -568,6 +560,14 @@ The client state may have the following named fields:
 The server state may have the following fields:
 
 - server_ake_state, the server's AKE state if necessary.
+
+The rest of this document describes the details of these stages in detail.
+{{client-material}} describes how client credential information is
+generated, encoded, stored on the server on registration, and recovered on
+login. {{offline-phase}} describes the first registration stage of the protocol,
+and {{online-phase}} describes the second authentication stage of the protocol.
+{{configurations}} describes how to instantiate OPAQUE using different
+cryptographic dependencies and parameters.
 
 # Client Credential Storage and Key Recovery {#client-material}
 
