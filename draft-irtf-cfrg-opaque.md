@@ -456,9 +456,20 @@ public and private keys, respectively, used in the AKE.
 
 OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
-its credential file on the server. The client inputs its credentials,
-which includes its password and user identifier, and the server inputs its
-parameters, which includes its private key and other information.
+its credential file on the server. In the second stage the client recovers its
+authentication material and uses it to perform a mutually authenticated key
+exchange.
+
+Both stages happen in three messages.
+
+## Registration
+
+Registration is the only part in OPAQUE that requires a server-authenticated
+and confidential channel, either physical, out-of-band, PKI-based, etc.
+
+The client inputs its credentials, which includes its password and user
+identifier, and the server inputs its parameters, which includes its private key
+and other information.
 
 The client output of this stage is a single value `export_key` that the client
 may use for application-specific purposes, e.g., to encrypt additional
@@ -468,9 +479,6 @@ information for storage on the server. The server does not have access to this
 The server output of this stage is a record corresponding to the client's
 registration that it stores in a credential file alongside other client
 registrations as needed.
-
-Registration is the only part in OPAQUE that requires a server-authenticated
-and confidential channel, either physical, out-of-band, PKI-based, etc.
 
 The registration flow is shown below:
 
@@ -492,7 +500,13 @@ The registration flow is shown below:
   export_key                                 record
 ~~~
 
-In the second stage, a client obtains credentials previously registered
+These messages are named `RegistrationRequest`, `RegistrationResponse`, and
+`Record`, respectively. Their contents and wire format are defined in
+{{registration-messages}}.
+
+## Online Authentication
+
+In this second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
 subsequently uses them as input to the AKE protocol. As in the registration
 phase, the client inputs its credentials, including its password and user
@@ -523,6 +537,18 @@ The authenticated key exchange flow is shown below:
 (export_key, session_key)                  session_key
 ~~~
 
+These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
+messages of the concurrent execution of the key recovery process (OPRF) and the
+authenticated key exchange:
+
+- `KE1` is composed of the `CredentialRequest` and `AKE_Init` messages
+- `KE2` is composed of the `CredentialResponse` and `AKE_Response` messages
+- `KE3` represents the `AKE_Finalize` message
+
+The `CredentialRequest` and `CredentialResponse` message contents and wire
+format are specified in {{cred-retrieval}}, and those of `AKE_Init`,
+`AKE_Response` and `AKE_Finalize` are specified in {{ake-messages}}.
+
 The rest of this document describes the details of these stages in detail.
 {{client-material}} describes how client credential information is
 generated, encoded, stored on the server on registration, and recovered on
@@ -530,90 +556,6 @@ login. {{offline-phase}} describes the first registration stage of the protocol,
 and {{online-phase}} describes the second authentication stage of the protocol.
 {{configurations}} describes how to instantiate OPAQUE using different
 cryptographic dependencies and parameters.
-
-## Protocol Messages
-
-### Registration Messages
-
-~~~
-struct {
-  uint8 data[Noe];
-} RegistrationRequest;
-~~~
-
-data
-: A serialized OPRF group element.
-
-~~~
-struct {
-  uint8 data[Noe];
-  uint8 server_public_key[Npk];
-} RegistrationResponse;
-~~~
-
-data
-: A serialized OPRF group element.
-
-server_public_key
-: The server's encoded public key that will be used for the online authenticated key exchange stage.
-
-~~~
-struct {
-  uint8 client_public_key[Npk];
-  uint8 masking_key[Nh];
-  Envelope envelope;
-} RegistrationRecord;
-~~~
-
-client_public_key
-: The client's encoded public key, corresponding to the private key `client_private_key`.
-
-masking_key
-: A key used by the server to preserve confidentiality of the envelope during login.
-
-envelope
-: The client's `Envelope` structure.
-
-### Login Messages
-
-Online login messages are a composition of credential retrieval messages and
-AKE messages. Message structures `AKE_1`, `AKE_2`, and `AKE_3` are defined in
-{{ake-messages}}.
-
-~~~
-struct {
-  CredentialRequest request;
-  AKE_1 ake_init;
-} KE1;
-~~~
-
-request
-: A `CredentialRequest` generated according to {{create-credential-request}}.
-
-init
-: A `AKE_1` message generated according to {{deps-ake}}.
-
-~~~
-struct {
-  CredentialResponse response;
-  AKE_2 ake_response;
-} KE2;
-~~~
-
-response
-: A `CredentialResponse` generated according to {{create-credential-response}}.
-
-ake_response
-: A `AKE_2` message generated according to {{deps-ake}}.
-
-~~~
-struct {
-  AKE_3 ake_finalize;
-} KE3;
-~~~
-
-ake_finalize
-: A `AKE_3` message generated according to {{deps-ake}}.
 
 ## Protocol State {#protocol-state}
 
@@ -842,6 +784,47 @@ See {{validation}} for more details. Upon completion, the server stores
 the client's credentials for later use. Moreover, the client MAY use the output
 `export_key` for further application-specific purposes; see {{export-key-usage}}.
 
+## Registration Messages {#registration-messages}
+
+~~~
+struct {
+  uint8 data[Noe];
+} RegistrationRequest;
+~~~
+
+data
+: A serialized OPRF group element.
+
+~~~
+struct {
+  uint8 data[Noe];
+  uint8 server_public_key[Npk];
+} RegistrationResponse;
+~~~
+
+data
+: A serialized OPRF group element.
+
+server_public_key
+: The server's encoded public key that will be used for the online authenticated key exchange stage.
+
+~~~
+struct {
+  uint8 client_public_key[Npk];
+  uint8 masking_key[Nh];
+  Envelope envelope;
+} RegistrationRecord;
+~~~
+
+client_public_key
+: The client's encoded public key, corresponding to the private key `client_private_key`.
+
+masking_key
+: A key used by the server to preserve confidentiality of the envelope during login.
+
+envelope
+: The client's `Envelope` structure.
+
 ## Registration Functions {#registration-functions}
 
 ### CreateRegistrationRequest
@@ -1025,42 +1008,8 @@ masking_nonce
 : A nonce used for the confidentiality of the masked_response field.
 
 masked_response
-: An encrypted form of the server's public key and the client's `Envelope` structure.
-
-### AKE Messages {#ake-messages}
-
-~~~
-struct {
-  uint8 client_nonce[Nn];
-  uint8 client_keyshare[Npk];
-} AKE_1;
-~~~
-
-client_nonce : A fresh randomly generated nonce of length Nn.
-
-client_keyshare : Client ephemeral key share of fixed size Npk.
-
-~~~
-struct {
-  uint8 server_nonce[Nn];
-  uint8 server_keyshare[Npk];
-  uint8 server_mac[Nm];
-} AKE_2;
-~~~
-
-server_nonce : A fresh randomly generated nonce of length Nn.
-
-server_keyshare : Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding prime order group.
-
-server_mac : An authentication tag computed over the handshake transcript computed using Km2, defined below.
-
-~~~
-struct {
-  uint8 client_mac[Nm];
-} AKE_3;
-~~~
-
-client_mac : An authentication tag computed over the handshake transcript computed using Km2, defined below.
+: An encrypted form of the server's public key and the client's `Envelope`
+structure.
 
 ### Credential Retrieval Functions
 
@@ -1208,59 +1157,43 @@ server functions, respectively.s
 Prior to the execution of these functions, both the client and the server MUST agree
 on a configuration; see {{configurations}} for details.
 
-### Protocol Messages
+### AKE Messages {#ake-messages}
 
 ~~~
 struct {
-  CredentialRequest request;
   uint8 client_nonce[Nn];
   uint8 client_keyshare[Npk];
-} KE1;
+} AKE_Init;
 ~~~
 
-request
-: A `CredentialRequest` generated according to {{create-credential-request}}.
+client_nonce : A fresh randomly generated nonce of length Nn.
 
-client_nonce
-: A fresh randomly generated nonce of length `Nn`.
-
-client_keyshare
-: Client ephemeral key share of fixed size Npk.
+client_keyshare : Client ephemeral key share of fixed size Npk.
 
 ~~~
 struct {
-  struct {
-    CredentialResponse response;
-    uint8 server_nonce[Nn];
-    uint8 server_keyshare[Npk];
-  } inner_ke2;
+  uint8 server_nonce[Nn];
+  uint8 server_keyshare[Npk];
   uint8 server_mac[Nm];
-} KE2;
+} AKE_Response;
 ~~~
 
-response
-: A `CredentialResponse` generated according to {{create-credential-response}}.
+server_nonce : A fresh randomly generated nonce of length Nn.
 
-server_nonce
-: A fresh randomly generated nonce of length `Nn`.
+server_keyshare : Server ephemeral key share of fixed size Npk, where Npk
+depends on the corresponding prime order group.
 
-server_keyshare
-: Server ephemeral key share of fixed size Npk, where Npk depends on the corresponding
-prime order group.
-
-server_mac
-: An authentication tag computed over the handshake transcript computed using Km2,
-defined below.
+server_mac : An authentication tag computed over the handshake transcript
+computed using Km2, defined below.
 
 ~~~
 struct {
   uint8 client_mac[Nm];
-} KE3;
+} AKE_Finalize;
 ~~~
 
-client_mac
-: An authentication tag computed over the handshake transcript computed using
-Km2, defined below.
+client_mac : An authentication tag computed over the handshake transcript
+computed using Km2, defined below.
 
 ### Key Creation {#key-creation}
 
