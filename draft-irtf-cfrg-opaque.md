@@ -1243,7 +1243,7 @@ following fields:
 - expected_client_mac, an opaque byte string of length Nm; and
 - session_key, an opaque byte string of length Nx.
 
-{{3dh-client}} and {{3dh-server}} specify the inner workings of client and
+{{ake-client}} and {{ake-server}} specify the inner workings of client and
 server functions, respectively.
 
 ### AKE Messages {#ake-messages}
@@ -1423,7 +1423,7 @@ Steps:
 6. Output (Km2, Km3, session_key)
 ~~~
 
-### 3DH Client Functions {#3dh-client}
+### 3DH Client Functions {#ake-client}
 
 ~~~
 Start(credential_request)
@@ -1484,7 +1484,7 @@ Steps:
 8. Output (ke3, session_key)
 ~~~
 
-### 3DH Server Functions {#3dh-server}
+### 3DH Server Functions {#ake-server}
 
 ~~~
 Response(server_identity, server_private_key, client_identity,
