@@ -460,8 +460,6 @@ its credential file on the server. In the second stage the client recovers its
 authentication material and uses it to perform a mutually authenticated key
 exchange.
 
-Both stages happen in three messages.
-
 ## Registration
 
 Registration is the only part in OPAQUE that requires a server-authenticated
