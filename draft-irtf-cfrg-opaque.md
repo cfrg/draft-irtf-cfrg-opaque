@@ -537,7 +537,7 @@ The authenticated key exchange flow is shown below:
 
 These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
 messages of the concurrent execution of the key recovery process (OPRF) and the
-authenticated key exchange:
+authenticated key exchange (AKE):
 
 - `KE1` is composed of the `CredentialRequest` and `AKE_Init` messages
 - `KE2` is composed of the `CredentialResponse` and `AKE_Response` messages
