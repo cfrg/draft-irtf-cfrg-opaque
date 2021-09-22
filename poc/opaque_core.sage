@@ -21,6 +21,8 @@ def DeriveKeyPair(suite, seed):
     pkS = skS * suite.group.generator()
     return skS, pkS
 
+OPAQUE_SEED_LENGTH = 32
+
 class OPAQUECore(object):
     def __init__(self, config):
         self.config = config
@@ -43,8 +45,7 @@ class OPAQUECore(object):
         return request, blind
 
     def create_registration_response(self, request, pkS, oprf_seed, credential_identifier):
-        Nok = self.config.oprf_suite.group.scalar_byte_length()
-        ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), Nok)
+        ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
@@ -78,8 +79,7 @@ class OPAQUECore(object):
         export_key = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("ExportKey"), Nh)
         masking_key = self.derive_masking_key(random_pwd)
 
-        Nsk = self.config.Nsk
-        seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), Nsk)
+        seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
         (_, client_public_key) = self.derive_group_key_pair(seed)
         pk_bytes = self.config.group.serialize(client_public_key)
         client_public_key = self.config.group.serialize(client_public_key)
@@ -110,8 +110,7 @@ class OPAQUECore(object):
         return request, blind
 
     def create_credential_response(self, request, pkS, oprf_seed, envU, credential_identifier, masking_key):
-        Nok = self.config.oprf_suite.group.scalar_byte_length()
-        ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), Nok)
+        ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
@@ -129,8 +128,7 @@ class OPAQUECore(object):
         return response
 
     def recover_keys(self, random_pwd, envelope_nonce):
-        Nsk = self.config.Nsk
-        seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), Nsk)
+        seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
         (client_private_key, client_public_key) = self.derive_group_key_pair(seed)
         sk_bytes = self.config.group.serialize_scalar(client_private_key)
         pk_bytes = self.config.group.serialize(client_public_key)
