@@ -1045,7 +1045,7 @@ Input:
 Output:
 - ke3, a KE3 message structure.
 - session_key, the session's shared secret.
-- export_key, , an additional client key.
+- export_key, an additional client key.
 
 Steps:
 1. (client_private_key, server_public_key, export_key) =
