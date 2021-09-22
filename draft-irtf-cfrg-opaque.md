@@ -447,7 +447,7 @@ OPAQUE additionally depends on a three-message Authenticated Key Exchange (AKE)
 protocol which satisfies the forward secrecy and KCI properties discussed in
 {{security-considerations}}.
 
-The AKE must define three messages `AKE_Init`, `AKE_Response` and `AKE_Finalize`
+The AKE must define three messages `AuthInit`, `AuthResponse` and `AuthFinish`
 and provide the following functions for the client:
 
 - Start(): Initiate the AKE by producing message `AKE_Init`.
