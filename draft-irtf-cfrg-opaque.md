@@ -451,17 +451,17 @@ The AKE must define three messages `AKE_Init`, `AKE_Response` and `AKE_Finalize`
 and provide the following functions for the client:
 
 - Start(): Initiate the AKE by producing message `AKE_Init`.
-- ClientFinalize(client_identity, client_private_key,
-server_identity, server_public_key, `AKE_Init`): upon reception of the server's
+- ClientFinish(client_identity, client_private_key,
+server_identity, server_public_key, `AKE_Init`): upon receipt of the server's
 response `AKE_Response`, complete the protocol for the client, produce
 `AKE_Finalize`.
 
 The AKE protocol must provide the following functions for the server:
 
 - Response(server_identity, server_private_key, client_identity,
-client_public_key, `AKE_Init`): upon reception of a client's request `AKE_Init`,
+client_public_key, `AKE_Init`): upon receipt of a client's request `AKE_Init`,
 engage in the AKE.
-- ServerFinish(`AKE_Finalize`): upon reception of a client's final AKE message
+- ServerFinish(`AKE_Finalize`): upon receipt of a client's final AKE message
 `AKE_Finalize`, complete the protocol for the server.
 
 Both ClientFinalize and ServerFinish return an error if authentication failed.
@@ -1008,7 +1008,7 @@ and their parameters in more detail. {{cred-retrieval}} discusses internal
 functions used for retrieving client credentials, and {{ake-protocol}} discusses
 how these functions are used to execute the authenticated key exchange protocol.
 
-## External Client API {#opaque-client}
+## Client Authentication Functions {#opaque-client}
 
 ~~~
 ClientInit(password)
@@ -1057,7 +1057,7 @@ Steps:
 3. Output (ke3, session_key)
 ~~~
 
-## External Server API {#opaque-server}
+## Server Authentication Functions {#opaque-server}
 
 ~~~
 ServerInit(server_identity, server_private_key, server_public_key,
