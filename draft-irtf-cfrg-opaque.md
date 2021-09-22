@@ -450,19 +450,19 @@ protocol which satisfies the forward secrecy and KCI properties discussed in
 The AKE must define three messages `AuthInit`, `AuthResponse` and `AuthFinish`
 and provide the following functions for the client:
 
-- Start(): Initiate the AKE by producing message `AKE_Init`.
+- Start(): Initiate the AKE by producing message `AuthInit`.
 - ClientFinish(client_identity, client_private_key,
-server_identity, server_public_key, `AKE_Init`): upon receipt of the server's
-response `AKE_Response`, complete the protocol for the client, produce
-`AKE_Finalize`.
+server_identity, server_public_key, `AuthInit`): upon receipt of the server's
+response `AuthResponse`, complete the protocol for the client, produce
+`AuthFinish`.
 
 The AKE protocol must provide the following functions for the server:
 
 - Response(server_identity, server_private_key, client_identity,
-client_public_key, `AKE_Init`): upon receipt of a client's request `AKE_Init`,
+client_public_key, `AuthInit`): upon receipt of a client's request `AuthInit`,
 engage in the AKE.
-- ServerFinish(`AKE_Finalize`): upon receipt of a client's final AKE message
-`AKE_Finalize`, complete the protocol for the server.
+- ServerFinish(`AuthFinish`): upon receipt of a client's final AKE message
+`AuthFinish`, complete the protocol for the server.
 
 Both ClientFinalize and ServerFinish return an error if authentication failed.
 In this case, clients and servers MUST NOT use any outputs from the protocol,
@@ -562,13 +562,13 @@ These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
 messages of the concurrent execution of the key recovery process (OPRF) and the
 authenticated key exchange (AKE):
 
-- `KE1` is composed of the `CredentialRequest` and `AKE_Init` messages
-- `KE2` is composed of the `CredentialResponse` and `AKE_Response` messages
-- `KE3` represents the `AKE_Finalize` message
+- `KE1` is composed of the `CredentialRequest` and `AuthInit` messages
+- `KE2` is composed of the `CredentialResponse` and `AuthResponse` messages
+- `KE3` represents the `AuthFinish` message
 
 The `CredentialRequest` and `CredentialResponse` message contents and wire
-format are specified in {{cred-retrieval}}, and those of `AKE_Init`,
-`AKE_Response` and `AKE_Finalize` are specified in {{ake-messages}}.
+format are specified in {{cred-retrieval}}, and those of `AuthInit`,
+`AuthResponse` and `AuthFinish` are specified in {{ake-messages}}.
 
 The rest of this document describes the details of these stages in detail.
 {{client-material}} describes how client credential information is
@@ -1252,7 +1252,7 @@ server functions, respectively.
 struct {
   uint8 client_nonce[Nn];
   uint8 client_keyshare[Npk];
-} AKE_Init;
+} AuthInit;
 ~~~
 
 client_nonce : A fresh randomly generated nonce of length Nn.
@@ -1264,7 +1264,7 @@ struct {
   uint8 server_nonce[Nn];
   uint8 server_keyshare[Npk];
   uint8 server_mac[Nm];
-} AKE_Response;
+} AuthResponse;
 ~~~
 
 server_nonce : A fresh randomly generated nonce of length Nn.
@@ -1278,7 +1278,7 @@ computed using Km2, defined below.
 ~~~
 struct {
   uint8 client_mac[Nm];
-} AKE_Finalize;
+} AuthFinish;
 ~~~
 
 client_mac : An authentication tag computed over the handshake transcript
