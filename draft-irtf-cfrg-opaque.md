@@ -330,8 +330,9 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces used in these dependencies and the rest of the OPAQUE
-protocol are of length `Nn` = 32 bytes.
+otherwise, all random nonces and key derivatio seeds used in these dependencies and
+the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
+where `Nn` = `Nseed` = 32.
 
 ## Oblivious Pseudorandom Function {#deps-oprf}
 
@@ -665,7 +666,7 @@ Steps:
 2. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
 3. auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
 4. export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
-5. seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nsk)
+5. seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
 6. _, client_public_key = DeriveAuthKeyPair(seed)
 7. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
 8. auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_creds))
@@ -699,7 +700,7 @@ Exceptions:
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
 2. export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
-3. seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nsk)
+3. seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
 4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
 5. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
@@ -846,7 +847,7 @@ Output:
 - response, a RegistrationResponse structure.
 
 Steps:
-1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
 2. (oprf_key, _) = DeriveKeyPair(seed)
 3. Z = Evaluate(oprf_key, request.data)
 4. Create RegistrationResponse response with (Z, server_public_key)
