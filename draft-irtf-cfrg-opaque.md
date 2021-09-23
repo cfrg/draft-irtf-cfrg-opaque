@@ -1535,8 +1535,8 @@ such that the following conditions are met:
   to align with the target security level of the OPAQUE configuration. For example,
   if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
 - The MHF has fixed parameters, chosen by the application, and implements the
-  interface in {{dependencies}}. Examples include Argon2 {{?I-D.irtf-cfrg-argon2}},
-  scrypt {{?RFC7914}}, and PBKDF2 {{?RFC2898}} with fixed parameter choices.
+  interface in {{dependencies}}. Examples include Argon2 {{?ARGON2=RFC9106}},
+  scrypt {{?SCRYPT=RFC7914}}, and PBKDF2 {{?PBKDF2=RFC2898}} with fixed parameter choices.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
   then Group SHOULD be ristretto255.
