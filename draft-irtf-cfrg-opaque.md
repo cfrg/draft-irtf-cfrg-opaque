@@ -458,7 +458,9 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its credential file on the server. In the second stage the client recovers its
 authentication material and uses it to perform a mutually authenticated key
-exchange.
+exchange. For both stages, client and server agree on a configuration, which
+fully specifies the cryptographic algorithm dependencies necessary to run the
+protocol; see {{configurations}} for details.
 
 ## Registration
 
