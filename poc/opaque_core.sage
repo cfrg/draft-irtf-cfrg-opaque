@@ -31,7 +31,7 @@ class OPAQUECore(object):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
         y = oprf_context.finalize(pwdU, blind, response.data, None, None)
         y_harden = self.config.mhf.harden(y)
-        return self.config.kdf.extract(_as_bytes(""), y_harden)
+        return self.config.kdf.extract(_as_bytes(""), y + y_harden)
 
     def derive_masking_key(self, random_pwd):
         Nh = self.config.hash().digest_size
