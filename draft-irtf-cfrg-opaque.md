@@ -1608,6 +1608,17 @@ to support implementations which provide mitigations against client enumeration 
 - Deserialization checks: When parsing messages that have crossed trust boundaries (e.g.
 a network wire), implementations should properly handle all error conditions covered in
 {{I-D.irtf-cfrg-voprf}} and abort accordingly.
+- Additional client-side entropy: OPAQUE supports the ability to incorporate the
+client identity alongside the password to be input to the OPRF. This provides additional
+client-side entropy which can supplement the entropy that should be introduced by the
+server during an honest execution of the protocol. This also provides domain separation
+between different clients that might otherwise share the same password.
+- Server-authenticated channels: Note that online guessing attacks
+(against any Asymmetric PAKE) can be done from both the client side and the server side.
+In particular, a malicious server can attempt to simulate honest responses in order to
+learn the client's password. This means that additional checks should be considered in
+a production deployment of OPAQUE: for instance, ensuring that there is a
+server-authenticated channel over which OPAQUE registration and login is run.
 
 # Security Considerations {#security-considerations}
 
