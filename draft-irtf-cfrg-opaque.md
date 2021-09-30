@@ -1074,7 +1074,13 @@ Steps:
 ~~~
 
 Since the OPRF is a two-message protocol, KE3 has no element of the OPRF. We can
-therefore call the AKE's `ServerFinish()` directly and return its output.
+therefore call the AKE's `ServerFinish()` directly. The `ServerFinish()` function
+MUST take KE3 as input and MUST verify the client authentication material it contains
+before the `session_key` value can be used. This verification is paramount in order to
+ensure forward secrecy against active attackers.
+
+This function MUST NOT return the `session_key` value if the client authentication
+material is invalid, and may instead return an appropriate error message.
 
 ## Credential Retrieval {#cred-retrieval}
 
