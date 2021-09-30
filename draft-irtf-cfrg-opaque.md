@@ -780,12 +780,6 @@ The registration protocol then runs as shown below:
               ------------------------->
 ~~~
 
-The client may utilize a state structure `RegistrationState` with the following
-named fields:
-
-- password, the input password; and
-- blind, the random blinding scalar returned by `Blind()`, of length Nok.
-
 {{registration-functions}} describes details of the functions and the
 corresponding parameters referenced above.
 
@@ -842,9 +836,6 @@ envelope
 ~~~
 CreateRegistrationRequest(password)
 
-State:
-- state, a RegistrationState structure.
-
 Input:
 - password, an opaque byte string containing the client's password.
 
@@ -854,9 +845,8 @@ Output:
 
 Steps:
 1. (blind, M) = Blind(password)
-2. Populate state with RegistrationState(password, blind)
 2. Create RegistrationRequest request with M
-3. Output request
+3. Output (request, blind)
 ~~~
 
 ### CreateRegistrationResponse {#create-reg-response}
@@ -887,12 +877,11 @@ To create the user record used for further authentication, the client executes
 the following function.
 
 ~~~
-FinalizeRequest(response, server_identity, client_identity)
-
-State:
-- state, a RegistrationState structure.
+FinalizeRequest(password, blind, response, server_identity, client_identity)
 
 Input:
+- password, an opaque byte string containing the client's password.
+- blind, an OPRF scalar value.
 - response, a RegistrationResponse structure.
 - server_identity, the optional encoded server identity.
 - client_identity, the optional encoded client identity.
@@ -902,7 +891,7 @@ Output:
 - export_key, an additional client key.
 
 Steps:
-1. y = Finalize(state.password, state.blind, response.data)
+1. y = Finalize(password, blind, response.data)
 2. randomized_pwd = Extract("", Harden(y, params))
 3. (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
