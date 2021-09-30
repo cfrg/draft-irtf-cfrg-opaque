@@ -464,7 +464,7 @@ engage in the AKE.
 - ServerFinish(`AuthFinish`): upon receipt of a client's final AKE message
 `AuthFinish`, complete the protocol for the server.
 
-Both ClientFinalize and ServerFinish return an error if authentication failed.
+Both ClientFinish and ServerFinish return an error if authentication failed.
 In this case, clients and servers MUST NOT use any outputs from the protocol,
 such as `session_key` or `export_key` (defined below).
 
