@@ -1831,74 +1831,185 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
+
+
 # Flowchart
 
-## Login
+## Registration client
 
 ```
-          Server                             Client
-                                    |
-| Private and Public Keys           |    | ID  | Password
-|                                   |    |     |
-|                                   |    |     v
-|                                   |    |   +---------+ +---------+
-|                                   |    |   | OPRF    | | AKE     |
-|                                   |    |   | Blind() | | Start() |
-|                                   |    |   +-------+-+ +----+----+
-|                                   |    v     OPRF-1|        |
-|                                   |  +-----+ <-----+        |
-| +--------+-------------+----------+--+ KE1 |         AKE-1  |
-| |        |             |          |  +-----+ <--------------+
-| | AKE-1  | ID          | OPRF-1   |
-| |        v             |          |
-| | +-------------+      |          |
-| | | User Lookup |      |          |
-| | +--+-+----+---+      v          |
-| |    | |    |    +-----------+    |
-| |    | |    | kU | OPRF      |    |
-| |    | |    +--->| Evaluate()|    |
-| |    | |         +-----+-----+    |
-| |    | |               |  OPRF-2  |
-| |    | |               v          |
-| |    | | Envelope +------------+  |
-| |    | +--------->| Credential |  |
-| |    |            | Response   |  |
-| |    | pkc        +---------+--+  |
-| |    v                      |     |
-| |   +------------+          v     |
-| +-->| AKE        | AKE-1 +-----+  |
-|     | Response() +------>| KE2 +--+---+---+---------------+
-+---->+------------+       +-----+  |   |   |               | OPRF-2
-                                    |   |   |               v
-                                    |   |   |          +-----------+
-                                    |   |   |          | OPRF      |
-                                    |   |   |          | Unblind() |
-                                    |   |   | Masking  +----+------+
-                                    |   |   | - nonce       |
-                                    |   |   | - response    | OPRF
-                                    |   |   |               v Output
-                                    |   |   |           +----------+
-                                    |   |   |           | Harden() |
-                                    |   |   v           +---+------+
-                                    |   | +--------+        |
-                                    |   | | Unmask | <------+ randomized_pwd
-                                    |   | +-+------+        |
-                                    |   |   |               |
-                                    |   |   | - pkc         |
-                                    |   |   | - Envelope    v
-                                    |   |   +------------> +----------+
-                                    |   |                  | Key      |
-                                    |   | AKE-2            | Recovery |
-                                    |   +--------------->  ++--------++
-                                    |                       | - skc  |
-                                    |                       v - pkc  |
-           +---------+              |  +-----+   AKE-3  +----------+ |
-           | AKE     | <------------+--+ KE3 | <--------+ AKE      | |
-           | Finish()|              |  +-----+          | Finish() | |
-           +----+----+              |                   +-+--------+ |
-                |                   |                     |          |
-                v                   |                     v          v
-         Session Key                |              Session Key  Export Key
+                         | ID  | Password
+                         |     |
+                         |     v
+                         |   +---------+
+                         |   | OPRF    |
+                         |   | Blind() |
+                         |   +-------+-+
+                         v       OPRF-1|  
+Send Request to server +---------+ <---+
+                  <--- + Request |        
+                       +---------+
+
+
+Receive Response from server
+        +----------+     
+   ---> + Response |--+--------+
+        +----------+  |        | OPRF-2
+                      |        v
+                      |     +-----------+
+                      |     | OPRF      |
+                      |     | Unblind() |
+                      |     +----+------+
+                      |         |
+                      |         | OPRF
+                      |         v Output
+                      |     +----------+
+                      |     | Harden() |
+                      |     +---+------+
+                      |       |
+                      |       | randomized_pwd
+                      |       v
+                      | pks  +---------+
+                      +----> | Store() |
+                             ++-------++
+                              |       |
+                          pkc |       |
+                     envelope |       |
+                  masking_key |       |
+                              |       |
+Send Record to server         v       |
+                        +--------+    |
+                  <---- + Record |    |
+                        +--------+    |
+                                      v
+                                 Export Key
+```
+
+## Registration server
+
+```                            
+| Server Public Key       Receive Request from client
+|                                 +-----+     
+|        +------------------------+ KE1 | <---
+|        |                    |   +-----+
+|        | ID                 | OPRF-1     
+|        v                    |          
+|  +-------------+            |          
+|  | User Lookup |            |          
+|  +-+-----------+            |
+|    |                        |
+|    | oprf_seed              |
+|    | credential_identifier  |
+|    |                        v
+|    |                  +-----------+    
+|    +----------------> | OPRF      |    
+|                       | Evaluate()|    
+|                       +-----+-----+
+|                             |
+|                             | OPRF-2  
+|                             v          
+|                     +----------+ Send Response to client
++-------------------> | Response + ---> 
+                      +----------+
+
+
+             Receive and store Record from client
+                      +--------+     
+                      + Record | <---
+                      +--------+
+```
+
+## Login client
+
+```
+                     | ID     | Password
+                     |        |
+                     |        v
+                     |   +---------+ +---------+
+                     |   | OPRF    | | AKE     |
+                     |   | Blind() | | Start() |
+                     |   +-------+-+ +----+----+
+                     v       OPRF-1|        |
+Send KE1 to server   +-----+ <-----+        |
+              <----- + KE1 |         AKE-1  |
+                     +-----+ <--------------+
+
+
+Receive KE2 from server
+          +-----+     
+     ---> + KE2 |---+---+-----------------+
+          +-----+   |   |                 | OPRF-2
+                    |   |                 v
+                    |   |            +-----------+
+                    |   |            | OPRF      |
+                    |   |            | Unblind() |
+                    |   | Masking    +----+------+
+                    |   | - nonce         |
+                    |   | - response      | OPRF
+                    |   |                 v Output
+                    |   |             +----------+
+                    |   |             | Harden() |
+                    |   v             +---+------+
+                    | +--------+        |
+                    | | Unmask | <------+ randomized_pwd
+                    | +-+------+        |
+                    |   |               |
+                    |   | - pks         |
+                    |   | - Envelope    v
+                    |   +------------> +----------+
+                    |                  | Key      |
+                    | AKE-2            | Recovery |
+                    +--------------->  ++--------++
+                                         | - skc  |
+                                         v - pkc  |
+Send KE1 to server  +-----+   AKE-3  +----------+ |
+              <---- + KE3 | <--------+ AKE      | |
+                    +-----+          | Finish() | |
+                                     +-+--------+ |
+                                       |          |
+                                       v          v
+                                Session Key  Export Key
+```
+
+## Login server
+
+```                            
+| Private and Public Keys       Receive KE1 from client
+|                                             +-----+     
+| +----------+-----------------------+------- + KE1 | <---
+| |          |                       |        +-----+
+| | AKE-1    | ID                    | OPRF-1     
+| |          v                       |          
+| |   +-------------+                |          
+| |   | User Lookup |                |          
+| |   ++-+-+--------+                |
+| |    | | |                         v
+| |    | | | oprf_seed              +-----------+    
+| |    | | | credential_identifier  | OPRF      |    
+| |    | | +----------------------> | Evaluate()|    
+| |    | |                          ++----------+
+| |    | |                           |
+| |    | |                           | OPRF-2  
+| |    | |                           v          
+| |    | | Envelope         +------------+  
+| |    | +----------------> | Credential |  
+| |    |                    | Response   |  
+| |    | pkc                +--------+---+  
+| |    v                        |     
+| |   +------------+            v    
+| +-> | AKE        | AKE-1   +-----+ Send KE2 to client
+|     | Response() +-------> | KE2 + --->
++---> +------------+         +-----+  
+                                    
+
+                                Receive KE3 from client
+           +---------+      +-----+     
+           | AKE     | <--- + KE3 | <---
+           | Finish()|      +-----+
+           +----+----+              
+                |                   
+                v                   
+         Session Key
 ```
 
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
