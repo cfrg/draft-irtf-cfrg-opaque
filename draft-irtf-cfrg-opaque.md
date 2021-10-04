@@ -1841,6 +1841,17 @@ NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
 passwords.
 
+## AKE Private Key Storage
+
+The server's AKE private key can be securely stored in a Hardware Security Module (HSM) or
+similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
+attacker from using this data to mount a server spoofing attack.
+
+Supporting implementations need to consider allowing separate AKE and OPRF algorithms in the
+case the HSM does not support the ciphersuite used for the OPRF. Also, they must not require
+access to the AKE private key bytes, only support for generating shared keys for the AKE is
+necessary.
+
 # IANA Considerations
 
 This document makes no IANA requests.
