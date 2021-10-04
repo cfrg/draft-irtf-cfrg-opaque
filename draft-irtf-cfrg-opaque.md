@@ -1831,9 +1831,7 @@ This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
 Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 
-
-
-# Flowchart
+# Flowcharts
 
 ## Registration client
 
