@@ -1402,7 +1402,6 @@ Steps:
 DeriveKeys(preamble, ikm)
 
 Input:
-- role, either "client" or "server".
 - preamble, the protocol transcript with identities and messages.
 - ikm, input key material.
 
