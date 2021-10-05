@@ -1349,7 +1349,7 @@ transcript, such as configuration parameters or application-specific info, e.g.
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
 ~~~
-Preamble(client_identity, ke1, server_identity, inner_ke2)
+Preamble(client_identity, ke1, server_identity, ke2)
 
 Parameters:
 - context, optional shared context information.
@@ -1360,7 +1360,7 @@ Input:
 - ke1, a KE1 message structure.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
-- inner_ke2, an inner_ke2 structure as defined in KE2.
+- ke2, a KE2 message structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1371,14 +1371,15 @@ Steps:
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
-                     inner_ke2)
+                     ke2.credential_response,
+                     ke2.AuthResponse.server_nonce, ke2.AuthResponse.server_keyshare)
 2. Output preamble
 ~~~
 
 #### Shared Secret Derivation
 
-The OPAQUE-3DH shared secret derived during the key exchange protocol is computed
-using the following function.
+The OPAQUE-3DH shared secret derived during the key exchange protocol is
+computed using the following functions.
 
 ~~~
 TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
@@ -1392,33 +1393,45 @@ Output:
 
 Steps:
 1. dh1 = SerializePublicKey(sk1 * pk1)
-2. dh2 = SerializePublicKey(sk2 * pk2)
-3. dh3 = SerializePublicKey(sk3 * pk3)
-4. Output concat(dh1, dh2, dh3)
+1. dh2 = SerializePublicKey(sk2 * pk2)
+1. dh3 = SerializePublicKey(sk3 * pk3)
+1. Output concat(dh1, dh2, dh3)
 ~~~
 
-Using this shared secret, further keys used for encryption and authentication are
-computed using the following function.
-
 ~~~
-DeriveKeys(ikm, preamble)
+DeriveKeys(role, preamble,
+            secret_keyshare, peer_keyshare, private_key, peer_public_key)
 
 Input:
-- ikm, input key material.
-- preamble, the transcript as defined by Preamble().
+- role, either "client" or "server".
+- preamble, the protocol transcript with identities and messages.
+- secret_keyshare, the role's secret keyshare.
+- peer_keyshare, the peer's public keyshare
+- private_key, the role's private key.
+- peer_public_key, the peer's public key.
 
 Output:
-- Km2, a MAC authentication key.
-- Km3, a MAC authentication key.
 - session_key, the shared session secret.
+- server_mac, the server's MAC.
+- client_mac, the client's MAC.
 
 Steps:
+1. if role == "client",
+    ikm = TripleDHIKM(secret_keyshare, peer_keyshare,
+                    private_key, peer_public_key,
+                    private_key, peer_keyshare)
+1. else,
+    ikm = TripleDHIKM(secret_keyshare, peer_keyshare,
+                    private_key, peer_keyshare,
+                    secret, peer_public_key)
 1. prk = Extract("", ikm)
-2. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
-4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
-5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-6. Output (Km2, Km3, session_key)
+1. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
+1. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
+1. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
+1. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
+1. server_mac = MAC(Km2, Hash(preamble))
+1. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+1. return Km2, Km3, session_key, server_key
 ~~~
 
 ### 3DH Client Functions {#ake-client}
@@ -1470,16 +1483,14 @@ Exceptions:
 - HandshakeError, when the handshake fails
 
 Steps:
-1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
-    state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
-2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
-3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
-4. expected_server_mac = MAC(Km2, Hash(preamble))
-5. If !ct_equal(ke2.server_mac, expected_server_mac),
+1. preamble = Preamble(client_identity, ke1, server_identity, ke2)
+1. session_key, expected_server_mac, client_mac = DeriveKeys("client", preamble,
+                                        state.client_secret, ke2.AuthResponse.server_keyshare,
+                                        client_private_key, server_public_key)
+1. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
      raise HandshakeError
-6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
-7. Create KE3 ke3 with client_mac
-8. Output (ke3, session_key)
+1. Create KE3 ke3 with client_mac
+1. Output (ke3, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
@@ -1508,18 +1519,15 @@ Output:
 
 Steps:
 1. server_nonce = random(Nn)
-2. server_secret, server_keyshare = GenerateAuthKeyPair()
-3. Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
-4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
-5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
-                    server_private_key, ke1.client_keyshare,
-                    server_secret, client_public_key)
-6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
-7. server_mac = MAC(Km2, Hash(preamble))
-8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-9. Populate state with ServerState(expected_client_mac, session_key)
-10. Create KE2 ke2 with (ike2, server_mac)
-11. Output ke2
+1. server_secret, server_keyshare = GenerateAuthKeyPair()
+1. Create KE2 ke2 with (credential_response, server_nonce, server_keyshare)
+1. preamble = Preamble(client_identity, ke1, server_identity, ke2)
+1. session_key, server_mac, expected_client_mac = DeriveKeys("server", preamble,
+                                     server_secret, ke2.AuthResponse.client_keyshare,
+                                     server_private_key, client_public_key)
+1. Populate state with ServerState(expected_client_mac, session_key)
+1. ke2.AuthResponse.server_mac = server_mac
+1. Output ke2
 ~~~
 
 ~~~
@@ -1918,7 +1926,8 @@ preamble = concat("HMQV",
                   I2OSP(len(client_identity), 2), client_identity,
                   KE1,
                   I2OSP(len(server_identity), 2), server_identity,
-                  KE2.inner_ke2)
+                  KE2.credential_response,
+                  KE2.AuthResponse.server_nonce, KE2.AuthResponse.server_keyshare)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
