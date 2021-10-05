@@ -1393,9 +1393,9 @@ Output:
 
 Steps:
 1. dh1 = SerializePublicKey(sk1 * pk1)
-1. dh2 = SerializePublicKey(sk2 * pk2)
-1. dh3 = SerializePublicKey(sk3 * pk3)
-1. Output concat(dh1, dh2, dh3)
+2 dh2 = SerializePublicKey(sk2 * pk2)
+3. dh3 = SerializePublicKey(sk3 * pk3)
+4. Output concat(dh1, dh2, dh3)
 ~~~
 
 ~~~
@@ -1420,18 +1420,18 @@ Steps:
     ikm = TripleDHIKM(secret_keyshare, peer_keyshare,
                     private_key, peer_public_key,
                     private_key, peer_keyshare)
-1. else,
+2. else,
     ikm = TripleDHIKM(secret_keyshare, peer_keyshare,
                     private_key, peer_keyshare,
                     secret, peer_public_key)
-1. prk = Extract("", ikm)
-1. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-1. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
-1. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
-1. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-1. server_mac = MAC(Km2, Hash(preamble))
-1. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-1. return Km2, Km3, session_key, server_key
+3. prk = Extract("", ikm)
+4. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
+5. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
+6. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
+7. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
+8. server_mac = MAC(Km2, Hash(preamble))
+9. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+10. return Km2, Km3, session_key, server_key
 ~~~
 
 ### 3DH Client Functions {#ake-client}
@@ -1484,13 +1484,13 @@ Exceptions:
 
 Steps:
 1. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-1. session_key, expected_server_mac, client_mac = DeriveKeys("client", preamble,
+2. session_key, expected_server_mac, client_mac = DeriveKeys("client", preamble,
                                         state.client_secret, ke2.AuthResponse.server_keyshare,
                                         client_private_key, server_public_key)
-1. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
+3. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
      raise HandshakeError
-1. Create KE3 ke3 with client_mac
-1. Output (ke3, session_key)
+4. Create KE3 ke3 with client_mac
+5. Output (ke3, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
@@ -1519,15 +1519,15 @@ Output:
 
 Steps:
 1. server_nonce = random(Nn)
-1. server_secret, server_keyshare = GenerateAuthKeyPair()
-1. Create KE2 ke2 with (credential_response, server_nonce, server_keyshare)
-1. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-1. session_key, server_mac, expected_client_mac = DeriveKeys("server", preamble,
+2. server_secret, server_keyshare = GenerateAuthKeyPair()
+3. Create KE2 ke2 with (credential_response, server_nonce, server_keyshare)
+4. preamble = Preamble(client_identity, ke1, server_identity, ke2)
+5. session_key, server_mac, expected_client_mac = DeriveKeys("server", preamble,
                                      server_secret, ke2.AuthResponse.client_keyshare,
                                      server_private_key, client_public_key)
-1. Populate state with ServerState(expected_client_mac, session_key)
-1. ke2.AuthResponse.server_mac = server_mac
-1. Output ke2
+6. Populate state with ServerState(expected_client_mac, session_key)
+7. ke2.AuthResponse.server_mac = server_mac
+8. Output ke2
 ~~~
 
 ~~~
@@ -1588,7 +1588,7 @@ with the following considerations:
 to the output length limitations of the KDF Expand function. If HKDF is used, this means
 Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
 See {{RFC5869}} for details.
-1. The output size of the Hash function SHOULD be long enough to produce a key for
+2. The output size of the Hash function SHOULD be long enough to produce a key for
 MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 32 bytes.
 
