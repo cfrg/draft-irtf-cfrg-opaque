@@ -1843,14 +1843,13 @@ passwords.
 
 ## AKE Private Key Storage
 
-The server's AKE private key can be securely stored in a Hardware Security Module (HSM) or
+Server implementations of OPAQUE do not need access to the raw AKE private key. They only require
+the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
+may store the server AKE private key can be stored in a Hardware Security Module (HSM) or
 similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
-attacker from using this data to mount a server spoofing attack.
-
-Supporting implementations need to consider allowing separate AKE and OPRF algorithms in the
-case the HSM does not support the ciphersuite used for the OPRF. Also, they must not require
-access to the AKE private key bytes, only support for generating shared keys for the AKE is
-necessary.
+attacker from using this data to mount a server spoofing attack. Supporting implementations 
+need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is 
+incompatible with the OPRF algorithm.
 
 # IANA Considerations
 
