@@ -1399,11 +1399,11 @@ Steps:
 ~~~
 
 ~~~
-DeriveKeys(preamble, ikm)
+DeriveKeys(ikm, preamble)
 
 Input:
-- preamble, the protocol transcript with identities and messages.
 - ikm, input key material.
+- preamble, the protocol transcript with identities and messages.
 
 Output:
 - session_key, the shared session secret.
@@ -1418,7 +1418,7 @@ Steps:
 7. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
 8. server_mac = MAC(Km2, Hash(preamble))
 9. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-10. return Km2, Km3, session_key, server_key
+10. return session_key, server_mac, client_mac
 ~~~
 
 ### 3DH Client Functions {#ake-client}
@@ -1474,7 +1474,7 @@ Steps:
 2. ikm = TripleDHIKM(state.client_secret, ke2.AuthResponse.server_keyshare,
                     state.client_secret, server_public_key,
                     client_private_key, ke2.AuthResponse.server_keyshare)
-3. session_key, expected_server_mac, client_mac = DeriveKeys(preamble, ikm)
+3. session_key, expected_server_mac, client_mac = DeriveKeys(ikm, preamble)
 4. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
      raise HandshakeError
 5. Create KE3 ke3 with client_mac
@@ -1513,7 +1513,7 @@ Steps:
 5. ikm = TripleDHIKM(server_secret, ke1.AuthInit.client_keyshare,
                     server_private_key, ke1.AuthInit.client_keyshare,
                     server_secret, client_public_key)
-6. session_key, server_mac, expected_client_mac = DeriveKeys(preamble, ikm)
+6. session_key, server_mac, expected_client_mac = DeriveKeys(ikm, preamble)
 7. Populate state with ServerState(expected_client_mac, session_key)
 8. ke2.AuthResponse.server_mac = server_mac
 9. Output ke2
