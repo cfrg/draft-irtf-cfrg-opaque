@@ -1393,7 +1393,7 @@ Output:
 
 Steps:
 1. dh1 = SerializePublicKey(sk1 * pk1)
-2 dh2 = SerializePublicKey(sk2 * pk2)
+2. dh2 = SerializePublicKey(sk2 * pk2)
 3. dh3 = SerializePublicKey(sk3 * pk3)
 4. Output concat(dh1, dh2, dh3)
 ~~~
