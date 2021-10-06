@@ -29,6 +29,8 @@ class OPAQUECore(object):
 
     def derive_random_pwd(self, pwdU, response, blind, info):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
+        if info == None:
+            info = _as_bytes("")
         y = oprf_context.finalize(pwdU, blind, response.data, None, None, info)
         y_harden = self.config.mhf.harden(y)
         return self.config.kdf.extract(_as_bytes(""), y + y_harden)
@@ -49,6 +51,8 @@ class OPAQUECore(object):
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
+        if info == None:
+            info = _as_bytes("")
         data, _, _ = oprf_context.evaluate(request.data, info)
         response = RegistrationResponse(data, pkS)
         return response, kU
@@ -114,6 +118,8 @@ class OPAQUECore(object):
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
+        if info == None:
+            info = _as_bytes("")
         Z, _, _ = oprf_context.evaluate(request.data, info)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)

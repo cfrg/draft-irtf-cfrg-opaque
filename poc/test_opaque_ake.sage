@@ -30,7 +30,7 @@ default_opaque_configuration = Configuration(
 
 def test_core_protocol_serialization():
     idU = _as_bytes("Username")
-    info = _as_bytes("Username")
+    info = idU
     pwdU = _as_bytes("CorrectHorseBatteryStaple")
 
     config = default_opaque_configuration 
@@ -87,7 +87,7 @@ def test_core_protocol_serialization():
 
 def test_registration_and_authentication():
     idU = _as_bytes("Username")
-    info = _as_bytes("Username")
+    info = idU
     pwdU = _as_bytes("opaquerulez")
     badPwdU = _as_bytes("iloveopaque")
     
