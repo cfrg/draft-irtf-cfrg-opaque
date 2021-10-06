@@ -1411,14 +1411,14 @@ Output:
 - client_mac, the client's MAC.
 
 Steps:
-3. prk = Extract("", ikm)
-4. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-5. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
-6. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
-7. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-8. server_mac = MAC(Km2, Hash(preamble))
-9. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-10. return session_key, server_mac, client_mac
+1. prk = Extract("", ikm)
+2. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
+3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
+4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
+5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
+6. server_mac = MAC(Km2, Hash(preamble))
+7. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+8. return session_key, server_mac, client_mac
 ~~~
 
 ### 3DH Client Functions {#ake-client}
