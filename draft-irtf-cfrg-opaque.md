@@ -343,14 +343,19 @@ Version -07, with the following API and parameters:
 
 - Blind(x): Convert input `x` into an element of the OPRF group, randomize it
   by some scalar `r`, producing `M`, and output (`r`, `M`).
-- Evaluate(k, M): Evaluate input element `M` using private key `k`, yielding
-  output element `Z`.
-- Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
-  random scalar `r`, and evaluation output `Z`, yielding output `y`.
+- Evaluate(k, M, info): Evaluate input element `M` using private key `k` and
+  public input (or metadata) `info`, yielding output element `Z`.
+- Finalize(x, r, Z, info): Finalize the OPRF evaluation using input `x`,
+  random scalar `r`, evaluation output `Z`, and public input (or metadata)
+  `info`, yielding output `y`.
 - DeriveKeyPair(seed): Derive a private and public key pair deterministically
   from a seed.
 - Noe: The size of a serialized OPRF group element.
 - Nok: The size of an OPRF private key.
+
+The public input `info` is set to the public information available to the client
+that's consistent across sessions, which is the the ciphersuite parameters and
+the client identity. 
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. The implementation of
@@ -855,13 +860,15 @@ Steps:
 ### CreateRegistrationResponse {#create-reg-response}
 
 ~~~
-CreateRegistrationResponse(request, server_public_key, credential_identifier, oprf_seed)
+CreateRegistrationResponse(request, server_public_key, credential_identifier,
+                            oprf_seed, client_identity)
 
 Input:
 - request, a RegistrationRequest structure.
 - server_public_key, the server's public key.
 - credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
+- client_identity, the encoded client identity.
 
 Output:
 - response, a RegistrationResponse structure.
@@ -869,9 +876,10 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data)
-4. Create RegistrationResponse response with (Z, server_public_key)
-5. Output response
+3. info = client_identity
+4. Z = Evaluate(oprf_key, request.data, info)
+5. Create RegistrationResponse response with (Z, server_public_key)
+6. Output response
 ~~~
 
 ### FinalizeRequest {#finalize-request}
@@ -887,20 +895,21 @@ Input:
 - blind, an OPRF scalar value.
 - response, a RegistrationResponse structure.
 - server_identity, the optional encoded server identity.
-- client_identity, the optional encoded client identity.
+- client_identity, the encoded client identity.
 
 Output:
 - record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
 Steps:
-1. y = Finalize(password, blind, response.data)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-3. (envelope, client_public_key, masking_key, export_key) =
+1. info = client_identity
+2. y = Finalize(password, blind, response.data, info)
+3. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+4. (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
                     server_identity, client_identity)
-4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
-5. Output (record, export_key)
+5. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+6. Output (record, export_key)
 ~~~
 
 See {{online-phase}} for details about the output export_key usage.
@@ -1053,7 +1062,7 @@ Steps:
 
 ~~~
 ServerInit(server_identity, server_private_key, server_public_key,
-           record, credential_identifier, oprf_seed, ke1)
+           record, credential_identifier, oprf_seed, ke1, client_identity)
 
 Input:
 - server_identity, the optional encoded server identity, which is set to
@@ -1064,13 +1073,14 @@ Input:
 - credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
 - ke1, a KE1 message structure.
+- client_identity, the encoded client identity.
 
 Output:
 - ke2, a KE2 structure.
 
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record,
-    credential_identifier, oprf_seed)
+    credential_identifier, oprf_seed, client_identity)
 2. ake_2 = Response(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, response)
 3. Output KE2(response, ake_2)
@@ -1158,6 +1168,7 @@ Input:
   output from registration.
 - credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- client_identity, the encoded client identity.
 
 Output:
 - response, a CredentialResponse structure.
@@ -1165,7 +1176,8 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data)
+3. info = client_identity
+3. Z = Evaluate(oprf_key, request.data, info)
 4. masking_nonce = random(Nn)
 5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
@@ -1202,7 +1214,7 @@ Input:
 - blind, an OPRF scalar value.
 - response, a CredentialResponse structure.
 - server_identity, The optional encoded server identity.
-- client_identity, The optional encoded client identity.
+- client_identity, The encoded client identity.
 
 Output:
 - client_private_key, the client's private key for the AKE protocol.
@@ -1210,17 +1222,18 @@ Output:
 - export_key, an additional client key.
 
 Steps:
-1. y = Finalize(password, blind, response.data)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-3. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-4. credential_response_pad = Expand(masking_key,
+1. info = client_identity
+2. y = Finalize(password, blind, response.data, info)
+3. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+4. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+5. credential_response_pad = Expand(masking_key,
      concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
-5. concat(server_public_key, envelope) = xor(credential_response_pad,
+6. concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-6. (client_private_key, export_key) =
+7. (client_private_key, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
                     server_identity, client_identity)
-7. Output (client_private_key, server_public_key, export_key)
+8. Output (client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
