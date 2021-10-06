@@ -27,9 +27,9 @@ class OPAQUECore(object):
     def __init__(self, config):
         self.config = config
 
-    def derive_random_pwd(self, pwdU, response, blind):
+    def derive_random_pwd(self, pwdU, response, blind, info):
         oprf_context = SetupBaseClient(self.config.oprf_suite)
-        y = oprf_context.finalize(pwdU, blind, response.data, None, None)
+        y = oprf_context.finalize(pwdU, blind, response.data, None, None, info)
         y_harden = self.config.mhf.harden(y)
         return self.config.kdf.extract(_as_bytes(""), y + y_harden)
 
@@ -44,12 +44,12 @@ class OPAQUECore(object):
         request = RegistrationRequest(blinded_element)
         return request, blind
 
-    def create_registration_response(self, request, pkS, oprf_seed, credential_identifier):
+    def create_registration_response(self, request, pkS, oprf_seed, credential_identifier, info):
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
-        data, _, _ = oprf_context.evaluate(request.data)
+        data, _, _ = oprf_context.evaluate(request.data, info)
         response = RegistrationResponse(data, pkS)
         return response, kU
 
@@ -93,8 +93,8 @@ class OPAQUECore(object):
 
         return envelope, client_public_key, masking_key, export_key
 
-    def finalize_request(self, creds, pwdU, blind, response):
-        random_pwd = self.derive_random_pwd(pwdU, response, blind)
+    def finalize_request(self, creds, pwdU, blind, response, info):
+        random_pwd = self.derive_random_pwd(pwdU, response, blind, info)
         envelope, client_public_key, masking_key, export_key = self.create_envelope(creds, random_pwd, response.pkS)
         record = RegistrationUpload(client_public_key, masking_key, envelope)
 
@@ -109,12 +109,12 @@ class OPAQUECore(object):
         request = CredentialRequest(blinded_element)
         return request, blind
 
-    def create_credential_response(self, request, pkS, oprf_seed, envU, credential_identifier, masking_key):
+    def create_credential_response(self, request, pkS, oprf_seed, envU, credential_identifier, masking_key, info):
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
-        Z, _, _ = oprf_context.evaluate(request.data)
+        Z, _, _ = oprf_context.evaluate(request.data, info)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
         Npk = self.config.Npk
@@ -150,8 +150,8 @@ class OPAQUECore(object):
 
         return client_private_key, export_key
 
-    def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
-        random_pwd = self.derive_random_pwd(pwdU, response, blind)
+    def recover_credentials(self, pwdU, blind, response, info, idU = None, idS = None):
+        random_pwd = self.derive_random_pwd(pwdU, response, blind, info)
         masking_key = self.derive_masking_key(random_pwd)
         Npk = self.config.Npk
         Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
