@@ -1470,10 +1470,10 @@ Exceptions:
 - HandshakeError, when the handshake fails
 
 Steps:
-1. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-2. ikm = TripleDHIKM(state.client_secret, ke2.AuthResponse.server_keyshare,
+1. ikm = TripleDHIKM(state.client_secret, ke2.AuthResponse.server_keyshare,
                     state.client_secret, server_public_key,
                     client_private_key, ke2.AuthResponse.server_keyshare)
+2. preamble = Preamble(client_identity, ke1, server_identity, ke2)
 3. session_key, expected_server_mac, client_mac = DeriveKeys(ikm, preamble)
 4. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
      raise HandshakeError
@@ -1509,10 +1509,10 @@ Steps:
 1. server_nonce = random(Nn)
 2. server_secret, server_keyshare = GenerateAuthKeyPair()
 3. Create KE2 ke2 with (credential_response, server_nonce, server_keyshare)
-4. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-5. ikm = TripleDHIKM(server_secret, ke1.AuthInit.client_keyshare,
+4. ikm = TripleDHIKM(server_secret, ke1.AuthInit.client_keyshare,
                     server_private_key, ke1.AuthInit.client_keyshare,
                     server_secret, client_public_key)
+5. preamble = Preamble(client_identity, ke1, server_identity, ke2)
 6. session_key, server_mac, expected_client_mac = DeriveKeys(ikm, preamble)
 7. Populate state with ServerState(expected_client_mac, session_key)
 8. ke2.AuthResponse.server_mac = server_mac
