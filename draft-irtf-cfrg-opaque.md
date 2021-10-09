@@ -874,9 +874,9 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-4. Z = Evaluate(oprf_key, request.data, client_identity)
-5. Create RegistrationResponse response with (Z, server_public_key)
-6. Output response
+3. Z = Evaluate(oprf_key, request.data, client_identity)
+4. Create RegistrationResponse response with (Z, server_public_key)
+5. Output response
 ~~~
 
 ### FinalizeRequest {#finalize-request}
@@ -899,14 +899,13 @@ Output:
 - export_key, an additional client key.
 
 Steps:
-1. info = client_identity
-2. y = Finalize(password, blind, response.data, info)
-3. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-4. (envelope, client_public_key, masking_key, export_key) =
+1. y = Finalize(password, blind, response.data, client_identity)
+2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+3. (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
                     server_identity, client_identity)
-5. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
-6. Output (record, export_key)
+4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+5. Output (record, export_key)
 ~~~
 
 See {{online-phase}} for details about the output export_key usage.
@@ -1173,15 +1172,14 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-3. info = client_identity
-3. Z = Evaluate(oprf_key, request.data, info)
-4. masking_nonce = random(Nn)
-5. credential_response_pad = Expand(record.masking_key,
+4. Z = Evaluate(oprf_key, request.data, client_identity)
+5. masking_nonce = random(Nn)
+6. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
-6. masked_response = xor(credential_response_pad,
+7. masked_response = xor(credential_response_pad,
                          concat(server_public_key, record.envelope))
-7. Create CredentialResponse response with (Z, masking_nonce, masked_response)
-8. Output response
+8. Create CredentialResponse response with (Z, masking_nonce, masked_response)
+9. Output response
 ~~~
 
 In the case of a record that does not exist and if client enumeration prevention is desired,
@@ -1219,18 +1217,17 @@ Output:
 - export_key, an additional client key.
 
 Steps:
-1. info = client_identity
-2. y = Finalize(password, blind, response.data, info)
-3. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-4. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-5. credential_response_pad = Expand(masking_key,
+1. y = Finalize(password, blind, response.data, client_identity)
+2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+3. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+4. credential_response_pad = Expand(masking_key,
      concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
-6. concat(server_public_key, envelope) = xor(credential_response_pad,
+5. concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-7. (client_private_key, export_key) =
+6. (client_private_key, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
                     server_identity, client_identity)
-8. Output (client_private_key, server_public_key, export_key)
+7. Output (client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
