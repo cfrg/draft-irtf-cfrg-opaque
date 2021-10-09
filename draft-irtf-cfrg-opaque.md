@@ -1943,8 +1943,8 @@ Receive KE2 from server
                     |   |            | Unblind() |
                     |   | Masking    +----+------+
                     |   | - nonce         |
-                    |   | - response      | OPRF
-                    |   |                 v Output
+                    |   | - response      | OPRF output
+                    |   |                 v 
                     |   |             +----------+
                     |   |             | Harden() |
                     |   v             +---+------+
@@ -1952,14 +1952,16 @@ Receive KE2 from server
                     | | Unmask | <------+ randomized_pwd
                     | +-+------+        |
                     |   |               |
-                    |   | - pks         |
-                    |   | - Envelope    v
+                    |   | pks           |
+                    |   | Envelope      v
                     |   +------------> +----------+
                     |                  | Key      |
                     | AKE-2            | Recovery |
                     +--------------->  ++--------++
-                                         | - skc  |
-                                         v - pkc  |
+                                         |        |
+                                         | skc    |
+                                         | pkc    |
+                                         v        |
 Send KE1 to server  +-----+   AKE-3  +----------+ |
               <---- + KE3 | <--------+ AKE      | |
                     +-----+          | Finish() | |
@@ -1995,7 +1997,7 @@ Send KE1 to server  +-----+   AKE-3  +----------+ |
 | |    | pkc                +--------+---+  
 | |    v                        |     
 | |   +------------+            v    
-| +-> | AKE        | AKE-1   +-----+ Send KE2 to client
+| +-> | AKE        | AKE-2   +-----+ Send KE2 to client
 |     | Response() +-------> | KE2 + --->
 +---> +------------+         +-----+  
                                     
