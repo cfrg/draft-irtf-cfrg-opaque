@@ -1172,14 +1172,14 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-4. Z = Evaluate(oprf_key, request.data, client_identity)
-5. masking_nonce = random(Nn)
-6. credential_response_pad = Expand(record.masking_key,
+3. Z = Evaluate(oprf_key, request.data, client_identity)
+4. masking_nonce = random(Nn)
+5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
-7. masked_response = xor(credential_response_pad,
+6. masked_response = xor(credential_response_pad,
                          concat(server_public_key, record.envelope))
-8. Create CredentialResponse response with (Z, masking_nonce, masked_response)
-9. Output response
+7. Create CredentialResponse response with (Z, masking_nonce, masked_response)
+8. Output response
 ~~~
 
 In the case of a record that does not exist and if client enumeration prevention is desired,
