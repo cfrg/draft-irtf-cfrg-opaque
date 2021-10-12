@@ -49,10 +49,7 @@ class OPAQUECore(object):
     def create_registration_response(self, request, pkS, oprf_seed, credential_identifier, info):
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
-
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
-        if info == None:
-            info = _as_bytes("")
         data, _, _ = oprf_context.evaluate(request.data, info)
         response = RegistrationResponse(data, pkS)
         return response, kU
@@ -118,8 +115,6 @@ class OPAQUECore(object):
         (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
 
         oprf_context = SetupBaseServer(self.config.oprf_suite, kU)
-        if info == None:
-            info = _as_bytes("")
         Z, _, _ = oprf_context.evaluate(request.data, info)
 
         masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)

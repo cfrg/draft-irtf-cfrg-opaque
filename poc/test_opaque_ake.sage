@@ -126,6 +126,9 @@ TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identi
 def run_test_vector(params):
     is_fake = params.is_fake
     idU = params.idU
+    info = idU
+    if info == None:
+        info = _as_bytes("")
     credential_identifier = params.credential_identifier
     idS = params.idS
     pwdU = params.pwdU
@@ -152,7 +155,7 @@ def run_test_vector(params):
 
     if not is_fake:
         reg_request, metadata = core.create_registration_request(pwdU)
-        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier, idU)
+        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier, info)
         record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response, idU)
         pkU_enc = record.pkU
         pkU = group.deserialize(pkU_enc)

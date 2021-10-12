@@ -150,7 +150,10 @@ class OPAQUE3DH(KeyExchange):
         ke1 = deserialize_tripleDH_init(self.config, msg[offset:])
 
         pkS_bytes = self.config.group.serialize(pkS)
-        cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key, idU)
+        info = idU
+        if info == None:
+            info = _as_bytes("")
+        cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key, info)
         serialized_response = cred_response.serialize()
 
         nonceS = random_bytes(OPAQUE_NONCE_LENGTH)
