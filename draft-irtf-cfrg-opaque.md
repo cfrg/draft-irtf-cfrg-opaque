@@ -1474,7 +1474,7 @@ Steps:
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.server_mac, expected_server_mac),
-      raise HandshakeError
+     raise HandshakeError
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
 7. Create KE3 ke3 with client_mac
 8. Output (ke3, session_key)
