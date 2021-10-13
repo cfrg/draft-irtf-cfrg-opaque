@@ -773,7 +773,8 @@ The registration protocol then runs as shown below:
  response = CreateRegistrationResponse(request,
                                        server_public_key,
                                        credential_identifier,
-                                       oprf_seed)
+                                       oprf_seed,
+                                       client_identity)
 
                         response
               <-------------------------
