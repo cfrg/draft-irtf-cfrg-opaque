@@ -1406,9 +1406,9 @@ Input:
 - preamble, the protocol transcript with identities and messages.
 
 Output:
+- Km2, a MAC authentication key.
+- Km3, a MAC authentication key.
 - session_key, the shared session secret.
-- server_mac, the server's MAC.
-- client_mac, the client's MAC.
 
 Steps:
 1. prk = Extract("", ikm)
@@ -1416,9 +1416,7 @@ Steps:
 3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
 4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
 5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-6. server_mac = MAC(Km2, Hash(preamble))
-7. client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-8. return session_key, server_mac, client_mac
+6. Output (Km2, Km3, session_key)
 ~~~
 
 ### 3DH Client Functions {#ake-client}
@@ -1470,15 +1468,16 @@ Exceptions:
 - HandshakeError, when the handshake fails
 
 Steps:
-1. ikm = TripleDHIKM(state.client_secret, ke2.AuthResponse.server_keyshare,
-                    state.client_secret, server_public_key,
-                    client_private_key, ke2.AuthResponse.server_keyshare)
-2. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-3. session_key, expected_server_mac, client_mac = DeriveKeys(ikm, preamble)
-4. If !ct_equal(ke2.AuthResponse.server_mac, expected_server_mac),
-     raise HandshakeError
-5. Create KE3 ke3 with client_mac
-6. Output (ke3, session_key)
+1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
+    state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
+2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
+3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+4. expected_server_mac = MAC(Km2, Hash(preamble))
+5. If !ct_equal(ke2.server_mac, expected_server_mac),
+      raise HandshakeError
+6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
+7. Create KE3 ke3 with client_mac
+8. Output (ke3, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
@@ -1508,15 +1507,17 @@ Output:
 Steps:
 1. server_nonce = random(Nn)
 2. server_secret, server_keyshare = GenerateAuthKeyPair()
-3. Create KE2 ke2 with (credential_response, server_nonce, server_keyshare)
-4. ikm = TripleDHIKM(server_secret, ke1.AuthInit.client_keyshare,
-                    server_private_key, ke1.AuthInit.client_keyshare,
+3. Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
+4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
+5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
+                    server_private_key, ke1.client_keyshare,
                     server_secret, client_public_key)
-5. preamble = Preamble(client_identity, ke1, server_identity, ke2)
-6. session_key, server_mac, expected_client_mac = DeriveKeys(ikm, preamble)
-7. Populate state with ServerState(expected_client_mac, session_key)
-8. ke2.AuthResponse.server_mac = server_mac
-9. Output ke2
+6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+7. server_mac = MAC(Km2, Hash(preamble))
+8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+9. Populate state with ServerState(expected_client_mac, session_key)
+10. Create KE2 ke2 with (ike2, server_mac)
+11. Output ke2
 ~~~
 
 ~~~
