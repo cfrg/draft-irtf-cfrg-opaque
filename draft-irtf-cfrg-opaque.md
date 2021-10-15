@@ -1349,7 +1349,7 @@ transcript, such as configuration parameters or application-specific info, e.g.
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
 ~~~
-Preamble(client_identity, ke1, server_identity, inner_ke2)
+Preamble(client_identity, ke1, server_identity, ke2)
 
 Parameters:
 - context, optional shared context information.
@@ -1360,7 +1360,7 @@ Input:
 - ke1, a KE1 message structure.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
-- inner_ke2, an inner_ke2 structure as defined in KE2.
+- ke2, a KE2 message structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1371,14 +1371,15 @@ Steps:
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
-                     inner_ke2)
+                     ke2.credential_response,
+                     ke2.AuthResponse.server_nonce, ke2.AuthResponse.server_keyshare)
 2. Output preamble
 ~~~
 
 #### Shared Secret Derivation
 
-The OPAQUE-3DH shared secret derived during the key exchange protocol is computed
-using the following function.
+The OPAQUE-3DH shared secret derived during the key exchange protocol is
+computed using the following functions.
 
 ~~~
 TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
@@ -1397,15 +1398,12 @@ Steps:
 4. Output concat(dh1, dh2, dh3)
 ~~~
 
-Using this shared secret, further keys used for encryption and authentication are
-computed using the following function.
-
 ~~~
 DeriveKeys(ikm, preamble)
 
 Input:
 - ikm, input key material.
-- preamble, the transcript as defined by Preamble().
+- preamble, the protocol transcript with identities and messages.
 
 Output:
 - Km2, a MAC authentication key.
@@ -1580,7 +1578,7 @@ with the following considerations:
 to the output length limitations of the KDF Expand function. If HKDF is used, this means
 Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
 See {{RFC5869}} for details.
-1. The output size of the Hash function SHOULD be long enough to produce a key for
+2. The output size of the Hash function SHOULD be long enough to produce a key for
 MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 32 bytes.
 
@@ -1928,7 +1926,8 @@ preamble = concat("HMQV",
                   I2OSP(len(client_identity), 2), client_identity,
                   KE1,
                   I2OSP(len(server_identity), 2), server_identity,
-                  KE2.inner_ke2)
+                  KE2.credential_response,
+                  KE2.AuthResponse.server_nonce, KE2.AuthResponse.server_keyshare)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
