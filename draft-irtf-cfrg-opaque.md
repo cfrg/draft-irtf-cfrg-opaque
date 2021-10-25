@@ -13,14 +13,14 @@ pi: [toc, sortrefs, symrefs]
 
 author:
  -
+    ins: D. Bourdrez
+    name: Daniel Bourdrez
+    email: d@bytema.re
+ -
     ins: H. Krawczyk
     name: Hugo Krawczyk
     organization: Algorand Foundation
     email: hugokraw@gmail.com
- -
-    ins: D. Bourdrez
-    name: Daniel Bourdrez
-    email: dan@bytema.re
  -
     ins: K. Lewi
     name: Kevin Lewi
