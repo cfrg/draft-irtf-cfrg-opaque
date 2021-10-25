@@ -20,7 +20,7 @@ author:
  -
     ins: D. Bourdrez
     name: Daniel Bourdrez
-    email: dan@bytema.re
+    email: d@bytema.re
  -
     ins: K. Lewi
     name: Kevin Lewi
