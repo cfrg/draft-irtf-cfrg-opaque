@@ -330,7 +330,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces and key derivatio seeds used in these dependencies and
+otherwise, all random nonces and key derivation seeds used in these dependencies and
 the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
 where `Nn` = `Nseed` = 32.
 
@@ -351,9 +351,8 @@ Version -08, with the following API and parameters:
 - DeriveKeyPair(seed): Derive a private and public key pair deterministically
   from a seed.
 - Noe: The size of a serialized OPRF group element.
-- Nok: The size of an OPRF private key.
 
-The public input `info` is currently set to nil.
+The public input `info` is currently set to the empty string.
 
 Note that we only need the base mode variant (as opposed to the verifiable mode
 variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. The implementation of
@@ -408,8 +407,8 @@ API and parameters:
 A Memory Hard Function (MHF) is a slow and expensive cryptographic hash function
 with the following API:
 
-- Harden(msg, params): Repeatedly apply a memory-hard function with parameters
-  `params` to strengthen the input `msg` against offline dictionary attacks.
+- Harden(msg): Apply a memory-hard function to strengthen the input `msg`
+  against offline dictionary attacks.
   This function also needs to satisfy collision resistance.
 
 ## Key Recovery Method {#deps-keyrec}
@@ -417,8 +416,7 @@ with the following API:
 OPAQUE relies on a key recovery mechanism for storing authentication
 material on the server and recovering it on the client. This material
 is encapsulated in an envelope, whose structure, encoding,
-and size must be specified by the key recovery mechanism. The size of
-the envelope is denoted `Ne` and may vary between mechanisms.
+and size must be specified by the key recovery mechanism.
 
 The key recovery storage mechanism takes as input a private seed and outputs
 an envelope. The retrieval process takes as input a private seed and envelope
@@ -431,6 +429,7 @@ public key.
 material for the AKE from the Envelope. This function raises an error if the
 private seed cannot be used for recovering authentication material from the
 input envelope.
+- Ne: The size of the envelope, which may vary between mechanisms.
 
 The key recovery mechanism MUST return an error when trying to recover
 authentication material from an envelope with a private seed that was not used
@@ -455,7 +454,7 @@ The AKE must define three messages `AuthInit`, `AuthResponse` and `AuthFinish`
 and provide the following functions for the client:
 
 - Start(): Initiate the AKE by producing message `AuthInit`.
-- ClientFinish(client_identity, client_private_key,
+- ClientFinalize(client_identity, client_private_key,
 server_identity, server_public_key, `AuthInit`): upon receipt of the server's
 response `AuthResponse`, complete the protocol for the client, produce
 `AuthFinish`.
@@ -465,10 +464,10 @@ The AKE protocol must provide the following functions for the server:
 - Response(server_identity, server_private_key, client_identity,
 client_public_key, `AuthInit`): upon receipt of a client's request `AuthInit`,
 engage in the AKE.
-- ServerFinish(`AuthFinish`): upon receipt of a client's final AKE message
+- ServerFinalize(`AuthFinish`): upon receipt of a client's final AKE message
 `AuthFinish`, complete the protocol for the server.
 
-Both ClientFinish and ServerFinish return an error if authentication failed.
+Both ClientFinalize and ServerFinalize return an error if authentication failed.
 In this case, clients and servers MUST NOT use any outputs from the protocol,
 such as `session_key` or `export_key` (defined below).
 
@@ -481,13 +480,22 @@ see {{ake-protocol}}. 3DH assumes a prime-order group as described in
 
 # Protocol Overview {#protocol-overview}
 
-OPAQUE consists of two stages: registration and authenticated key exchange.
-In the first stage, a client registers its password with the server and stores
-its credential file on the server. In the second stage the client recovers its
-authentication material and uses it to perform a mutually authenticated key
-exchange. For both stages, client and server agree on a configuration, which
+OPAQUE consists of two stages: registration and online authentication.
+In the first stage, a client uses its password to generate authentication
+material that server stores in a credential file.
+In the second stage the client recovers its authentication material from server
+and uses it to perform a mutually authenticated key exchange.
+
+## Setup
+Previously to both stages, client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
+
+Before the registration phase, the client chooses its password, and the server
+chooses its own pair of keys (server_private_key, server_public_key) for use
+with the AKE, and chooses an oprf_seed of `Nseed` bytes. The server can use the
+same pair of keys with multiple clients and can opt to use multiple seeds (so
+long as they are kept consistent for each client).
 
 ## Registration
 
@@ -507,7 +515,9 @@ The server output of this stage is a record corresponding to the client's
 registration that it stores in a credential file alongside other client
 registrations as needed.
 
-The registration flow is shown below:
+The registration flow, shown below, uses three messsage structures named
+`RegistrationRequest`, `RegistrationResponse`, and `RegistrationRecord`. Their
+contents and wire format are defined in {{registration-messages}}.
 
 ~~~
     creds                                   parameters
@@ -515,9 +525,9 @@ The registration flow is shown below:
       v                                         v
     Client                                    Server
     ------------------------------------------------
-                registration request
+                      request
              ------------------------->
-                registration response
+                      response
              <-------------------------
                       record
              ------------------------->
@@ -526,10 +536,6 @@ The registration flow is shown below:
       v                                         v
   export_key                                 record
 ~~~
-
-These messages are named `RegistrationRequest`, `RegistrationResponse`, and
-`Record`, respectively. Their contents and wire format are defined in
-{{registration-messages}}.
 
 ## Online Authentication
 
@@ -541,10 +547,10 @@ identifier, and the server inputs its parameters and the credential file record
 corresponding to the client. The client outputs two values, an `export_key`
 (matching that from registration) and a `session_key`, the latter of which
 is the primary AKE output. The server outputs a single value `session_key`
-that matches that of the client. Upon completion, clients and servers can
+that matches that of the client. Upon completion, the client and server can
 use these values as needed.
 
-The authenticated key exchange flow is shown below:
+The online authentication flow is shown below:
 
 ~~~
     creds                             (parameters, record)
@@ -552,11 +558,11 @@ The authenticated key exchange flow is shown below:
       v                                         v
     Client                                    Server
     ------------------------------------------------
-                   AKE message 1
+                        ke1
              ------------------------->
-                   AKE message 2
+                        ke2
              <-------------------------
-                   AKE message 3
+                        ke3
              ------------------------->
    ------------------------------------------------
       |                                         |
@@ -564,13 +570,13 @@ The authenticated key exchange flow is shown below:
 (export_key, session_key)                  session_key
 ~~~
 
-These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
-messages of the concurrent execution of the key recovery process (OPRF) and the
-authenticated key exchange (AKE):
+These messages correspond, respectively, to structures named `KE1`, `KE2`,
+and `KE3` that carry information of the concurrent execution of the
+credential retrieval process and the authenticated key exchange:
 
-- `KE1` is composed of the `CredentialRequest` and `AuthInit` messages
-- `KE2` is composed of the `CredentialResponse` and `AuthResponse` messages
-- `KE3` represents the `AuthFinish` message
+- `KE1` is composed of the `CredentialRequest` and `AuthInit` messages.
+- `KE2` is composed of the `CredentialResponse` and `AuthResponse` messages.
+- `KE3` represents the `AuthFinish` message.
 
 The `CredentialRequest` and `CredentialResponse` message contents and wire
 format are specified in {{cred-retrieval}}, and those of `AuthInit`,
@@ -603,9 +609,9 @@ application credential information are considered:
 - client_identity: The client identity. This is an application-specific value,
   e.g., an e-mail address or an account name. If not specified, it defaults
   to the client's public key.
-- server_identity: The server identity. This is typically a domain name, e.g., example.com.
-  If not specified, it defaults to the server's public key. See {{identities}} for
-  information about this identity.
+- server_identity: The server identity. This is typically a domain name,
+  e.g., example.com. If not specified, it defaults to the server's public key.
+  See {{identities}} for information about this identity.
 
 These credential values are used in the `CleartextCredentials` structure as follows:
 
@@ -627,8 +633,8 @@ CreateCleartextCredentials(server_public_key, client_public_key,
 Input:
 - server_public_key, The encoded server public key for the AKE protocol.
 - client_public_key, The encoded client public key for the AKE protocol.
-- server_identity, The optional encoded server identity.
-- client_identity, The optional encoded client identity.
+- server_identity, The optional server identity.
+- client_identity, The optional client identity.
 
 Output:
 - cleartext_credentials, a CleartextCredentials structure
@@ -675,10 +681,9 @@ Store(randomized_pwd, server_public_key, server_identity, client_identity)
 
 Input:
 - randomized_pwd, randomized password.
-- server_public_key, The encoded server public key for
-  the AKE protocol.
-- server_identity, The optional encoded server identity.
-- client_identity, The optional encoded client identity.
+- server_public_key, The encoded server public key for the AKE protocol.
+- server_identity, The optional server identity.
+- client_identity, The optional client identity.
 
 Output:
 - envelope, the client's `Envelope` structure.
@@ -713,15 +718,15 @@ Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for the AKE protocol.
 - envelope, the client's `Envelope` structure.
-- server_identity, The optional encoded server identity.
-- client_identity, The optional encoded client identity.
+- server_identity, The optional server identity.
+- client_identity, The optional client identity.
 
 Output:
 - client_private_key, The encoded client private key for the AKE protocol.
 - export_key, an additional client key.
 
 Exceptions:
-- EnvelopeRecoveryError, when the envelope fails to be recovered
+- EnvelopeRecoveryError, when the envelope fails to be recovered.
 
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -730,27 +735,19 @@ Steps:
 4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
 5. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-6. expected_tag = MAC(auth_key,
-                      concat(envelope.nonce, inner_env, cleartext_creds))
+6. expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise KeyRecoveryError
+     raise EnvelopeRecoveryError
 8. Output (client_private_key, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
 
-This section describes the registration flow, message encoding, and helper functions.
-In a setup phase, the client chooses its password, and the server chooses its own pair
-of private-public AKE keys (server_private_key, server_public_key) for use with the
-AKE, along with a Nh-byte oprf_seed. The server can use the same pair of keys with multiple
-clients and can opt to use multiple seeds (so long as they are kept consistent for
-each client). These steps can happen offline, i.e., before the registration phase.
-
-Once complete, the registration process proceeds as follows. The client inputs
+The registration process proceeds as follows. The client inputs
 the following values:
 
 - password: client password.
-- creds: client credentials, as described in {{client-material}}.
+- client_identity: client identity, as described in {{client-material}}.
 
 The server inputs the following values:
 
@@ -778,7 +775,9 @@ The registration protocol then runs as shown below:
                         response
               <-------------------------
 
- (record, export_key) = FinalizeRequest(response,
+ (record, export_key) = FinalizeRequest(password,
+                                        blind,
+                                        response,
                                         server_identity,
                                         client_identity)
 
@@ -865,7 +864,7 @@ Input:
 - request, a RegistrationRequest structure.
 - server_public_key, the server's public key.
 - credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
+- oprf_seed, the seed of Nseed bytes used by the server to generate an oprf_key.
 
 Output:
 - response, a RegistrationResponse structure.
@@ -873,7 +872,7 @@ Output:
 Steps:
 1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data, nil)
+3. Z = Evaluate(oprf_key, request.data, "")
 4. Create RegistrationResponse response with (Z, server_public_key)
 5. Output response
 ~~~
@@ -890,20 +889,20 @@ Input:
 - password, an opaque byte string containing the client's password.
 - blind, an OPRF scalar value.
 - response, a RegistrationResponse structure.
-- server_identity, the optional encoded server identity.
-- client_identity, the encoded client identity.
+- server_identity, the optional server identity.
+- client_identity, the optional client identity.
 
 Output:
 - record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
 Steps:
-1. y = Finalize(password, blind, response.data, nil)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+1. y = Finalize(password, blind, response.data, "")
+2. randomized_pwd = Extract("", concat(y, Harden(y)))
 3. (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
                     server_identity, client_identity)
-4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+4. Create RegistrationRecord record with (client_public_key, masking_key, envelope)
 5. Output (record, export_key)
 ~~~
 
@@ -916,11 +915,12 @@ Upon completion of this function, the client MUST send `record` to the server.
 The server stores the `record` object as the credential file for each client
 along with the associated `credential_identifier` and `client_identity` (if
 different). Note that the values `oprf_seed` and `server_private_key` from the
-server's setup phase must also be persisted. The `oprf_seed` value SHOULD be used
+server's setup phase must persist for the online authentication phase. The
+`oprf_seed` value SHOULD be used
 for all clients; see {{preventing-client-enumeration}}. The `server_private_key`
 may be unique for each client.
 
-# Online Authenticated Key Exchange {#online-phase}
+# Online Authentication {#online-phase}
 
 The generic outline of OPAQUE with a 3-message AKE protocol includes three messages
 ke1, ke2, and ke3, where ke1 and ke2 include key exchange shares, e.g., DH values, sent
@@ -928,12 +928,13 @@ by the client and server, respectively, and ke3 provides explicit client authent
 full forward security (without it, forward secrecy is only achieved against eavesdroppers,
 which is insufficient for OPAQUE security).
 
-This section describes the online authenticated key exchange protocol flow,
+This section describes the online authentication protocol flow,
 message encoding, and helper functions. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
 client and server credentials established during registration; see {{offline-phase}}.
 In the end, the client proves its knowledge of the password, and both client and
-server agree on (1) a mutually authenticated shared secret key and (2) any optional
+server agree on (1) a mutually authenticated shared secret key (`session_key`)
+and (2) any optional
 application information exchange during the handshake.
 
 In this stage, the client inputs the following values:
@@ -946,7 +947,7 @@ The server inputs the following values:
 - server_private_key: server private for the AKE protocol.
 - server_public_key: server public for the AKE protocol.
 - server_identity: server identity, as described in {{client-material}}.
-- record: RegistrationUpload corresponding to the client's registration.
+- record: RegistrationRecord corresponding to the client's registration.
 - credential_identifier: an identifier that uniquely represents the credential.
 - oprf_seed: seed used to derive per-client OPRF keys.
 
@@ -975,10 +976,11 @@ The protocol runs as shown below:
                          ke2
               <-------------------------
 
-    (ke3,
-    session_key,
-    export_key) = ClientFinish(client_identity, password,
-                              server_identity, ke2)
+  (ke3,
+  session_key,
+  export_key) = ClientFinish(client_identity,
+                             server_identity,
+                             ke1, ke2)
 
                          ke3
               ------------------------->
@@ -986,13 +988,13 @@ The protocol runs as shown below:
                        session_key = ServerFinish(ke3)
 ~~~
 
-Both client and server may use implicit internal state objects to keep necessary
-material for the OPRF and AKE, `client_state` and `server_state`, respectively.
+Both client and server may use implicit internal state objects, `client_state`
+and `server_state`, to keep necessary material for the OPRF and AKE.
 
 The client state may have the following named fields:
 
 - password, the input password; and
-- blind, the random blinding scalar returned by `Blind()`, of length Nok; and
+- blind, the random blinding scalar returned by `Blind()`; and
 - client_ake_state, the client's AKE state if necessary.
 
 The server state may have the following fields:
@@ -1016,30 +1018,30 @@ Input:
 - password, an opaque byte string containing the client's password.
 
 Output:
-- ke1, a KE1 message structure.
+- ke1, a KE1 structure.
 
 Steps:
 1. request, blind = CreateCredentialRequest(password)
-2. state.blind = blind
-3. ake_1 = Start(request)
-4. Output KE1(request, ake_1)
+2. state.password = password
+3. state.blind = blind
+4. auth_init = Start()
+5. Create KE1 ke1 with (request, auth_init)
 ~~~
 
 ~~~
-ClientFinish(client_identity, server_identity, ke2)
+ClientFinish(client_identity, server_identity, ke1, ke2)
 
 State:
 - state, a ClientState structure
 
 Input:
-- client_identity, the optional encoded client identity, which is set
-  to client_public_key if not specified.
-- server_identity, the optional encoded server identity, which is set
-  to server_public_key if not specified.
-- ke2, a KE2 message structure.
+- client_identity, the optional client identity.
+- server_identity, the optional server identity.
+- ke1, a KE1 structure.
+- ke2, a KE2 structure.
 
 Output:
-- ke3, a KE3 message structure.
+- ke3, a KE3 structure.
 - session_key, the session's shared secret.
 - export_key, an additional client key.
 
@@ -1049,8 +1051,9 @@ Steps:
                        server_identity, client_identity)
 2. (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, ke2)
-3. Output (ke3, session_key)
+                    server_public_key, ke1, ke2)
+3. Create KE3 ke3 with (auth_finish)
+4. Output (ke3, session_key, export_key)
 ~~~
 
 ## Server Authentication Functions {#opaque-server}
@@ -1060,15 +1063,14 @@ ServerInit(server_identity, server_private_key, server_public_key,
            record, credential_identifier, oprf_seed, ke1, client_identity)
 
 Input:
-- server_identity, the optional encoded server identity, which is set to
-  server_public_key if nil.
-- server_private_key, the server's private key.
-- server_public_key, the server's public key.
+- server_identity, the optional server identity.
+- server_private_key, the server's private key for the AKE protocol.
+- server_public_key, the server's public key for the AKE protocol.
 - record, the client's RegistrationRecord structure.
 - credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- oprf_seed, the server's OPRF seed.
 - ke1, a KE1 message structure.
-- client_identity, the encoded client identity.
+- client_identity, the optional client identity.
 
 Output:
 - ke2, a KE2 structure.
@@ -1076,19 +1078,35 @@ Output:
 Steps:
 1. response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-2. ake_2 = Response(server_identity, server_private_key,
-    client_identity, record.client_public_key, ke1, response)
-3. Output KE2(response, ake_2)
+2. ke2 = Response(server_identity, server_private_key, client_identity,
+                  record.client_public_key, ke1, response)
+3. Output ke2
 ~~~
 
-Since the OPRF is a two-message protocol, KE3 has no element of the OPRF. We can
-therefore call the AKE's `ServerFinish()` directly. The `ServerFinish()` function
-MUST take KE3 as input and MUST verify the client authentication material it contains
-before the `session_key` value can be used. This verification is paramount in order to
-ensure forward secrecy against active attackers.
+~~~
+ServerFinish(ke3)
 
-This function MUST NOT return the `session_key` value if the client authentication
-material is invalid, and may instead return an appropriate error message.
+Input:
+
+- ke3, a KE3 structure.
+
+Output:
+- session_key, the shared session secret if and only if ke3 is valid.
+
+Exceptions:
+- HandshakeError, when the handshake fails
+
+Steps:
+1. Output ServerFinalize(ke3.auth_finish)
+~~~
+
+The `ServerFinish` function MUST take KE3 as input and call the AKE's
+`ServerFinalize` directly. This latter function MUST verify the client
+authentication material it contains before the `session_key` value can be used.
+This verification is paramount in order to ensure forward secrecy against
+active attackers. This function MUST NOT return the `session_key` value if the
+client authentication material is invalid, and may instead return an
+appropriate error message.
 
 ## Credential Retrieval {#cred-retrieval}
 
@@ -1158,19 +1176,19 @@ CreateCredentialResponse(request, server_public_key, record,
 
 Input:
 - request, a CredentialRequest structure.
-- server_public_key, the public key of the server.
+- server_public_key, the public key of the server for the AKE protocol.
 - record, an instance of RegistrationRecord which is the server's
   output from registration.
 - credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- oprf_seed, the server OPRF seed.
 
 Output:
 - response, a CredentialResponse structure.
 
 Steps:
-1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
 2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data, nil)
+3. Z = Evaluate(oprf_key, request.data, "")
 4. masking_nonce = random(Nn)
 5. credential_response_pad = Expand(record.masking_key,
      concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
@@ -1185,9 +1203,9 @@ the server MUST respond to the credential request to fake the existence of the r
 The server SHOULD invoke the CreateCredentialResponse function with a fake client record
 argument that is configured so that:
 
-- record.client_public_key is set to a randomly generated public key of length Npk
-- record.masking_key is set to a random byte string of length Nh
-- record.envelope is set to the byte string consisting only of zeros of length Ne
+- record.client_public_key is set to a randomly generated public key of length Npk.
+- record.masking_key is set to a random byte string of length Nh.
+- record.envelope is set to the byte string consisting only of zeros of length Ne.
 
 It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
 of the application) and stored alongside legitimate client records. This allows servers to locate
@@ -1206,17 +1224,17 @@ Input:
 - password, an opaque byte string containing the client's password.
 - blind, an OPRF scalar value.
 - response, a CredentialResponse structure.
-- server_identity, The optional encoded server identity.
-- client_identity, The encoded client identity.
+- server_identity, The optional server identity.
+- client_identity, The optional client identity.
 
 Output:
 - client_private_key, the client's private key for the AKE protocol.
-- server_public_key, the public key of the server.
+- server_public_key, the public key of the server for the AKE protocol.
 - export_key, an additional client key.
 
 Steps:
-1. y = Finalize(password, blind, response.data, nil)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
+1. y = Finalize(password, blind, response.data, "")
+2. randomized_pwd = Extract("", concat(y, Harden(y)))
 3. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
 4. credential_response_pad = Expand(masking_key,
      concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
@@ -1235,10 +1253,9 @@ This section describes the authenticated key exchange protocol for OPAQUE using
 discussed in {{security-considerations}}.
 
 The AKE client state `client_ake_state` mentioned in {{online-phase}} has the
-following named fields:
+following field:
 
-- client_secret, an opaque byte string of length Nsk; and
-- ke1, a value of type KE1.
+- client_secret, an opaque byte string of length Nsk.
 
 The server state `server_ake_state` mentioned in {{online-phase}} has the
 following fields:
@@ -1247,7 +1264,7 @@ following fields:
 - session_key, an opaque byte string of length Nx.
 
 {{ake-client}} and {{ake-server}} specify the inner workings of client and
-server functions, respectively.
+server 3DH functions, respectively.
 
 ### AKE Messages {#ake-messages}
 
@@ -1272,8 +1289,7 @@ struct {
 
 server_nonce : A fresh randomly generated nonce of length Nn.
 
-server_keyshare : Server ephemeral key share of fixed size Npk, where Npk
-depends on the corresponding prime order group.
+server_keyshare : Server ephemeral key share of fixed size Npk.
 
 server_mac : An authentication tag computed over the handshake transcript
 computed using Km2, defined below.
@@ -1313,7 +1329,7 @@ Output:
 - public_key, the associated public key.
 
 Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
 2. public_key = ScalarBaseMult(private_key)
 3. Output (private_key, public_key)
 ~~~
@@ -1347,7 +1363,7 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 
 Note that the Label parameter is not a NULL-terminated string.
 
-OPAQUE-3DH can optionally include shared `context` information in the
+OPAQUE-3DH can optionally include shared `Context` information in the
 transcript, such as configuration parameters or application-specific info, e.g.
 "appXYZ-v1.2.3".
 
@@ -1360,12 +1376,12 @@ Parameters:
 - context, optional shared context information.
 
 Input:
-- client_identity, the optional encoded client identity, which is set
+- client_identity, the optional client identity, which is set
   to client_public_key if not specified.
-- ke1, a KE1 message structure.
-- server_identity, the optional encoded server identity, which is set
+- ke1, a KE1 structure.
+- server_identity, the optional server identity, which is set
   to server_public_key if not specified.
-- ke2, a KE2 message structure.
+- ke2, a KE2 structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1377,7 +1393,7 @@ Steps:
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
                      ke2.credential_response,
-                     ke2.AuthResponse.server_nonce, ke2.AuthResponse.server_keyshare)
+                     ke2.auth_response.server_nonce, ke2.auth_response.server_keyshare)
 2. Output preamble
 ~~~
 
@@ -1417,72 +1433,67 @@ Output:
 
 Steps:
 1. prk = Extract("", ikm)
-2. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
-4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
-5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-6. Output (Km2, Km3, session_key)
+2. h_preamble = Hash(Preamble)
+3. handshake_secret = Derive-Secret(prk, "HandshakeSecret", h_preamble)
+4. session_key = Derive-Secret(prk, "SessionKey", h_preamble)
+5. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
+6. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
+7. Output (Km2, Km3, session_key)
 ~~~
 
 ### 3DH Client Functions {#ake-client}
 
 ~~~
-Start(credential_request)
-
-Parameters:
-- Nn, the nonce length.
+Start()
 
 State:
-- state, a ClientState structure.
-
-Input:
-- credential_request, a CredentialRequest structure.
+- state, the AKE client state.
 
 Output:
-- ke1, a KE1 structure.
+- auth_init, a AuthInit structure.
 
 Steps:
 1. client_nonce = random(Nn)
 2. client_secret, client_keyshare = GenerateAuthKeyPair()
-3. Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
-4. Populate state with ClientState(client_secret, ke1)
-6. Output (ke1, client_secret)
+3. Create AuthInit auth_init with (client_nonce, client_keyshare)
+4. state.client_secret = client_secret
+5. Output auth_init
 ~~~
 
 ~~~
-CLientFinalize(client_identity, client_private_key, server_identity,
-               server_public_key, ke2)
+ClientFinalize(client_identity, client_private_key, server_identity,
+               server_public_key, ke1, ke2)
 
 State:
-- state, a ClientState structure.
+- state, the AKE client state.
 
 Input:
-- client_identity, the optional encoded client identity, which is
-  set to client_public_key if not specified.
-- client_private_key, the client's private key.
-- server_identity, the optional encoded server identity, which is
-  set to server_public_key if not specified.
-- server_public_key, the server's public key.
-- ke2, a KE2 message structure.
+- client_identity, the optional client identity.
+- client_private_key, the client's private key for the AKE protocol.
+- server_identity, the optional server identity.
+- server_public_key, the server's public key for the AKE protocol.
+- ke1, a KE1 structure.
+- ke2, a KE2 structure.
 
 Output:
-- ke3, a KE3 structure.
+- auth_finish, an AuthFinish structure.
 - session_key, the shared session secret.
 
 Exceptions:
-- HandshakeError, when the handshake fails
+- HandshakeError, when the handshake fails.
 
 Steps:
-1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
-    state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
-2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
+1. ikm = TripleDHIKM(state.client_secret, ke2.auth_response.server_keyshare,
+                     state.client_secret, server_public_key,
+                     client_private_key, ke2.auth_response.server_keyshare)
+2. preamble = Preamble(client_identity, ke1, server_identity, ke2)
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
-5. If !ct_equal(ke2.server_mac, expected_server_mac),
+5. If !ct_equal(ke2.auth_response.server_mac, expected_server_mac):
      raise HandshakeError
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
-7. Create KE3 ke3 with client_mac
-8. Output (ke3, session_key)
+7. Create AuthFinish auth_finish with client_mac
+8. Output (auth_finish, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
@@ -1491,19 +1502,14 @@ Steps:
 Response(server_identity, server_private_key, client_identity,
          client_public_key, ke1, credential_response)
 
-Parameters:
-- Nn, the nonce length.
-
 State:
-- state, a ServerState structure.
+- state, the AKE server state.
 
 Input:
-- server_identity, the optional encoded server identity, which is set to
-  server_public_key if not specified.
-- server_private_key, the server's private key.
-- client_identity, the optional encoded client identity, which is set to
-  client_public_key if not specified.
-- client_public_key, the client's public key.
+- server_identity, the optional server identity.
+- server_private_key, the server's private key for the AKE protocol.
+- client_identity, the optional client identity.
+- client_public_key, the client's public key for the AKE protocol.
 - ke1, a KE1 message structure.
 
 Output:
@@ -1512,36 +1518,37 @@ Output:
 Steps:
 1. server_nonce = random(Nn)
 2. server_secret, server_keyshare = GenerateAuthKeyPair()
-3. Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
-4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
-5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
-                    server_private_key, ke1.client_keyshare,
-                    server_secret, client_public_key)
-6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
-7. server_mac = MAC(Km2, Hash(preamble))
-8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-9. Populate state with ServerState(expected_client_mac, session_key)
-10. Create KE2 ke2 with (ike2, server_mac)
+3. Create AuthReponse auth_response with (server_nonce, server_keyshare, "")
+4. Create KE2 ke2 with (credential_response, auth_response)
+5. preamble = Preamble(client_identity, ke1, server_identity, ke2)
+6. ikm = TripleDHIKM(server_secret, ke1.auth_init.client_keyshare,
+                     server_private_key, ke1.auth_init.client_keyshare,
+                     server_secret, client_public_key)
+7. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+8. server_mac = MAC(Km2, Hash(preamble))
+9. state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+10. state.session_key = session_key
+11. ke2.auth_response.server_mac = server_mac
 11. Output ke2
 ~~~
 
 ~~~
-ServerFinish(ke3)
+ServerFinalize(auth_finish)
 
 State:
-- state, a ServerState structure.
+- state, the AKE server state.
 
 Input:
-- ke3, a KE3 structure.
+- auth_finish, an AuthFinish structure.
 
 Output:
-- session_key, the shared session secret if and only if KE3 is valid.
+- session_key, the shared session secret if and only if auth_finish is valid.
 
 Exceptions:
-- HandshakeError, when the handshake fails
+- HandshakeError, when the handshake fails.
 
 Steps:
-1. if !ct_equal(ke3.client_mac, state.expected_client_mac):
+1. if !ct_equal(auth_finish.client_mac, state.expected_client_mac):
 2.    raise HandshakeError
 3. Output state.session_key
 ~~~
@@ -1566,22 +1573,27 @@ such that the following conditions are met:
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
   then Group SHOULD be ristretto255.
-
-Context is the shared parameter used to construct the preamble in {{transcript-functions}}.
-This parameter SHOULD include any application-specific configuration information or
-parameters that are needed to prevent cross-protocol or downgrade attacks.
+- Context is the shared parameter used to construct the preamble in
+  {{transcript-functions}}.
+  This parameter SHOULD include any application-specific configuration
+  information or parameters that are needed to prevent cross-protocol or
+  downgrade attacks.
 
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), internal, ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), internal, P-256
+- \[OPAQUE-255\]
+Defined by the following algorithms: OPRF(ristretto255, SHA-512), HKDF-SHA-512,
+HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255.
+- \[OPAQUE-256\]
+Defined by the following algorithms: OPRF(P-256, SHA-256), HKDF-SHA-256,
+HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256.
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
 
 1. The size of AKE public and private keys -- `Npk` and `Nsk`, respectively -- must adhere
 to the output length limitations of the KDF Expand function. If HKDF is used, this means
-Npk, Nsk <= 255 * Nx, where Nx is the output size of the underlying hash function.
+Npk, Nsk <= 255 * Nh, where Nh is the output size of the underlying hash function.
 See {{RFC5869}} for details.
 2. The output size of the Hash function SHOULD be long enough to produce a key for
 MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
@@ -1702,8 +1714,8 @@ Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation.
 
-sWe note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
-in the model from {{GMR06}}, can be converted into an aPAKE secure against
+We note that, as shown in {{OPAQUE}}, these protocols and any aPAKE
+in the model from {{GMR06}} can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
 Beyond AuCPace and SPAKE2+, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}},
@@ -1723,7 +1735,7 @@ Applications may have different policies about how and when identities are
 determined. A natural approach is to tie client_identity to the identity the server uses
 to fetch envelope (hence determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
-registration or online authenticated key exchange session. server_identity and client_identity can also
+registration or online authenticated key exchange session. The server_identity and client_identity can also
 be part of the envelope or be tied to the parties' public keys. In principle, identities
 may change across different sessions as long as there is a policy that
 can establish if the identity is acceptable or not to the peer. However, we note
@@ -1870,8 +1882,8 @@ Server implementations of OPAQUE do not need access to the raw AKE private key. 
 the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
 may store the server AKE private key in a Hardware Security Module (HSM) or
 similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
-attacker from using this data to mount a server spoofing attack. Supporting implementations 
-need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is 
+attacker from using this data to mount a server spoofing attack. Supporting implementations
+need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
 
 # IANA Considerations
@@ -1929,10 +1941,10 @@ schedule {{HMQV}}. First, the key schedule `preamble` value would use a differen
 ~~~
 preamble = concat("HMQV",
                   I2OSP(len(client_identity), 2), client_identity,
-                  KE1,
+                  ke1,
                   I2OSP(len(server_identity), 2), server_identity,
-                  KE2.credential_response,
-                  KE2.AuthResponse.server_nonce, KE2.AuthResponse.server_keyshare)
+                  ke2.credential_response,
+                  ke2.auth_response.server_nonce, ke2.auth_response.server_keyshare)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
@@ -1998,7 +2010,7 @@ outputs computed during authentication of an unknown or unregistered user. Note 
 `masking_key` for the fake record's masking key parameter.
 
 All values are encoded in hexadecimal strings. The configuration information
-includes the (OPRF, Hash, MHF, EnvelopeMode, Group) tuple, where the Group
+includes the (OPRF, KDF, MAC, Hash, MHF, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
 draft-06 of {{I-D.irtf-cfrg-voprf}}.
 
