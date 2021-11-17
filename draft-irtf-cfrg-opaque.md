@@ -683,8 +683,8 @@ Input:
 Output:
 - envelope, the client's `Envelope` structure.
 - client_public_key, the client's AKE public key.
-- masking_key, a key used by the server to encrypt the
-  envelope during login.
+- masking_key, a key used by the server with the sole purpose 
+  of defending against client enumeration attacks.
 - export_key, an additional client key.
 
 Steps:
@@ -830,7 +830,8 @@ client_public_key
 : The client's encoded public key, corresponding to the private key `client_private_key`.
 
 masking_key
-: A key used by the server to preserve confidentiality of the envelope during login.
+: A key used by the server to preserve confidentiality of the envelope during login
+  to defend against client enumeration attacks.
 
 envelope
 : The client's `Envelope` structure.
