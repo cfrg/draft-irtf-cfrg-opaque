@@ -1658,6 +1658,20 @@ enables a variety of OPAQUE instantiations, from optimized
 performance to integration with existing authenticated key exchange
 protocols such as TLS.
 
+## Notable Design Differences 
+
+[[RFC EDITOR: Please delete this section before publication.]]
+
+The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
+The following list enumerates important differences:
+
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive private key material for the AKE.
+- Per-user OPRF keys are derived from a client identity and cross-user seed. This was done to mitigate against client enumeration attacks. See {{preventing-client-enumeration}} for more details.
+- The protocol outputs an export key in addition to shared session key that can be used for application-specific purposes.
+- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. 
+- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE.
+- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account. 
+
 ## Security Analysis
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
