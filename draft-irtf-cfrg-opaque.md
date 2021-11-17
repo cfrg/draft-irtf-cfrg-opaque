@@ -830,7 +830,7 @@ client_public_key
 : The client's encoded public key, corresponding to the private key `client_private_key`.
 
 masking_key
-: A key used by the server to preserve confidentiality of the envelope during login
+: An encryption key used by the server to preserve confidentiality of the envelope during login
   to defend against client enumeration attacks.
 
 envelope
