@@ -1666,7 +1666,7 @@ The specification as written here differs from the original cryptographic design
 The following list enumerates important differences:
 
 - Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive private key material for the AKE.
-- Per-user OPRF keys are derived from a client identity and cross-user seed. This was done to mitigate against client enumeration attacks. See {{preventing-client-enumeration}} for more details.
+- Per-user OPRF keys are derived from a client identity and cross-user seed. This is done to mitigate against client enumeration attacks. See {{preventing-client-enumeration}} for more details.
 - The protocol outputs an export key in addition to shared session key that can be used for application-specific purposes.
 - The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. 
 - The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE.
