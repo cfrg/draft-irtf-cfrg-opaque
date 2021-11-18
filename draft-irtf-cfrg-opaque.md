@@ -480,10 +480,10 @@ see {{ake-protocol}}. 3DH assumes a prime-order group as described in
 
 # Protocol Overview {#protocol-overview}
 
-OPAQUE consists of two stages: registration and online authentication.
+OPAQUE consists of two stages: registration and online authenticated key exchange.
 In the first stage, a client uses its password to generate authentication
 material that server stores in a credential file.
-In the second stage the client recovers its authentication material from server
+In the second stage the client recovers its authentication material from the server
 and uses it to perform a mutually authenticated key exchange. For both stages,
 client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
@@ -529,7 +529,7 @@ contents and wire format are defined in {{registration-messages}}.
   export_key                                 record
 ~~~
 
-## Online Authentication
+## Online Authenticated Key Exchange
 
 In this second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
@@ -542,7 +542,7 @@ is the primary AKE output. The server outputs a single value `session_key`
 that matches that of the client. Upon completion, the client and server can
 use these values as needed.
 
-The online authentication flow is shown below:
+The online authenticated key exchange flow is shown below:
 
 ~~~
     creds                             (parameters, record)
@@ -601,7 +601,7 @@ application credential information are considered:
   e.g., an e-mail address or an account name. If not specified, it defaults
   to the client's public key.
 - server_identity: The server identity. This is typically a domain name,
-  e.g., example.com. If not specified, it defaults to the server's public key.
+  e.g., "example.com". If not specified, it defaults to the server's public key.
   See {{identities}} for information about this identity.
 
 These credential values are used in the `CleartextCredentials` structure as follows:
@@ -673,7 +673,7 @@ Store(randomized_pwd, server_public_key, server_identity, client_identity)
 Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for
-the AKE protocol, an octet string.
+  the AKE protocol, an octet string.
 - server_identity, The optional server identity, an octet string.
 - client_identity, The optional client identity, an octet string.
 
@@ -907,12 +907,12 @@ Upon completion of this function, the client MUST send `record` to the server.
 The server stores the `record` object as the credential file for each client
 along with the associated `credential_identifier` and `client_identity` (if
 different). Note that the values `oprf_seed` and `server_private_key` from the
-server's setup phase must persist for the online authentication phase. The
-`oprf_seed` value SHOULD be used
+server's setup phase must persist for the online authenticated key exchange
+phase. The `oprf_seed` value SHOULD be used
 for all clients; see {{preventing-client-enumeration}}. The `server_private_key`
 may be unique for each client.
 
-# Online Authentication {#online-phase}
+# Online Authenticated Key Exchange {#online-phase}
 
 The generic outline of OPAQUE with a 3-message AKE protocol includes three messages
 ke1, ke2, and ke3, where ke1 and ke2 include key exchange shares, e.g., DH values, sent
@@ -920,7 +920,7 @@ by the client and server, respectively, and ke3 provides explicit client authent
 full forward security (without it, forward secrecy is only achieved against eavesdroppers,
 which is insufficient for OPAQUE security).
 
-This section describes the online authentication protocol flow,
+This section describes the online authenticated key exchange protocol flow,
 message encoding, and helper functions. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
 client and server credentials established during registration; see {{offline-phase}}.
@@ -1030,8 +1030,8 @@ State:
 - state, a ClientState structure
 
 Input:
-- client_identity, the optional client identity.
-- server_identity, the optional server identity.
+- client_identity, the optional client identity, an octet string.
+- server_identity, the optional server identity, an octet string.
 - ke2, a KE2 structure.
 
 Output:
@@ -1057,7 +1057,7 @@ ServerInit(server_identity, server_private_key, server_public_key,
            record, credential_identifier, oprf_seed, ke1, client_identity)
 
 Input:
-- server_identity, the optional server identity.
+- server_identity, the optional server identity, an octet string.
 - server_private_key, the server's private key for the AKE protocol.
 - server_public_key, the server's public key for the AKE protocol.
 - record, the client's RegistrationRecord structure.
