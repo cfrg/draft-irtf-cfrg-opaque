@@ -1045,7 +1045,7 @@ Steps:
                        server_identity, client_identity)
 2. (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, state.ke1, ke2)
+                    server_public_key, ke2)
 3. Create KE3 ke3 with (auth_finish)
 4. Output (ke3, session_key, export_key)
 ~~~
@@ -1174,7 +1174,7 @@ Input:
 - record, an instance of RegistrationRecord which is the server's
   output from registration.
 - credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server OPRF seed.
+- oprf_seed, the server's OPRF seed.
 
 Output:
 - response, a CredentialResponse structure.
@@ -1247,9 +1247,10 @@ This section describes the authenticated key exchange protocol for OPAQUE using
 discussed in {{security-considerations}}.
 
 The AKE client state `client_ake_state` mentioned in {{online-phase}} has the
-following field:
+following named fields:
 
-- client_secret, an opaque byte string of length Nsk.
+- client_secret, an opaque byte string of length Nsk; and
+- ke1, a value of type KE1.
 
 The server state `server_ake_state` mentioned in {{online-phase}} has the
 following fields:
@@ -1441,7 +1442,7 @@ Steps:
 Start()
 
 State:
-- state, the AKE client state.
+- state, a ClientState structure.
 
 Output:
 - auth_init, a AuthInit structure.
@@ -1456,17 +1457,16 @@ Steps:
 
 ~~~
 ClientFinalize(client_identity, client_private_key, server_identity,
-               server_public_key, ke1, ke2)
+               server_public_key, ke2)
 
 State:
-- state, the AKE client state.
+- state, a ClientState structure.
 
 Input:
 - client_identity, the optional client identity, an octet string.
 - client_private_key, the client's private key for the AKE protocol.
 - server_identity, the optional server identity, an octet string.
 - server_public_key, the server's public key for the AKE protocol.
-- ke1, a KE1 structure.
 - ke2, a KE2 structure.
 
 Output:
@@ -1480,7 +1480,7 @@ Steps:
 1. ikm = TripleDHIKM(state.client_secret, ke2.auth_response.server_keyshare,
                      state.client_secret, server_public_key,
                      client_private_key, ke2.auth_response.server_keyshare)
-2. preamble = Preamble(client_identity, ke1, server_identity, ke2)
+2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2)
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.auth_response.server_mac, expected_server_mac),
@@ -1497,7 +1497,7 @@ Response(server_identity, server_private_key, client_identity,
          client_public_key, ke1, credential_response)
 
 State:
-- state, the AKE server state.
+- state, a ServerState structure.
 
 Input:
 - server_identity, the optional server identity, an octet string.
@@ -1520,8 +1520,8 @@ Steps:
                      server_secret, client_public_key)
 7. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 8. server_mac = MAC(Km2, Hash(preamble))
-9. state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-10. state.session_key = session_key
+9. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+10. Populate state with ServerState(expected_client_mac, session_key)
 11. ke2.auth_response.server_mac = server_mac
 12. Output ke2
 ~~~
@@ -1530,7 +1530,7 @@ Steps:
 ServerFinalize(auth_finish)
 
 State:
-- state, the AKE server state.
+- state, a ServerState structure.
 
 Input:
 - auth_finish, an AuthFinish structure.
