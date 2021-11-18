@@ -520,11 +520,11 @@ contents and wire format are defined in {{registration-messages}}.
       v                                         v
     Client                                    Server
     ------------------------------------------------
-                      request
+                      RegistrationRequest
              ------------------------->
-                      response
+                      RegistrationResponse
              <-------------------------
-                      record
+                      RegistrationRecord
              ------------------------->
    ------------------------------------------------
       |                                         |
@@ -553,11 +553,11 @@ The online authentication flow is shown below:
       v                                         v
     Client                                    Server
     ------------------------------------------------
-                        ke1
+                        KE1
              ------------------------->
-                        ke2
+                        KE2
              <-------------------------
-                        ke3
+                        KE3
              ------------------------->
    ------------------------------------------------
       |                                         |
@@ -565,8 +565,7 @@ The online authentication flow is shown below:
 (export_key, session_key)                  session_key
 ~~~
 
-These messages correspond, respectively, to structures named `KE1`, `KE2`,
-and `KE3` that carry information of the concurrent execution of the
+These messages carry information of the concurrent execution of the
 credential retrieval process and the authenticated key exchange:
 
 - `KE1` is composed of the `CredentialRequest` and `AuthInit` messages.
@@ -628,8 +627,8 @@ CreateCleartextCredentials(server_public_key, client_public_key,
 Input:
 - server_public_key, The encoded server public key for the AKE protocol.
 - client_public_key, The encoded client public key for the AKE protocol.
-- server_identity, The optional server identity.
-- client_identity, The optional client identity.
+- server_identity, The optional server identity, an octet string.
+- client_identity, The optional client identity, an octet string.
 
 Output:
 - cleartext_credentials, a CleartextCredentials structure
@@ -676,9 +675,10 @@ Store(randomized_pwd, server_public_key, server_identity, client_identity)
 
 Input:
 - randomized_pwd, randomized password.
-- server_public_key, The encoded server public key for the AKE protocol.
-- server_identity, The optional server identity.
-- client_identity, The optional client identity.
+- server_public_key, The encoded server public key for
+the AKE protocol, an octet string.
+- server_identity, The optional server identity, an octet string.
+- client_identity, The optional client identity, an octet string.
 
 Output:
 - envelope, the client's `Envelope` structure.
@@ -713,8 +713,8 @@ Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for the AKE protocol.
 - envelope, the client's `Envelope` structure.
-- server_identity, The optional server identity.
-- client_identity, The optional client identity.
+- server_identity, The optional server identity, an octet string.
+- client_identity, The optional client identity, an octet string.
 
 Output:
 - client_private_key, The encoded client private key for the AKE protocol.
@@ -884,8 +884,8 @@ Input:
 - password, an opaque byte string containing the client's password.
 - blind, an OPRF scalar value.
 - response, a RegistrationResponse structure.
-- server_identity, the optional server identity.
-- client_identity, the optional client identity.
+- server_identity, the optional server identity, an octet string.
+- client_identity, the optional client identity, an octet string.
 
 Output:
 - record, a RegistrationRecord structure.
