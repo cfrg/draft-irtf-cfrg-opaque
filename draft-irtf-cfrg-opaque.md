@@ -491,11 +491,6 @@ Previously to both stages, client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
 
-Before the registration phase, the client chooses its password, and the server
-chooses its own pair of keys (server_private_key, server_public_key) for use
-with the AKE, and chooses an oprf_seed of `Nseed` bytes. The server can use the
-same pair of keys with multiple clients and can opt to use multiple seeds (so
-long as they are kept consistent for each client).
 
 ## Registration
 
