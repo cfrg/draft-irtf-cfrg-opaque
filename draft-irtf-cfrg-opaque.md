@@ -421,7 +421,7 @@ and size must be specified by the key recovery mechanism.
 The key recovery storage mechanism takes as input a private seed and outputs
 an envelope. The retrieval process takes as input a private seed and envelope
 and outputs authentication material. The signatures for these functionalities
-are as follows:
+have the following API and parameter:
 
 - Store(private_seed): build and return an `Envelope` structure and the client's
 public key.
@@ -490,7 +490,6 @@ and uses it to perform a mutually authenticated key exchange.
 Previously to both stages, client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
-
 
 ## Registration
 
