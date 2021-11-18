@@ -485,9 +485,19 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its credential file on the server. In the second stage the client recovers its
 authentication material and uses it to perform a mutually authenticated key
-exchange. For both stages, client and server agree on a configuration, which
+exchange.
+
+## Setup
+
+Previously to both stages, the client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
+The client chooses its password, and the server chooses its own pair
+of keys (server_private_key and server_public_key) for the
+AKE, and chooses a seed (oprf_seed) of Nh bytes for the OPRF.
+The server can use the same pair of keys with multiple
+clients and can opt to use multiple seeds (so long as they are kept consistent for
+each client).
 
 ## Registration
 
@@ -739,14 +749,7 @@ Steps:
 
 # Offline Registration {#offline-phase}
 
-This section describes the registration flow, message encoding, and helper functions.
-In a setup phase, the client chooses its password, and the server chooses its own pair
-of private-public AKE keys (server_private_key, server_public_key) for use with the
-AKE, along with a Nh-byte oprf_seed. The server can use the same pair of keys with multiple
-clients and can opt to use multiple seeds (so long as they are kept consistent for
-each client). These steps can happen offline, i.e., before the registration phase.
-
-Once complete, the registration process proceeds as follows. The client inputs
+The registration process proceeds as follows. The client inputs
 the following values:
 
 - password: client password.
@@ -1870,8 +1873,8 @@ Server implementations of OPAQUE do not need access to the raw AKE private key. 
 the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
 may store the server AKE private key in a Hardware Security Module (HSM) or
 similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
-attacker from using this data to mount a server spoofing attack. Supporting implementations 
-need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is 
+attacker from using this data to mount a server spoofing attack. Supporting implementations
+need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
 
 # IANA Considerations
