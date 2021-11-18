@@ -484,10 +484,8 @@ OPAQUE consists of two stages: registration and online authentication.
 In the first stage, a client uses its password to generate authentication
 material that server stores in a credential file.
 In the second stage the client recovers its authentication material from server
-and uses it to perform a mutually authenticated key exchange.
-
-## Setup
-Previously to both stages, client and server agree on a configuration, which
+and uses it to perform a mutually authenticated key exchange. For both stages,
+client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
 
