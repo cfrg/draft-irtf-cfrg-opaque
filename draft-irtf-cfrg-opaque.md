@@ -1658,6 +1658,22 @@ enables a variety of OPAQUE instantiations, from optimized
 performance to integration with existing authenticated key exchange
 protocols such as TLS.
 
+## Notable Design Differences
+
+[[RFC EDITOR: Please delete this section before publication.]]
+
+The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
+The following list enumerates important differences:
+
+- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}.
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE.
+- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details.
+- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details.
+- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes.
+- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys.
+- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE.
+- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account.
+
 ## Security Analysis
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
@@ -1870,8 +1886,8 @@ Server implementations of OPAQUE do not need access to the raw AKE private key. 
 the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
 may store the server AKE private key in a Hardware Security Module (HSM) or
 similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
-attacker from using this data to mount a server spoofing attack. Supporting implementations 
-need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is 
+attacker from using this data to mount a server spoofing attack. Supporting implementations
+need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
 
 # IANA Considerations
