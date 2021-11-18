@@ -517,11 +517,11 @@ contents and wire format are defined in {{registration-messages}}.
       v                                         v
     Client                                    Server
     ------------------------------------------------
-                      RegistrationRequest
+                RegistrationRequest
              ------------------------->
-                      RegistrationResponse
+                RegistrationResponse
              <-------------------------
-                      RegistrationRecord
+                RegistrationRecord
              ------------------------->
    ------------------------------------------------
       |                                         |
@@ -673,7 +673,7 @@ Store(randomized_pwd, server_public_key, server_identity, client_identity)
 Input:
 - randomized_pwd, randomized password.
 - server_public_key, The encoded server public key for
-  the AKE protocol, an octet string.
+  the AKE protocol.
 - server_identity, The optional server identity, an octet string.
 - client_identity, The optional client identity, an octet string.
 
@@ -1064,7 +1064,7 @@ Input:
 - credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the server's OPRF seed.
 - ke1, a KE1 message structure.
-- client_identity, the optional client identity.
+- client_identity, the optional client identity, an octet string.
 
 Output:
 - ke2, a KE2 structure.
@@ -1218,8 +1218,8 @@ Input:
 - password, an opaque byte string containing the client's password.
 - blind, an OPRF scalar value.
 - response, a CredentialResponse structure.
-- server_identity, The optional server identity.
-- client_identity, The optional client identity.
+- server_identity, The optional server identity, an octet string.
+- client_identity, The optional client identity, an octet string.
 
 Output:
 - client_private_key, the client's private key for the AKE protocol.
@@ -1462,9 +1462,9 @@ State:
 - state, the AKE client state.
 
 Input:
-- client_identity, the optional client identity.
+- client_identity, the optional client identity, an octet string.
 - client_private_key, the client's private key for the AKE protocol.
-- server_identity, the optional server identity.
+- server_identity, the optional server identity, an octet string.
 - server_public_key, the server's public key for the AKE protocol.
 - ke1, a KE1 structure.
 - ke2, a KE2 structure.
@@ -1483,7 +1483,7 @@ Steps:
 2. preamble = Preamble(client_identity, ke1, server_identity, ke2)
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
-5. If !ct_equal(ke2.auth_response.server_mac, expected_server_mac):
+5. If !ct_equal(ke2.auth_response.server_mac, expected_server_mac),
      raise HandshakeError
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
 7. Create AuthFinish auth_finish with client_mac
@@ -1500,9 +1500,9 @@ State:
 - state, the AKE server state.
 
 Input:
-- server_identity, the optional server identity.
+- server_identity, the optional server identity, an octet string.
 - server_private_key, the server's private key for the AKE protocol.
-- client_identity, the optional client identity.
+- client_identity, the optional client identity, an octet string.
 - client_public_key, the client's public key for the AKE protocol.
 - ke1, a KE1 message structure.
 
@@ -1523,7 +1523,7 @@ Steps:
 9. state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
 10. state.session_key = session_key
 11. ke2.auth_response.server_mac = server_mac
-11. Output ke2
+12. Output ke2
 ~~~
 
 ~~~
@@ -1542,7 +1542,7 @@ Exceptions:
 - HandshakeError, when the handshake fails.
 
 Steps:
-1. if !ct_equal(auth_finish.client_mac, state.expected_client_mac):
+1. if !ct_equal(auth_finish.client_mac, state.expected_client_mac),
 2.    raise HandshakeError
 3. Output state.session_key
 ~~~
