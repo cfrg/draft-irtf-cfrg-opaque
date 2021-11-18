@@ -974,7 +974,7 @@ The protocol runs as shown below:
   session_key,
   export_key) = ClientFinish(client_identity,
                              server_identity,
-                             ke1, ke2)
+                             ke2)
 
                          ke3
               ------------------------->
@@ -987,8 +987,9 @@ and `server_state`, to keep necessary material for the OPRF and AKE.
 
 The client state may have the following named fields:
 
-- password, the input password; and
-- blind, the random blinding scalar returned by `Blind()`; and
+- password, the input password;
+- blind, the random blinding scalar returned by `Blind()`;
+- ke1, a KE1 structure; and
 - client_ake_state, the client's AKE state if necessary.
 
 The server state may have the following fields:
@@ -1016,14 +1017,16 @@ Output:
 
 Steps:
 1. request, blind = CreateCredentialRequest(password)
-2. state.password = password
-3. state.blind = blind
-4. auth_init = Start()
-5. Create KE1 ke1 with (request, auth_init)
+2. auth_init = Start()
+3. Create KE1 ke1 with (request, auth_init)
+4. state.password = password
+5. state.blind = blind
+6. state.ke1 = ke1
+7. return ke1
 ~~~
 
 ~~~
-ClientFinish(client_identity, server_identity, ke1, ke2)
+ClientFinish(client_identity, server_identity, ke2)
 
 State:
 - state, a ClientState structure
@@ -1031,7 +1034,6 @@ State:
 Input:
 - client_identity, the optional client identity.
 - server_identity, the optional server identity.
-- ke1, a KE1 structure.
 - ke2, a KE2 structure.
 
 Output:
@@ -1045,7 +1047,7 @@ Steps:
                        server_identity, client_identity)
 2. (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, ke1, ke2)
+                    server_public_key, state.ke1, ke2)
 3. Create KE3 ke3 with (auth_finish)
 4. Output (ke3, session_key, export_key)
 ~~~
