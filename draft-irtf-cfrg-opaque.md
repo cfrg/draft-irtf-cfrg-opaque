@@ -29,7 +29,7 @@ author:
  -
     ins: C. A. Wood
     name: Christopher A. Wood
-    organization: Cloudflare
+    organization: Cloudflare, Inc.
     email: caw@heapingbits.net
 
 informative:
