@@ -330,7 +330,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces and key derivatio seeds used in these dependencies and
+otherwise, all random nonces and key derivation seeds used in these dependencies and
 the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
 where `Nn` = `Nseed` = 32.
 
