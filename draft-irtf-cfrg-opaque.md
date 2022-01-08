@@ -731,7 +731,7 @@ Output:
 - export_key, an additional client key.
 
 Exceptions:
-- EnvelopeRecoveryError, when the envelope fails to be recovered
+- KeyRecoveryError, when the key fails to be recovered
 
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -740,8 +740,7 @@ Steps:
 4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
 5. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-6. expected_tag = MAC(auth_key,
-                      concat(envelope.nonce, inner_env, cleartext_creds))
+6. expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
      raise KeyRecoveryError
 8. Output (client_private_key, export_key)
