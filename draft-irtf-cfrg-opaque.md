@@ -280,6 +280,9 @@ credentials can only be done with knowledge of the client password. In the secon
 stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol.
 
+The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
+OPAKE was taken.
+
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
 
@@ -313,9 +316,6 @@ lack of value.
 
 All protocol messages and structures defined in this document use the syntax from
 {{?RFC8446, Section 3}}.
-
-The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
-OPAKE was taken.
 
 # Cryptographic Dependencies {#dependencies}
 
