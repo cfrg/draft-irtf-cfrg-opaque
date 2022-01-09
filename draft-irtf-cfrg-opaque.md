@@ -1865,6 +1865,26 @@ response during registration as an oracle for whether a given client identity is
 registered. Applications should mitigate against this type of attack by rate
 limiting or otherwise restricting the registration flow.
 
+## Protecting the masking key during registration
+
+The user enumeration prevention method uses a symmetric encryption key generated
+by the client and sent to the server at registration in the clear. This relatively
+sensitive and secret piece of data requires the full registration to be secured
+with integrity, authenticity, and confidentiality, as offered by TLS, for example.
+With TLS, integrity and authenticity can't be subverted once the session is over
+and past. Confidentiality, however, is not ensured if TLS encryption keys are
+backed up, shared, or leaked, and this allows decryption after the session (e.g.
+due to proxy re-encryption, logging, legal compliance). In transit, the masking
+key is subject to logging after TLS termination.
+
+In these cases, the masking key is at risk of being revealed to a passive (even
+non-malicious) attacker after registration has happened.
+
+This risk can be avoided by using a Key Encapsulation Mechanism (KEM) like HPKE
+{{I-D.irtf-cfrg-hpke}}. Implementations would use the server's public key received
+in the registration response to encrypt the record sent in the last registration
+message from the client to the server.
+
 ## Password Salt and Storage Implications
 
 In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibility
