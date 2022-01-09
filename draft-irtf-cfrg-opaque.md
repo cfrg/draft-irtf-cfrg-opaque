@@ -1881,7 +1881,7 @@ In these cases, the masking key is at risk of being revealed to a passive (even
 non-malicious) attacker after registration has happened.
 
 This risk can be avoided by using a Key Encapsulation Mechanism (KEM) like HPKE
-{{I-D.irtf-cfrg-hpke}}. Implementations would use the server's public key received
+{{?I-D.irtf-cfrg-hpke}}. Implementations would use the server's public key received
 in the registration response to encrypt the record sent in the last registration
 message from the client to the server.
 
