@@ -1317,7 +1317,7 @@ Output:
 - public_key, the associated public key.
 
 Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
 2. public_key = ScalarBaseMult(private_key)
 3. Output (private_key, public_key)
 ~~~
