@@ -1721,7 +1721,7 @@ Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation.
 
-sWe note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
 in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
