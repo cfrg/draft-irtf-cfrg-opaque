@@ -29,7 +29,7 @@ author:
  -
     ins: C. A. Wood
     name: Christopher A. Wood
-    organization: Cloudflare
+    organization: Cloudflare, Inc.
     email: caw@heapingbits.net
 
 informative:
@@ -280,6 +280,9 @@ credentials can only be done with knowledge of the client password. In the secon
 stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol.
 
+The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
+OPAKE was taken.
+
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
 
@@ -314,9 +317,6 @@ lack of value.
 All protocol messages and structures defined in this document use the syntax from
 {{?RFC8446, Section 3}}.
 
-The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
-OPAKE was taken.
-
 # Cryptographic Dependencies {#dependencies}
 
 OPAQUE depends on the following cryptographic protocols and primitives:
@@ -330,7 +330,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces and key derivatio seeds used in these dependencies and
+otherwise, all random nonces and key derivation seeds used in these dependencies and
 the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
 where `Nn` = `Nseed` = 32.
 
@@ -485,9 +485,19 @@ OPAQUE consists of two stages: registration and authenticated key exchange.
 In the first stage, a client registers its password with the server and stores
 its credential file on the server. In the second stage the client recovers its
 authentication material and uses it to perform a mutually authenticated key
-exchange. For both stages, client and server agree on a configuration, which
+exchange.
+
+## Setup
+
+Previously to both stages, the client and server agree on a configuration, which
 fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
+The client chooses its password, and the server chooses its own pair
+of keys (server_private_key and server_public_key) for the
+AKE, and chooses a seed (oprf_seed) of Nh bytes for the OPRF.
+The server can use the same pair of keys with multiple
+clients and can opt to use multiple seeds (so long as they are kept consistent for
+each client).
 
 ## Registration
 
@@ -683,8 +693,8 @@ Input:
 Output:
 - envelope, the client's `Envelope` structure.
 - client_public_key, the client's AKE public key.
-- masking_key, a key used by the server to encrypt the
-  envelope during login.
+- masking_key, an encryption key used by the server with the sole purpose 
+  of defending against client enumeration attacks.
 - export_key, an additional client key.
 
 Steps:
@@ -730,8 +740,7 @@ Steps:
 4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
 5. cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-6. expected_tag = MAC(auth_key,
-                      concat(envelope.nonce, inner_env, cleartext_creds))
+6. expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
      raise ErrEnvelopeInvalidMac
 8. Output (client_private_key, export_key)
@@ -739,14 +748,7 @@ Steps:
 
 # Offline Registration {#offline-phase}
 
-This section describes the registration flow, message encoding, and helper functions.
-In a setup phase, the client chooses its password, and the server chooses its own pair
-of private-public AKE keys (server_private_key, server_public_key) for use with the
-AKE, along with a Nh-byte oprf_seed. The server can use the same pair of keys with multiple
-clients and can opt to use multiple seeds (so long as they are kept consistent for
-each client). These steps can happen offline, i.e., before the registration phase.
-
-Once complete, the registration process proceeds as follows. The client inputs
+The registration process proceeds as follows. The client inputs
 the following values:
 
 - password: client password.
@@ -830,7 +832,8 @@ client_public_key
 : The client's encoded public key, corresponding to the private key `client_private_key`.
 
 masking_key
-: A key used by the server to preserve confidentiality of the envelope during login.
+: An encryption key used by the server to preserve confidentiality of the envelope during login
+  to defend against client enumeration attacks.
 
 envelope
 : The client's `Envelope` structure.
@@ -1313,7 +1316,7 @@ Output:
 - public_key, the associated public key.
 
 Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
 2. public_key = ScalarBaseMult(private_key)
 3. Output (private_key, public_key)
 ~~~
@@ -1714,6 +1717,22 @@ enables a variety of OPAQUE instantiations, from optimized
 performance to integration with existing authenticated key exchange
 protocols such as TLS.
 
+## Notable Design Differences
+
+[[RFC EDITOR: Please delete this section before publication.]]
+
+The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
+The following list enumerates important differences:
+
+- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}. This change adds to the security of the protocol. {{OPAQUE}} considered the case where the envelope was constructed by the server for reasons of compatibility with previous UC modeling. An upcoming paper analyzes the registration phase as specified in this document.
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE. This variant is also analyzed in the new paper referred to in the previous item. This change improves the assumption behind the protocol by getting rid of equivocability and random key robustness for the encryption function. The latter property is only required for authentication and achieved by a MAC.
+- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details. This extension does not add to the security of OPAQUE as an aPAKE but only used to provide a defense against enumeration attacks. In the analysis, this key can be simulated as a (pseudo) random key.
+- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details. The analysis of OPAQUE assumes OPRF keys of different users are independently random or pseudorandom. Deriving these keys via a single PRF (i.e., with a single cross-user key) applied to users' identities satisfies this assumption.
+- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes. This key is a pseudorandom value independent of other values in the protocol and have no influence in the security analysis (it can be simulated with a random output).
+- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. Binding authentication to identities is part of the AKE part of OPAQUE. The type of identities and their semantics are application dependent and independent of the protocol analysis.
+- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE. This is a mechanism for the AKE component and is best practice as for domain separation between different applications of the protocol.
+- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account. This mechanism is part of the derivation of OPRF keys via a single OPRF. As long as the derivation of different OPRF keys from a single OPRF have different PRF inputs, the protocol is secure. The choice of such inputs is up to the application.
+
 ## Security Analysis
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
@@ -1758,7 +1777,7 @@ Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation.
 
-sWe note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
 in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
@@ -1926,8 +1945,8 @@ Server implementations of OPAQUE do not need access to the raw AKE private key. 
 the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
 may store the server AKE private key in a Hardware Security Module (HSM) or
 similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
-attacker from using this data to mount a server spoofing attack. Supporting implementations 
-need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is 
+attacker from using this data to mount a server spoofing attack. Supporting implementations
+need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
 
 # IANA Considerations
