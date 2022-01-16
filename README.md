@@ -20,11 +20,11 @@ This requires that you have the necessary software installed.  See
 
 ## Implementations
 
-| Implementation                                                                     | Language | Dependencies  |
-| ---------------------------------------------------------------------------------- | :------- | :------------ |
-| [**Reference**](https://github.com/cfrg/draft-irtf-cfrg-opaque/tree/master/poc)    | Sage     | Sage          |
-| [opaque-ke](https://github.com/novifinancial/opaque-ke)                            | Rust     | N/A           |
-| [opaque](https://github.com/bytemare/opaque/)                                      | Go       | N/A           |
+| Implementation                                                                  | Language | Version | Dependencies |
+|:--------------------------------------------------------------------------------|:---------|:--------|:-------------|
+| [**Reference**](https://github.com/cfrg/draft-irtf-cfrg-opaque/tree/master/poc) | Sage     | main    | Sage         |
+| [opaque-ke](https://github.com/novifinancial/opaque-ke)                         | Rust     | main    | N/A          |
+| [opaque](https://github.com/bytemare/opaque/)                                   | Go       | main    | N/A          |
 
 ## Contributing
 
