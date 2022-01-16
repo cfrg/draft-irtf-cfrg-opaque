@@ -1643,6 +1643,42 @@ learn the client's password. This means that additional checks should be conside
 a production deployment of OPAQUE: for instance, ensuring that there is a
 server-authenticated channel over which OPAQUE registration and login is run.
 
+# API Considerations
+
+## Errors
+
+Some functions in OPAQUE are fallible. For example, errors can occur when incorrect data is given to
+deserialization functions or message authentication codes don't verify.
+
+### Deserialization errors
+
+| Name                    | Party  | Messages                  | Reason                                              |
+|:------------------------|:-------|:--------------------------|:----------------------------------------------------|
+| ErrInvalidMessageLength | All    | All                       | The message length is invalid for the configuration |
+| ErrInvalidBlindedData   | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point                    |
+| ErrInvalidEvaluatedData | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point                       |
+| ErrInvalidServerPK      | Client | RegistrationResponse      | Invalid server public key                           |
+| ErrInvalidClientPK      | Server | Record                    | Invalid client public key                           |
+| ErrInvalidClientEPK     | Server | Ke1                       | Invalid ephemeral client public key                 |
+| ErrInvalidServerEPK     | Client | Ke2                       | Invalid ephemeral server public key                 |
+
+### Client errors
+
+| Name                   | Stage        | Reason                                                                  |
+|:-----------------------|:-------------|:------------------------------------------------------------------------|
+| ErrInvalidMaskedLength | ClientFinish | The length of the masked response is not = point length + envelope size |
+| ErrInvalidPKS          | ClientFinish | Invalid server public key in unmasked response                          |
+| ErrEnvelopeInvalidMac  | ClientFinish | Invalid envelope authentication tag                                     |
+| ErrAkeInvalidServerMac | ClientFinish | AKE : invalid server MAC                                                |
+
+
+### Server errors
+
+| Name                   | Stage         | Reason                   |
+|:-----------------------|:--------------|:-------------------------|
+| ErrAkeInvalidClientMac | ServerFinish  | AKE : invalid client MAC |
+
+
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined as the composition of two functionalities: an OPRF and
