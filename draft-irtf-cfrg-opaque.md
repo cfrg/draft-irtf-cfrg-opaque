@@ -721,7 +721,7 @@ Output:
 - export_key, an additional client key.
 
 Exceptions:
-- EnvelopeRecoveryError, when the envelope fails to be recovered
+- ErrEnvelopeInvalidMac, when the envelope fails to be recovered.
 
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -733,7 +733,7 @@ Steps:
 6. expected_tag = MAC(auth_key,
                       concat(envelope.nonce, inner_env, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise KeyRecoveryError
+     raise ErrEnvelopeInvalidMac
 8. Output (client_private_key, export_key)
 ~~~
 
@@ -1470,7 +1470,7 @@ Output:
 - session_key, the shared session secret.
 
 Exceptions:
-- HandshakeError, when the handshake fails
+- ErrAkeInvalidServerMac, when the handshake fails.
 
 Steps:
 1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
@@ -1479,7 +1479,7 @@ Steps:
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.server_mac, expected_server_mac),
-     raise HandshakeError
+     raise ErrAkeInvalidServerMac
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
 7. Create KE3 ke3 with client_mac
 8. Output (ke3, session_key)
@@ -1538,11 +1538,11 @@ Output:
 - session_key, the shared session secret if and only if KE3 is valid.
 
 Exceptions:
-- HandshakeError, when the handshake fails
+- ErrAkeInvalidClientMac, when the handshake fails.
 
 Steps:
 1. if !ct_equal(ke3.client_mac, state.expected_client_mac):
-2.    raise HandshakeError
+2.    raise ErrAkeInvalidClientMac
 3. Output state.session_key
 ~~~
 
@@ -1645,38 +1645,58 @@ server-authenticated channel over which OPAQUE registration and login is run.
 
 # API Considerations
 
-## Errors
+## Errors {#api-errors}
 
-Some functions in OPAQUE are fallible. For example, errors can occur when incorrect data is given to
-deserialization functions or message authentication codes don't verify.
+This specification based on OPRF and 3DH only has a couple of fallible functions. For example,
+MACs exchanged during the AKE that might don't verify. Additionally, given the statically sized nature
+of the protocol messages, clients and servers can easily detect errors in invalid messages or group elements.
+The following errors are documented for the OPRF-3DH composition in this specification and the recommended
+configurations, and don't cover potential errors in other configurations.
 
-### Deserialization errors
+### Deserialization errors {#deserialization-errors}
 
-| Name                    | Party  | Messages                  | Reason                                              |
-|:------------------------|:-------|:--------------------------|:----------------------------------------------------|
-| ErrInvalidMessageLength | All    | All                       | The message length is invalid for the configuration |
-| ErrInvalidBlindedData   | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point                    |
-| ErrInvalidEvaluatedData | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point                       |
-| ErrInvalidServerPK      | Client | RegistrationResponse      | Invalid server public key                           |
-| ErrInvalidClientPK      | Server | Record                    | Invalid client public key                           |
-| ErrInvalidClientEPK     | Server | Ke1                       | Invalid ephemeral client public key                 |
-| ErrInvalidServerEPK     | Client | Ke2                       | Invalid ephemeral server public key                 |
+| Name                    | Role   | Messages                  | Reason                                               |
+|:------------------------|:-------|:--------------------------|:-----------------------------------------------------|
+| ErrInvalidMessageLength | Both   | All                       | The message length is invalid for the configuration. |
+| ErrInvalidBlindedData   | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point.                    |
+| ErrInvalidEvaluatedData | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
+| ErrInvalidServerPK      | Client | RegistrationResponse      | Invalid server public key.                           |
+| ErrInvalidClientPK      | Server | Record                    | Invalid client public key.                           |
+| ErrInvalidClientEPK     | Server | Ke1                       | Invalid ephemeral client public key.                 |
+| ErrInvalidServerEPK     | Client | Ke2                       | Invalid ephemeral server public key.                 |
 
-### Client errors
+### Client errors {#client-errors}
 
-| Name                   | Stage        | Reason                                                                  |
-|:-----------------------|:-------------|:------------------------------------------------------------------------|
-| ErrInvalidMaskedLength | ClientFinish | The length of the masked response is not = point length + envelope size |
-| ErrInvalidPKS          | ClientFinish | Invalid server public key in unmasked response                          |
-| ErrEnvelopeInvalidMac  | ClientFinish | Invalid envelope authentication tag                                     |
-| ErrAkeInvalidServerMac | ClientFinish | AKE : invalid server MAC                                                |
+The client can produce errors due to incorrect values in the messages it received, either because of
+invalid data, point encoding, or MACs.
+
+| Name                   | Stage        | Reason                                                                   |
+|:-----------------------|:-------------|:-------------------------------------------------------------------------|
+| ErrInvalidMaskedLength | ClientFinish | The length of the masked response is not = point length + envelope size. |
+| ErrInvalidPKS          | ClientFinish | Invalid server public key in unmasked response.                          |
+| ErrEnvelopeInvalidMac  | ClientFinish | Invalid envelope authentication tag.                                     |
+| ErrAkeInvalidServerMac | ClientFinish | Invalid server AKE MAC.                                                  |
 
 
-### Server errors
+### Server errors {#server-errors}
 
-| Name                   | Stage         | Reason                   |
-|:-----------------------|:--------------|:-------------------------|
-| ErrAkeInvalidClientMac | ServerFinish  | AKE : invalid client MAC |
+The server returns a protocol error in the sole case of an invalid client MAC in the AKE. 
+
+| Name                   | Stage         | Reason                  |
+|:-----------------------|:--------------|:------------------------|
+| ErrAkeInvalidClientMac | ServerFinish  | Invalid client AKE MAC. |
+
+### Application errors
+
+Implementations MUST verify certain input arguments and return an appropriate error. Note that
+these are not protocol errors, and are indicative.
+
+| Name                      | Role   | Stage      | Reason                                         |
+|:--------------------------|:-------|:-----------|:-----------------------------------------------|
+| ErrInvalidServerSecretKey | Server | LoginInit  | Invalid server secret key.                     |
+| ErrInvalidServerPK        | Server | LoginInit  | Invalid server public key.                     |
+| ErrInvalidOPRFSeedLength  | Server | LoginInit  | Invalid OPRF seed length.                      |
+| ErrInvalidEnvelopeLength  | Server | LoginInit  | Invalid envelope length for the configuration. |
 
 
 # Security Considerations {#security-considerations}
