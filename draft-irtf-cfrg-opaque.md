@@ -1651,7 +1651,7 @@ server-authenticated channel over which OPAQUE registration and login is run.
 ## Errors {#api-errors}
 
 This specification based on OPRF and 3DH only has a couple of fallible functions. For example,
-MACs exchanged during the AKE that might don't verify. Additionally, given the statically sized nature
+MACs exchanged during the AKE that might not verify. Additionally, given the statically sized nature
 of the protocol messages, clients and servers can easily detect errors in invalid messages or group elements.
 The following errors are documented for the OPRF-3DH composition in this specification and the recommended
 configurations, and don't cover potential errors in other configurations.
