@@ -68,15 +68,6 @@ def hkdf_expand(config, prk, info, L):
     T = reduce(concat, map(lambda c: c, Ts))
     return T[0:L]
 
-def to_hex(octet_string):
-    if isinstance(octet_string, str):
-        return "".join("{:02x}".format(ord(c)) for c in octet_string)
-    if isinstance(octet_string, bytes):
-        return "" + "".join("{:02x}".format(c) for c in octet_string)
-    assert isinstance(octet_string, bytearray)
-    return ''.join(format(x, '02x') for x in octet_string)
-
-
 # HKDF-Expand-Label(Secret, Label, Context, Length) =
 #   HKDF-Expand(Secret, HkdfLabel, Length)
 #
