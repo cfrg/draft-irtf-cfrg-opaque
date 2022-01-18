@@ -693,7 +693,7 @@ Input:
 Output:
 - envelope, the client's `Envelope` structure.
 - client_public_key, the client's AKE public key.
-- masking_key, an encryption key used by the server with the sole purpose 
+- masking_key, an encryption key used by the server with the sole purpose
   of defending against client enumeration attacks.
 - export_key, an additional client key.
 
@@ -1296,12 +1296,16 @@ We assume the following functions to exist for all candidate groups in this
 setting:
 
 - RecoverPublicKey(private_key): Recover the public key related to the input
-`private_key`.
+  `private_key`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`.
 - GenerateAuthKeyPair(): Return a randomly generated private and public key
-pair. This can be implemented by generating a random private key `sk`, then
-computing `pk = RecoverPublicKey(sk)`.
+  pair. This can be implemented by generating a random private key `sk`, then
+  computing `pk = RecoverPublicKey(sk)`.
+- SerializeElement(element): A member function of the underlying group that
+  maps `element` to a unique byte array, mirrored from the definition of the
+  similarly-named function of the OPRF group described in
+  {{I-D.irtf-cfrg-voprf}}.
 
 The implementation of DeriveAuthKeyPair is as follows:
 
@@ -1400,9 +1404,9 @@ Output:
 - ikm, input key material.
 
 Steps:
-1. dh1 = SerializePublicKey(sk1 * pk1)
-2. dh2 = SerializePublicKey(sk2 * pk2)
-3. dh3 = SerializePublicKey(sk3 * pk3)
+1. dh1 = SerializeElement(sk1 * pk1)
+2. dh2 = SerializeElement(sk2 * pk2)
+3. dh3 = SerializeElement(sk3 * pk3)
 4. Output concat(dh1, dh2, dh3)
 ~~~
 
