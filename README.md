@@ -25,6 +25,7 @@ This requires that you have the necessary software installed.  See
 | [**Reference**](https://github.com/cfrg/draft-irtf-cfrg-opaque/tree/master/poc) | Sage     | main    | Sage         |
 | [opaque-ke](https://github.com/novifinancial/opaque-ke)                         | Rust     | main    | N/A          |
 | [opaque](https://github.com/bytemare/opaque/)                                   | Go       | main    | N/A          |
+| [ecc](https://github.com/aldenml/ecc)                                           | C        | main    | N/A          |
 
 ## Contributing
 
