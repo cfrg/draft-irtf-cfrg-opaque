@@ -156,17 +156,17 @@ def run_test_vector(params):
     client_kex = OPAQUE3DH(config)
     server_kex = OPAQUE3DH(config)
 
-    ke1 = client_kex.generate_ke1(pwdU, idU, fake_pkU if is_fake else pkU, idS, pkS)
+    ke1 = client_kex.generate_ke1(pwdU)
     ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, idS, skS, pkS, idU, fake_pkU if is_fake else pkU)
     if is_fake:
         try:
-            ke3 = client_kex.generate_ke3(ke2)
+            ke3 = client_kex.generate_ke3(ke2, idU, fake_pkU, idS)
             assert False
         except:
             # Expected since the MAC was generated using garbage
             pass
     else:
-        ke3 = client_kex.generate_ke3(ke2)
+        ke3 = client_kex.generate_ke3(ke2, idU, pkU, idS)
         server_session_key = server_kex.finish(ke3)
         assert server_session_key == client_kex.session_key
 
