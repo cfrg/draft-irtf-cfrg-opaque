@@ -11,7 +11,7 @@ from hash import scrypt
 
 try:
     from sagelib.oprf import SetupBaseServer, SetupBaseClient, Evaluation
-    from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, Credentials, CleartextCredentials, Envelope, deserialize_envelope
+    from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, CleartextCredentials, Envelope, deserialize_envelope
     from sagelib.opaque_common import to_hex, derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
@@ -73,7 +73,7 @@ class OPAQUECore(object):
             client_identity = client_public_key
         return CleartextCredentials(server_public_key, client_identity, server_identity)
 
-    def create_envelope(self, creds, random_pwd, server_public_key):
+    def create_envelope(self, random_pwd, server_public_key, idU, idS):
         envelope_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("AuthKey"), Nh)
@@ -85,7 +85,7 @@ class OPAQUECore(object):
         pk_bytes = self.config.group.serialize(client_public_key)
         client_public_key = self.config.group.serialize(client_public_key)
 
-        cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, creds.idS, creds.idU)
+        cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, idS, idU)
         auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_creds.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
@@ -94,9 +94,9 @@ class OPAQUECore(object):
 
         return envelope, client_public_key, masking_key, export_key
 
-    def finalize_request(self, creds, pwdU, blind, response, info):
+    def finalize_request(self, pwdU, blind, response, info, idU=None, idS=None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind, info)
-        envelope, client_public_key, masking_key, export_key = self.create_envelope(creds, random_pwd, response.pkS)
+        envelope, client_public_key, masking_key, export_key = self.create_envelope(random_pwd, response.pkS, idU, idS)
         record = RegistrationUpload(client_public_key, masking_key, envelope)
 
         self.registration_rwdU = random_pwd
