@@ -1531,12 +1531,12 @@ Output:
 def Response(server_identity, server_private_key, client_identity,
              client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
-  server_secret, server_keyshare = GenerateAuthKeyPair()
+  server_private_keyshare, server_keyshare = GenerateAuthKeyPair()
   Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
   preamble = Preamble(client_identity, ke1, server_identity, ike2)
-  ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
+  ikm = TripleDHIKM(server_private_keyshare, ke1.client_keyshare,
                     server_private_key, ke1.client_keyshare,
-                    server_secret, client_public_key)
+                    server_private_keyshare, client_public_key)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
   expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
