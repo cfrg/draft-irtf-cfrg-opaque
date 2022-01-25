@@ -1521,7 +1521,7 @@ Steps:
 2. server_private_keyshare, server_keyshare = GenerateAuthKeyPair()
 3. Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
 4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
-5. ikm = TripleDHIKM(server_secret, ke1.client_keyshare,
+5. ikm = TripleDHIKM(server_private_keyshare, ke1.client_keyshare,
                     server_private_key, ke1.client_keyshare,
                     server_private_keyshare, client_public_key)
 6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
