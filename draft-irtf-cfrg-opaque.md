@@ -280,6 +280,9 @@ credentials can only be done with knowledge of the client password. In the secon
 stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol.
 
+The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
+OPAKE was taken.
+
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}.
 
@@ -314,9 +317,6 @@ lack of value.
 All protocol messages and structures defined in this document use the syntax from
 {{?RFC8446, Section 3}}.
 
-The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
-OPAKE was taken.
-
 # Cryptographic Dependencies {#dependencies}
 
 OPAQUE depends on the following cryptographic protocols and primitives:
@@ -330,7 +330,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces and key derivatio seeds used in these dependencies and
+otherwise, all random nonces and key derivation seeds used in these dependencies and
 the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
 where `Nn` = `Nseed` = 32.
 
@@ -736,7 +736,7 @@ Output:
 - export_key, an additional client key.
 
 Exceptions:
-- EnvelopeRecoveryError, when the envelope fails to be recovered
+- KeyRecoveryError, when the key fails to be recovered
 
 def Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity):
@@ -747,8 +747,7 @@ def Recover(randomized_pwd, server_public_key, envelope,
 
   cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-  expected_tag = MAC(auth_key,
-                      concat(envelope.nonce, inner_env, cleartext_creds))
+  expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
 
   if !ct_equal(envelope.auth_tag, expected_tag)
     raise KeyRecoveryError
@@ -1310,12 +1309,16 @@ We assume the following functions to exist for all candidate groups in this
 setting:
 
 - RecoverPublicKey(private_key): Recover the public key related to the input
-`private_key`.
+  `private_key`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`.
 - GenerateAuthKeyPair(): Return a randomly generated private and public key
-pair. This can be implemented by generating a random private key `sk`, then
-computing `pk = RecoverPublicKey(sk)`.
+  pair. This can be implemented by generating a random private key `sk`, then
+  computing `pk = RecoverPublicKey(sk)`.
+- SerializeElement(element): A member function of the underlying group that
+  maps `element` to a unique byte array, mirrored from the definition of the
+  similarly-named function of the OPRF group described in
+  {{I-D.irtf-cfrg-voprf}}.
 
 The implementation of DeriveAuthKeyPair is as follows:
 
@@ -1330,7 +1333,7 @@ Output:
 - public_key, the associated public key.
 
 def DeriveAuthKeyPair(seed):
-  private_key = HashToScalar(seed, dst="OPAQUE-HashToScalar")
+  private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
   public_key = ScalarBaseMult(private_key)
   Output (private_key, public_key)
 ~~~
@@ -1414,9 +1417,9 @@ Output:
 - ikm, input key material.
 
 def TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3):
-  dh1 = SerializePublicKey(sk1 * pk1)
-  dh2 = SerializePublicKey(sk2 * pk2)
-  dh3 = SerializePublicKey(sk3 * pk3)
+  dh1 = SerializeElement(sk1 * pk1)
+  dh2 = SerializeElement(sk2 * pk2)
+  dh3 = SerializeElement(sk3 * pk3)
   return concat(dh1, dh2, dh3)
 ~~~
 
@@ -1682,14 +1685,14 @@ protocols such as TLS.
 The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
 The following list enumerates important differences:
 
-- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}.
-- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE.
-- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details.
-- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details.
-- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes.
-- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys.
-- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE.
-- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account.
+- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}. This change adds to the security of the protocol. {{OPAQUE}} considered the case where the envelope was constructed by the server for reasons of compatibility with previous UC modeling. An upcoming paper analyzes the registration phase as specified in this document.
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE. This variant is also analyzed in the new paper referred to in the previous item. This change improves the assumption behind the protocol by getting rid of equivocability and random key robustness for the encryption function. The latter property is only required for authentication and achieved by a MAC.
+- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details. This extension does not add to the security of OPAQUE as an aPAKE but only used to provide a defense against enumeration attacks. In the analysis, this key can be simulated as a (pseudo) random key.
+- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details. The analysis of OPAQUE assumes OPRF keys of different users are independently random or pseudorandom. Deriving these keys via a single PRF (i.e., with a single cross-user key) applied to users' identities satisfies this assumption.
+- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes. This key is a pseudorandom value independent of other values in the protocol and have no influence in the security analysis (it can be simulated with a random output).
+- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. Binding authentication to identities is part of the AKE part of OPAQUE. The type of identities and their semantics are application dependent and independent of the protocol analysis.
+- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE. This is a mechanism for the AKE component and is best practice as for domain separation between different applications of the protocol.
+- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account. This mechanism is part of the derivation of OPRF keys via a single OPRF. As long as the derivation of different OPRF keys from a single OPRF have different PRF inputs, the protocol is secure. The choice of such inputs is up to the application.
 
 ## Security Analysis
 
@@ -1735,7 +1738,7 @@ Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation.
 
-sWe note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
 in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
