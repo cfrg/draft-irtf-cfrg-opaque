@@ -1463,7 +1463,7 @@ Output:
 
 def Start(credential_request):
   client_nonce = random(Nn)
-  client_secret, client_keyshare = GenerateAuthKeyPair()
+  (client_secret, client_keyshare) = GenerateAuthKeyPair()
   Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
   Populate state with ClientState(client_secret, ke1)
   return (ke1, client_secret)
