@@ -108,7 +108,7 @@ class OPAQUE3DH(KeyExchange):
 
         return server_mac_key, client_mac_key, session_key, handshake_secret
 
-    def generate_ke1(self, pwdU, idU, pkU, idS, pkS):
+    def generate_ke1(self, pwdU):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
@@ -116,31 +116,12 @@ class OPAQUE3DH(KeyExchange):
         (eskU, epkU) = self.config.group.key_gen()
         ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
-        # transcript1 includes the concatenation of the values:
-        # cred_request, nonceU, epkU
-        hasher = self.config.hash()
-        hasher.update(_as_bytes("RFCXXXX"))
-        hasher.update(encode_vector(self.config.context))
-        if idU:
-            hasher.update(encode_vector_len(idU, 2))
-        else:
-            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
-        hasher.update(serialized_request)
-        hasher.update(nonceU)
-        hasher.update(self.config.group.serialize(epkU))
-
-        self.cred_request = cred_request
+        self.serialized_request = serialized_request
         self.cred_metadata = cred_metadata
-        self.idU = idU
-        self.idS = idS
         self.pwdU = pwdU
-        self.pkS = pkS
         self.eskU = eskU
         self.epkU = epkU
         self.nonceU = nonceU
-        self.cred_metadata = cred_metadata
-        self.hasher = hasher
-        self.pkU = pkU
 
         return serialized_request + ke1.serialize()
 
@@ -199,32 +180,41 @@ class OPAQUE3DH(KeyExchange):
 
         return serialized_response + ake2.serialize()
 
-    def generate_ke3(self, msg):
+    def generate_ke3(self, msg, idU, pkU, idS):
         cred_response, offset = deserialize_credential_response(self.config, msg)
         serialized_response = cred_response.serialize()
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
         info = _as_bytes("")
-        skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, info, self.idU, self.idS)
+        skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, info, idU, idS)
         skU = OS2IP(skU_bytes)
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)
         pkS = self.config.group.deserialize(pkS_bytes)
-        
-        idS = self.idS
-        pkS = self.pkS
+
         eskU = self.eskU
+        epkU = self.epkU
         nonceS = ake2.nonceS
         epkS = self.config.group.deserialize(ake2.epkS)
         mac = ake2.mac
 
-        hasher = self.hasher
-        if idS:
+        # transcript:
+        hasher = self.config.hash()
+        hasher.update(_as_bytes("RFCXXXX")) # RFCXXXX
+        hasher.update(encode_vector(self.config.context)) # context
+        if idU: # client identity
+            hasher.update(encode_vector_len(idU, 2))
+        else:
+            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
+        hasher.update(self.serialized_request)           # ke1: cred request
+        hasher.update(self.nonceU)                       # ke1: client nonce
+        hasher.update(self.config.group.serialize(epkU)) # ke1: client keyshare
+        if idS: # server identity
             hasher.update(encode_vector_len(idS, 2))
         else:
             hasher.update(encode_vector_len(self.config.group.serialize(pkS), 2))
-        hasher.update(serialized_response)
-        hasher.update(nonceS)
-        hasher.update(self.config.group.serialize(epkS))
+        hasher.update(serialized_response)               # ke2: cred response
+        hasher.update(nonceS)                            # ke2: server nonce
+        hasher.update(self.config.group.serialize(epkS)) # ke2: server keyshare
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
         dh_components = TripleDHComponents(epkS, eskU, pkS, eskU, epkS, skU)
