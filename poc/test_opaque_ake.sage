@@ -47,13 +47,13 @@ def test_core_protocol_serialization():
         config, serialized_request)
     assert request == deserialized_request
 
-    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU, _as_bytes(""))
+    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU)
     serialized_response = response.serialize()
     deserialized_response = deserialize_registration_response(
         config, serialized_response)
     assert response == deserialized_response
 
-    record, export_key = core.finalize_request(pwdU, metadata, response, _as_bytes(""))
+    record, export_key = core.finalize_request(pwdU, metadata, response)
     serialized_envU = record.envU.serialize()
     deserialized_envU, envU_len = deserialize_envelope(config, serialized_envU)
     assert envU_len == len(serialized_envU)
@@ -67,14 +67,14 @@ def test_core_protocol_serialization():
     assert cred_request == deserialized_request
     assert length == len(serialized_request)
 
-    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key, _as_bytes(""))
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
     serialized_response = cred_response.serialize()
     deserialized_response, length = deserialize_credential_response(
         config, serialized_response)
     assert cred_response == deserialized_response
     assert length == len(serialized_response)
 
-    recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response, _as_bytes(""))
+    recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response)
 
     # Check that recovered credentials match the registered credentials
     assert export_key == recovered_export_key
@@ -94,19 +94,19 @@ def test_registration_and_authentication():
     core = OPAQUECore(config)
 
     request, metadata = core.create_registration_request(pwdU)
-    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU, _as_bytes(""))
-    record, export_key = core.finalize_request(pwdU, metadata, response, _as_bytes(""))
+    response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU)
+    record, export_key = core.finalize_request(pwdU, metadata, response)
 
     cred_request, cred_metadata = core.create_credential_request(pwdU)
-    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key, _as_bytes(""))
-    recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response, _as_bytes(""))
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
+    recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response)
 
     assert export_key == recovered_export_key
 
     cred_request, cred_metadata = core.create_credential_request(badPwdU)
-    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key, _as_bytes(""))
+    cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key)
     try:
-        recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(badPwdU, cred_metadata, cred_response, _as_bytes(""))
+        recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(badPwdU, cred_metadata, cred_response)
         assert False
     except:
         # We expect the MAC authentication tag to fail, so should get here
@@ -117,7 +117,6 @@ TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identi
 def run_test_vector(params):
     is_fake = params.is_fake
     idU = params.idU
-    info = _as_bytes("")
     credential_identifier = params.credential_identifier
     idS = params.idS
     pwdU = params.pwdU
@@ -139,8 +138,8 @@ def run_test_vector(params):
 
     if not is_fake:
         reg_request, metadata = core.create_registration_request(pwdU)
-        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier, info)
-        record, export_key = core.finalize_request(pwdU, metadata, reg_response, info, idU, idS)
+        reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier)
+        record, export_key = core.finalize_request(pwdU, metadata, reg_response, idU, idS)
         pkU_enc = record.pkU
         pkU = group.deserialize(pkU_enc)
         pkU_bytes = pkU_enc
