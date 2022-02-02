@@ -705,7 +705,7 @@ def Store(randomized_pwd, server_public_key, server_identity, client_identity):
   auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
   export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
   seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
-  _, client_public_key = DeriveAuthKeyPair(seed)
+  (_, client_public_key) = DeriveAuthKeyPair(seed)
 
   cleartext_creds =
     CreateCleartextCredentials(server_public_key, client_public_key,
@@ -743,7 +743,7 @@ def Recover(randomized_pwd, server_public_key, envelope,
   auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
   export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
   seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
-  client_private_key, client_public_key = DeriveAuthKeyPair(seed)
+  (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
 
   cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
