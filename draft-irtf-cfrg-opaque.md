@@ -360,7 +360,7 @@ variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. The implementation of
 DeriveKeyPair based on {{I-D.irtf-cfrg-voprf}} is below:
 
 ~~~
-DeriveKeyPair(seed)
+DeriveKeyPair
 
 Input:
 - seed, pseudo-random byte sequence used as a seed.
@@ -369,10 +369,10 @@ Output:
 - private_key, a private key.
 - public_key, the associated public key.
 
-Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveKeyPair")
-2. public_key = ScalarBaseMult(private_key)
-3. Output (private_key, public_key)
+def DeriveKeyPair(seed):
+  private_key = HashToScalar(seed, dst="OPAQUE-DeriveKeyPair")
+  public_key = ScalarBaseMult(private_key)
+  return (private_key, public_key)
 ~~~
 
 HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
@@ -631,8 +631,7 @@ The function CreateCleartextCredentials constructs a `CleartextCredentials` stru
 application credential information.
 
 ~~~
-CreateCleartextCredentials(server_public_key, client_public_key,
-                           server_identity, client_identity)
+CreateCleartextCredentials
 
 Input:
 - server_public_key, The encoded server public key for the AKE protocol.
@@ -643,14 +642,17 @@ Input:
 Output:
 - cleartext_credentials, a CleartextCredentials structure
 
-Steps:
-1. if server_identity == nil
-2.    server_identity = server_public_key
-3. if client_identity == nil
-4.    client_identity = client_public_key
-5. Create CleartextCredentials cleartext_credentials
-   with (server_public_key, server_identity, client_identity)
-6. Output cleartext_credentials
+def CreateCleartextCredentials(server_public_key, client_public_key,
+                               server_identity, client_identity):
+  # Set identities as public keys if no application-layer identity is provided
+  if server_identity == nil
+    server_identity = server_public_key
+  if client_identity == nil
+    client_identity = client_public_key
+
+  Create CleartextCredentials cleartext_credentials with
+    (server_public_key, server_identity, client_identity)
+  return cleartext_credentials
 ~~~
 
 ## Key Recovery {#key-recovery}
@@ -681,7 +683,7 @@ Clients create an `Envelope` at registration with the function `Store` defined
 below.
 
 ~~~
-Store(randomized_pwd, server_public_key, server_identity, client_identity)
+Store
 
 Input:
 - randomized_pwd, randomized password.
@@ -697,17 +699,21 @@ Output:
   of defending against client enumeration attacks.
 - export_key, an additional client key.
 
-Steps:
-1. envelope_nonce = random(Nn)
-2. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-3. auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
-4. export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
-5. seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
-6. _, client_public_key = DeriveAuthKeyPair(seed)
-7. cleartext_creds = CreateCleartextCredentials(server_public_key, client_public_key, server_identity, client_identity)
-8. auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_creds))
-9. Create Envelope envelope with (envelope_nonce, auth_tag)
-10. Output (envelope, client_public_key, masking_key, export_key)
+def Store(randomized_pwd, server_public_key, server_identity, client_identity):
+  envelope_nonce = random(Nn)
+  masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+  auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
+  export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
+  seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
+  (_, client_public_key) = DeriveAuthKeyPair(seed)
+
+  cleartext_creds =
+    CreateCleartextCredentials(server_public_key, client_public_key,
+                               server_identity, client_identity)
+  auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_creds))
+
+  Create Envelope envelope with (envelope_nonce, auth_tag)
+  return (envelope, client_public_key, masking_key, export_key)
 ~~~
 
 ### Envelope Recovery {#envelope-recovery}
@@ -716,8 +722,7 @@ Clients recover their `Envelope` during login with the `Recover` function
 defined below.
 
 ~~~
-Recover(randomized_pwd, server_public_key, envelope,
-                server_identity, client_identity)
+Recover
 
 Input:
 - randomized_pwd, randomized password.
@@ -733,17 +738,21 @@ Output:
 Exceptions:
 - KeyRecoveryError, when the key fails to be recovered
 
-Steps:
-1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
-2. export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
-3. seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
-4. client_private_key, client_public_key = DeriveAuthKeyPair(seed)
-5. cleartext_creds = CreateCleartextCredentials(server_public_key,
+def Recover(randomized_pwd, server_public_key, envelope,
+            server_identity, client_identity):
+  auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
+  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
+  seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
+  (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
+
+  cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-6. expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
-7. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise KeyRecoveryError
-8. Output (client_private_key, export_key)
+  expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
+
+  if !ct_equal(envelope.auth_tag, expected_tag)
+    raise KeyRecoveryError
+
+  return (client_private_key, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
@@ -843,7 +852,7 @@ envelope
 ### CreateRegistrationRequest
 
 ~~~
-CreateRegistrationRequest(password)
+CreateRegistrationRequest
 
 Input:
 - password, an opaque byte string containing the client's password.
@@ -852,17 +861,16 @@ Output:
 - request, a RegistrationRequest structure.
 - blind, an OPRF scalar value.
 
-Steps:
-1. (blind, M) = Blind(password)
-2. Create RegistrationRequest request with M
-3. Output (request, blind)
+def CreateRegistrationRequest(password):
+  (blind, M) = Blind(password)
+  Create RegistrationRequest request with M
+  return (request, blind)
 ~~~
 
 ### CreateRegistrationResponse {#create-reg-response}
 
 ~~~
-CreateRegistrationResponse(request, server_public_key, credential_identifier,
-                            oprf_seed)
+CreateRegistrationResponse
 
 Input:
 - request, a RegistrationRequest structure.
@@ -873,12 +881,13 @@ Input:
 Output:
 - response, a RegistrationResponse structure.
 
-Steps:
-1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
-2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data, nil)
-4. Create RegistrationResponse response with (Z, server_public_key)
-5. Output response
+def CreateRegistrationResponse(request, server_public_key,
+                               credential_identifier, oprf_seed):
+  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
+  (oprf_key, _) = DeriveKeyPair(seed)
+  Z = Evaluate(oprf_key, request.data, nil)
+  Create RegistrationResponse response with (Z, server_public_key)
+  return response
 ~~~
 
 ### FinalizeRequest {#finalize-request}
@@ -887,7 +896,7 @@ To create the user record used for further authentication, the client executes
 the following function.
 
 ~~~
-FinalizeRequest(password, blind, response, server_identity, client_identity)
+FinalizeRequest
 
 Input:
 - password, an opaque byte string containing the client's password.
@@ -900,14 +909,14 @@ Output:
 - record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
-Steps:
-1. y = Finalize(password, blind, response.data, nil)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-3. (envelope, client_public_key, masking_key, export_key) =
+def FinalizeRequest(password, blind, response, server_identity, client_identity):
+  y = Finalize(password, blind, response.data, nil)
+  randomized_pwd = Extract("", concat(y, Harden(y, params)))
+  (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
-                    server_identity, client_identity)
-4. Create RegistrationUpload record with (client_public_key, masking_key, envelope)
-5. Output (record, export_key)
+          server_identity, client_identity)
+  Create RegistrationUpload record with (client_public_key, masking_key, envelope)
+  return (record, export_key)
 ~~~
 
 See {{online-phase}} for details about the output export_key usage.
@@ -1010,7 +1019,7 @@ how these functions are used to execute the authenticated key exchange protocol.
 ## Client Authentication Functions {#opaque-client}
 
 ~~~
-ClientInit(password)
+ClientInit
 
 State:
 - state, a ClientState structure.
@@ -1021,15 +1030,15 @@ Input:
 Output:
 - ke1, a KE1 message structure.
 
-Steps:
-1. request, blind = CreateCredentialRequest(password)
-2. state.blind = blind
-3. ake_1 = Start(request)
-4. Output KE1(request, ake_1)
+def ClientInit(password):
+  request, blind = CreateCredentialRequest(password)
+  state.blind = blind
+  ake_1 = Start(request)
+  Output KE1(request, ake_1)
 ~~~
 
 ~~~
-ClientFinish(client_identity, server_identity, ke2)
+ClientFinish
 
 State:
 - state, a ClientState structure
@@ -1046,21 +1055,20 @@ Output:
 - session_key, the session's shared secret.
 - export_key, an additional client key.
 
-Steps:
-1. (client_private_key, server_public_key, export_key) =
+def ClientFinish(client_identity, server_identity, ke2):
+  (client_private_key, server_public_key, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.CredentialResponse,
                        server_identity, client_identity)
-2. (ke3, session_key) =
+  (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
                     server_public_key, ke2)
-3. Output (ke3, session_key)
+  return (ke3, session_key)
 ~~~
 
 ## Server Authentication Functions {#opaque-server}
 
 ~~~
-ServerInit(server_identity, server_private_key, server_public_key,
-           record, credential_identifier, oprf_seed, ke1, client_identity)
+ServerInit
 
 Input:
 - server_identity, the optional encoded server identity, which is set to
@@ -1076,12 +1084,13 @@ Input:
 Output:
 - ke2, a KE2 structure.
 
-Steps:
-1. response = CreateCredentialResponse(ke1.request, server_public_key, record,
+def ServerInit(server_identity, server_private_key, server_public_key,
+               record, credential_identifier, oprf_seed, ke1, client_identity):
+  response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-2. ake_2 = Response(server_identity, server_private_key,
+  ake_2 = Response(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, response)
-3. Output KE2(response, ake_2)
+  return KE2(response, ake_2)
 ~~~
 
 Since the OPRF is a two-message protocol, KE3 has no element of the OPRF. We can
@@ -1129,7 +1138,7 @@ structure.
 #### CreateCredentialRequest {#create-credential-request}
 
 ~~~
-CreateCredentialRequest(password)
+CreateCredentialRequest
 
 Input:
 - password, an opaque byte string containing the client's password.
@@ -1138,10 +1147,10 @@ Output:
 - request, a CredentialRequest structure.
 - blind, an OPRF scalar value.
 
-Steps:
-1. (blind, M) = Blind(password)
-2. Create CredentialRequest request with M
-3. Output (request, blind)
+def CreateCredentialRequest(password):
+  (blind, M) = Blind(password)
+  Create CredentialRequest request with M
+  return (request, blind)
 ~~~
 
 #### CreateCredentialResponse {#create-credential-response}
@@ -1156,8 +1165,7 @@ In the case of an existing record with the corresponding identifier
 produce a CredentialResponse:
 
 ~~~
-CreateCredentialResponse(request, server_public_key, record,
-                         credential_identifier, oprf_seed)
+CreateCredentialResponse
 
 Input:
 - request, a CredentialRequest structure.
@@ -1170,17 +1178,20 @@ Input:
 Output:
 - response, a CredentialResponse structure.
 
-Steps:
-1. seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
-2. (oprf_key, _) = DeriveKeyPair(seed)
-3. Z = Evaluate(oprf_key, request.data, nil)
-4. masking_nonce = random(Nn)
-5. credential_response_pad = Expand(record.masking_key,
-     concat(masking_nonce, "CredentialResponsePad"), Npk + Ne)
-6. masked_response = xor(credential_response_pad,
-                         concat(server_public_key, record.envelope))
-7. Create CredentialResponse response with (Z, masking_nonce, masked_response)
-8. Output response
+def CreateCredentialResponse(request, server_public_key, record,
+                             credential_identifier, oprf_seed):
+  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+  (oprf_key, _) = DeriveKeyPair(seed)
+  Z = Evaluate(oprf_key, request.data, nil)
+  masking_nonce = random(Nn)
+  credential_response_pad = Expand(record.masking_key,
+                                   concat(masking_nonce, "CredentialResponsePad"),
+                                   Npk + Ne)
+  masked_response = xor(credential_response_pad,
+                        concat(server_public_key, record.envelope))
+  Create CredentialResponse response with (Z, masking_nonce, masked_response)
+
+  return response
 ~~~
 
 In the case of a record that does not exist and if client enumeration prevention is desired,
@@ -1202,8 +1213,7 @@ that is unable to guess the registered password for the client corresponding to 
 #### RecoverCredentials {#recover-credentials}
 
 ~~~
-RecoverCredentials(password, blind, response,
-                   server_identity, client_identity)
+RecoverCredentials
 
 Input:
 - password, an opaque byte string containing the client's password.
@@ -1217,18 +1227,21 @@ Output:
 - server_public_key, the public key of the server.
 - export_key, an additional client key.
 
-Steps:
-1. y = Finalize(password, blind, response.data, nil)
-2. randomized_pwd = Extract("", concat(y, Harden(y, params)))
-3. masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-4. credential_response_pad = Expand(masking_key,
-     concat(response.masking_nonce, "CredentialResponsePad"), Npk + Ne)
-5. concat(server_public_key, envelope) = xor(credential_response_pad,
+def RecoverCredentials(password, blind, response,
+                       server_identity, client_identity):
+  y = Finalize(password, blind, response.data, nil)
+  randomized_pwd = Extract("", concat(y, Harden(y, params)))
+  masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+  credential_response_pad = Expand(masking_key,
+                                   concat(response.masking_nonce, "CredentialResponsePad"),
+                                   Npk + Ne)
+  concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-6. (client_private_key, export_key) =
+  (client_private_key, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
-                    server_identity, client_identity)
-7. Output (client_private_key, server_public_key, export_key)
+            server_identity, client_identity)
+
+  return (client_private_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
@@ -1310,7 +1323,7 @@ setting:
 The implementation of DeriveAuthKeyPair is as follows:
 
 ~~~
-DeriveAuthKeyPair(seed)
+DeriveAuthKeyPair
 
 Input:
 - seed, pseudo-random byte sequence used as a seed.
@@ -1319,10 +1332,10 @@ Output:
 - private_key, a private key.
 - public_key, the associated public key.
 
-Steps:
-1. private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
-2. public_key = ScalarBaseMult(private_key)
-3. Output (private_key, public_key)
+def DeriveAuthKeyPair(seed):
+  private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
+  public_key = ScalarBaseMult(private_key)
+  Output (private_key, public_key)
 ~~~
 
 HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
@@ -1361,7 +1374,7 @@ transcript, such as configuration parameters or application-specific info, e.g.
 The OPAQUE-3DH key schedule requires a preamble, which is computed as follows.
 
 ~~~
-Preamble(client_identity, ke1, server_identity, ke2)
+Preamble
 
 Parameters:
 - context, optional shared context information.
@@ -1377,15 +1390,15 @@ Input:
 Output:
 - preamble, the protocol transcript with identities and messages.
 
-Steps:
-1. preamble = concat("RFCXXXX",
+def Preamble(client_identity, ke1, server_identity, ke2):
+  preamble = concat("RFCXXXX",
                      I2OSP(len(context), 2), context,
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
                      ke2.credential_response,
                      ke2.AuthResponse.server_nonce, ke2.AuthResponse.server_keyshare)
-2. Output preamble
+  return preamble
 ~~~
 
 #### Shared Secret Derivation
@@ -1394,7 +1407,7 @@ The OPAQUE-3DH shared secret derived during the key exchange protocol is
 computed using the following functions.
 
 ~~~
-TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3)
+TripleDHIKM
 
 Input:
 - skx, scalar to be multiplied with their corresponding pkx.
@@ -1403,15 +1416,15 @@ Input:
 Output:
 - ikm, input key material.
 
-Steps:
-1. dh1 = SerializeElement(sk1 * pk1)
-2. dh2 = SerializeElement(sk2 * pk2)
-3. dh3 = SerializeElement(sk3 * pk3)
-4. Output concat(dh1, dh2, dh3)
+def TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3):
+  dh1 = SerializeElement(sk1 * pk1)
+  dh2 = SerializeElement(sk2 * pk2)
+  dh3 = SerializeElement(sk3 * pk3)
+  return concat(dh1, dh2, dh3)
 ~~~
 
 ~~~
-DeriveKeys(ikm, preamble)
+DeriveKeys
 
 Input:
 - ikm, input key material.
@@ -1422,19 +1435,19 @@ Output:
 - Km3, a MAC authentication key.
 - session_key, the shared session secret.
 
-Steps:
-1. prk = Extract("", ikm)
-2. handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-3. session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
-4. Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
-5. Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
-6. Output (Km2, Km3, session_key)
+def DeriveKeys(ikm, preamble):
+  prk = Extract("", ikm)
+  handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
+  session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
+  Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
+  Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
+  return (Km2, Km3, session_key)
 ~~~
 
 ### 3DH Client Functions {#ake-client}
 
 ~~~
-Start(credential_request)
+Start
 
 Parameters:
 - Nn, the nonce length.
@@ -1448,17 +1461,16 @@ Input:
 Output:
 - ke1, a KE1 structure.
 
-Steps:
-1. client_nonce = random(Nn)
-2. client_secret, client_keyshare = GenerateAuthKeyPair()
-3. Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
-4. Populate state with ClientState(client_secret, ke1)
-6. Output (ke1, client_secret)
+def Start(credential_request):
+  client_nonce = random(Nn)
+  (client_secret, client_keyshare) = GenerateAuthKeyPair()
+  Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
+  Populate state with ClientState(client_secret, ke1)
+  return (ke1, client_secret)
 ~~~
 
 ~~~
-CLientFinalize(client_identity, client_private_key, server_identity,
-               server_public_key, ke2)
+ClientFinalize
 
 State:
 - state, a ClientState structure.
@@ -1479,24 +1491,24 @@ Output:
 Exceptions:
 - HandshakeError, when the handshake fails
 
-Steps:
-1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
+def ClientFinalize(client_identity, client_private_key, server_identity,
+                   server_public_key, ke2):
+  ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
     state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
-2. preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
-3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
-4. expected_server_mac = MAC(Km2, Hash(preamble))
-5. If !ct_equal(ke2.server_mac, expected_server_mac),
-     raise HandshakeError
-6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
-7. Create KE3 ke3 with client_mac
-8. Output (ke3, session_key)
+  preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
+  Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+  expected_server_mac = MAC(Km2, Hash(preamble))
+  if !ct_equal(ke2.server_mac, expected_server_mac),
+    raise HandshakeError
+  client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
+  Create KE3 ke3 with client_mac
+  return (ke3, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
 
 ~~~
-Response(server_identity, server_private_key, client_identity,
-         client_public_key, ke1, credential_response)
+Response
 
 Parameters:
 - Nn, the nonce length.
@@ -1516,24 +1528,25 @@ Input:
 Output:
 - ke2, a KE2 structure.
 
-Steps:
-1. server_nonce = random(Nn)
-2. server_private_keyshare, server_keyshare = GenerateAuthKeyPair()
-3. Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
-4. preamble = Preamble(client_identity, ke1, server_identity, ike2)
-5. ikm = TripleDHIKM(server_private_keyshare, ke1.client_keyshare,
+def Response(server_identity, server_private_key, client_identity,
+             client_public_key, ke1, credential_response):
+  server_nonce = random(Nn)
+  (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
+  Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
+  preamble = Preamble(client_identity, ke1, server_identity, ike2)
+  ikm = TripleDHIKM(server_private_keyshare, ke1.client_keyshare,
                     server_private_key, ke1.client_keyshare,
                     server_private_keyshare, client_public_key)
-6. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
-7. server_mac = MAC(Km2, Hash(preamble))
-8. expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-9. Populate state with ServerState(expected_client_mac, session_key)
-10. Create KE2 ke2 with (ike2, server_mac)
-11. Output ke2
+  Km2, Km3, session_key = DeriveKeys(ikm, preamble)
+  server_mac = MAC(Km2, Hash(preamble))
+  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  Populate state with ServerState(expected_client_mac, session_key)
+  Create KE2 ke2 with (ike2, server_mac)
+  return ke2
 ~~~
 
 ~~~
-ServerFinish(ke3)
+ServerFinish
 
 State:
 - state, a ServerState structure.
@@ -1547,10 +1560,10 @@ Output:
 Exceptions:
 - HandshakeError, when the handshake fails
 
-Steps:
-1. if !ct_equal(ke3.client_mac, state.expected_client_mac):
-2.    raise HandshakeError
-3. Output state.session_key
+def ServerFinish(ke3):
+  if !ct_equal(ke3.client_mac, state.expected_client_mac):
+    raise HandshakeError
+  return state.session_key
 ~~~
 
 # Configurations {#configurations}
