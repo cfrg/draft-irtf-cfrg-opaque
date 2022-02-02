@@ -239,6 +239,7 @@ class OPAQUE3DH(KeyExchange):
         self.server_mac_key = server_mac_key
         self.client_mac_key = client_mac_key
         self.handshake_secret = handshake_secret
+        self.export_key = export_key
 
         # transcript3 == transcript2, plus server_mac
         hasher.update(server_mac)
