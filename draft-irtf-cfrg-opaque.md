@@ -894,7 +894,7 @@ Input:
 - blind, an OPRF scalar value.
 - response, a RegistrationResponse structure.
 - server_identity, the optional encoded server identity.
-- client_identity, the encoded client identity.
+- client_identity, the optional encoded client identity.
 
 Output:
 - record, a RegistrationRecord structure.

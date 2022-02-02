@@ -10,8 +10,7 @@ try:
     from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_shake256, ciphersuite_p256_sha256, ciphersuite_p384_sha384, ciphersuite_p521_sha512
     from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
     from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
-            deserialize_credential_request, deserialize_credential_response, \
-            Credentials, CleartextCredentials
+            deserialize_credential_request, deserialize_credential_response
     from sagelib.groups import GroupRistretto255, GroupDecaf448, GroupP256, GroupP384, GroupP521
     from sagelib.opaque_common import I2OSP, OS2IP, I2OSP_le, OS2IP_le, random_bytes, zero_bytes, _as_bytes, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
@@ -34,16 +33,12 @@ def test_core_protocol_serialization():
 
     config = default_opaque_configuration 
     group = config.group
-    skU, pkU = group.key_gen()
-    skU_enc = group.serialize_scalar(skU)
-    pkU_enc = group.serialize(pkU)
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
     oprf_seed = random_bytes(config.hash().digest_size)
 
     core = OPAQUECore(config)
-    creds = Credentials(skU_enc, pkU_enc)
 
     # Run the registration flow to register credentials
     request, metadata = core.create_registration_request(pwdU)
@@ -58,7 +53,7 @@ def test_core_protocol_serialization():
         config, serialized_response)
     assert response == deserialized_response
 
-    record, export_key = core.finalize_request(creds, pwdU, metadata, response, _as_bytes(""))
+    record, export_key = core.finalize_request(pwdU, metadata, response, _as_bytes(""))
     serialized_envU = record.envU.serialize()
     deserialized_envU, envU_len = deserialize_envelope(config, serialized_envU)
     assert envU_len == len(serialized_envU)
@@ -88,24 +83,20 @@ def test_registration_and_authentication():
     idU = _as_bytes("Username")
     pwdU = _as_bytes("opaquerulez")
     badPwdU = _as_bytes("iloveopaque")
-    
+
     config = default_opaque_configuration 
     group = config.group
-    skU, pkU = group.key_gen()
-    skU_enc = group.serialize_scalar(skU)
-    pkU_enc = group.serialize(pkU)
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
     oprf_seed = random_bytes(config.oprf_suite.group.scalar_byte_length())
-  
+
     core = OPAQUECore(config)
-    creds = Credentials(skU_enc, pkU_enc)
 
     request, metadata = core.create_registration_request(pwdU)
     response, kU = core.create_registration_response(request, pkS_enc, oprf_seed, idU, _as_bytes(""))
-    record, export_key = core.finalize_request(creds, pwdU, metadata, response, _as_bytes(""))
-    
+    record, export_key = core.finalize_request(pwdU, metadata, response, _as_bytes(""))
+
     cred_request, cred_metadata = core.create_credential_request(pwdU)
     cred_response = core.create_credential_response(cred_request, pkS_enc, oprf_seed, record.envU, idU, record.masking_key, _as_bytes(""))
     recovered_skU, recovered_pkS, recovered_export_key = core.recover_credentials(pwdU, cred_metadata, cred_response, _as_bytes(""))
@@ -136,11 +127,7 @@ def run_test_vector(params):
     mhf = params.mhf
     group = params.group
 
-    (skU, pkU) = group.key_gen()
-
     (skS, pkS) = group.key_gen()
-    skU_bytes = group.serialize_scalar(skU)
-    pkU_bytes = group.serialize(pkU)
     skS_bytes = group.serialize_scalar(skS)
     pkS_bytes = group.serialize(pkS)
     oprf_seed = random_bytes(fast_hash().digest_size)
@@ -148,13 +135,12 @@ def run_test_vector(params):
     kdf = HKDF(fast_hash)
     mac = HMAC(fast_hash)
     config = Configuration(oprf, kdf, mac, fast_hash, mhf, group, context)
-    creds = Credentials(skU_bytes, pkU_bytes, idU, idS)
     core = OPAQUECore(config)
 
     if not is_fake:
         reg_request, metadata = core.create_registration_request(pwdU)
         reg_response, kU = core.create_registration_response(reg_request, pkS_bytes, oprf_seed, credential_identifier, info)
-        record, export_key = core.finalize_request(creds, pwdU, metadata, reg_response, info)
+        record, export_key = core.finalize_request(pwdU, metadata, reg_response, info, idU, idS)
         pkU_enc = record.pkU
         pkU = group.deserialize(pkU_enc)
         pkU_bytes = pkU_enc
