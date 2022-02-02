@@ -1847,8 +1847,10 @@ changed its identity.
 OPAQUE prevents these attacks during the authentication flow. The first is
 prevented by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from its behavior with existing registered clients.
-Servers do this for an unregistered client by simulating a fake
-CredentialResponse as specified in {{create-credential-response}}.
+Servers do this by simulating a fake CredentialResponse as specified in
+{{create-credential-response}} for unregistered users, and also encrypting both
+CredentialResponse using a masking key. In this way, real and fake CredentialResponse
+messages are indistinguishable from one another.
 Implementations must also take care to avoid side-channel leakage (e.g., timing
 attacks) from helping differentiate these operations from a regular server
 response. Note that this may introduce possible abuse vectors since the
