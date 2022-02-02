@@ -338,44 +338,36 @@ where `Nn` = `Nseed` = 32.
 
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
 server for computing a PRF such that the client learns the PRF output and neither party learns
-the input of the other. This specification uses the the OPRF defined in {{!I-D.irtf-cfrg-voprf}},
-Version -08, with the following API and parameters:
+the input of the other. This specification depends on the prime-order OPRF construction specified
+in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -09, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
-- Blind(x): Convert input `x` into an element of the OPRF group, randomize it
-  by some scalar `r`, producing `M`, and output (`r`, `M`).
-- Evaluate(k, M, info): Evaluate input element `M` using private key `k` and
-  public input (or metadata) `info`, yielding output element `Z`.
-- Finalize(x, r, Z, info): Finalize the OPRF evaluation using input `x`,
-  random scalar `r`, evaluation output `Z`, and public input (or metadata)
-  `info`, yielding output `y`.
-- DeriveKeyPair(seed): Derive a private and public key pair deterministically
-  from a seed.
-- Noe: The size of a serialized OPRF group element.
-- Nok: The size of an OPRF private key.
+The following OPRF client APIs are used:
 
-The public input `info` is currently set to nil.
+- Blind(x): Create and output (`r`, `M`), consisting of a blinded representation of
+  input `x`, denoted `M`, along with a value to revert the this blinding process,
+  denoted `r`.
+- Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
+  random inverter `r`, and evaluation output `Z`, yielding output `y`.
 
-Note that we only need the base mode variant (as opposed to the verifiable mode
-variant) of the OPRF described in {{I-D.irtf-cfrg-voprf}}. The implementation of
-DeriveKeyPair based on {{I-D.irtf-cfrg-voprf}} is below:
+Moreover, the following OPRF server APIs:
 
-~~~
-DeriveKeyPair
+- Evaluate(k, M): Evaluate input element `M` using input key `k`, yielding output
+  element `Z`. This is equivalent to the Evaluate function described in {{OPRF, Section 3.3.1}},
+  where `k` is the private key parameter.
+- DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
+  from a seed, as described in {{OPRF, Section 3.2}}. In this specification,
+  the info parameter to DeriveKeyPair is set to "OPAQUE-DeriveKeyPair".
 
-Input:
-- seed, pseudo-random byte sequence used as a seed.
+Finally, this specification makes use of the following shared APIs and parameters:
 
-Output:
-- private_key, a private key.
-- public_key, the associated public key.
+- SerializeElement(element): Map input `element` to a fixed-length byte array `buf`.
+- DeserializeElement(buf): Attempt to map input byte array `buf` to an OPRF group element.
+  This function can raise a DeserializeError upon failure; see {{OPRF, Section 2.1}}
+  for more details.
+- Noe: The size of a serialized OPRF group element output from SerializeElement.
+- Nok: The size of an OPRF private key as output from DeriveKeyPair.
 
-def DeriveKeyPair(seed):
-  private_key = HashToScalar(seed, dst="OPAQUE-DeriveKeyPair")
-  public_key = ScalarBaseMult(private_key)
-  return (private_key, public_key)
-~~~
-
-HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
+This specification uses the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
 ## Key Derivation Function and Message Authentication Code {#deps-symmetric}
 
@@ -477,7 +469,7 @@ agree on a configuration; see {{configurations}} for details.
 
 This specification defines one particular AKE based on 3DH;
 see {{ake-protocol}}. 3DH assumes a prime-order group as described in
-{{I-D.irtf-cfrg-voprf, Section 2.1}}.
+{{OPRF, Section 2.1}}.
 
 # Protocol Overview {#protocol-overview}
 
@@ -809,7 +801,7 @@ the client's credentials for later use. Moreover, the client MAY use the output
 
 ~~~
 struct {
-  uint8 data[Noe];
+  uint8 blinded_message[Noe];
 } RegistrationRequest;
 ~~~
 
@@ -818,7 +810,7 @@ data
 
 ~~~
 struct {
-  uint8 data[Noe];
+  uint8 evaluated_message[Noe];
   uint8 server_public_key[Npk];
 } RegistrationResponse;
 ~~~
@@ -862,8 +854,9 @@ Output:
 - blind, an OPRF scalar value.
 
 def CreateRegistrationRequest(password):
-  (blind, M) = Blind(password)
-  Create RegistrationRequest request with M
+  (blind, blinded_element) = Blind(password)
+  blinded_message = SerializeElement(blinded_element)
+  Create RegistrationRequest request with blinded_message
   return (request, blind)
 ~~~
 
@@ -881,12 +874,19 @@ Input:
 Output:
 - response, a RegistrationResponse structure.
 
+Exceptions:
+- DeserializeError, when OPRF element deserialization fails.
+
 def CreateRegistrationResponse(request, server_public_key,
                                credential_identifier, oprf_seed):
   seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
-  (oprf_key, _) = DeriveKeyPair(seed)
-  Z = Evaluate(oprf_key, request.data, nil)
-  Create RegistrationResponse response with (Z, server_public_key)
+  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE")
+
+  blinded_element = DeserializeElement(request.blinded_message)
+  evaluated_element = Evaluate(oprf_key, blinded_element)
+  evaluated_message = SerializeElement(evaluated_element)
+
+  Create RegistrationResponse response with (evaluated_message, server_public_key)
   return response
 ~~~
 
@@ -909,10 +909,16 @@ Output:
 - record, a RegistrationRecord structure.
 - export_key, an additional client key.
 
+Exceptions:
+- DeserializeError, when OPRF element deserialization fails.
+
 def FinalizeRequest(password, blind, response, server_identity, client_identity):
-  oprf_output = Finalize(password, blind, response.data, nil)
+  evaluated_element = DeserializeElement(response.evaluated_message)
+  oprf_output = Finalize(password, blind, evaluated_element, nil)
+
   stretched_oprf_output = Stretch(oprf_output, params)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
+
   (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
           server_identity, client_identity)
@@ -1005,7 +1011,7 @@ material for the OPRF and AKE, `client_state` and `server_state`, respectively.
 The client state may have the following named fields:
 
 - password, the input password; and
-- blind, the random blinding scalar returned by `Blind()`, of length Nok; and
+- blind, the random blinding inverter returned by `Blind()`; and
 - client_ake_state, the client's AKE state if necessary.
 
 The server state may have the following fields:
@@ -1109,7 +1115,7 @@ material is invalid, and may instead return an appropriate error message.
 
 ~~~
 struct {
-  uint8 data[Noe];
+  uint8 blinded_message[Noe];
 } CredentialRequest;
 ~~~
 
@@ -1118,7 +1124,7 @@ data
 
 ~~~
 struct {
-  uint8 data[Noe];
+  uint8 evaluated_message[Noe];
   uint8 masking_nonce[Nn];
   uint8 masked_response[Npk + Ne];
 } CredentialResponse;
@@ -1149,8 +1155,9 @@ Output:
 - blind, an OPRF scalar value.
 
 def CreateCredentialRequest(password):
-  (blind, M) = Blind(password)
-  Create CredentialRequest request with M
+  (blind, blinded_element) = Blind(password)
+  blinded_message = SerializeElement(blinded_element)
+  Create CredentialRequest request with blinded_message
   return (request, blind)
 ~~~
 
@@ -1179,18 +1186,25 @@ Input:
 Output:
 - response, a CredentialResponse structure.
 
+Exceptions:
+- DeserializeError, when OPRF element deserialization fails.
+
 def CreateCredentialResponse(request, server_public_key, record,
                              credential_identifier, oprf_seed):
   seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
-  (oprf_key, _) = DeriveKeyPair(seed)
-  Z = Evaluate(oprf_key, request.data, nil)
+  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE")
+
+  blinded_element = DeserializeElement(request.blinded_message)
+  evaluated_element = Evaluate(oprf_key, blinded_element)
+  evaluated_message = SerializeElement(evaluated_element)
+
   masking_nonce = random(Nn)
   credential_response_pad = Expand(record.masking_key,
                                    concat(masking_nonce, "CredentialResponsePad"),
                                    Npk + Ne)
   masked_response = xor(credential_response_pad,
                         concat(server_public_key, record.envelope))
-  Create CredentialResponse response with (Z, masking_nonce, masked_response)
+  Create CredentialResponse response with (evaluated_message, masking_nonce, masked_response)
 
   return response
 ~~~
@@ -1228,11 +1242,17 @@ Output:
 - server_public_key, the public key of the server.
 - export_key, an additional client key.
 
+Exceptions:
+- DeserializeError, when OPRF element deserialization fails.
+
 def RecoverCredentials(password, blind, response,
                        server_identity, client_identity):
-  oprf_output = Finalize(password, blind, response.data, nil)
+  evaluated_elemenet = DeserializeElement(response.evaluated_message)
+
+  oprf_output = Finalize(password, blind, evaluated_elemenet, nil)
   stretched_oprf_output = Stretch(oprf_output, params)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
+
   masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
   credential_response_pad = Expand(masking_key,
                                    concat(response.masking_nonce, "CredentialResponsePad"),
@@ -1313,34 +1333,16 @@ setting:
 - RecoverPublicKey(private_key): Recover the public key related to the input
   `private_key`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
-  deterministically from the input `seed`.
+  deterministically from the input `seed`. This function is implemented as
+  DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
+  as specified in {{OPRF, Section 3.2}}.
 - GenerateAuthKeyPair(): Return a randomly generated private and public key
   pair. This can be implemented by generating a random private key `sk`, then
   computing `pk = RecoverPublicKey(sk)`.
 - SerializeElement(element): A member function of the underlying group that
   maps `element` to a unique byte array, mirrored from the definition of the
   similarly-named function of the OPRF group described in
-  {{I-D.irtf-cfrg-voprf}}.
-
-The implementation of DeriveAuthKeyPair is as follows:
-
-~~~
-DeriveAuthKeyPair
-
-Input:
-- seed, pseudo-random byte sequence used as a seed.
-
-Output:
-- private_key, a private key.
-- public_key, the associated public key.
-
-def DeriveAuthKeyPair(seed):
-  private_key = HashToScalar(seed, dst="OPAQUE-DeriveAuthKeyPair")
-  public_key = ScalarBaseMult(private_key)
-  Output (private_key, public_key)
-~~~
-
-HashToScalar(msg, dst) is as specified in {{I-D.irtf-cfrg-voprf, Section 2.1}}.
+  {{OPRF, Section 2.1}}.
 
 ### Key Schedule Functions
 
@@ -1573,7 +1575,7 @@ def ServerFinish(ke3):
 An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, Group, Context)
 such that the following conditions are met:
 
-- The OPRF protocol uses the "base mode" variant of {{I-D.irtf-cfrg-voprf}} and implements
+- The OPRF protocol uses the "base mode" variant of {{OPRF}} and implements
   the interface in {{dependencies}}. Examples include OPRF(ristretto255, SHA-512) and
   OPRF(P-256, SHA-256).
 - The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
@@ -1652,7 +1654,7 @@ This includes any conditional branching during the creation of the credential re
 to support implementations which provide mitigations against client enumeration attacks.
 - Deserialization checks: When parsing messages that have crossed trust boundaries (e.g.
 a network wire), implementations should properly handle all error conditions covered in
-{{I-D.irtf-cfrg-voprf}} and abort accordingly.
+{{OPRF}} and abort accordingly.
 - Additional client-side entropy: OPAQUE supports the ability to incorporate the
 client identity alongside the password to be input to the OPRF. This provides additional
 client-side entropy which can supplement the entropy that should be introduced by the
@@ -1703,7 +1705,7 @@ in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
 function and the underlying key exchange protocol. In turn, the
-security of the OPRF protocol from {{I-D.irtf-cfrg-voprf}} is proven
+security of the OPRF protocol from {{OPRF}} is proven
 in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
 
 OPAQUE's design builds on a line of work initiated in the seminal
@@ -1804,7 +1806,7 @@ order of computing discrete logarithms or solving Diffie-Hellman, Brown and
 Gallant {{BG04}} and Cheon {{Cheon06}} show an attack that slightly improves
 on generic attacks. For typical curves, the attack requires an infeasible
 number of calls to the OPRF or results in insignificant security loss;
-see {{I-D.irtf-cfrg-voprf}} for more information. For OPAQUE, these attacks
+see {{OPRF}} for more information. For OPAQUE, these attacks
 are particularly impractical as they translate into an infeasible number of
 failed authentication attempts directed at individual users.
 
@@ -2036,9 +2038,9 @@ outputs computed during authentication of an unknown or unregistered user. Note 
 `masking_key` for the fake record's masking key parameter.
 
 All values are encoded in hexadecimal strings. The configuration information
-includes the (OPRF, Hash, MHF, EnvelopeMode, Group) tuple, where the Group
+includes the (OPRF, Hash, MHF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
-draft-09 of {{I-D.irtf-cfrg-voprf}}.
+draft-09 of {{OPRF}}.
 
 ## Real Test Vectors {#real-vectors}
 
@@ -2099,27 +2101,27 @@ blind_login: 874afedb28cf6a6b0f7083a11c34f95439c5cb4469bfed4fbf424635
 #### Intermediate Values
 
 ~~~
-client_public_key: 84dea2d490db499c31a11589d5be55f453808c3dca222f3955
-cd30b1d10d9d77
-auth_key: 6c75222156348bc1335303ac528b52eceed7782aaaf7e311f39f85fe82b
-435765cc9ce29a5a7daebc72d8497b19f0578e50a57ac55a67e66e93cd608ba378712
-randomized_pwd: b823e057ef7680a5598a9a65f79e9d91f394068e36ab169e81e09
-b7a226def105c7b6c2f89d8ed48beb2810445182b801dbb86861c9d4dd48423dee718
-0d1217
+client_public_key: c44d957470058d59c3190dee73c81353127bae04d22ce5956e
+39961f7b68d921
+auth_key: 09535c6f998ecbcdf3fb30cedd00e2723af14b066b0e1188fde8ae15e0e
+a4d621e41efd3b0d0db7d9a09e79d1d815051d6bd7a54fb32df7d65fcb5e121afcac9
+randomized_pwd: 4a54bd150ae70a76c624dcb306538e163a0d90caecede93fcc881
+4c5d234aac974900e64a70002461ff7d7eb2a3c137cc28952217f206d3ba2ffadbc73
+7dfb0b
 envelope: d323fef4ead34cde967798f2e9784f69d233b1a6da7add58b2c95a57bc2
-13aca4cd6aa51f41960607c1953ebfc80905798b8d7f35520bf52dee514beaf6da372
-9e113b5c51eb80a2dabebb0514837a9cf36d161a98907d92d99203f01c2023df
-handshake_secret: 81ff6c12eccd6a0c56040b53ead889040a849d8b85e22fc9c42
-5e1605c26f34369d0c6bbaa4ffcfc94e37e473bb1eafec86dd8ccef99bce20ba2cb0f
-b7bb4d5e
-server_mac_key: 60108ae181e39fa7279726342f51c6b3f28c55cc8e7f9029f74da
-ed3e5709a27b216138722a58d5eee0a042448f3446e883f8707113a8eb0d4b81d93f7
-dced2f
-client_mac_key: c760e4548d6a8965952d25a59c1d0539bc977507ef483eaaae31d
-7faf52642aaa9f1e7f1099539ab93b414d3d27f12e53fe57093a5e3623add5991e91a
-685b71
-oprf_key: f9417edca8c2c821a4be92556fcd34d6e394d23f8756f9ed753cb663b74
-78505
+13acabb3b24440da1af73c88ef44ec3361034c980749c5335e010c69c0519412c667e
+44bbccbebc4a2775c055542c50aed0aea4136c1af351a0ba256ff0c0589d7665
+handshake_secret: ddcf3684026df6d2ed8130422d7ede1578726e9269d9519863a
+48e1fe10d942d0d6743cd8d27bf58ed8271abc2c76e459fb4019d98fac8a6a46b30f5
+a8da5012
+server_mac_key: 1b5ecef534985b44bee7f5eba146246db3d4daabb70f876c4ffa4
+a5ce4580eba256165c8f1bce132a37d74bc38c71cdaaa16a3a91b6714112263b0c515
+1f6b9b
+client_mac_key: ca3209b30314c087f10dcfbd8bb30de4dcf7d05aed8e0899eaf5a
+be43a726a2d7d66f15d6cbd91219619ded59c19d9d3267a9d29912f226409bcd34b0e
+733469
+oprf_key: 34775e3a1a06cc11df4d388034b0a8353b48c060ca096c67f8f7a620f23
+79009
 ~~~
 
 #### Output Values
@@ -2127,36 +2129,36 @@ oprf_key: f9417edca8c2c821a4be92556fcd34d6e394d23f8756f9ed753cb663b74
 ~~~
 registration_request: 34353245449074b76eb17f124b5837da7496b2c6748d288
 dee41d6269d0a995e
-registration_response: c8daa1c8cc762beedff046e18e7dfc2ef9e06efa9d60d0
-e3bca3566036d95969b078d8e20de67ae43a6fb7ace867096a648ae5cf62857e10b3c
+registration_response: b0d335cb7cdb9bcff550c1dd7386fb48ba6252f2f05888
+85052259eac46fcf21b078d8e20de67ae43a6fb7ace867096a648ae5cf62857e10b3c
 cc28ac9b6cc7c
-registration_upload: 84dea2d490db499c31a11589d5be55f453808c3dca222f39
-55cd30b1d10d9d772d6ac3dd0b0a631d2b353843388fcd9b4ed9de96d167544cff294
-8fc37e4dac6878655cccff0c2aaf0e75b05124cd00284e6f170cf5e7851fff1139267
-839d40d323fef4ead34cde967798f2e9784f69d233b1a6da7add58b2c95a57bc213ac
-a4cd6aa51f41960607c1953ebfc80905798b8d7f35520bf52dee514beaf6da3729e11
-3b5c51eb80a2dabebb0514837a9cf36d161a98907d92d99203f01c2023df
+registration_upload: c44d957470058d59c3190dee73c81353127bae04d22ce595
+6e39961f7b68d9214ae58e08d7aa374e9195bc3f71ddb19e0f70033d993e826d99766
+5f0d32601a1dbff6ade1ec17d9e5e7efab3f68d9ee54346fe45705de72de85f0d497c
+6dce8ad323fef4ead34cde967798f2e9784f69d233b1a6da7add58b2c95a57bc213ac
+abb3b24440da1af73c88ef44ec3361034c980749c5335e010c69c0519412c667e44bb
+ccbebc4a2775c055542c50aed0aea4136c1af351a0ba256ff0c0589d7665
 KE1: 4c1e02cf6b07ec1881adde0e04746648de2a87becca32f44fe1b6c5ff1cba779
 18b5420ec2386513929cede49a06199dea238cf3d05672f48cdd4960726d14031a7ae
 48eac1f61a481d6cbb3256ea9852b6f2858f9d351c5c9e9d9839a0b333c
-KE2: fca0773e6754c2d066090597aa35cfcb42863c92c681a2340b97f45eb576c03f
-521432344d52c17cc8ca390f9823c266b2b65fe9088a623e83ce5db56b66fd9a082ad
-e883cd25425f50ca4ecd50f2c1c5e2aee952baaf16e583c01717e4542406718135aa5
-f64517cbdf19a5dab88a567a8c6dd7dc4361331ab8787392363168ed2c628b8da7565
-4bb011396975b3c03861ba845b60b93723781c620862ee05bba1132c6cc94f82b8305
-8b334b6849a4f694b5bed135e50a6be0799d5642456c62e17ecc3cdc9f918dbacacdd
+KE2: a2d577931fd0c9a53e0f647f1240bb1e98b223fe39c23a0f2e22bf7364ff9618
+521432344d52c17cc8ca390f9823c266b2b65fe9088a623e83ce5db56b66fd9aa3c28
+376ad267563ac71ae63f471a74e305a9103c373cd91912ee02e57ffa0f9b1aa73ed57
+ce53d76122d9bc10aaa43fc391ea4ba0bb95bcccb419ce437f9774e8cb72568d1fe90
+8b0076d650bfae3ded635b0ff58187a985129550ad393896c2229ded1a710cb02a106
+094f29df242707aedc565081b756fc2bf92e6c0a29f462e17ecc3cdc9f918dbacacdd
 111f91ff04d765299320300d44aaf368a5704e7b04e962a2139901078ac4c9f240e08
-572f31114338db80a4852847c59d7aaa72537c87d23f5d47e7e44e674d9b86f1dc075
-63ac7a7161ad0d923e71a3438522415edcac81f3d8f4a734d35ea31ff71db1d438f0a
-2c167e4029a7a46166357644
-KE3: c346f1a0e44e56a45de3e4ec2f96192b994a415bec3015ea4ca20a2c2cfb2548
-a728181ee454eedf5657d87fb8c21f3360055dac9f2157f970d7b90042bce6ab
-export_key: 67c31f34585ce75e7ee191e07890e0553c723a0025e2d6663453343c7
-2a987f98c8ee6885f35d3480f44a6f4de15ecbb4ebbf21a1ab5665c0a26cfc3711eb0
-1c
-session_key: 8275f3509e434fbb20df1f44d90c38761e348ec154b2aa40949ea2b4
-d83861c754d4e7185922548053073e49d4c7494f819c414305eacd5969a12ca45d2b4
-602
+572f31114338db80a4852847c59d7aaa72f1c02fee54fa73fc5edf0d42edaf14d2c45
+caeff7a2124eb488c6500a6011b3a2e1d6381b92167b82e5bb96be0e6e5f4b8185a8f
+6d81287e49622cbde2fff5e3
+KE3: f03640e482505d5f4874fd37bd70b38bc0f3eb360fb356ac1807f2f3aba78f6e
+eb965b80d66a84a63be9730e8bf7e9cf6158d20ba8661bd83e86e6cc060cda15
+export_key: bf567e23104ec91693ae0d04f034115b9f8dfb06217dd9b22a5ea1706
+fadfde7a39d03cba9dcfb4f1722cb0f28ecae4d19cf765992248cc121a34418de40db
+26
+session_key: e0253805477d12eac29e6c05b51a453ac4fdfd975a5f8688a2026e18
+71fb1773f25277d2dc83446c53bde7f027e65ad5321df04f63fff300f377a046f2995
+5ea
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 2
@@ -2218,27 +2220,27 @@ d5beea05
 #### Intermediate Values
 
 ~~~
-client_public_key: 6cac8290091af3ca2a8011ac13e748e42971398d831d6d0a4b
-c22d1c59a52208
-auth_key: af9337d6ea193edaa8a0978a055f9a0267e09e60b34756d0316ce257620
-5eae18c9837373fc732c4a5ca263ecd872e6f5418d0c70c4abca4342ee2ff38196b0b
-randomized_pwd: 7f077c60ee0e1de3dc99bd46f8e7fb789b42ce0661e273e9fb1ce
-e60544b13e5febe08e3f9c915c277b5027425a835648b061a7fd800a171335d61c93e
-afe207
+client_public_key: 54e72d9dac4d9a53574436cd1d43d302cc0c3f097b887cfd02
+4857c228cd444e
+auth_key: 22f2706beb43a6172176d3717696524ca180e6ba24c9dd9fc556ca09304
+076452d2f4753b5298af94629e49e8adb9836ab05d64bdf44b88c6262f69945fceb3c
+randomized_pwd: c337b34490af7af6a5d15519903da4dee275169866e21a6a549ad
+c21776eecab3ff19c1e6dfc5d76870a3a39b6d1b72bcfca0906837f087c55ec46ad80
+861350
 envelope: 30635396b708ddb7fc10fb73c4e3a9258cd9c3f6f761b2c227853b5def2
-28c85e92dc6e5fd0bb88b8ae24be705280bc9fb49c898d07f139e28cc89a4aef2bd0c
-5afa963418f9d852d64c9edf964da075945d97ce06b80c6c810cc189b808085c
-handshake_secret: d8c37b70645af5b8686e8a9687304efffb1fa535ed221b13fa1
-34d2db8c267e24b4c617c5bb081f00791722b80b59b1799c04d12519b69c30fbf1a8c
-c7957838
-server_mac_key: 423cde5008793bc8489244180c0fd371c4fb8fe6d008e56dd1d2e
-f00d97d2f01dda54fffcb5714e18f3abca705ce1766c497d52eed64043ceda4497dbf
-6ea366
-client_mac_key: 9d29bfeba7090176cd3a83440c06850cc3755e694e8185faa4d9b
-9af6c6e5bec97d982072bcb9357276f79a75f2a00ef0f48b94b41a33a654b5ea7c816
-5ca44f
-oprf_key: ffe51c0a23e3043f276f07179e0ec023d93b3f4422162a5e56ae6c12e44
-67d02
+28c851513822e03878dd26c24616021530d2ccfc3ffb39ad984c547d7b836842e1cfb
+65032d5279f1c523d6d3b05c94a63775d06b740d385a2015b5a7097cda3963a7
+handshake_secret: f32f5870a1d6e0d776e062cb0447912a26d96043cd3fa73cae2
+d9425348c1dac8f5d8e7429e933f9cc7c7498c544878124da2384e635a83289bf856a
+c12ed57c
+server_mac_key: 57ebf95c7905a1a790db461c5cf73f6e8583513db7df5e292798b
+b7c232a2beb639bf93f29303faf3b00ac33d269aa6757fd3d4be53761c1d92447c981
+c7566a
+client_mac_key: 76a6a2ee8c514a50fdd1bb34eaa1195f3437c874bc22cd819d71b
+d0f86db0604e47e58797e25d1fe252e101733df846b6bbc1d8ab76cce4b60331648d1
+87c1b4
+oprf_key: 406b9847a5f848eb1f7fd11639178d77e6d218390ee3459c73b62909eb8
+07909
 ~~~
 
 #### Output Values
@@ -2246,36 +2248,36 @@ oprf_key: ffe51c0a23e3043f276f07179e0ec023d93b3f4422162a5e56ae6c12e44
 ~~~
 registration_request: facacbb0b0768ec4e22629ca2f37f9b29c178f67a4f4019
 3d517f81416789068
-registration_response: 20caf9c214afaefe36aa033c13ef75c43ddb621319b97c
-fa7731a0d38faed002561f67c72c59ec3b02803932603103014946039dfb9b23216c9
+registration_response: c26c857c0568950d35af89266ce6ed10d6b37e054bf6da
+7ce0812f6057bfdc69561f67c72c59ec3b02803932603103014946039dfb9b23216c9
 cea76dcd2a533
-registration_upload: 6cac8290091af3ca2a8011ac13e748e42971398d831d6d0a
-4bc22d1c59a52208ec8da1312c1ad615de9989954eef40667b0980093535996345a06
-616708e166989144f336413f591f56fe8cbd35cbbd591559d40e2e7af5ef8104727e3
-39f0df30635396b708ddb7fc10fb73c4e3a9258cd9c3f6f761b2c227853b5def228c8
-5e92dc6e5fd0bb88b8ae24be705280bc9fb49c898d07f139e28cc89a4aef2bd0c5afa
-963418f9d852d64c9edf964da075945d97ce06b80c6c810cc189b808085c
+registration_upload: 54e72d9dac4d9a53574436cd1d43d302cc0c3f097b887cfd
+024857c228cd444e76c288d1f470297ad1a69eaff93805602813d1ea8b8e69f52e396
+dcea03e092229ce2409dd017749eaf5315a933cf4af0514b3e993876b8d30b2429679
+8f1e0630635396b708ddb7fc10fb73c4e3a9258cd9c3f6f761b2c227853b5def228c8
+51513822e03878dd26c24616021530d2ccfc3ffb39ad984c547d7b836842e1cfb6503
+2d5279f1c523d6d3b05c94a63775d06b740d385a2015b5a7097cda3963a7
 KE1: 2088e02ac314f323aebbea61ed5c998f3fee856957e573b6574b93cf98de8108
 87ef09986545b295e8f5bbbaa7ad3dce15eb299eb2a5b34875ff421b1d63d7a240c7c
 67ee30fa68cbed3dba0d276ec22933e6916eb682eda7b48953a62164f16
-KE2: 70f2560d7a39766768490e262d1c0337d18ef3ab3a7c3ca6af09b2b1a7f34c54
-6b2e9019503d8495c6d04efaee8370c45fa1dfad70201edd140cec8ed6c73b5f437ae
-af35569931449c87118bbc62b5ef80c6b7b70f175a46804094dd60b8111ba846a95ad
-16503a6e063e8bd561bd90e12558d56846e7591da70e5bf4b14621c9b4c50f13a71f1
-94dba753408d26a36b607dbc2e4ac93325290f0b069ee34b52972ba1761f117049126
-7a4cd6ec25724810199efb5625e5a5516ec5f31370490d0d88f0936c712d3e901b42c
+KE2: 2ecdd280fa5b991b2c5ac259f2a4d095b0b7da66afbfe3545c2b62530dafa028
+6b2e9019503d8495c6d04efaee8370c45fa1dfad70201edd140cec8ed6c73b5f8027b
+cc70557a3652051cd76ca900dd233b500ef7fd2f49f5b49b7e71a3c5c98bfde64f1bf
+ceb77cd0128df90be6d7cf4a349a16fbcfe864a2ce5ac3ca6dcd840cd920ea58bfac4
+03ffcdde3f87aa686835d2bede398b7943bc2b41cd00010d2889af2097d01ec2ff20e
+146a94bf7f0fe598c626b8b62a76386122d4b84d0a0a0d0d88f0936c712d3e901b42c
 b792f3657240ce5296dd5633e7333531009c11e560895c14306f5f33e9c23766c0120
-ed9f745c4cc809a1f4a416665b3282f061a5873e2d1fcf8491104e82050a29ddae599
-a4559d60f094cdee1c1ec844af6410a08d137027a13cffea253fa62447516adc9e72a
-669b126f31b535f780c90139
-KE3: a0d3e46d15f3549b01a8cec458f67aeb6deab71f42b49dedd8a394d91e161927
-ef0d52c2c9ab23d36cdfc7e174819b084166c3c90a96a76fc544356953e7aeca
-export_key: 1909884ffe1899e670b894791db9d3a48a70a6fca8031109fd5fc82f9
-ba43df9c8efd2db392fc36ab239e8c9f78db4ed96a6f031e30d675ca285f7d84812c9
-c5
-session_key: 8fdac33cc719274c16824c785c46e2a8b641b15fe0cbb395f1613a33
-e67fad0aed99a26760775c69eb3b4524f805f00808af7c6421a8e83677f42e4f280f7
-e67
+ed9f745c4cc809a1f4a416665b3282f06104458e9d05e8db02c0f4f6446d88f67993e
+598142913aa0dd5e66f0ccad3638422c13e6ebe8f332c1fda36eb0dfd292343e035cb
+85eaf56eb38cb8159feb1a44
+KE3: 00f041b477940a05abd723abbb57af21a1e15859e99ddb46765bddafe5e189dc
+566ac94bcb37fda4890d95060fc32ebfba8a10ea464811fa16754a9aca6bde16
+export_key: 2c71af1848f92c46f35976ce5a812d60a6ec86cf29c4152c83667e329
+d8fe0a11a49f8cb67185059bbd352949b77b6810e6435a98805c324c713a0b9b8e555
+01
+session_key: 9b4b72ca4dac89b13054fef04f790c756f761554f7a95cbd52399b72
+c5ec931f71ea1e72bae403145055f7921e45dbf1bf8e65d9e289c8a1a856cdbe74cc6
+958
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 3
@@ -2334,22 +2336,22 @@ blind_login: 0d1d189bb3c02a66ef9a72d48cca6c1f9afc1fedea22567b0868140b
 #### Intermediate Values
 
 ~~~
-client_public_key: 032c44882b558a6638f170d1d1808862ed2f9161927135871d
-d1521c9dbd8b342d
-auth_key: b8031ce3646df15e03a22aa6bdde52b623190438a00b96ceacadbe646ce
-aaa40
-randomized_pwd: 8d29441ad85676f44554479a9fec22e850fd110826b34be017b77
-fd72bb675b3
+client_public_key: 0207cc04cd0eb402c6c0ff709b37c7ff7518305268bec1ac57
+340ff81cc24afe1c
+auth_key: 992856f90d2afbc319aea1fae2b7ea3f769862e347a33930f00e366da3a
+14e73
+randomized_pwd: 3d65d6f82a100a5d2063e2b671c85aca39c6101d184015b6a20c5
+a885089adb8
 envelope: 4a0f9f1984ff1f2a310fe428d9de5819bf63b3942dbe09f991ca0cf545e
-33a8f0990eef6097a8ddfd4d704c0fb19b181bff4b93c9219693be715045d30cfef69
-handshake_secret: 526a07308b37f5b6486f6494c31c0bf22f09439583e985c79c8
-0bfe20dff827b
-server_mac_key: 19b54a3e048bfd73f104070d91fecf23352795a5998cb03a47066
-3326673c46d
-client_mac_key: 24882a153ae0678804d79606b3a01dd10b85373df9b8d58fbe3b2
-72d0f8ddb54
-oprf_key: 173909c7099b97c14e149aff13f2810a5145081fce81925202f7f6f80c8
-7d1d9
+33a8ff97a50a042f27a7b0ee41ef49d89a9299c79aceb7663707c552cab5b6018df51
+handshake_secret: 174f0c8df43db239f28784e6d9ebe86cfc4719b612c655e1a89
+9512b1899173c
+server_mac_key: 163fedfbfc7320d757a87bc98cb545e46223a3372e53c26b88852
+2301074a76a
+client_mac_key: 065f54fcc7a36c08c252930c2f1cdb94e4bf87526be92aa535e0d
+f2e3f203e3f
+oprf_key: 195babb7cef7b670c35866e4d8159dc1f9a36143c98884c23a4ccc55d01
+4cc8d
 ~~~
 
 #### Output Values
@@ -2357,30 +2359,30 @@ oprf_key: 173909c7099b97c14e149aff13f2810a5145081fce81925202f7f6f80c8
 ~~~
 registration_request: 03282f9e0421bf75d92335b924c4e8acea6299323e02299
 a999b818482a3b69be9
-registration_response: 0243cdfb0b60cfe1435e03643bec83b3579a40c10e6352
-aa6f056cc4749f73765c03845043cc460779d3d868894fd28dcf4a0814e6fdd7b8776
+registration_response: 02b4a4e06a96a7e4e260a57192a50deae8a30b139e762d
+2ef8e57866f0b153d74503845043cc460779d3d868894fd28dcf4a0814e6fdd7b8776
 9e6d4ba4c477df6e7
-registration_upload: 032c44882b558a6638f170d1d1808862ed2f916192713587
-1dd1521c9dbd8b342dde96555cb878e7e4dc22cba87a607119a45ef4228e6ff0da09f
-85342ff8749614a0f9f1984ff1f2a310fe428d9de5819bf63b3942dbe09f991ca0cf5
-45e33a8f0990eef6097a8ddfd4d704c0fb19b181bff4b93c9219693be715045d30cfe
-f69
+registration_upload: 0207cc04cd0eb402c6c0ff709b37c7ff7518305268bec1ac
+57340ff81cc24afe1c257debde1ce06f34605ad72ece788e28dcc7ab4ff8b1f4b4597
+242231c84875c4a0f9f1984ff1f2a310fe428d9de5819bf63b3942dbe09f991ca0cf5
+45e33a8ff97a50a042f27a7b0ee41ef49d89a9299c79aceb7663707c552cab5b6018d
+f51
 KE1: 0337f1c7b981c4488967bf2808ff63a7e0fe194f09c2b72f98c4122a60fdb8de
 f4e206269fe3eabd2b6e928b97b901c4819a3e89f48f9a72f09280e203ef27d9ef037
 53c309e7c68be892012552680ae399bb786cd2fc1ef92e928b285adec7296cb
-KE2: 03e15aaf8ce6c8badc8737e88ed59f471ab08b1f9b5d5dd877ae445c41381171
-56344022969d17d9cf4c88b7a9eec4c36bf64de079abb6dc7a1d46439446498f95688
-5d9a6758fc50faaf3c7e1472be27ee8cdfcdabe99164c2779e35e3c804526fe25a2ee
-83a8b185f1823ad7a8ba4a6109b95e63334aa8facc0455e3a748b196fd5ffbb90fff0
-10b67d3a5f591453d310444fa4949ab4e871b1bd11c28b3fab72d69259e0708bdfab7
+KE2: 026087d7ec64ede8ec2bd7995136081e8aa588b8531f90ef658a3c9646769711
+e0344022969d17d9cf4c88b7a9eec4c36bf64de079abb6dc7a1d46439446498f9593e
+7f989d7cbdd5f6fa924f4e465c9763141322fd9b619d53a1989ea1cacc99de7814d78
+9e519100bb93784261a5ac8f129a4f9567dfd1d891bd9e1176e06d59e0d10067639cd
+5d8502c50b52f9b4721f767c76a8ed6cdc3625ea2837513d3300869259e0708bdfab7
 94f689eec14c7deb7edde68c81645156cf278f21161e3aaa02d7f81fa9773faf00efa
-7021a476abbfa77740267e841b5e55cf809944d436a935978b1d6c5c5e523d93098ca
-aa5793d5aae9f5f13379cca6f63a6402e471a060
-KE3: 1d5998a358fcfc8b4719e3b8175058d21eaf6c6ba828d1e89e4a119eaf57802c
-export_key: 48d3fc682273c005be26a59fb3e7f0bc4557f24e8fc71bb17b87de32c
-04aa2d7
-session_key: 3011f590f59b9539b29981abb66f477a8dbc1d8f02f379d785c3da32
-5972ebcd
+7021a476abbfa77740267e841b5e55cf809944d436a9385922d8143558061635181f2
+bed0b8ac0fc3d7a0848fd40f49a1f5369c8e67dd
+KE3: 133d06b1488819a05d211f8a55c591e55cb010a5471d607b1f648dfa3162cb54
+export_key: 62828b967aa3472fdf5f10409992386ceb1dcf6d8ea922e40c4df6f55
+c3fd1e1
+session_key: 7a8665a719a3c8be6b83c573e1b793fe784e67602b72c1e03ac8e1f4
+6e92396f
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 4
@@ -2441,22 +2443,22 @@ blind_login: a3cd7e6f042429c7c9e946f5351292fa08f4e99e395c30a95b268f2a
 #### Intermediate Values
 
 ~~~
-client_public_key: 02d9ff4d5e5d414f75cca3fb9e71fb83dea6eaf1d281417a2c
-77f777e07d924aff
-auth_key: fc53819ad42e71e6c17b7507397650acf1c399cab1c616a3e63bf8cf684
-c2e2f
-randomized_pwd: 3a663c1f7fd73b8feb09863d6941e1f00e02308e21f2ce932246d
-b53a329690f
+client_public_key: 03a78c29820e932ad07dd81c22d57626cbf7a43781763626bc
+5bdd985dd2f1979d
+auth_key: 5f271fe14cd9102cc40cc591eab4af55ca1c497941b076aa8d3dd4a70ef
+ee235
+randomized_pwd: f1929054028412506056e8d7dcdd4cf5e1291362400055e5309bd
+dd18b79e65f
 envelope: 0051724f14d71ff13ba5add017512cce702800f4272cdae1976cbfbdfd6
-ba61d0ee9ad5982907791f19ea1e1f04108c787399772ff5c197311c53e258f72ae03
-handshake_secret: 90cc61aa797d3dcfb96dee30b0c720c024971a47b6ffa5d62bb
-bf11c9e011b15
-server_mac_key: 0571759363dc9dab4b2b410040653694d75a2c63401aa77bcd371
-98ba646296c
-client_mac_key: ad4c39997df613cd9506e65b2b402e2ba2e864710b86c7c3e09ab
-b5e82ff9222
-oprf_key: 4a8cfd04212a68b62b1853d6869b734e62ad38a7fd4e14a20a505502d1c
-45054
+ba61d9d2e83d2c44132bf25a19b1611524feb85e95cb7a43ca83e91f6edec2285265c
+handshake_secret: 35d4f3fde3e184db3bbb1582b13b93d0bd5468787c6c9ff1243
+a91de9c9de268
+server_mac_key: 61476e0274ed6672236fd83022c1fbee5a5a74c8a9b6a2dfe9577
+4795daf2f9e
+client_mac_key: 5245c765a0e4b4c1ce0ffbdc994f0a5a9789a5a4bef7fa9ed8341
+6f346f045e6
+oprf_key: ca2e88042a4afc13f185cb14337ec1ffc644cf7bd0d9b8b162170de61e8
+cd2f6
 ~~~
 
 #### Output Values
@@ -2464,30 +2466,30 @@ oprf_key: 4a8cfd04212a68b62b1853d6869b734e62ad38a7fd4e14a20a505502d1c
 ~~~
 registration_request: 022c10067956d68ef7bcda9f087e20b0c9f64db7d92b11b
 35bb6ad7da84bdf2d94
-registration_response: 0385142a349ddef7f35842e6def0f413fceea4c09a20f6
-f239101701f191c1a2ed029022b70aac38a4b838dc694744e10ae6ece18414b5e5e5b
+registration_response: 025a26a48fde22a8e546e94b6e5fb8df4322ca70b2f13b
+c9f5348d41684ba07af1029022b70aac38a4b838dc694744e10ae6ece18414b5e5e5b
 294d1ee4ba2e1b592
-registration_upload: 02d9ff4d5e5d414f75cca3fb9e71fb83dea6eaf1d281417a
-2c77f777e07d924affd78311649d3758e0a3cf6e550c7628481385af520897f75862b
-2a8ce82d1ed3c0051724f14d71ff13ba5add017512cce702800f4272cdae1976cbfbd
-fd6ba61d0ee9ad5982907791f19ea1e1f04108c787399772ff5c197311c53e258f72a
-e03
+registration_upload: 03a78c29820e932ad07dd81c22d57626cbf7a43781763626
+bc5bdd985dd2f1979d78b02ea64b7b51b0dd29d5b57c06db624d9fdd00ca77e04ca9a
+a7a0acab7c1230051724f14d71ff13ba5add017512cce702800f4272cdae1976cbfbd
+fd6ba61d9d2e83d2c44132bf25a19b1611524feb85e95cb7a43ca83e91f6edec22852
+65c
 KE1: 02404ed848dc2f1546573a10d9118b0cee33f495eb7407a1eaf9861c4621d7b4
 afc42416787f78b5321bad1c8b6ad879e348e15bd698ee70b2c51d3e89d9c08b00039
 6372f51d9440c44c8ddb84f45bb13280d19a7a289d16ff01f6813ba0e18ddca
-KE2: 02ad1b8dd39670a911d3d6ce4f2deb2c4d81b166cabe12885badfe7f20eebb69
-686f768fd0979f8dc006ca297e7954ebf0e81a893021ee24acc35e1a3f4b5e03668a6
-891a733009bc350074f6dcd067be7b117e6d229dea8cdd5a5282a0dcd8a2e25b268a5
-aa7fd68204c0d3ccb4623ea3bafec0706ff6dcd62de5f1207a08888b265645da84384
-940a4007081ef1d0f4f1f386e11878f6cf9e580237d02543b07163179547a4489c871
+KE2: 0363338cf72e021d366a5875e97fc542f16e12753b4bb258c1b66a8cc06126ef
+ea6f768fd0979f8dc006ca297e7954ebf0e81a893021ee24acc35e1a3f4b5e036667a
+33723ffe167c893fb3a7341f2f5317306904ded609208775b313c19004d172880265d
+b75876739d8babc98a821429d1710736c95b74071e23d17873ab7b88b8da0cfda22fa
+24bc00700c2ddbcc783ab75a1c724a5b27c0e3a91f52fab5a11843179547a4489c871
 8048ba107066398cfe2f8b5b2c0cdd8afa9fcaf662e5f2310260f1b9fe339983392e9
-15678594d4ef64b35184832a3ea93612ee738afe19431d7c98c1cc1dc382ad37643e1
-0ff6f0ccc70a816a9426d386946e82256b5127d3
-KE3: 5a2f3a2e80d594f4448b35205f20bb30c0bf404f97cc06c665e681d1f6c2e96c
-export_key: cdc99ba5372729e4bf57e818eb4c20cbdcebe1f79aff49443b0cca594
-0dcf447
-session_key: 582987ea4c533e16b6903cc676b0e816b953c70295cdb9ee1083db91
-5359284e
+15678594d4ef64b35184832a3ea93612ee738afe194315cb503594dd29063319c7b9a
+9dbfe5c2ded202209c88d44950908a68a6b74006
+KE3: 8e8e2f59118204912c7244c6444097c4c3f8e9333bad948043ca18c10bb54c34
+export_key: 9a7f2522e1225348e9ae128e9e97717b767cc590a150239dd4f0a5314
+0b8321f
+session_key: 05f4032709067e8f3ff4ec823a701840446c9e321b3ac2c2bee3168e
+8e8fba36
 ~~~
 
 ## Fake Test Vectors {#fake-vectors}
@@ -2548,16 +2550,16 @@ KE1: 90681ccd8e4f538dc41b94742c27767df28db72b4b7e24b8ca99ddc07837b412
 #### Output Values
 
 ~~~
-KE2: 0456d364a2ef8b2daf6c81c325cecdcc6f0a6d1444673f0e30fd30a8a05be71e
+KE2: de83f36c5b681e1802e1968aaeca8856e80da47e1b03ad5c8d37d3acf5685a0b
 e0d04374ad9a276620c681abfca7bdb432e63509e5ec96ed2ec5542f6fc7db2337d59
 904539bac9f84d61da7a9072096249e25306311b81065aded1e5ba651a02b273b4bfd
 9e468a56b2d5cebd1a38bfc0a550601979e808842391a8c1f93cf27723d663ce06266
 e0f27ec38d3b824d66fa7c43d68d7cd6c8cfe2775748887d24cdf1b07f04a33d51e7f
 56b53156545a35e4becd8822e875a1441857332c77e5a91c9485d74c9010185f462ce
 1eec52f588a8e392f36915849b6bfcb6bd5b904f29cc7cbbc76091a0774bcae7239a9
-c8980982ebee753763576741240d5a3621be7d6db4aec4a0262dca383ec6d86d7b5f1
-0e7a49c04c7a6254b989a3c492752f0cf2a0ef71465636de1fdab8d22c74030d0ac28
-ec0a52845d33679906c3db7a
+c8980982ebee753763576741240d5a36215187c85a53e629b693136208713864e0116
+6580d67142b3493c9851affe755b292594c0af5ea573125c821c1a1fbfdbf17afd9d6
+7ea424f59c7c329455d03f3f
 ~~~
 
 ### OPAQUE-3DH Fake Test Vector 2
@@ -2614,12 +2616,12 @@ KE1: 034f10dba94f1dc855ff3c67f63251d759753630c6b1e5331ac7a6b416322f6d
 #### Output Values
 
 ~~~
-KE2: 033a2ec2199f6865b70a3ce538a3093d94387882d1275c4a216a7b4d3734065c
-943292ebc7c8a8c933f0fc98006c14e59960a4d2f9fab11e9bf5247f7c1c9d9a61ed6
+KE2: 0347c54d4df029f57c21bb2d6c9bdafd662d7948e74d028e99ceffa6934051ab
+0f3292ebc7c8a8c933f0fc98006c14e59960a4d2f9fab11e9bf5247f7c1c9d9a61ed6
 43d6e5b97fc9de6cfbfee003a29ad5ba7f2ae8a68e53f0ae08d54f4ea6948673bfdbd
 215a31a90769ffe74825497231b31f04994c2275d4e5c34db6f5f74c6296b7b95716d
 8b6e86729b057e63e88eadd107f2c04abe3417df6aaa64df6531c466cfb980f9a2604
 c25d83d1a98a38717e97bfde3b1dd8eb8d3346ca21d8a6430277f390bba2952e8bc67
-6c54663f09d3e7f2c7bf92c40ee46ce374bc8e1c2473882a3c99b36c8dcf11b5956eb
-ed89b3401e0fe7f61a7581dace64a4fdf53ea8f4
+6c54663f09d3e7f2c7bf92c40ee46ce374bc8e1c247383efc90154f5d264d3fb8b255
+d1862600168c77cf64f796bdbec5d5b8832912a8
 ~~~
