@@ -257,7 +257,7 @@ against pre-computation attacks. OPAQUE provides forward secrecy with
 respect to password leakage while also hiding the password from the
 server, even during password registration. OPAQUE allows applications
 to increase the difficulty of offline dictionary attacks via iterated
-hashing or other hardening schemes. OPAQUE is also extensible, allowing
+hashing or other key stretching schemes. OPAQUE is also extensible, allowing
 clients to safely store and retrieve arbitrary application data on servers
 using only their password.
 
@@ -408,9 +408,9 @@ API and parameters:
 A Memory Hard Function (MHF) is a slow and expensive cryptographic hash function
 with the following API:
 
-- Harden(msg, params): Repeatedly apply a memory-hard function with parameters
-  `params` to strengthen the input `msg` against offline dictionary attacks.
-  This function also needs to satisfy collision resistance.
+- Stretch(msg, params): Apply a key stretching function with parameters
+  `params` to stretch the input `msg` and harden it against offline
+  dictionary attacks. This function also needs to satisfy collision resistance.
 
 ## Key Recovery Method {#deps-keyrec}
 
@@ -657,7 +657,7 @@ def CreateCleartextCredentials(server_public_key, client_public_key,
 
 ## Key Recovery {#key-recovery}
 
-This specification defines a key recovery mechanism that uses the hardened OPRF
+This specification defines a key recovery mechanism that uses the stretched OPRF
 output as a seed to directly derive the private and public key using the
 `DeriveAuthKeyPair()` function defined in {{key-creation}}.
 
@@ -910,8 +910,9 @@ Output:
 - export_key, an additional client key.
 
 def FinalizeRequest(password, blind, response, server_identity, client_identity):
-  y = Finalize(password, blind, response.data, nil)
-  randomized_pwd = Extract("", concat(y, Harden(y, params)))
+  oprf_output = Finalize(password, blind, response.data, nil)
+  stretched_oprf_output = Stretch(oprf_output, params)
+  randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
   (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_pwd, response.server_public_key,
           server_identity, client_identity)
@@ -1229,8 +1230,9 @@ Output:
 
 def RecoverCredentials(password, blind, response,
                        server_identity, client_identity):
-  y = Finalize(password, blind, response.data, nil)
-  randomized_pwd = Extract("", concat(y, Harden(y, params)))
+  oprf_output = Finalize(password, blind, response.data, nil)
+  stretched_oprf_output = Stretch(oprf_output, params)
+  randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
   masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
   credential_response_pad = Expand(masking_key,
                                    concat(response.masking_nonce, "CredentialResponsePad"),
@@ -1820,12 +1822,12 @@ is on the curve, and that the point is not the point at infinity.
 Additionally, validation MUST ensure the Diffie-Hellman shared secret is
 not the point at infinity.
 
-## OPRF Hardening
+## OPRF Key Stretching
 
-Hardening the output of the OPRF greatly increases the cost of an offline
+Applying a key streching function to the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
 SHOULD select parameters that balance cost and complexity. Note that in
-OPAQUE, the hardening function is executed by the client, as opposed to
+OPAQUE, the key stretching function is executed by the client, as opposed to
 the server. This means that applications must consider a tradeoff between the
 performance of the protocol on clients (specifically low-end devices) and
 protection against offline attacks after a server compromise.

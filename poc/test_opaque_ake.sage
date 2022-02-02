@@ -8,7 +8,7 @@ from collections import namedtuple
 
 try:
     from sagelib.oprf import oprf_ciphersuites, ciphersuite_ristretto255_sha512, ciphersuite_decaf448_shake256, ciphersuite_p256_sha256, ciphersuite_p384_sha384, ciphersuite_p521_sha512
-    from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_harden
+    from sagelib.opaque_core import OPAQUECore, HKDF, HMAC, MHF, identity_stretch
     from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, deserialize_registration_upload, \
             deserialize_credential_request, deserialize_credential_response
     from sagelib.groups import GroupRistretto255, GroupDecaf448, GroupP256, GroupP384, GroupP521
@@ -22,7 +22,7 @@ default_opaque_configuration = Configuration(
     HKDF(hashlib.sha512),
     HMAC(hashlib.sha512),
     hashlib.sha512, 
-    MHF("Identity", identity_harden),
+    MHF("Identity", identity_stretch),
     GroupRistretto255(),
     _as_bytes("OPAQUE-POC"),
 )
@@ -256,8 +256,8 @@ def test_3DH():
     # Configurations specified here:
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
-        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, MHF("Identity", identity_harden), GroupRistretto255()),
-        (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, MHF("Identity", identity_harden), GroupP256()),
+        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, MHF("Identity", identity_stretch), GroupRistretto255()),
+        (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, MHF("Identity", identity_stretch), GroupP256()),
     ]
 
     vectors = []
