@@ -343,17 +343,17 @@ in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -09, using the OPRF mode (0x00) 
 
 The following OPRF client APIs are used:
 
-- Blind(x): Create and output (`r`, `M`), consisting of a blinded representation of
-  input `x`, denoted `M`, along with a value to revert the this blinding process,
-  denoted `r`.
-- Finalize(x, r, Z): Finalize the OPRF evaluation using input `x`,
-  random inverter `r`, and evaluation output `Z`, yielding output `y`.
+- Blind(element): Create and output (`blind`, `blinded_element`), consisting of a blinded
+  representation of input `element`, denoted `blinded_element`, along with a value to revert
+  the this blinding process, denoted `blind`.
+- Finalize(element, blind, evaluated_element): Finalize the OPRF evaluation using input `element`,
+  random inverter `blind`, and evaluation output `evaluated_element`, yielding output `oprf_output`.
 
 Moreover, the following OPRF server APIs:
 
-- Evaluate(k, M): Evaluate input element `M` using input key `k`, yielding output
-  element `Z`. This is equivalent to the Evaluate function described in {{OPRF, Section 3.3.1}},
-  where `k` is the private key parameter.
+- Evaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
+  input key `k`, yielding output element `evaluated_element`. This is equivalent to
+  the Evaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
 - DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
   from a seed, as described in {{OPRF, Section 3.2}}. In this specification,
   the info parameter to DeriveKeyPair is set to "OPAQUE-DeriveKeyPair".
