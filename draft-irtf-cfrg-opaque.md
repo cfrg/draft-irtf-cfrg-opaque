@@ -748,9 +748,9 @@ def Recover(randomized_pwd, server_public_key, envelope,
   cleartext_creds = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
   expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
-  If !ct_equal(envelope.auth_tag, expected_tag),
+  If !ct_equal(envelope.auth_tag, expected_tag)
     raise InvalidEnvelopeMACError
-  Output (client_private_key, export_key)
+  return (client_private_key, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
@@ -1498,11 +1498,11 @@ def ClientFinalize(client_identity, client_private_key, server_identity,
   preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
-  If !ct_equal(ke2.server_mac, expected_server_mac),
+  if !ct_equal(ke2.server_mac, expected_server_mac),
     raise InvalidServerAkeMACError
   client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
   Create KE3 ke3 with client_mac
-  Output (ke3, session_key)
+  return (ke3, session_key)
 ~~~
 
 ### 3DH Server Functions {#ake-server}
@@ -1560,10 +1560,10 @@ Output:
 Exceptions:
 - InvalidClientAkeMACError, when the handshake fails.
 
-Steps:
+def ServerFinish(ke3):
   if !ct_equal(ke3.client_mac, state.expected_client_mac):
-     raise InvalidClientAkeMACError
-  Output state.session_key
+    raise InvalidClientAkeMACError
+  return state.session_key
 ~~~
 
 # Configurations {#configurations}
