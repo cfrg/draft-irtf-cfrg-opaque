@@ -1730,7 +1730,7 @@ The following list enumerates important differences:
   pseudorandom. Deriving these keys via a single PRF (i.e., with a single
   cross-user key) applied to users' identities satisfies this assumption.
   This change was made to support real-world use cases where client or user
-  enumeration is a security (or privacy) threat.
+  enumeration is a security (or privacy) risk.
 - The protocol outputs an export key for the client in addition to shared
   session key that can be used for application-specific purposes. This key
   is a pseudorandom value independent of other values in the protocol and
