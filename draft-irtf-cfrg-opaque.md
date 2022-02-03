@@ -1722,7 +1722,7 @@ The following list enumerates important differences:
   but only used to provide a defense against enumeration attacks. In the
   analysis, this key can be simulated as a (pseudo) random key. This change
   was made to support real-world use cases where client or user enumeration
-  is a security (or privacy) threat.
+  is a security (or privacy) risk.
 - Per-user OPRF keys are derived from a client identity and cross-user seed
   as a mitigation against client enumeration attacks. See
   {{preventing-client-enumeration}} for more details. The analysis of OPAQUE
