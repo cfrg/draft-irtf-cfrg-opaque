@@ -198,7 +198,7 @@ protocols"
     seriesinfo: http://eprint.iacr.org/2020/313
     date: 2020
 
-  SIGNAL:
+  3DH:
     title: "Simplifying OTR deniability"
     seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
@@ -267,7 +267,7 @@ and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
-based on 3DH {{SIGNAL}}. Other instantiations are possible, as discussed in
+based on {{3DH}}. Other instantiations are possible, as discussed in
 {{alternate-akes}}, but their details are out of scope for this document.
 In general, the modularity of OPAQUE's design makes it easy to integrate
 with additional AKE protocols, e.g., TLS or HMQV, and with future ones such
@@ -278,7 +278,11 @@ In the first stage, a client registers its password with the server and stores
 information used to recover authentication credentials on the server. Recovering these
 credentials can only be done with knowledge of the client password. In the second
 stage, a client uses its password to recover those credentials and subsequently
-uses them as input to an AKE protocol.
+uses them as input to an AKE protocol. This stage has additional mechanisms to
+prevent an active attacker from interacting with the server to guess or confirm
+clients registered via the first phase. Servers can use this mechanism to safeguard
+registered clients against this type of enumeration attack; see
+{{preventing-client-enumeration}} for more discussion.
 
 The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
 OPAKE was taken.
@@ -499,7 +503,7 @@ The server can use the same pair of keys with multiple
 clients and can opt to use multiple seeds (so long as they are kept consistent for
 each client).
 
-## Registration
+## Offline Registration
 
 Registration is the only part in OPAQUE that requires a server-authenticated
 and confidential channel, either physical, out-of-band, PKI-based, etc.
@@ -541,7 +545,7 @@ These messages are named `RegistrationRequest`, `RegistrationResponse`, and
 `Record`, respectively. Their contents and wire format are defined in
 {{registration-messages}}.
 
-## Online Authentication
+## Online Authenticated Key Exchange
 
 In this second stage, a client obtains credentials previously registered
 with the server, recovers private key material using the password, and
