@@ -1406,24 +1406,7 @@ def Preamble(client_identity, ke1, server_identity, ke2):
 #### Shared Secret Derivation
 
 The OPAQUE-3DH shared secret derived during the key exchange protocol is
-computed using the following functions.
-
-~~~
-TripleDHIKM
-
-Input:
-- skx, scalar to be multiplied with their corresponding pkx.
-- pkx, element to be multiplied with their corresponding skx.
-
-Output:
-- ikm, input key material.
-
-def TripleDHIKM(sk1, pk1, sk2, pk2, sk3, pk3):
-  dh1 = SerializeElement(sk1 * pk1)
-  dh2 = SerializeElement(sk2 * pk2)
-  dh3 = SerializeElement(sk3 * pk3)
-  return concat(dh1, dh2, dh3)
-~~~
+computed using the following helper function.
 
 ~~~
 DeriveKeys
@@ -1495,8 +1478,12 @@ Exceptions:
 
 def ClientFinalize(client_identity, client_private_key, server_identity,
                    server_public_key, ke2):
-  ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
-    state.client_secret, server_public_key, client_private_key, ke2.server_keyshare)
+
+  dh1 = SerializeElement(state.client_secret * ke2.server_keyshare)
+  dh2 = SerializeElement(state.client_secret * server_public_key)
+  dh3 = SerializeElement(client_private_key  * ke2.server_keyshare)
+  ikm = concat(dh1, dh2, dh3)
+
   preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
@@ -1536,9 +1523,12 @@ def Response(server_identity, server_private_key, client_identity,
   (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
   Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
   preamble = Preamble(client_identity, ke1, server_identity, ike2)
-  ikm = TripleDHIKM(server_private_keyshare, ke1.client_keyshare,
-                    server_private_key, ke1.client_keyshare,
-                    server_private_keyshare, client_public_key)
+
+  dh1 = SerializeElement(server_private_keyshare * ke1.client_keyshare)
+  dh2 = SerializeElement(server_private_key * ke1.client_keyshare)
+  dh3 = SerializeElement(server_private_keyshare * client_public_key)
+  ikm = concat(dh1, dh2, dh3)
+
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
   expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
