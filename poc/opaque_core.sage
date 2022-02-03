@@ -30,8 +30,8 @@ class OPAQUECore(object):
     def derive_random_pwd(self, pwdU, response, blind):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
         y = oprf_context.finalize(pwdU, blind, self.config.oprf_suite.group.deserialize(response.data), None, None, None)
-        y_harden = self.config.mhf.harden(y)
-        return self.config.kdf.extract(_as_bytes(""), y + y_harden)
+        y_stretch = self.config.mhf.stretch(y)
+        return self.config.kdf.extract(_as_bytes(""), y + y_stretch)
 
     def derive_masking_key(self, random_pwd):
         Nh = self.config.hash().digest_size
@@ -169,14 +169,14 @@ class OPAQUECore(object):
         return skU, server_public_key, export_key
 
 class MHF(object):
-    def __init__(self, name, harden):
+    def __init__(self, name, stretch):
         self.name = name
-        self.harden = harden
+        self.stretch = stretch
 
-def scrypt_harden(pwd):
+def scrypt_stretch(pwd):
     return scrypt(pwd, b'', 32768, 8, 1, 64)
 
-def identity_harden(pwd):
+def identity_stretch(pwd):
     return pwd
 
 class KDF(object):
@@ -232,8 +232,8 @@ class HMAC(MAC):
     def mac(self, key, input):
         return hmac.digest(key, input, self.hash)
 
-def scrypt_harden(pwd):
+def scrypt_stretch(pwd):
     return scrypt(pwd, b'', 32768, 8, 1, 64)
 
-def identity_harden(pwd):
+def identity_stretch(pwd):
     return pwd
