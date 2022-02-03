@@ -640,7 +640,7 @@ Input:
 - client_identity, The optional encoded client identity.
 
 Output:
-- cleartext_credentials, a CleartextCredentials structure
+- cleartext_credentials, a CleartextCredentials structure.
 
 def CreateCleartextCredentials(server_public_key, client_public_key,
                                server_identity, client_identity):
@@ -1040,7 +1040,7 @@ def ClientInit(password):
 ClientFinish
 
 State:
-- state, a ClientState structure
+- state, a ClientState structure.
 
 Input:
 - client_identity, the optional encoded client identity, which is set
