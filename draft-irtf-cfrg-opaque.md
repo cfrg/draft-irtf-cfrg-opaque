@@ -1679,7 +1679,7 @@ protocol when these errors occur.
 | Name                                 | Role   | Messages                  | Reason                                               |
 |:-------------------------------------|:-------|:--------------------------|:-----------------------------------------------------|
 | InvalidMessageLengthError            | Both   | All                       | The message length is invalid for the configuration. |
-| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid element.                    |
+| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid element.                  |
 | InvalidEvaluatedDataError            | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
 | InvalidServerPublicKeyError          | Client | RegistrationResponse      | Invalid server public key.                           |
 | InvalidClientPublicKeyError          | Server | Record                    | Invalid client public key.                           |
@@ -1691,13 +1691,13 @@ protocol when these errors occur.
 The client can produce errors due to incorrect values in the messages it received. The following
 table enumerates some of these errors, where they occur, and the reason for the error.
 
-| Name                        | Stage                                                  | Reason                                                                   |
-|:----------------------------|:-------------------------------------------------------|:-------------------------------------------------------------------------|
-| InvalidInputError           | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element.         |
-| InvalidMaskedLengthError    | ClientFinish                                           | Invalid masked response length. |
-| InvalidServerPublicKeyError | ClientFinish                                           | Invalid server public key in unmasked response.                          |
-| InvalidEnvelopeMACError     | ClientFinish                                           | Envelope authentication check failed.                                     |
-| InvalidServerAkeMACError    | ClientFinish                                           | Invalid server AKE MAC.                                                  |
+| Name                        | Stage                                              | Reason                                                           |
+|:----------------------------|:---------------------------------------------------|:-----------------------------------------------------------------|
+| InvalidInputError           | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element. |
+| InvalidMaskedLengthError    | ClientFinish                                       | Invalid masked response length.                                  |
+| InvalidServerPublicKeyError | ClientFinish                                       | Invalid server public key in unmasked response.                  |
+| InvalidEnvelopeMACError     | ClientFinish                                       | Envelope authentication check failed.                            |
+| InvalidServerAkeMACError    | ClientFinish                                       | Invalid server AKE MAC.                                          |
 
 
 ### Server errors {#server-errors}
@@ -1716,10 +1716,10 @@ these are not protocol errors, and are indicative. The following table enumerate
 
 | Name                        | Role   | Stage      | Reason                                         |
 |:----------------------------|:-------|:-----------|:-----------------------------------------------|
-| InvalidServerSecretKeyError | Server | LoginInit  | Invalid server secret key.                     |
-| InvalidServerPublicKeyError | Server | LoginInit  | Invalid server public key.                     |
-| InvalidOPRFSeedLengthError  | Server | LoginInit  | Invalid OPRF seed length.                      |
-| InvalidEnvelopeLengthError  | Server | LoginInit  | Invalid envelope length for the configuration. |
+| InvalidServerSecretKeyError | Server | ServerInit | Invalid server secret key.                     |
+| InvalidServerPublicKeyError | Server | ServerInit | Invalid server public key.                     |
+| InvalidOPRFSeedLengthError  | Server | ServerInit | Invalid OPRF seed length.                      |
+| InvalidEnvelopeLengthError  | Server | ServerInit | Invalid envelope length for the configuration. |
 
 # Security Considerations {#security-considerations}
 
