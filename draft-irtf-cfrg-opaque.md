@@ -1674,12 +1674,13 @@ protocol when these errors occur.
 The client can produce errors due to incorrect values in the messages it received. The following
 table enumerates some of these errors, where they occur, and the reason for the error.
 
-| Name                        | Stage        | Reason                                                                   |
-|:----------------------------|:-------------|:-------------------------------------------------------------------------|
-| InvalidMaskedLengthError    | ClientFinish | The length of the masked response is not = point length + envelope size. |
-| InvalidServerPublicKeyError | ClientFinish | Invalid server public key in unmasked response.                          |
-| InvalidEnvelopeMACError     | ClientFinish | Invalid envelope authentication tag.                                     |
-| InvalidServerAkeMACError    | ClientFinish | Invalid server AKE MAC.                                                  |
+| Name                        | Stage                                              | Reason                                                                   |
+|:----------------------------|:---------------------------------------------------|:-------------------------------------------------------------------------|
+| InvalidInputError           | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element.         |
+| InvalidMaskedLengthError    | ClientFinish                                       | The length of the masked response is not = point length + envelope size. |
+| InvalidServerPublicKeyError | ClientFinish                                       | Invalid server public key in unmasked response.                          |
+| InvalidEnvelopeMACError     | ClientFinish                                       | Invalid envelope authentication tag.                                     |
+| InvalidServerAkeMACError    | ClientFinish                                       | Invalid server AKE MAC.                                                  |
 
 
 ### Server errors {#server-errors}
