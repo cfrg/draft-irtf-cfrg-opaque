@@ -1734,7 +1734,7 @@ The following list enumerates important differences:
 - The protocol outputs an export key for the client in addition to shared
   session key that can be used for application-specific purposes. This key
   is a pseudorandom value independent of other values in the protocol and
-  have no influence in the security analysis (it can be simulated with a
+  has no influence in the security analysis (it can be simulated with a
   random output). This change was made to support more application use cases
   for OPAQUE, such as use of OPAQUE for end-to-end encrypted backups;
   see {{WhatsAppE2E}}.
