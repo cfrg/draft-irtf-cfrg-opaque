@@ -1489,7 +1489,7 @@ Output:
 - session_key, the shared session secret.
 
 Exceptions:
-- InvalidServerAkeMACError, the handshake fails.
+- ServerAuthenticationMACError , the handshake fails.
 
 def ClientFinalize(client_identity, client_private_key, server_identity,
                    server_public_key, ke2):
@@ -1499,7 +1499,7 @@ def ClientFinalize(client_identity, client_private_key, server_identity,
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
-    raise InvalidServerAkeMACError
+    raise ServerAuthenticationMACError 
   client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
   Create KE3 ke3 with client_mac
   return (ke3, session_key)
@@ -1691,13 +1691,13 @@ protocol when these errors occur.
 The client can produce errors due to incorrect values in the messages it received. The following
 table enumerates some of these errors, where they occur, and the reason for the error.
 
-| Name                        | Stage                                              | Reason                                                           |
-|:----------------------------|:---------------------------------------------------|:-----------------------------------------------------------------|
-| InvalidInputError           | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element. |
-| InvalidMaskedLengthError    | ClientFinish                                       | Invalid masked response length.                                  |
-| InvalidServerPublicKeyError | ClientFinish                                       | Invalid server public key in unmasked response.                  |
-| InvalidEnvelopeMACError     | ClientFinish                                       | Envelope authentication check failed.                            |
-| InvalidServerAkeMACError    | ClientFinish                                       | Invalid server AKE MAC.                                          |
+| Name                         | Stage                                              | Reason                                                           |
+|:-----------------------------|:---------------------------------------------------|:-----------------------------------------------------------------|
+| InvalidInputError            | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element. |
+| InvalidMaskedLengthError     | ClientFinish                                       | Invalid masked response length.                                  |
+| InvalidServerPublicKeyError  | ClientFinish                                       | Invalid server public key in unmasked response.                  |
+| InvalidEnvelopeMACError      | ClientFinish                                       | Envelope authentication check failed.                            |
+| ServerAuthenticationMACError | ClientFinish                                       | Invalid server AKE MAC.                                          |
 
 
 ### Server errors {#server-errors}
