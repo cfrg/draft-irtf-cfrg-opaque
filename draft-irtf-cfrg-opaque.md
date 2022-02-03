@@ -279,9 +279,10 @@ information used to recover authentication credentials on the server. Recovering
 credentials can only be done with knowledge of the client password. In the second
 stage, a client uses its password to recover those credentials and subsequently
 uses them as input to an AKE protocol. This stage has additional mechanisms to
-prevent an active attacker from interacting with the server to enumerate
-clients registered via the first phase. Servers can use this mechanism to
-safeguard registered clients; see {{preventing-client-enumeration}} for more discussion.
+prevent an active attacker from interacting with the server to guess or confirm
+clients registered via the first phase. Servers can use this mechanism to safeguard
+registered clients against this type of enumeration attack; see
+{{preventing-client-enumeration}} for more discussion.
 
 The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
 OPAKE was taken.
