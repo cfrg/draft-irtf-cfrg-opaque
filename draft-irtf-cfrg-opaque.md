@@ -880,7 +880,7 @@ Exceptions:
 def CreateRegistrationResponse(request, server_public_key,
                                credential_identifier, oprf_seed):
   seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
-  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE")
+  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
   evaluated_element = Evaluate(oprf_key, blinded_element)
