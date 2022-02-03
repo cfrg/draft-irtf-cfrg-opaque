@@ -731,7 +731,7 @@ Output:
 - export_key, an additional client key.
 
 Exceptions:
-- ErrEnvelopeInvalidMac, when the envelope fails to be recovered.
+- InvalidEnvelopeMACError, when the envelope fails to be recovered.
 
 Steps:
 1. auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
@@ -742,7 +742,7 @@ Steps:
                       client_public_key, server_identity, client_identity)
 6. expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
 7. If !ct_equal(envelope.auth_tag, expected_tag),
-     raise ErrEnvelopeInvalidMac
+     raise InvalidEnvelopeMACError
 8. Output (client_private_key, export_key)
 ~~~
 
@@ -1473,7 +1473,7 @@ Output:
 - session_key, the shared session secret.
 
 Exceptions:
-- ErrAkeInvalidServerMac, when the handshake fails.
+- InvalidServerAkeMACError, when the handshake fails.
 
 Steps:
 1. ikm = TripleDHIKM(state.client_secret, ke2.server_keyshare,
@@ -1482,7 +1482,7 @@ Steps:
 3. Km2, Km3, session_key = DeriveKeys(ikm, preamble)
 4. expected_server_mac = MAC(Km2, Hash(preamble))
 5. If !ct_equal(ke2.server_mac, expected_server_mac),
-     raise ErrAkeInvalidServerMac
+     raise InvalidServerAkeMACError
 6. client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
 7. Create KE3 ke3 with client_mac
 8. Output (ke3, session_key)
@@ -1541,11 +1541,11 @@ Output:
 - session_key, the shared session secret if and only if KE3 is valid.
 
 Exceptions:
-- ErrAkeInvalidClientMac, when the handshake fails.
+- InvalidClientAkeMACError, when the handshake fails.
 
 Steps:
 1. if !ct_equal(ke3.client_mac, state.expected_client_mac):
-2.    raise ErrAkeInvalidClientMac
+2.    raise InvalidClientAkeMACError
 3. Output state.session_key
 ~~~
 
@@ -1659,27 +1659,27 @@ protocol when these errors occur.
 
 ### Deserialization errors {#deserialization-errors}
 
-| Name                    | Role   | Messages                  | Reason                                               |
-|:------------------------|:-------|:--------------------------|:-----------------------------------------------------|
-| ErrInvalidMessageLength | Both   | All                       | The message length is invalid for the configuration. |
-| ErrInvalidBlindedData   | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point.                    |
-| ErrInvalidEvaluatedData | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
-| ErrInvalidServerPK      | Client | RegistrationResponse      | Invalid server public key.                           |
-| ErrInvalidClientPK      | Server | Record                    | Invalid client public key.                           |
-| ErrInvalidClientEPK     | Server | Ke1                       | Invalid ephemeral client public key.                 |
-| ErrInvalidServerEPK     | Client | Ke2                       | Invalid ephemeral server public key.                 |
+| Name                                 | Role   | Messages                  | Reason                                               |
+|:-------------------------------------|:-------|:--------------------------|:-----------------------------------------------------|
+| InvalidMessageLengthError            | Both   | All                       | The message length is invalid for the configuration. |
+| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point.                    |
+| InvalidEvaluatedDataError            | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
+| InvalidServerPublicKeyError          | Client | RegistrationResponse      | Invalid server public key.                           |
+| InvalidClientPublicKeyError          | Server | Record                    | Invalid client public key.                           |
+| InvalidClientEphemeralPublicKeyError | Server | Ke1                       | Invalid ephemeral client public key.                 |
+| InvalidServerEphemeralPublicKeyError | Client | Ke2                       | Invalid ephemeral server public key.                 |
 
 ### Client errors {#client-errors}
 
 The client can produce errors due to incorrect values in the messages it received. The following
 table enumerates some of these errors, where they occur, and the reason for the error.
 
-| Name                   | Stage        | Reason                                                                   |
-|:-----------------------|:-------------|:-------------------------------------------------------------------------|
-| ErrInvalidMaskedLength | ClientFinish | The length of the masked response is not = point length + envelope size. |
-| ErrInvalidPKS          | ClientFinish | Invalid server public key in unmasked response.                          |
-| ErrEnvelopeInvalidMac  | ClientFinish | Invalid envelope authentication tag.                                     |
-| ErrAkeInvalidServerMac | ClientFinish | Invalid server AKE MAC.                                                  |
+| Name                        | Stage        | Reason                                                                   |
+|:----------------------------|:-------------|:-------------------------------------------------------------------------|
+| InvalidMaskedLengthError    | ClientFinish | The length of the masked response is not = point length + envelope size. |
+| InvalidServerPublicKeyError | ClientFinish | Invalid server public key in unmasked response.                          |
+| InvalidEnvelopeMACError     | ClientFinish | Invalid envelope authentication tag.                                     |
+| InvalidServerAkeMACError    | ClientFinish | Invalid server AKE MAC.                                                  |
 
 
 ### Server errors {#server-errors}
@@ -1687,22 +1687,21 @@ table enumerates some of these errors, where they occur, and the reason for the 
 The following table enumerates server errors that can occur, where they occur, and the reason for the error.
 In this case, servers can only generate a single protocol error.
 
-| Name                   | Stage         | Reason                  |
-|:-----------------------|:--------------|:------------------------|
-| ErrAkeInvalidClientMac | ServerFinish  | Invalid client AKE MAC. |
+| Name                     | Stage        | Reason                  |
+|:-------------------------|:-------------|:------------------------|
+| InvalidClientAkeMACError | ServerFinish | Invalid client AKE MAC. |
 
 ### Application errors
 
 Implementations MUST verify certain input arguments and return an appropriate error. Note that
 these are not protocol errors, and are indicative. The following table enumerates server errors that can occur, where they occur, and the reason for the error.
 
-| Name                      | Role   | Stage      | Reason                                         |
-|:--------------------------|:-------|:-----------|:-----------------------------------------------|
-| ErrInvalidServerSecretKey | Server | LoginInit  | Invalid server secret key.                     |
-| ErrInvalidServerPK        | Server | LoginInit  | Invalid server public key.                     |
-| ErrInvalidOPRFSeedLength  | Server | LoginInit  | Invalid OPRF seed length.                      |
-| ErrInvalidEnvelopeLength  | Server | LoginInit  | Invalid envelope length for the configuration. |
-
+| Name                        | Role   | Stage      | Reason                                         |
+|:----------------------------|:-------|:-----------|:-----------------------------------------------|
+| InvalidServerSecretKeyError | Server | LoginInit  | Invalid server secret key.                     |
+| InvalidServerPublicKeyError | Server | LoginInit  | Invalid server public key.                     |
+| InvalidOPRFSeedLengthError  | Server | LoginInit  | Invalid OPRF seed length.                      |
+| InvalidEnvelopeLengthError  | Server | LoginInit  | Invalid envelope length for the configuration. |
 
 # Security Considerations {#security-considerations}
 
