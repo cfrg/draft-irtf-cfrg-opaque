@@ -1650,11 +1650,11 @@ server-authenticated channel over which OPAQUE registration and login is run.
 
 ## Errors {#api-errors}
 
-This specification based on OPRF and 3DH only has a couple of fallible functions. For example,
-MACs exchanged during the AKE that might not verify. Additionally, given the statically sized nature
-of the protocol messages, clients and servers can easily detect errors in invalid messages or group elements.
+Some functions included in this specification are fallible. For example,
+MACs exchanged during the AKE might fail verification, yielding an error. Additionally, protocol messages 
+sent between client and server might not match their expected size, yielding a different error.
 The following errors are documented for the OPRF-3DH composition in this specification and the recommended
-configurations, and don't cover potential errors in other configurations. Participants MUST abort the
+configurations, and do not cover potential errors in other configurations. Participants MUST abort the
 protocol when these errors occur.
 
 ### Deserialization errors {#deserialization-errors}
@@ -1671,8 +1671,8 @@ protocol when these errors occur.
 
 ### Client errors {#client-errors}
 
-The client can produce errors due to incorrect values in the messages it received, either because of
-invalid data, point encoding, or MACs.
+The client can produce errors due to incorrect values in the messages it received. The following
+table enumerates some of these errors, where they occur, and the reason for the error.
 
 | Name                   | Stage        | Reason                                                                   |
 |:-----------------------|:-------------|:-------------------------------------------------------------------------|
@@ -1684,7 +1684,8 @@ invalid data, point encoding, or MACs.
 
 ### Server errors {#server-errors}
 
-The server returns a protocol error in the sole case of an invalid client MAC in the AKE. 
+The following table enumerates server errors that can occur, where they occur, and the reason for the error.
+In this case, servers can only generate a single protocol error.
 
 | Name                   | Stage         | Reason                  |
 |:-----------------------|:--------------|:------------------------|
@@ -1693,7 +1694,7 @@ The server returns a protocol error in the sole case of an invalid client MAC in
 ### Application errors
 
 Implementations MUST verify certain input arguments and return an appropriate error. Note that
-these are not protocol errors, and are indicative.
+these are not protocol errors, and are indicative. The following table enumerates server errors that can occur, where they occur, and the reason for the error.
 
 | Name                      | Role   | Stage      | Reason                                         |
 |:--------------------------|:-------|:-----------|:-----------------------------------------------|
