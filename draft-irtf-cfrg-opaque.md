@@ -1679,7 +1679,7 @@ protocol when these errors occur.
 | Name                                 | Role   | Messages                  | Reason                                               |
 |:-------------------------------------|:-------|:--------------------------|:-----------------------------------------------------|
 | InvalidMessageLengthError            | Both   | All                       | The message length is invalid for the configuration. |
-| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid point.                    |
+| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid element.                    |
 | InvalidEvaluatedDataError            | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
 | InvalidServerPublicKeyError          | Client | RegistrationResponse      | Invalid server public key.                           |
 | InvalidClientPublicKeyError          | Server | Record                    | Invalid client public key.                           |
@@ -1693,10 +1693,10 @@ table enumerates some of these errors, where they occur, and the reason for the 
 
 | Name                        | Stage                                                  | Reason                                                                   |
 |:----------------------------|:-------------------------------------------------------|:-------------------------------------------------------------------------|
-| InvalidInputError           | CreateRegistrationRequest,<br/>CreateCredentialRequest | OPRF input deterministically maps to the group identity element.         |
-| InvalidMaskedLengthError    | ClientFinish                                           | The length of the masked response is not = point length + envelope size. |
+| InvalidInputError           | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element.         |
+| InvalidMaskedLengthError    | ClientFinish                                           | Invalid masked response length. |
 | InvalidServerPublicKeyError | ClientFinish                                           | Invalid server public key in unmasked response.                          |
-| InvalidEnvelopeMACError     | ClientFinish                                           | Invalid envelope authentication tag.                                     |
+| InvalidEnvelopeMACError     | ClientFinish                                           | Envelope authentication check failed.                                     |
 | InvalidServerAkeMACError    | ClientFinish                                           | Invalid server AKE MAC.                                                  |
 
 
