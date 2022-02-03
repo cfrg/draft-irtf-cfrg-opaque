@@ -13,7 +13,9 @@ hash_to_field.py
 iso_values.sage
 map_check.sage
 sagelib/
+sqrt.sage
 sswu_generic.sage
+sswu_optimized.sage
 sswu_opt_3mod4.sage
 sswu_opt_5mod8.sage
 sswu_opt_9mod16.sage
