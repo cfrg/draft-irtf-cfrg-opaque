@@ -203,6 +203,14 @@ protocols"
     seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
 
+  WhatsAppE2E:
+    title: Security of End-to-End Encrypted Backups
+    target: https://scontent.whatsapp.net/v/t39.8562-34/241394876_546674233234181_8907137889500301879_n.pdf/WhatsApp_Security_Encrypted_Backups_Whitepaper.pdf?ccb=1-5&_nc_sid=2fbf2a&_nc_ohc=Y3PFzd-3LG4AX9AdA8_&_nc_ht=scontent.whatsapp.net&oh=01_AVwwbFhPNWAn-u9VV4wqetjL2T9rX2pDmXwlk0aus4YrKA&oe=620029BC
+    authors:
+      -
+        ins: WhatsApp
+        name: WhatsApp
+
   RFC2945:
   RFC5869:
   RFC8125:
@@ -389,8 +397,8 @@ This specification uses a KDF with the following API and parameters:
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
-This specification also makes use of a Message Authentication Code (MAC) with
-the following API and parameters:
+This specification also makes use of a collision resistant Message Authentication Code
+(MAC) with the following API and parameters:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
   `key`, producing a fixed-length output of `Nm` bytes.
@@ -1687,14 +1695,71 @@ protocols such as TLS.
 The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
 The following list enumerates important differences:
 
-- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}. This change adds to the security of the protocol. {{OPAQUE}} considered the case where the envelope was constructed by the server for reasons of compatibility with previous UC modeling. An upcoming paper analyzes the registration phase as specified in this document.
-- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE. This variant is also analyzed in the new paper referred to in the previous item. This change improves the assumption behind the protocol by getting rid of equivocability and random key robustness for the encryption function. The latter property is only required for authentication and achieved by a MAC.
-- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details. This extension does not add to the security of OPAQUE as an aPAKE but only used to provide a defense against enumeration attacks. In the analysis, this key can be simulated as a (pseudo) random key.
-- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details. The analysis of OPAQUE assumes OPRF keys of different users are independently random or pseudorandom. Deriving these keys via a single PRF (i.e., with a single cross-user key) applied to users' identities satisfies this assumption.
-- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes. This key is a pseudorandom value independent of other values in the protocol and have no influence in the security analysis (it can be simulated with a random output).
-- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. Binding authentication to identities is part of the AKE part of OPAQUE. The type of identities and their semantics are application dependent and independent of the protocol analysis.
-- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE. This is a mechanism for the AKE component and is best practice as for domain separation between different applications of the protocol.
-- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account. This mechanism is part of the derivation of OPRF keys via a single OPRF. As long as the derivation of different OPRF keys from a single OPRF have different PRF inputs, the protocol is secure. The choice of such inputs is up to the application.
+- Clients construct envelope contents without revealing the password to the
+  server, as described in {{offline-phase}}, whereas the servers construct
+  envelopes in {{OPAQUE}}. This change adds to the security of the protocol.
+  {{OPAQUE}} considered the case where the envelope was constructed by the
+  server for reasons of compatibility with previous UC modeling. An upcoming
+  paper analyzes the registration phase as specified in this document. This
+  change was made to support registration flows where the client chooses the
+  password and wishes to keep it secret from the server, and it is compatible
+  with the variant in {{OPAQUE}} that was originally analyzed.
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain
+  information used to derive client private key material for the AKE. This
+  variant is also analyzed in the new paper referred to in the previous item.
+  This change improves the assumption behind the protocol by getting rid of
+  equivocability and random key robustness for the encryption function. The
+  latter property is only required for authentication and achieved by a
+  collision-resistant MAC. This change was made for two reasons. First, it
+  reduces the number of bytes stored in envelopes, which is an helpful
+  improvement for large applications of OPAQUE with many registered users.
+  Second, it removes the need for client applications to generate authentication
+  keys. Instead, this responsibility is handled by OPAQUE, thereby simplifying
+  the client interface to the protocol.
+- Envelopes are masked with a per-user masking key as a way of preventing
+  client enumeration attacks. See {{preventing-client-enumeration}} for more
+  details. This extension does not add to the security of OPAQUE as an aPAKE
+  but only used to provide a defense against enumeration attacks. In the
+  analysis, this key can be simulated as a (pseudo) random key. This change
+  was made to support real-world use cases where client or user enumeration
+  is a security (or privacy) threat.
+- Per-user OPRF keys are derived from a client identity and cross-user seed
+  as a mitigation against client enumeration attacks. See
+  {{preventing-client-enumeration}} for more details. The analysis of OPAQUE
+  assumes OPRF keys of different users are independently random or
+  pseudorandom. Deriving these keys via a single PRF (i.e., with a single
+  cross-user key) applied to users' identities satisfies this assumption.
+  This change was made to support real-world use cases where client or user
+  enumeration is a security (or privacy) threat.
+- The protocol outputs an export key for the client in addition to shared
+  session key that can be used for application-specific purposes. This key
+  is a pseudorandom value independent of other values in the protocol and
+  have no influence in the security analysis (it can be simulated with a
+  random output). This change was made to support more application use cases
+  for OPAQUE, such as use of OPAQUE for end-to-end encrypted backups;
+  see {{WhatsAppE2E}}.
+- The protocol admits optional application-layer client and server identities.
+  In the absence of these identities, client and server are authenticated
+  against their public keys. Binding authentication to identities is part
+  of the AKE part of OPAQUE. The type of identities and their semantics
+  are application dependent and independent of the protocol analysis. This
+  change was made to simplify client and server interfaces to the protocol
+  by removing the need to specify an additional identity alongside public
+  authentication keys when not needed.
+- The protocol admits application-specific context information configured
+  out-of-band in the AKE transcript. This allows domain separation between
+  different application uses of OPAQUE. This is a mechanism for the AKE
+  component and is best practice as for domain separation between different
+  applications of the protocol. This change was made to allow different
+  applications to use OPAQUE without risk of cross-protocol attacks.
+- Servers use a separate identifier for computing OPRF evaluations and
+  indexing into the password file storage, called the credential_identifier.
+  This allows clients to change their application-layer identity
+  (client_identity) without inducing server-side changes, e.g., by changing
+  an email address associated with a given account. This mechanism is part
+  of the derivation of OPRF keys via a single OPRF. As long as the derivation
+  of different OPRF keys from a single OPRF have different PRF inputs, the
+  protocol is secure. The choice of such inputs is up to the application.
 
 ## Security Analysis
 
