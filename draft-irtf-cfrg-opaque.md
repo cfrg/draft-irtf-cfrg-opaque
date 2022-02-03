@@ -1192,7 +1192,7 @@ Exceptions:
 def CreateCredentialResponse(request, server_public_key, record,
                              credential_identifier, oprf_seed):
   seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
-  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE")
+  (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
   evaluated_element = Evaluate(oprf_key, blinded_element)
