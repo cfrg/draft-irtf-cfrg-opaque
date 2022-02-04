@@ -1785,9 +1785,9 @@ suitable for interoperable implementations.
   and includes necessary prime-order subgroup checks when receiving attacker-controlled
   values over the wire. This specification instantiates the prime-order group using for
   3DH using prime-order groups based on elliptic curves, as described in
-  {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates group choice
-  and operations to {{I-D.irtf-cfrg-voprf}}. The prime-order group as used in the
-  OPRF and 3DH as specified in this document both adhere to the requirements as
+  {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates OPRF group
+  choice and operations to {{I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
+  in the OPRF and 3DH as specified in this document both adhere to the requirements as
   {{OPAQUE}}.
 - {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
   the OPRF functionality in the protocol. A critical part of DH-OPRF is the
@@ -1799,11 +1799,12 @@ suitable for interoperable implementations.
   methods in {{I-D.irtf-cfrg-hash-to-curve}} are compliant with the requirement
   in {{OPAQUE}}, namely, that the output be a member of the prime-order group.
 - {{OPAQUE}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
-  for the protocol. However, this document fully specifies 3DH instead of HMQV,
-  though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}.
+  for the protocol. However, this document fully specifies 3DH instead of HMQV
+  (though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}).
   Since 3DH satisfies the essential requirements for the AKE as described in {{OPAQUE}}
-  and {{I-D.krawczyk-cfrg-opaque-03}}, this change has no effect on the overall
-  security of the protocol. 3DH was chosen for its simplicity and ease of implementation.
+  and {{I-D.krawczyk-cfrg-opaque-03}}, as described in {{security-analysis}}, this change
+  has no effect on the overall security of the protocol. 3DH was chosen for its
+  simplicity and ease of implementation.
 - The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE, Figure 12}} uses
   a different transcript than that which is described in this specification. In particular,
   the key exchange transcript specified in {{ake-protocol}} is a superset of the transcript
@@ -1813,7 +1814,7 @@ suitable for interoperable implementations.
   protocol, which is essential for interoperability. This specification rectifies this
   gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
 
-## Security Analysis
+## Security Analysis {#security-analysis}
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
