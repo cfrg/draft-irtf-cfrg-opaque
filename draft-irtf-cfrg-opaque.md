@@ -34,6 +34,14 @@ author:
 
 informative:
 
+  I-D.krawczyk-cfrg-opaque-03:
+    title: The OPAQUE Asymmetric PAKE Protocol
+    target: https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03
+
+  PAKE-Selection:
+    title: CFRG PAKE selection process repository
+    target: https://github.com/cfrg/pake-selection
+
   Boyen09:
     title: "HPAKE: Password Authentication Secure against Cross-Site User Impersonation"
     author:
@@ -1692,8 +1700,15 @@ protocols such as TLS.
 
 [[RFC EDITOR: Please delete this section before publication.]]
 
-The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
-The following list enumerates important differences:
+The specification as written here differs from the original cryptographic design in {{OPAQUE}}
+and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
+as input to the CFRG PAKE competition. This section describes these differences, including
+their motivation and explanation as to why they do not alter or otherwise affect the core
+security proofs or analysis in {{OPAQUE}}.
+
+The following list enumerates important functional differences that were made
+as part of the protocol specification process to address applicaton or
+implementation considerations.
 
 - Clients construct envelope contents without revealing the password to the
   server, as described in {{offline-phase}}, whereas the servers construct
@@ -1760,6 +1775,43 @@ The following list enumerates important differences:
   of the derivation of OPRF keys via a single OPRF. As long as the derivation
   of different OPRF keys from a single OPRF have different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
+
+The following list enumerates notable differences and refinements from the original
+cryptographic design in {{OPAQUE}} and the corresponding CFRG document
+{{I-D.krawczyk-cfrg-opaque-03}} that were made to make this specification
+suitable for interoperable implementations.
+
+- {{OPAQUE}} used a generic prime-order group for the DH-OPRF and HMQV operations,
+  and includes necessary prime-order subgroup checks when receiving attacker-controlled
+  values over the wire. This specification instantiates the prime-order group using for
+  3DH using prime-order groups based on elliptic curves, as described in
+  {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates group choice
+  and operations to {{I-D.irtf-cfrg-voprf}}. The prime-order group as used in the
+  OPRF and 3DH as specified in this document both adhere to the requirements as
+  {{OPAQUE}}.
+- {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
+  the OPRF functionality in the protocol. A critical part of DH-OPRF is the
+  hash-to-group operation, which was left undefined in the original analysis.
+  However, the requirements for this operation were included. This specification
+  instantiates the OPRF functionality based on the {{I-D.irtf-cfrg-voprf}}, which
+  is identical to the DH-OPRF functionality in {{OPAQUE}} and, concretely, uses
+  the hash-to-curve functions in {{?I-D.irtf-cfrg-hash-to-curve}}. All hash-to-curve
+  methods in {{I-D.irtf-cfrg-hash-to-curve}} are compliant with the requirement
+  in {{OPAQUE}}, namely, that the output be a member of the prime-order group.
+- {{OPAQUE}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
+  for the protocol. However, this document fully specifies 3DH instead of HMQV,
+  though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}.
+  Since 3DH satisfies the essential requirements for the AKE as described in {{OPAQUE}}
+  and {{I-D.krawczyk-cfrg-opaque-03}}, this change has no effect on the overall
+  security of the protocol. 3DH was chosen for its simplicity and ease of implementation.
+- The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE, Figure 12}} uses
+  a different transcript than that which is described in this specification. In particular,
+  the key exchange transcript specified in {{ake-protocol}} is a superset of the transcript
+  as defined in {{OPAQUE}}. This was done to align with best practices, such as is
+  done for key exchange protocols like TLS 1.3 {{RFC8446}}.
+- Neither {{OPAQUE}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
+  protocol, which is essential for interoperability. This specification rectifies this
+  gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
 
 ## Security Analysis
 
@@ -2023,7 +2075,7 @@ the OPRF is quantum-safe. However, an OPAQUE instantiation where the AKE is quan
 but the OPRF is not, would still ensure the confidentiality of application data encrypted
 under session_key (or a key derived from it) with a quantum-safe encryption function.
 
-## HMQV Instantiation Sketch
+## HMQV Instantiation Sketch {#hmqv-sketch}
 
 An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
 schedule {{HMQV}}. First, the key schedule `preamble` value would use a different constant prefix
@@ -2086,7 +2138,7 @@ The key schedule would also change. Specifically, the key schedule `preamble` va
 use a different constant prefix -- "SIGMA-I" instead of "3DH" -- and the `IKM` computation
 would use only the ephemeral key shares exchanged between client and server.
 
-# Test Vectors
+# Test Vectors {#test-vectors}
 
 This section contains real and fake test vectors for the OPAQUE-3DH specification.
 Each real test vector in {{real-vectors}} specifies the configuration information,
