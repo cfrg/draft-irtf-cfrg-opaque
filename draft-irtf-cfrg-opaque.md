@@ -1786,7 +1786,7 @@ suitable for interoperable implementations.
   values over the wire. This specification instantiates the prime-order group using for
   3DH using prime-order groups based on elliptic curves, as described in
   {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates OPRF group
-  choice and operations to {{I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
+  choice and operations to {{!I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
   in the OPRF and 3DH as specified in this document both adhere to the requirements as
   {{OPAQUE}}.
 - {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
@@ -1805,7 +1805,7 @@ suitable for interoperable implementations.
   and {{I-D.krawczyk-cfrg-opaque-03}}, as described in {{security-analysis}}, this change
   has no effect on the overall security of the protocol. 3DH was chosen for its
   simplicity and ease of implementation.
-- The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE, Figure 12}} uses
+- The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE}}, Figure 12 uses
   a different transcript than that which is described in this specification. In particular,
   the key exchange transcript specified in {{ake-protocol}} is a superset of the transcript
   as defined in {{OPAQUE}}. This was done to align with best practices, such as is
