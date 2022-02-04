@@ -10,16 +10,11 @@ import struct
 from hash import scrypt
 
 try:
-    from sagelib.oprf import SetupOPRFClient, SetupOPRFServer
+    from sagelib.oprf import SetupOPRFClient, SetupOPRFServer, DeriveKeyPair, MODE_OPRF
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, CleartextCredentials, Envelope, deserialize_envelope
     from sagelib.opaque_common import to_hex, derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
-
-def DeriveKeyPair(suite, seed):
-    skS = suite.group.hash_to_scalar(seed, _as_bytes("OPAQUE-DeriveKeyPair"))
-    pkS = skS * suite.group.generator()
-    return skS, pkS
 
 OPAQUE_SEED_LENGTH = 32
 
@@ -29,9 +24,9 @@ class OPAQUECore(object):
 
     def derive_random_pwd(self, pwdU, response, blind):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
-        y = oprf_context.finalize(pwdU, blind, self.config.oprf_suite.group.deserialize(response.data), None, None, None)
-        y_stretch = self.config.mhf.stretch(y)
-        return self.config.kdf.extract(_as_bytes(""), y + y_stretch)
+        oprf_output = oprf_context.finalize(pwdU, blind, self.config.oprf_suite.group.deserialize(response.data), None, None, None)
+        stretched_oprf_output = self.config.mhf.stretch(oprf_output)
+        return self.config.kdf.extract(_as_bytes(""), oprf_output + stretched_oprf_output)
 
     def derive_masking_key(self, random_pwd):
         Nh = self.config.hash().digest_size
@@ -41,15 +36,20 @@ class OPAQUECore(object):
     def create_registration_request(self, pwdU):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
         blind, blinded_element = oprf_context.blind(pwdU)
-        request = RegistrationRequest(self.config.oprf_suite.group.serialize(blinded_element))
+        blinded_message = self.config.oprf_suite.group.serialize(blinded_element)
+        request = RegistrationRequest(blinded_message)
         return request, blind
 
     def create_registration_response(self, request, pkS, oprf_seed, credential_identifier):
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
-        (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
+        (kU, _) = DeriveKeyPair(MODE_OPRF, self.config.oprf_suite, ikm, _as_bytes("OPAQUE-DeriveKeyPair"))
         oprf_context = SetupOPRFServer(self.config.oprf_suite, kU)
-        data, _, _ = oprf_context.evaluate(self.config.oprf_suite.group.deserialize(request.data), None)
-        response = RegistrationResponse(self.config.oprf_suite.group.serialize(data), pkS)
+
+        blinded_element = self.config.oprf_suite.group.deserialize(request.data)
+        evaluated_element, _, _ = oprf_context.evaluate(blinded_element, None)
+        evaluated_message = self.config.oprf_suite.group.serialize(evaluated_element)
+
+        response = RegistrationResponse(evaluated_message, pkS)
         return response, kU
 
     def recover_public_key(self, private_key):
@@ -60,9 +60,7 @@ class OPAQUECore(object):
         return self.config.group.serialize(pk)
 
     def derive_group_key_pair(self, seed):
-        skS = self.config.group.hash_to_scalar(seed, dst=_as_bytes("OPAQUE-DeriveAuthKeyPair"))
-        pkS = skS * self.config.group.generator()
-        return (skS, pkS)
+        return DeriveKeyPair(MODE_OPRF, self.config.oprf_suite, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
 
     def create_cleartext_credentials(self, server_public_key, client_public_key, server_identity, client_identity):
         if server_identity == None:
@@ -110,7 +108,7 @@ class OPAQUECore(object):
 
     def create_credential_response(self, request, pkS, oprf_seed, envU, credential_identifier, masking_key):
         ikm = self.config.kdf.expand(oprf_seed, credential_identifier + _as_bytes("OprfKey"), OPAQUE_SEED_LENGTH)
-        (kU, _) = DeriveKeyPair(self.config.oprf_suite, ikm)
+        (kU, _) = DeriveKeyPair(MODE_OPRF, self.config.oprf_suite, ikm, _as_bytes("OPAQUE-DeriveKeyPair"))
 
         oprf_context = SetupOPRFServer(self.config.oprf_suite, kU)
         Z, _, _ = oprf_context.evaluate(self.config.oprf_suite.group.deserialize(request.data), None)

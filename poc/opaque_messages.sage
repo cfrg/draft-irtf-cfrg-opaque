@@ -91,7 +91,7 @@ class ProtocolMessage(object):
         return False
 
 # struct {
-#     SerializedElement data;
+#     opaque blinded_message[Noe];
 # } RegistrationRequest;
 def deserialize_registration_request(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
@@ -108,7 +108,7 @@ class RegistrationRequest(ProtocolMessage):
         return self.data
 
 # struct {
-#     SerializedElement data;
+#     opaque evaluated_message[Noe];
 #     opaque pkS[Npk];
 # } RegistrationResponse;
 def deserialize_registration_response(config, msg_bytes):
@@ -157,7 +157,7 @@ class RegistrationUpload(ProtocolMessage):
         return self.pkU + self.masking_key + self.envU.serialize()
 
 # struct {
-#     SerializedElement data;
+#     opaque blinded_message[Noe];
 # } CredentialRequest;
 def deserialize_credential_request(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
@@ -174,7 +174,7 @@ class CredentialRequest(ProtocolMessage):
         return self.data
 
 # struct {
-#     SerializedElement data;
+#     opaque evaluated_message[Noe];
 #     opaque masking_nonce[32];
 #     opaque masked_response[Npk + Ne];
 # } CredentialResponse;
