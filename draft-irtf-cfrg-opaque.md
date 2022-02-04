@@ -1729,16 +1729,16 @@ implementation considerations.
   reduces the number of bytes stored in envelopes, which is an helpful
   improvement for large applications of OPAQUE with many registered users.
   Second, it removes the need for client applications to generate authentication
-  keys. Instead, this responsibility is handled by OPAQUE, thereby simplifying
-  the client interface to the protocol.
+  keys during registration. Instead, this responsibility is handled by OPAQUE,
+  thereby simplifying the client interface to the protocol.
 - Envelopes are masked with a per-user masking key as a way of preventing
   client enumeration attacks. See {{preventing-client-enumeration}} for more
-  details. This extension does not add to the security of OPAQUE as an aPAKE
+  details. This extension is not needed for the security of OPAQUE as an aPAKE
   but only used to provide a defense against enumeration attacks. In the
-  analysis, this key can be simulated as a (pseudo) random key. This change
-  was made to support real-world use cases where client or user enumeration
-  is a security (or privacy) risk.
-- Per-user OPRF keys are derived from a client identity and cross-user seed
+  analysis, the masking key can be simulated as a (pseudo) random key. This
+  change was made to support real-world use cases where client or user
+  enumeration is a security (or privacy) risk.
+- Per-user OPRF keys are derived from a client identity and cross-user PRF seed
   as a mitigation against client enumeration attacks. See
   {{preventing-client-enumeration}} for more details. The analysis of OPAQUE
   assumes OPRF keys of different users are independently random or
@@ -1759,8 +1759,8 @@ implementation considerations.
   of the AKE part of OPAQUE. The type of identities and their semantics
   are application dependent and independent of the protocol analysis. This
   change was made to simplify client and server interfaces to the protocol
-  by removing the need to specify an additional identity alongside public
-  authentication keys when not needed.
+  by removing the need to specify additional identities alongside their
+  corresponding public authentication keys when not needed.
 - The protocol admits application-specific context information configured
   out-of-band in the AKE transcript. This allows domain separation between
   different application uses of OPAQUE. This is a mechanism for the AKE
@@ -1772,7 +1772,7 @@ implementation considerations.
   This allows clients to change their application-layer identity
   (client_identity) without inducing server-side changes, e.g., by changing
   an email address associated with a given account. This mechanism is part
-  of the derivation of OPRF keys via a single OPRF. As long as the derivation
+  of the derivation of OPRF keys via a single PRF. As long as the derivation
   of different OPRF keys from a single OPRF have different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
 
@@ -1791,7 +1791,7 @@ suitable for interoperable implementations.
   {{OPAQUE}}.
 - {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
   the OPRF functionality in the protocol. A critical part of DH-OPRF is the
-  hash-to-group operation, which was left undefined in the original analysis.
+  hash-to-group operation, which was not instantiated in the original analysis.
   However, the requirements for this operation were included. This specification
   instantiates the OPRF functionality based on the {{I-D.irtf-cfrg-voprf}}, which
   is identical to the DH-OPRF functionality in {{OPAQUE}} and, concretely, uses
@@ -1802,8 +1802,8 @@ suitable for interoperable implementations.
   for the protocol. However, this document fully specifies 3DH instead of HMQV
   (though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}).
   Since 3DH satisfies the essential requirements for the AKE as described in {{OPAQUE}}
-  and {{I-D.krawczyk-cfrg-opaque-03}}, as described in {{security-analysis}}, this change
-  has no effect on the overall security of the protocol. 3DH was chosen for its
+  and {{I-D.krawczyk-cfrg-opaque-03}}, as recalled in {{security-analysis}}, this change
+  preserves the overall security of the protocol. 3DH was chosen for its
   simplicity and ease of implementation.
 - The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE}}, Figure 12 uses
   a different transcript than that which is described in this specification. In particular,
@@ -1811,7 +1811,7 @@ suitable for interoperable implementations.
   as defined in {{OPAQUE}}. This was done to align with best practices, such as is
   done for key exchange protocols like TLS 1.3 {{RFC8446}}.
 - Neither {{OPAQUE}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
-  protocol, which is essential for interoperability. This specification rectifies this
+  protocol, which is essential for interoperability. This specification fills this
   gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
 
 ## Security Analysis {#security-analysis}
