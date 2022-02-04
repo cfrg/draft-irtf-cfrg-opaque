@@ -34,6 +34,14 @@ author:
 
 informative:
 
+  I-D.krawczyk-cfrg-opaque-03:
+    title: The OPAQUE Asymmetric PAKE Protocol
+    target: https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03
+
+  PAKE-Selection:
+    title: CFRG PAKE selection process repository
+    target: https://github.com/cfrg/pake-selection
+
   Boyen09:
     title: "HPAKE: Password Authentication Secure against Cross-Site User Impersonation"
     author:
@@ -202,6 +210,14 @@ protocols"
     title: "Simplifying OTR deniability"
     seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
+
+  WhatsAppE2E:
+    title: Security of End-to-End Encrypted Backups
+    target: https://scontent.whatsapp.net/v/t39.8562-34/241394876_546674233234181_8907137889500301879_n.pdf/WhatsApp_Security_Encrypted_Backups_Whitepaper.pdf?ccb=1-5&_nc_sid=2fbf2a&_nc_ohc=Y3PFzd-3LG4AX9AdA8_&_nc_ht=scontent.whatsapp.net&oh=01_AVwwbFhPNWAn-u9VV4wqetjL2T9rX2pDmXwlk0aus4YrKA&oe=620029BC
+    authors:
+      -
+        ins: WhatsApp
+        name: WhatsApp
 
   RFC2945:
   RFC5869:
@@ -385,8 +401,8 @@ This specification uses a KDF with the following API and parameters:
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
-This specification also makes use of a Message Authentication Code (MAC) with
-the following API and parameters:
+This specification also makes use of a collision resistant Message Authentication Code
+(MAC) with the following API and parameters:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
   `key`, producing a fixed-length output of `Nm` bytes.
@@ -1680,19 +1696,121 @@ protocols such as TLS.
 
 [[RFC EDITOR: Please delete this section before publication.]]
 
-The specification as written here differs from the original cryptographic design in {{OPAQUE}}.
-The following list enumerates important differences:
+The specification as written here differs from the original cryptographic design in {{OPAQUE}}
+and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
+as input to the CFRG PAKE competition. This section describes these differences, including
+their motivation and explanation as to why they do not alter or otherwise affect the core
+security proofs or analysis in {{OPAQUE}}.
 
-- Clients construct envelope contents without revealing the password to the server, as described in {{offline-phase}}, whereas the servers construct envelopes in {{OPAQUE}}. This change adds to the security of the protocol. {{OPAQUE}} considered the case where the envelope was constructed by the server for reasons of compatibility with previous UC modeling. An upcoming paper analyzes the registration phase as specified in this document.
-- Envelopes do not contain encrypted credentials. Instead, envelopes contain information used to derive client private key material for the AKE. This variant is also analyzed in the new paper referred to in the previous item. This change improves the assumption behind the protocol by getting rid of equivocability and random key robustness for the encryption function. The latter property is only required for authentication and achieved by a MAC.
-- Envelopes are masked with a per-user masking key as a way of preventing client enumeration attacks. See {{preventing-client-enumeration}} for more details. This extension does not add to the security of OPAQUE as an aPAKE but only used to provide a defense against enumeration attacks. In the analysis, this key can be simulated as a (pseudo) random key.
-- Per-user OPRF keys are derived from a client identity and cross-user seed as a mitigation against client enumeration attacks. See {{preventing-client-enumeration}} for more details. The analysis of OPAQUE assumes OPRF keys of different users are independently random or pseudorandom. Deriving these keys via a single PRF (i.e., with a single cross-user key) applied to users' identities satisfies this assumption.
-- The protocol outputs an export key for the client in addition to shared session key that can be used for application-specific purposes. This key is a pseudorandom value independent of other values in the protocol and have no influence in the security analysis (it can be simulated with a random output).
-- The protocol admits optional application-layer client and server identities. In the absence of these identities, client and server are authenticated against their public keys. Binding authentication to identities is part of the AKE part of OPAQUE. The type of identities and their semantics are application dependent and independent of the protocol analysis.
-- The protocol admits application-specific context information configured out-of-band in the AKE transcript. This allows domain separation between different application uses of OPAQUE. This is a mechanism for the AKE component and is best practice as for domain separation between different applications of the protocol.
-- Servers use a separate identifier for computing OPRF evaluations and indexing into the password file storage, called the credential_identifier. This allows clients to change their application-layer identity (client_identity) without inducing server-side changes, e.g., by changing an email address associated with a given account. This mechanism is part of the derivation of OPRF keys via a single OPRF. As long as the derivation of different OPRF keys from a single OPRF have different PRF inputs, the protocol is secure. The choice of such inputs is up to the application.
+The following list enumerates important functional differences that were made
+as part of the protocol specification process to address applicaton or
+implementation considerations.
 
-## Security Analysis
+- Clients construct envelope contents without revealing the password to the
+  server, as described in {{offline-phase}}, whereas the servers construct
+  envelopes in {{OPAQUE}}. This change adds to the security of the protocol.
+  {{OPAQUE}} considered the case where the envelope was constructed by the
+  server for reasons of compatibility with previous UC modeling. An upcoming
+  paper analyzes the registration phase as specified in this document. This
+  change was made to support registration flows where the client chooses the
+  password and wishes to keep it secret from the server, and it is compatible
+  with the variant in {{OPAQUE}} that was originally analyzed.
+- Envelopes do not contain encrypted credentials. Instead, envelopes contain
+  information used to derive client private key material for the AKE. This
+  variant is also analyzed in the new paper referred to in the previous item.
+  This change improves the assumption behind the protocol by getting rid of
+  equivocability and random key robustness for the encryption function. The
+  latter property is only required for authentication and achieved by a
+  collision-resistant MAC. This change was made for two reasons. First, it
+  reduces the number of bytes stored in envelopes, which is an helpful
+  improvement for large applications of OPAQUE with many registered users.
+  Second, it removes the need for client applications to generate authentication
+  keys during registration. Instead, this responsibility is handled by OPAQUE,
+  thereby simplifying the client interface to the protocol.
+- Envelopes are masked with a per-user masking key as a way of preventing
+  client enumeration attacks. See {{preventing-client-enumeration}} for more
+  details. This extension is not needed for the security of OPAQUE as an aPAKE
+  but only used to provide a defense against enumeration attacks. In the
+  analysis, the masking key can be simulated as a (pseudo) random key. This
+  change was made to support real-world use cases where client or user
+  enumeration is a security (or privacy) risk.
+- Per-user OPRF keys are derived from a client identity and cross-user PRF seed
+  as a mitigation against client enumeration attacks. See
+  {{preventing-client-enumeration}} for more details. The analysis of OPAQUE
+  assumes OPRF keys of different users are independently random or
+  pseudorandom. Deriving these keys via a single PRF (i.e., with a single
+  cross-user key) applied to users' identities satisfies this assumption.
+  This change was made to support real-world use cases where client or user
+  enumeration is a security (or privacy) risk.
+- The protocol outputs an export key for the client in addition to shared
+  session key that can be used for application-specific purposes. This key
+  is a pseudorandom value independent of other values in the protocol and
+  has no influence in the security analysis (it can be simulated with a
+  random output). This change was made to support more application use cases
+  for OPAQUE, such as use of OPAQUE for end-to-end encrypted backups;
+  see {{WhatsAppE2E}}.
+- The protocol admits optional application-layer client and server identities.
+  In the absence of these identities, client and server are authenticated
+  against their public keys. Binding authentication to identities is part
+  of the AKE part of OPAQUE. The type of identities and their semantics
+  are application dependent and independent of the protocol analysis. This
+  change was made to simplify client and server interfaces to the protocol
+  by removing the need to specify additional identities alongside their
+  corresponding public authentication keys when not needed.
+- The protocol admits application-specific context information configured
+  out-of-band in the AKE transcript. This allows domain separation between
+  different application uses of OPAQUE. This is a mechanism for the AKE
+  component and is best practice as for domain separation between different
+  applications of the protocol. This change was made to allow different
+  applications to use OPAQUE without risk of cross-protocol attacks.
+- Servers use a separate identifier for computing OPRF evaluations and
+  indexing into the password file storage, called the credential_identifier.
+  This allows clients to change their application-layer identity
+  (client_identity) without inducing server-side changes, e.g., by changing
+  an email address associated with a given account. This mechanism is part
+  of the derivation of OPRF keys via a single PRF. As long as the derivation
+  of different OPRF keys from a single OPRF have different PRF inputs, the
+  protocol is secure. The choice of such inputs is up to the application.
+
+The following list enumerates notable differences and refinements from the original
+cryptographic design in {{OPAQUE}} and the corresponding CFRG document
+{{I-D.krawczyk-cfrg-opaque-03}} that were made to make this specification
+suitable for interoperable implementations.
+
+- {{OPAQUE}} used a generic prime-order group for the DH-OPRF and HMQV operations,
+  and includes necessary prime-order subgroup checks when receiving attacker-controlled
+  values over the wire. This specification instantiates the prime-order group using for
+  3DH using prime-order groups based on elliptic curves, as described in
+  {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates OPRF group
+  choice and operations to {{!I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
+  in the OPRF and 3DH as specified in this document both adhere to the requirements as
+  {{OPAQUE}}.
+- {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
+  the OPRF functionality in the protocol. A critical part of DH-OPRF is the
+  hash-to-group operation, which was not instantiated in the original analysis.
+  However, the requirements for this operation were included. This specification
+  instantiates the OPRF functionality based on the {{I-D.irtf-cfrg-voprf}}, which
+  is identical to the DH-OPRF functionality in {{OPAQUE}} and, concretely, uses
+  the hash-to-curve functions in {{?I-D.irtf-cfrg-hash-to-curve}}. All hash-to-curve
+  methods in {{I-D.irtf-cfrg-hash-to-curve}} are compliant with the requirement
+  in {{OPAQUE}}, namely, that the output be a member of the prime-order group.
+- {{OPAQUE}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
+  for the protocol. However, this document fully specifies 3DH instead of HMQV
+  (though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}).
+  Since 3DH satisfies the essential requirements for the AKE as described in {{OPAQUE}}
+  and {{I-D.krawczyk-cfrg-opaque-03}}, as recalled in {{security-analysis}}, this change
+  preserves the overall security of the protocol. 3DH was chosen for its
+  simplicity and ease of implementation.
+- The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE}}, Figure 12 uses
+  a different transcript than that which is described in this specification. In particular,
+  the key exchange transcript specified in {{ake-protocol}} is a superset of the transcript
+  as defined in {{OPAQUE}}. This was done to align with best practices, such as is
+  done for key exchange protocols like TLS 1.3 {{RFC8446}}.
+- Neither {{OPAQUE}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
+  protocol, which is essential for interoperability. This specification fills this
+  gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
+
+## Security Analysis {#security-analysis}
 
 Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
@@ -1956,7 +2074,7 @@ the OPRF is quantum-safe. However, an OPAQUE instantiation where the AKE is quan
 but the OPRF is not, would still ensure the confidentiality of application data encrypted
 under session_key (or a key derived from it) with a quantum-safe encryption function.
 
-## HMQV Instantiation Sketch
+## HMQV Instantiation Sketch {#hmqv-sketch}
 
 An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
 schedule {{HMQV}}. First, the key schedule `preamble` value would use a different constant prefix
@@ -2019,7 +2137,7 @@ The key schedule would also change. Specifically, the key schedule `preamble` va
 use a different constant prefix -- "SIGMA-I" instead of "3DH" -- and the `IKM` computation
 would use only the ephemeral key shares exchanged between client and server.
 
-# Test Vectors
+# Test Vectors {#test-vectors}
 
 This section contains real and fake test vectors for the OPAQUE-3DH specification.
 Each real test vector in {{real-vectors}} specifies the configuration information,
