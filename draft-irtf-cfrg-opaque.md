@@ -934,7 +934,7 @@ Exceptions:
 
 def FinalizeRequest(password, blind, response, server_identity, client_identity):
   evaluated_element = DeserializeElement(response.evaluated_message)
-  oprf_output = Finalize(password, blind, evaluated_element, nil)
+  oprf_output = Finalize(password, blind, evaluated_element)
 
   stretched_oprf_output = Stretch(oprf_output, params)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
@@ -1267,9 +1267,9 @@ Exceptions:
 
 def RecoverCredentials(password, blind, response,
                        server_identity, client_identity):
-  evaluated_elemenet = DeserializeElement(response.evaluated_message)
+  evaluated_element = DeserializeElement(response.evaluated_message)
 
-  oprf_output = Finalize(password, blind, evaluated_elemenet, nil)
+  oprf_output = Finalize(password, blind, evaluated_element)
   stretched_oprf_output = Stretch(oprf_output, params)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
 
