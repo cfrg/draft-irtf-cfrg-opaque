@@ -33,6 +33,7 @@ def test_core_protocol_serialization():
 
     config = default_opaque_configuration 
     group = config.group
+    (_, _) = group.key_gen()
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
@@ -86,6 +87,7 @@ def test_registration_and_authentication():
 
     config = default_opaque_configuration 
     group = config.group
+    (_, _) = group.key_gen()
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
@@ -126,6 +128,7 @@ def run_test_vector(params):
     mhf = params.mhf
     group = params.group
 
+    (_, _) = group.key_gen()
     (skS, pkS) = group.key_gen()
     skS_bytes = group.serialize_scalar(skS)
     pkS_bytes = group.serialize(pkS)
