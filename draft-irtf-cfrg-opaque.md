@@ -1494,7 +1494,7 @@ Output:
 - session_key, the shared session secret.
 
 Exceptions:
-- ServerAuthenticationError , the handshake fails.
+- ServerAuthenticationError, the handshake fails.
 
 def ClientFinalize(client_identity, client_private_key, server_identity,
                    server_public_key, ke2):
