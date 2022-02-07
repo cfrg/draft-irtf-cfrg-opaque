@@ -736,7 +736,7 @@ Output:
 - export_key, an additional client key.
 
 Exceptions:
-- InvalidEnvelopeMACError, the envelope fails to be recovered.
+- EnvelopeRecoveryError, the envelope fails to be recovered.
 
 def Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity):
@@ -749,7 +749,7 @@ def Recover(randomized_pwd, server_public_key, envelope,
                       client_public_key, server_identity, client_identity)
   expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
   If !ct_equal(envelope.auth_tag, expected_tag)
-    raise InvalidEnvelopeMACError
+    raise EnvelopeRecoveryError
   return (client_private_key, export_key)
 ~~~
 
@@ -1489,7 +1489,7 @@ Output:
 - session_key, the shared session secret.
 
 Exceptions:
-- ServerAuthenticationMACError , the handshake fails.
+- ServerAuthenticationError , the handshake fails.
 
 def ClientFinalize(client_identity, client_private_key, server_identity,
                    server_public_key, ke2):
@@ -1499,7 +1499,7 @@ def ClientFinalize(client_identity, client_private_key, server_identity,
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
-    raise ServerAuthenticationMACError 
+    raise ServerAuthenticationError
   client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
   Create KE3 ke3 with client_mac
   return (ke3, session_key)
@@ -1558,11 +1558,11 @@ Output:
 - session_key, the shared session secret if and only if KE3 is valid.
 
 Exceptions:
-- InvalidClientAkeMACError, the handshake fails.
+- ClientAuthenticationError, the handshake fails.
 
 def ServerFinish(ke3):
   if !ct_equal(ke3.client_mac, state.expected_client_mac):
-    raise InvalidClientAkeMACError
+    raise ClientAuthenticationError
   return state.session_key
 ~~~
 
@@ -1639,87 +1639,67 @@ applications can use to control OPAQUE:
 
 # Implementation Considerations {#implementation-considerations}
 
-Implementations of OPAQUE should consider addressing the following:
+This section documents considerations for OPAQUE implementations. This includes
+implementation safeguards and error handling considerations.
 
-- Clearing secrets out of memory: All private key material and intermediate values,
-including the outputs of the key exchange phase, should not be retained in memory after
-deallocation.
-- Constant-time operations: All operations, particularly the cryptographic and group
-arithmetic operations, should be constant-time and independent of the bits of any secrets.
-This includes any conditional branching during the creation of the credential response,
-to support implementations which provide mitigations against client enumeration attacks.
-- Deserialization checks: When parsing messages that have crossed trust boundaries (e.g.
-a network wire), implementations should properly handle all error conditions covered in
-{{I-D.irtf-cfrg-voprf}} and abort accordingly.
-- Additional client-side entropy: OPAQUE supports the ability to incorporate the
-client identity alongside the password to be input to the OPRF. This provides additional
-client-side entropy which can supplement the entropy that should be introduced by the
-server during an honest execution of the protocol. This also provides domain separation
+## Implementation Safeguards
+
+Certain information created, exchanged, and processed in OPAQUE is sensitive.
+Specifically, all private key material and intermediate values, along with the
+outputs of the key exchange phase, are all secret. Implementations should not
+retain these values in memory when no longer needed. Moreover, all operations,
+particularly the cryptographic and group arithmetic operations, should be
+constant-time and independent of the bits of any secrets. This includes any
+conditional branching during the creation of the credential response, as needed
+to mitigate against client enumeration attacks.
+
+As specified in {{offline-phase}} and {{online-phase}}, OPAQUE only requires
+the client password as input to the OPRF for registration and authentication.
+However, implementations can incorporate the client identity alongside the
+password as input to the OPRF. This provides additional client-side entropy
+which can supplement the entropy that should be introduced by the server during
+an honest execution of the protocol. This also provides domain separation
 between different clients that might otherwise share the same password.
-- Server-authenticated channels: Note that online guessing attacks
-(against any Asymmetric PAKE) can be done from both the client side and the server side.
-In particular, a malicious server can attempt to simulate honest responses in order to
-learn the client's password. This means that additional checks should be considered in
-a production deployment of OPAQUE: for instance, ensuring that there is a
+
+Finally, note that online guessing attacks (against any aPAKE) can be done from
+both the client side and the server side. In particular, a malicious server can
+attempt to simulate honest responses in order to learn the client's password.
+Implementations and deployments of OPAQUE SHOULD consider additional checks to
+mitigate this type of attack: for instance, by ensuring that there is a
 server-authenticated channel over which OPAQUE registration and login is run.
 
-# API Considerations
+## Error Considerations
 
-## Errors {#api-errors}
+Some functions included in this specification are fallible. For example, the
+authenticated key exchange protocol may fail because the client's password was
+incorrect or the authentication check failed, yielding an error. The explicit
+errors generated throughout this specifiation, along with conditions that lead
+to each error, are as follows:
 
-Some functions included in this specification are fallible. For example,
-MACs exchanged during the AKE might fail verification, yielding an error. Additionally, protocol messages 
-sent between client and server might not match their expected size, yielding a different error.
-The following errors are documented for the OPRF-3DH composition in this specification and the recommended
-configurations, and do not cover potential errors in other configurations. Participants MUST abort the
-protocol when these errors occur.
+- EnvelopeRecoveryError: The envelope Recover function failed to produce any
+  authentication key material; {{envelope-recovery}}.
+- ServerAuthenticationError: The client failed to complete the authenticated
+  key exchange protocol with the server; {{ake-client}}.
+- ClientAuthenticationError: The server failed to complete the authenticated
+  key exchange protocol with the client; {{ake-server}}.
 
-### Deserialization errors {#deserialization-errors}
+Beyond these explicit errors, OPAQUE implementations can produce implicit errors.
+For example, if protocol messages sent between client and server do not match
+their expected size, an implementaton should produce an error. More generally,
+if any protocol message received from the peer is invalid, perhaps because the
+message contains an invalid public key (indicated by the AKE DeserializeElement
+function failing) or an invalid OPRF element (indicated by the OPRF DeserializeElement),
+then an implementation should produce an error.
 
-| Name                                 | Role   | Messages                  | Reason                                               |
-|:-------------------------------------|:-------|:--------------------------|:-----------------------------------------------------|
-| InvalidMessageLengthError            | Both   | All                       | The message length is invalid for the configuration. |
-| InvalidBlindedDataError              | Server | RegistrationRequest, Ke1  | Blinded data is an invalid element.                  |
-| InvalidEvaluatedDataError            | Client | RegistrationResponse, Ke2 | Invalid OPRF evaluation point.                       |
-| InvalidServerPublicKeyError          | Client | RegistrationResponse      | Invalid server public key.                           |
-| InvalidClientPublicKeyError          | Server | Record                    | Invalid client public key.                           |
-| InvalidClientEphemeralPublicKeyError | Server | Ke1                       | Invalid ephemeral client public key.                 |
-| InvalidServerEphemeralPublicKeyError | Client | Ke2                       | Invalid ephemeral server public key.                 |
+The errors in this document are meant as a guide for implementors. They are not an
+exhaustive list of all the errors an implementation might emit. For example, an
+implementation might run out of memory.
 
-### Client errors {#client-errors}
-
-The client can produce errors due to incorrect values in the messages it received. The following
-table enumerates some of these errors, where they occur, and the reason for the error.
-
-| Name                         | Stage                                              | Reason                                                           |
-|:-----------------------------|:---------------------------------------------------|:-----------------------------------------------------------------|
-| InvalidInputError            | CreateRegistrationRequest, CreateCredentialRequest | OPRF input deterministically maps to the group identity element. |
-| InvalidMaskedLengthError     | ClientFinish                                       | Invalid masked response length.                                  |
-| InvalidServerPublicKeyError  | ClientFinish                                       | Invalid server public key in unmasked response.                  |
-| InvalidEnvelopeMACError      | ClientFinish                                       | Envelope authentication check failed.                            |
-| ServerAuthenticationMACError | ClientFinish                                       | Invalid server AKE MAC.                                          |
-
-
-### Server errors {#server-errors}
-
-The following table enumerates server errors that can occur, where they occur, and the reason for the error.
-In this case, servers can only generate a single protocol error.
-
-| Name                     | Stage        | Reason                  |
-|:-------------------------|:-------------|:------------------------|
-| InvalidClientAkeMACError | ServerFinish | Invalid client AKE MAC. |
-
-### Application errors
-
-Implementations MUST verify certain input arguments and return an appropriate error. Note that
-these are not protocol errors, and are indicative. The following table enumerates server errors that can occur, where they occur, and the reason for the error.
-
-| Name                        | Role   | Stage      | Reason                                         |
-|:----------------------------|:-------|:-----------|:-----------------------------------------------|
-| InvalidServerSecretKeyError | Server | ServerInit | Invalid server secret key.                     |
-| InvalidServerPublicKeyError | Server | ServerInit | Invalid server public key.                     |
-| InvalidOPRFSeedLengthError  | Server | ServerInit | Invalid OPRF seed length.                      |
-| InvalidEnvelopeLengthError  | Server | ServerInit | Invalid envelope length for the configuration. |
+<!--
+TODO(caw): As part of https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/312, address
+the failure case that occurs when Blind fails, noting that this is an exceptional case that
+happens with negligible probability
+-->
 
 # Security Considerations {#security-considerations}
 
