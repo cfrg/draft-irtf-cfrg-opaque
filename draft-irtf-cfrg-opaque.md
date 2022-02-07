@@ -1348,15 +1348,13 @@ computed using Km2, defined below.
 We assume the following functions to exist for all candidate groups in this
 setting:
 
-- RecoverPublicKey(private_key): Recover the public key related to the input
-  `private_key`.
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
   deterministically from the input `seed`. This function is implemented as
   DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
   as specified in {{OPRF, Section 3.2}}.
 - GenerateAuthKeyPair(): Return a randomly generated private and public key
-  pair. This can be implemented by generating a random private key `sk`, then
-  computing `pk = RecoverPublicKey(sk)`.
+  pair. This can be implemented by invoking DeriveAuthKeyPair with `Nseed`
+  random bytes as input.
 - SerializeElement(element): A member function of the underlying group that
   maps `element` to a unique byte array, mirrored from the definition of the
   similarly-named function of the OPRF group described in
