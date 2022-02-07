@@ -1671,7 +1671,7 @@ server-authenticated channel over which OPAQUE registration and login is run.
 ## Error Considerations
 
 Some functions included in this specification are fallible. For example, the
-authenticated key exchange protocol may fail because client's password was
+authenticated key exchange protocol may fail because the client's password was
 incorrect or the authentication check failed, yielding an error. The explicit
 errors generated throughout this specifiation, along with conditions that lead
 to each error, are as follows:
