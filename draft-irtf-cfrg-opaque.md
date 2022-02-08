@@ -1737,7 +1737,7 @@ their motivation and explanation as to why they preserve the provable security o
 on {{JKX18}}.
 
 The following list enumerates important functional differences that were made
-as part of the protocol specification process to address applicaton or
+as part of the protocol specification process to address application or
 implementation considerations.
 
 - Clients construct envelope contents without revealing the password to the
