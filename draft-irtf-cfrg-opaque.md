@@ -343,16 +343,16 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 
 - Oblivious Pseudorandom Function (OPRF); {{deps-oprf}}
 - Key Derivation Function (KDF); {{deps-symmetric}}
-- Message Authenticate Code (MAC); {{deps-symmetric}}
+- Message Authentication Code (MAC); {{deps-symmetric}}
 - Cryptographic Hash Function; {{deps-hash}}
 - Memory-Hard Function (MHF); {{deps-hash}}
 - Key Recovery Mechanism; {{deps-keyrec}}
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
-otherwise, all random nonces and key derivation seeds used in these dependencies and
-the rest of the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively,
-where `Nn` = `Nseed` = 32.
+otherwise, all random nonces and seeds used in these dependencies and the rest of
+the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively, where
+`Nn` = `Nseed` = 32.
 
 ## Oblivious Pseudorandom Function {#deps-oprf}
 
