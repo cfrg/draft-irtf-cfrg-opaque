@@ -138,7 +138,7 @@ protocols"
 
   keyagreement: DOI.10.6028/NIST.SP.800-56Ar3
 
-  OPAQUE:
+  JKX18:
     title: "OPAQUE: An Asymmetric PAKE Protocol Secure Against Pre-Computation Attacks"
     # see the quotes above? Needed because of the embedded colon.
     author:
@@ -1730,11 +1730,11 @@ protocols such as TLS.
 
 [[RFC EDITOR: Please delete this section before publication.]]
 
-The specification as written here differs from the original cryptographic design in {{OPAQUE}}
+The specification as written here differs from the original cryptographic design in {{JKX18}}
 and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
 as input to the CFRG PAKE competition. This section describes these differences, including
-their motivation and explanation as to why they do not alter or otherwise affect the core
-security proofs or analysis in {{OPAQUE}}.
+their motivation and explanation as to why they preserve the provable security of OPAQUE based
+on {{JKX18}}.
 
 The following list enumerates important functional differences that were made
 as part of the protocol specification process to address applicaton or
@@ -1742,13 +1742,13 @@ implementation considerations.
 
 - Clients construct envelope contents without revealing the password to the
   server, as described in {{offline-phase}}, whereas the servers construct
-  envelopes in {{OPAQUE}}. This change adds to the security of the protocol.
-  {{OPAQUE}} considered the case where the envelope was constructed by the
+  envelopes in {{JKX18}}. This change adds to the security of the protocol.
+  {{JKX18}} considered the case where the envelope was constructed by the
   server for reasons of compatibility with previous UC modeling. An upcoming
   paper analyzes the registration phase as specified in this document. This
   change was made to support registration flows where the client chooses the
   password and wishes to keep it secret from the server, and it is compatible
-  with the variant in {{OPAQUE}} that was originally analyzed.
+  with the variant in {{JKX18}} that was originally analyzed.
 - Envelopes do not contain encrypted credentials. Instead, envelopes contain
   information used to derive client private key material for the AKE. This
   variant is also analyzed in the new paper referred to in the previous item.
@@ -1807,46 +1807,46 @@ implementation considerations.
   protocol is secure. The choice of such inputs is up to the application.
 
 The following list enumerates notable differences and refinements from the original
-cryptographic design in {{OPAQUE}} and the corresponding CFRG document
+cryptographic design in {{JKX18}} and the corresponding CFRG document
 {{I-D.krawczyk-cfrg-opaque-03}} that were made to make this specification
 suitable for interoperable implementations.
 
-- {{OPAQUE}} used a generic prime-order group for the DH-OPRF and HMQV operations,
+- {{JKX18}} used a generic prime-order group for the DH-OPRF and HMQV operations,
   and includes necessary prime-order subgroup checks when receiving attacker-controlled
   values over the wire. This specification instantiates the prime-order group using for
   3DH using prime-order groups based on elliptic curves, as described in
   {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates OPRF group
   choice and operations to {{!I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
   in the OPRF and 3DH as specified in this document both adhere to the requirements as
-  {{OPAQUE}}.
-- {{OPAQUE}} specified DH-OPRF (see Appendix B) to instantiate
+  {{JKX18}}.
+- {{JKX18}} specified DH-OPRF (see Appendix B) to instantiate
   the OPRF functionality in the protocol. A critical part of DH-OPRF is the
   hash-to-group operation, which was not instantiated in the original analysis.
   However, the requirements for this operation were included. This specification
   instantiates the OPRF functionality based on the {{I-D.irtf-cfrg-voprf}}, which
-  is identical to the DH-OPRF functionality in {{OPAQUE}} and, concretely, uses
+  is identical to the DH-OPRF functionality in {{JKX18}} and, concretely, uses
   the hash-to-curve functions in {{?I-D.irtf-cfrg-hash-to-curve}}. All hash-to-curve
   methods in {{I-D.irtf-cfrg-hash-to-curve}} are compliant with the requirement
-  in {{OPAQUE}}, namely, that the output be a member of the prime-order group.
-- {{OPAQUE}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
+  in {{JKX18}}, namely, that the output be a member of the prime-order group.
+- {{JKX18}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
   for the protocol. However, this document fully specifies 3DH instead of HMQV
   (though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}).
-  Since 3DH satisfies the essential requirements for the AKE as described in {{OPAQUE}}
+  Since 3DH satisfies the essential requirements for the AKE as described in {{JKX18}}
   and {{I-D.krawczyk-cfrg-opaque-03}}, as recalled in {{security-analysis}}, this change
   preserves the overall security of the protocol. 3DH was chosen for its
   simplicity and ease of implementation.
-- The DH-OPRF and HMQV instantiation of OPAQUE in {{OPAQUE}}, Figure 12 uses
+- The DH-OPRF and HMQV instantiation of OPAQUE in {{JKX18}}, Figure 12 uses
   a different transcript than that which is described in this specification. In particular,
   the key exchange transcript specified in {{ake-protocol}} is a superset of the transcript
-  as defined in {{OPAQUE}}. This was done to align with best practices, such as is
+  as defined in {{JKX18}}. This was done to align with best practices, such as is
   done for key exchange protocols like TLS 1.3 {{RFC8446}}.
-- Neither {{OPAQUE}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
+- Neither {{JKX18}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
   protocol, which is essential for interoperability. This specification fills this
   gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
 
 ## Security Analysis {#security-analysis}
 
-Jarecki et al. {{OPAQUE}} proved the security of OPAQUE
+Jarecki et al. {{JKX18}} proved the security of OPAQUE
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
@@ -1888,7 +1888,7 @@ Either these protocols do not use a salt at all or, if they do, they
 transmit the salt from server to client in the clear, hence losing the
 secrecy of the salt and its defense against pre-computation.
 
-We note that as shown in {{OPAQUE}}, these protocols, and any aPAKE
+We note that as shown in {{JKX18}}, these protocols, and any aPAKE
 in the model from {{GMR06}}, can be converted into an aPAKE secure against
 pre-computation attacks at the expense of an additional OPRF execution.
 
@@ -2041,7 +2041,7 @@ disclose their passwords to the server, even during registration. Note that a co
 server can run an exhaustive offline dictionary attack to validate guesses for the client's
 password; this is inevitable in any aPAKE protocol. (OPAQUE enables defense against such
 offline dictionary attacks by distributing the server so that an offline attack is only
-possible if all - or a minimal number of - servers are compromised {{OPAQUE}}.) Furthermore,
+possible if all - or a minimal number of - servers are compromised {{JKX18}}.) Furthermore,
 if the server does not sample this OPRF key with sufficiently high entropy, or if it is not
 kept hidden from an adversary, then any derivatives from the client's password may also be
 susceptible to an offline dictionary attack to recover the original password.
