@@ -91,7 +91,7 @@ def test_registration_and_authentication():
     skS, pkS = group.key_gen()
     skS_enc = group.serialize_scalar(skS)
     pkS_enc = group.serialize(pkS)
-    oprf_seed = random_bytes(config.oprf_suite.group.scalar_byte_length())
+    oprf_seed = random_bytes(config.hash().digest_size)
 
     core = OPAQUECore(config)
 
