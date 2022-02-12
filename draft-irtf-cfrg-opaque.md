@@ -345,7 +345,7 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Key Derivation Function (KDF); {{deps-symmetric}}
 - Message Authentication Code (MAC); {{deps-symmetric}}
 - Cryptographic Hash Function; {{deps-hash}}
-- Memory-Hard Function (MHF); {{deps-hash}}
+- Key Stretching Function (KSF); {{deps-hash}}
 - Key Recovery Mechanism; {{deps-keyrec}}
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
@@ -417,7 +417,7 @@ API and parameters:
   fixed-length digest of size `Nh` bytes.
 - Nh: The output size of the `Hash()` function in bytes.
 
-A Memory Hard Function (MHF) is a slow and expensive cryptographic hash function
+A Key Stretching Function (KSF) is a slow and expensive cryptographic hash function
 with the following API:
 
 - Stretch(msg, params): Apply a key stretching function with parameters
@@ -1578,7 +1578,7 @@ def ServerFinish(ke3):
 
 # Configurations {#configurations}
 
-An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, MHF, Group, Context)
+An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, KSF, Group, Context)
 such that the following conditions are met:
 
 - The OPRF protocol uses the "base mode" variant of {{OPRF}} and implements
@@ -1590,7 +1590,7 @@ such that the following conditions are met:
   such as SHAKE128 {{FIPS202}} is used then the output length `Nh` MUST be chosen
   to align with the target security level of the OPAQUE configuration. For example,
   if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
-- The MHF has fixed parameters, chosen by the application, and implements the
+- The KSF has fixed parameters, chosen by the application, and implements the
   interface in {{dependencies}}. Examples include Argon2 {{?ARGON2=RFC9106}},
   scrypt {{?SCRYPT=RFC7914}}, and PBKDF2 {{?PBKDF2=RFC2898}} with fixed parameter choices.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
@@ -2186,7 +2186,7 @@ outputs computed during authentication of an unknown or unregistered user. Note 
 `masking_key` for the fake record's masking key parameter.
 
 All values are encoded in hexadecimal strings. The configuration information
-includes the (OPRF, Hash, MHF, KDF, MAC, Group, Context) tuple, where the Group
+includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
 draft-09 of {{OPRF}}.
 
