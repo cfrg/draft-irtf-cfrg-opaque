@@ -74,7 +74,7 @@ class OPAQUE3DH(KeyExchange):
             "KDF": self.config.kdf.name,
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
-            "MHF": self.config.mhf.name,
+            "KSF": self.config.mhf.name,
             "Context": to_hex(self.config.context),
             "Nh": str(self.config.Nh),
             "Npk": str(self.config.Npk),
