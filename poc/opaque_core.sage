@@ -25,7 +25,7 @@ class OPAQUECore(object):
     def derive_random_pwd(self, pwdU, response, blind):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
         oprf_output = oprf_context.finalize(pwdU, blind, self.config.oprf_suite.group.deserialize(response.data), None, None, None)
-        stretched_oprf_output = self.config.mhf.stretch(oprf_output)
+        stretched_oprf_output = self.config.ksf.stretch(oprf_output)
         return self.config.kdf.extract(_as_bytes(""), oprf_output + stretched_oprf_output)
 
     def derive_masking_key(self, random_pwd):
@@ -166,7 +166,7 @@ class OPAQUECore(object):
 
         return skU, server_public_key, export_key
 
-class MHF(object):
+class KeyStretchingFunction(object):
     def __init__(self, name, stretch):
         self.name = name
         self.stretch = stretch

@@ -26,12 +26,12 @@ else:
     _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
 
 class Configuration(object):
-    def __init__(self, oprf_suite, kdf, mac, hash, mhf, group, context):
+    def __init__(self, oprf_suite, kdf, mac, hash, ksf, group, context):
         self.oprf_suite = oprf_suite
         self.kdf = kdf
         self.mac = mac
         self.hash = hash
-        self.mhf = mhf
+        self.ksf = ksf
         self.group = group
         self.context = context
         self.Npk = group.element_byte_length()
@@ -74,7 +74,7 @@ class OPAQUE3DH(KeyExchange):
             "KDF": self.config.kdf.name,
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),
-            "MHF": self.config.mhf.name,
+            "KSF": self.config.ksf.name,
             "Context": to_hex(self.config.context),
             "Nh": str(self.config.Nh),
             "Npk": str(self.config.Npk),

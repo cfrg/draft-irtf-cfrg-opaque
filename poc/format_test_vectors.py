@@ -7,7 +7,7 @@ import json
 config_keys = [
     "OPRF",
     "Hash",
-    "MHF",
+    "KSF",
     "KDF",
     "MAC",
     "Group",
