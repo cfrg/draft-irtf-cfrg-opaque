@@ -27,6 +27,7 @@ This requires that you have the necessary software installed.  See
 | [opaque](https://github.com/bytemare/opaque/)                                   | Go       | main    | N/A          |
 | [libopaque](https://github.com/stef/libopaque)                                  | C        | main    | N/A          |
 | [ecc](https://github.com/aldenml/ecc)                                           | C        | main    | N/A          |
+| [opaque-ts](https://github.com/cloudflare/opaque-ts)                            | TypeScript | v07   | [voprf-ts](https://github.com/cloudflare/voprf-ts) |
 
 ## Contributing
 
