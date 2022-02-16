@@ -1,26 +1,23 @@
 #!/usr/bin/sage
 # vim: syntax=python
 
-import os
 import sys
-import json
 import hmac
-import hashlib
-import struct
 from hash import scrypt
 
 try:
     from sagelib.oprf import SetupOPRFClient, SetupOPRFServer, DeriveKeyPair, MODE_OPRF
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, CleartextCredentials, Envelope, deserialize_envelope
-    from sagelib.opaque_common import to_hex, derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, random_bytes, xor, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, decode_vector, decode_vector_len, _as_bytes, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import xor, OS2IP, OS2IP_le, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
 OPAQUE_SEED_LENGTH = 32
 
 class OPAQUECore(object):
-    def __init__(self, config):
+    def __init__(self, config, rng):
         self.config = config
+        self.rng = rng
 
     def derive_random_pwd(self, pwdU, response, blind):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
@@ -35,7 +32,7 @@ class OPAQUECore(object):
 
     def create_registration_request(self, pwdU):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
-        blind, blinded_element = oprf_context.blind(pwdU)
+        blind, blinded_element = oprf_context.blind(pwdU, self.rng)
         blinded_message = self.config.oprf_suite.group.serialize(blinded_element)
         request = RegistrationRequest(blinded_message)
         return request, blind
@@ -46,7 +43,7 @@ class OPAQUECore(object):
         oprf_context = SetupOPRFServer(self.config.oprf_suite, kU)
 
         blinded_element = self.config.oprf_suite.group.deserialize(request.data)
-        evaluated_element, _, _ = oprf_context.evaluate(blinded_element, None)
+        evaluated_element, _, _ = oprf_context.evaluate(blinded_element, None, self.rng)
         evaluated_message = self.config.oprf_suite.group.serialize(evaluated_element)
 
         response = RegistrationResponse(evaluated_message, pkS)
@@ -70,7 +67,7 @@ class OPAQUECore(object):
         return CleartextCredentials(server_public_key, client_identity, server_identity)
 
     def create_envelope(self, random_pwd, server_public_key, idU, idS):
-        envelope_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
+        envelope_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("AuthKey"), Nh)
         export_key = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("ExportKey"), Nh)
@@ -102,7 +99,7 @@ class OPAQUECore(object):
 
     def create_credential_request(self, pwdU):
         oprf_context = SetupOPRFClient(self.config.oprf_suite)
-        blind, blinded_element = oprf_context.blind(pwdU)
+        blind, blinded_element = oprf_context.blind(pwdU, self.rng)
         request = CredentialRequest(self.config.oprf_suite.group.serialize(blinded_element))
         return request, blind
 
@@ -111,9 +108,9 @@ class OPAQUECore(object):
         (kU, _) = DeriveKeyPair(MODE_OPRF, self.config.oprf_suite, ikm, _as_bytes("OPAQUE-DeriveKeyPair"))
 
         oprf_context = SetupOPRFServer(self.config.oprf_suite, kU)
-        Z, _, _ = oprf_context.evaluate(self.config.oprf_suite.group.deserialize(request.data), None)
+        Z, _, _ = oprf_context.evaluate(self.config.oprf_suite.group.deserialize(request.data), None, self.rng)
 
-        masking_nonce = random_bytes(OPAQUE_NONCE_LENGTH)
+        masking_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         Npk = self.config.Npk
         Ne = self.config.Nm + OPAQUE_NONCE_LENGTH
         credential_response_pad = self.config.kdf.expand(masking_key, masking_nonce + _as_bytes("CredentialResponsePad"), Npk + Ne)

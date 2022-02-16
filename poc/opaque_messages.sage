@@ -1,34 +1,18 @@
 #!/usr/bin/sage
 # vim: syntax=python
 
-import os
 import sys
-import json
-import hmac
-import hashlib
-import struct
 
 try:
-    from sagelib.opaque_common import I2OSP, OS2IP, encode_vector, encode_vector_len, decode_vector, decode_vector_len, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import encode_vector, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
-
-if sys.version_info[0] == 3:
-    xrange = range
-    def _as_bytes(x): return x if isinstance(x, bytes) else bytes(x, "utf-8")
-    def _strxor(str1, str2): return bytes(
-        s1 ^ s2 for (s1, s2) in zip(str1, str2))
-else:
-    def _as_bytes(x): return x
-    def _strxor(str1, str2): return ''.join(chr(ord(s1) ^ ord(s2))
-                                            for (s1, s2) in zip(str1, str2))
 
 # struct {
 #   uint8 server_public_key[Npk];
 #   uint8 server_identity<1..2^16-1>;
 #   uint8 client_identity<1..2^16-1>;
 # } CleartextCredentials;
-
 class CleartextCredentials(object):
     def __init__(self, pkS, idU, idS):
         self.pkS = pkS
