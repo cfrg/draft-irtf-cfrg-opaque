@@ -1,29 +1,19 @@
 #!/usr/bin/sage
 # vim: syntax=python
 
-import os
 import sys
-import json
 import hmac
-import hashlib
-import struct
 
 from collections import namedtuple
 
 try:
-    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_expand, hkdf_extract, I2OSP, OS2IP, OS2IP_le, random_bytes, xor, encode_vector, encode_vector_len, decode_vector, decode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import derive_secret, hkdf_expand_label, hkdf_extract, I2OSP, OS2IP, OS2IP_le, encode_vector, encode_vector_len, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_core import OPAQUECore
-    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response, Envelope
+    from sagelib.opaque_messages import deserialize_credential_request, deserialize_credential_response
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
-if sys.version_info[0] == 3:
-    xrange = range
-    _as_bytes = lambda x: x if isinstance(x, bytes) else bytes(x, "utf-8")
-    _strxor = lambda str1, str2: bytes( s1 ^ s2 for (s1, s2) in zip(str1, str2) )
-else:
-    _as_bytes = lambda x: x
-    _strxor = lambda str1, str2: ''.join( chr(ord(s1) ^ ord(s2)) for (s1, s2) in zip(str1, str2) )
+_as_bytes = lambda x: x if isinstance(x, bytes) else bytes(x, "utf-8")
 
 class Configuration(object):
     def __init__(self, oprf_suite, kdf, mac, hash, ksf, group, context):
@@ -62,9 +52,10 @@ class KeyExchange(object):
 TripleDHComponents = namedtuple("TripleDHComponents", "pk1 sk1 pk2 sk2 pk3 sk3")
 
 class OPAQUE3DH(KeyExchange):
-    def __init__(self, config):
+    def __init__(self, config, rng):
         self.config = config
-        self.core = OPAQUECore(config)
+        self.core = OPAQUECore(config, rng)
+        self.rng = rng
 
     def json(self):
         return {
@@ -112,8 +103,9 @@ class OPAQUE3DH(KeyExchange):
         cred_request, cred_metadata = self.core.create_credential_request(pwdU)
         serialized_request = cred_request.serialize()
 
-        nonceU = random_bytes(OPAQUE_NONCE_LENGTH)
-        (eskU, epkU) = self.config.group.key_gen()
+        nonceU = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
+        eskU = ZZ(self.config.group.random_scalar(self.rng))
+        epkU = eskU * self.config.group.generator()
         ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
         self.serialized_request = serialized_request
@@ -134,8 +126,9 @@ class OPAQUE3DH(KeyExchange):
         cred_response = self.core.create_credential_response(cred_request, pkS_bytes, oprf_seed, envU, credential_identifier, masking_key)
         serialized_response = cred_response.serialize()
 
-        nonceS = random_bytes(OPAQUE_NONCE_LENGTH)
-        (eskS, epkS) = self.config.group.key_gen()
+        nonceS = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
+        eskS = ZZ(self.config.group.random_scalar(self.rng))
+        epkS = eskS * self.config.group.generator()
         nonceU = ke1.nonceU
         epkU = self.config.group.deserialize(ke1.epkU)
 

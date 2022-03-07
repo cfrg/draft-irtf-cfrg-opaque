@@ -1,29 +1,12 @@
 #!/usr/bin/sage
 # vim: syntax=python
 
-import os
-import sys
-import json
 import hmac
-import hashlib
 import struct
-import random
 
-# Fix a seed so all test vectors are deterministic
-FIXED_SEED = "opaque".encode('utf-8')
-random.seed(int.from_bytes(hashlib.sha256(FIXED_SEED).digest(), 'big'))
+def _as_bytes(x): return x if isinstance(x, bytes) else bytes(x, "utf-8")
 
 OPAQUE_NONCE_LENGTH = 32
-
-if sys.version_info[0] == 3:
-    xrange = range
-    def _as_bytes(x): return x if isinstance(x, bytes) else bytes(x, "utf-8")
-    def _strxor(str1, str2): return bytes(
-        s1 ^ s2 for (s1, s2) in zip(str1, str2))
-else:
-    def _as_bytes(x): return x
-    def _strxor(str1, str2): return ''.join(chr(ord(s1) ^ ord(s2))
-                                            for (s1, s2) in zip(str1, str2))
 
 def to_hex(octet_string):
     if isinstance(octet_string, str):
@@ -32,9 +15,6 @@ def to_hex(octet_string):
         return "" + "".join("{:02x}".format(c) for c in octet_string)
     assert isinstance(octet_string, bytearray)
     return ''.join(format(x, '02x') for x in octet_string)
-
-def random_bytes(n):
-    return I2OSP(random.randrange(2**(8*n)), n)
 
 def zero_bytes(n):
     return bytearray([0] * n)
@@ -94,7 +74,7 @@ def I2OSP(val, length):
         raise ValueError("bad I2OSP call: val=%d length=%d" % (val, length))
     ret = [0] * length
     val_ = val
-    for idx in reversed(xrange(0, length)):
+    for idx in reversed(range(0, length)):
         ret[idx] = val_ & 0xff
         val_ = val_ >> 8
     ret = struct.pack("=" + "B" * length, *ret)
