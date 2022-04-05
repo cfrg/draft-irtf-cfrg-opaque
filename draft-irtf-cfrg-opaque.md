@@ -437,11 +437,12 @@ an envelope. The retrieval process takes as input a private seed and envelope
 and outputs authentication material. The signatures for these functionalities
 are as follows:
 
-- Store(private_seed): build and return an `Envelope` structure and the client's
-public key.
-- Recover(private_seed, envelope): recover and return the authentication
-material for the AKE from the Envelope. This function raises an error if the
-private seed cannot be used for recovering authentication material from the
+- Store(randomized_pwd, server_public_key, server_identity, client_identity):
+  build and return an `Envelope` structure and the client's public key.
+- Recover(randomized_pwd, server_public_key, envelope,
+  server_identity, client_identity): recover and return the authentication
+material for the AKE from the Envelope. This function raises the EnvelopeRecoveryError
+error if the private seed cannot be used for recovering authentication material from the
 input envelope.
 
 The key recovery mechanism MUST return an error when trying to recover
@@ -467,7 +468,7 @@ The AKE must define three messages `AuthInit`, `AuthResponse` and `AuthFinish`
 and provide the following functions for the client:
 
 - Start(): Initiate the AKE by producing message `AuthInit`.
-- ClientFinish(client_identity, client_private_key,
+- ClientFinalize(client_identity, client_private_key,
 server_identity, server_public_key, `AuthInit`): upon receipt of the server's
 response `AuthResponse`, complete the protocol for the client, produce
 `AuthFinish`.
@@ -477,10 +478,10 @@ The AKE protocol must provide the following functions for the server:
 - Response(server_identity, server_private_key, client_identity,
 client_public_key, `AuthInit`): upon receipt of a client's request `AuthInit`,
 engage in the AKE.
-- ServerFinish(`AuthFinish`): upon receipt of a client's final AKE message
+- ServerFinalize(`AuthFinish`): upon receipt of a client's final AKE message
 `AuthFinish`, complete the protocol for the server.
 
-Both ClientFinish and ServerFinish return an error if authentication failed.
+Both ClientFinalize and ServerFinalize return an error if authentication failed.
 In this case, clients and servers MUST NOT use any outputs from the protocol,
 such as `session_key` or `export_key` (defined below).
 
@@ -1059,7 +1060,7 @@ def ClientInit(password):
   request, blind = CreateCredentialRequest(password)
   state.blind = blind
   ake_1 = Start(request)
-  Output KE1(request, ake_1)
+  return KE1(request, ake_1)
 ~~~
 
 ~~~
@@ -1119,13 +1120,13 @@ def ServerInit(server_identity, server_private_key, server_public_key,
 ~~~
 
 Since the OPRF is a two-message protocol, KE3 has no element of the OPRF. We can
-therefore call the AKE's `ServerFinish()` directly. The `ServerFinish()` function
+therefore call the AKE's `ServerFinalize()` directly. The `ServerFinalize()` function
 MUST take KE3 as input and MUST verify the client authentication material it contains
 before the `session_key` value can be used. This verification is paramount in order to
 ensure forward secrecy against active attackers.
 
 This function MUST NOT return the `session_key` value if the client authentication
-material is invalid, and may instead return an appropriate error message.
+material is invalid, and may instead return an appropriate error message like ClientAuthenticationError.
 
 ## Credential Retrieval {#cred-retrieval}
 
@@ -1556,7 +1557,7 @@ def Response(server_identity, server_private_key, client_identity,
 ~~~
 
 ~~~
-ServerFinish
+ServerFinalize
 
 State:
 - state, a ServerState structure.
@@ -1570,7 +1571,7 @@ Output:
 Exceptions:
 - ClientAuthenticationError, the handshake fails.
 
-def ServerFinish(ke3):
+def ServerFinalize(ke3):
   if !ct_equal(ke3.client_mac, state.expected_client_mac):
     raise ClientAuthenticationError
   return state.session_key
