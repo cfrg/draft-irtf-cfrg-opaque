@@ -365,18 +365,17 @@ The following OPRF client APIs are used:
 
 - Blind(element): Create and output (`blind`, `blinded_element`), consisting of a blinded
   representation of input `element`, denoted `blinded_element`, along with a value to revert
-  the this blinding process, denoted `blind`.
+  the blinding process, denoted `blind`.
 - Finalize(element, blind, evaluated_element): Finalize the OPRF evaluation using input `element`,
   random inverter `blind`, and evaluation output `evaluated_element`, yielding output `oprf_output`.
 
-Moreover, the following OPRF server APIs:
+Moreover, the following OPRF server APIs are used:
 
 - Evaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
   the Evaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
 - DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
-  from a seed, as described in {{OPRF, Section 3.2}}. In this specification,
-  the info parameter to DeriveKeyPair is set to "OPAQUE-DeriveKeyPair".
+  from a seed and info parameter, as described in {{OPRF, Section 3.2}}.
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
@@ -386,8 +385,6 @@ Finally, this specification makes use of the following shared APIs and parameter
   for more details.
 - Noe: The size of a serialized OPRF group element output from SerializeElement.
 - Nok: The size of an OPRF private key as output from DeriveKeyPair.
-
-This specification uses the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
 ## Key Derivation Function and Message Authentication Code {#deps-symmetric}
 
@@ -401,7 +398,7 @@ This specification uses a KDF with the following API and parameters:
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
-This specification also makes use of a collision resistant Message Authentication Code
+This specification also makes use of a collision-resistant Message Authentication Code
 (MAC) with the following API and parameters:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
@@ -417,8 +414,8 @@ API and parameters:
   fixed-length digest of size `Nh` bytes.
 - Nh: The output size of the `Hash()` function in bytes.
 
-A Key Stretching Function (KSF) is a slow and expensive cryptographic hash function
-with the following API:
+This specification makes use of a Key Stretching Function (KSF), which is a slow
+and expensive cryptographic hash function with the following API:
 
 - Stretch(msg, params): Apply a key stretching function with parameters
   `params` to stretch the input `msg` and harden it against offline
@@ -2774,4 +2771,3 @@ f9375d7dcbd562a62190cc569ccc809cff9d5aa5e176d48e9646b558eb41ffab7c7d6
 b4ad5ba108ad228317ecab3d6a78a3b4e2494dc7ec8fb120aed0e35ab8f67a2a723fe
 bf5e5f590d57c08245419972555a59b058240c46
 ~~~
-
