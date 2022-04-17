@@ -346,7 +346,6 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Message Authentication Code (MAC); {{deps-symmetric}}
 - Cryptographic Hash Function; {{deps-hash}}
 - Key Stretching Function (KSF); {{deps-hash}}
-- Key Recovery Mechanism; {{deps-keyrec}}
 - Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
@@ -420,40 +419,6 @@ and expensive cryptographic hash function with the following API:
 - Stretch(msg, params): Apply a key stretching function with parameters
   `params` to stretch the input `msg` and harden it against offline
   dictionary attacks. This function also needs to satisfy collision resistance.
-
-## Key Recovery Method {#deps-keyrec}
-
-OPAQUE relies on a key recovery mechanism for storing authentication
-material on the server and recovering it on the client. This material
-is encapsulated in an envelope, whose structure, encoding,
-and size must be specified by the key recovery mechanism. The size of
-the envelope is denoted `Ne` and may vary between mechanisms.
-
-The key recovery storage mechanism takes as input a private seed and outputs
-an envelope. The retrieval process takes as input a private seed and envelope
-and outputs authentication material. The signatures for these functionalities
-are as follows:
-
-- Store(randomized_pwd, server_public_key, server_identity, client_identity):
-  build and return an `Envelope` structure and the client's public key.
-- Recover(randomized_pwd, server_public_key, envelope,
-  server_identity, client_identity): recover and return the authentication
-material for the AKE from the Envelope. This function raises the EnvelopeRecoveryError
-error if the private seed cannot be used for recovering authentication material from the
-input envelope.
-
-The key recovery mechanism MUST return an error when trying to recover
-authentication material from an envelope with a private seed that was not used
-in producing the envelope.
-
-Moreover, it MUST be compatible with the chosen AKE. For example, the key
-recovery mechanism specified in {{key-recovery}} directly recovers a private key
-from a seed, and the cryptographic primitive in the AKE must therefore support
-such a possibility.
-
-If applications implement {{preventing-client-enumeration}}, they MUST use the
-same mechanism throughout their lifecycle in order to avoid activity leaks due
-to switching.
 
 ## Authenticated Key Exchange (AKE) Protocol {#deps-ake}
 
@@ -2078,8 +2043,7 @@ Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
 
 Client authentication material can be stored and retrieved using different key
-recovery mechanisms, provided these mechanisms adhere to the requirements
-specified in {{deps-keyrec}}. Any key recovery mechanism that encrypts data
+recovery mechanisms. Any key recovery mechanism that encrypts data
 in the envelope MUST use an authenticated encryption scheme with random
 key-robustness (or key-committing). Deviating from the key-robustness
 requirement may open the protocol to attacks, e.g., {{LGR20}}.
