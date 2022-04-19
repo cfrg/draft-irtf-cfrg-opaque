@@ -346,7 +346,6 @@ OPAQUE depends on the following cryptographic protocols and primitives:
 - Message Authentication Code (MAC); {{deps-symmetric}}
 - Cryptographic Hash Function; {{deps-hash}}
 - Key Stretching Function (KSF); {{deps-hash}}
-- Authenticated Key Exchange (AKE) protocol; {{deps-ake}}
 
 This section describes these protocols and primitives in more detail. Unless said
 otherwise, all random nonces and seeds used in these dependencies and the rest of
@@ -419,40 +418,6 @@ and expensive cryptographic hash function with the following API:
 - Stretch(msg, params): Apply a key stretching function with parameters
   `params` to stretch the input `msg` and harden it against offline
   dictionary attacks. This function also needs to satisfy collision resistance.
-
-## Authenticated Key Exchange (AKE) Protocol {#deps-ake}
-
-OPAQUE additionally depends on a three-message Authenticated Key Exchange (AKE)
-protocol which satisfies the forward secrecy and KCI properties discussed in
-{{security-considerations}}.
-
-The AKE must define three messages `AuthInit`, `AuthResponse` and `AuthFinish`
-and provide the following functions for the client:
-
-- Start(): Initiate the AKE by producing message `AuthInit`.
-- ClientFinalize(client_identity, client_private_key,
-server_identity, server_public_key, `AuthInit`): upon receipt of the server's
-response `AuthResponse`, complete the protocol for the client, produce
-`AuthFinish`.
-
-The AKE protocol must provide the following functions for the server:
-
-- Response(server_identity, server_private_key, client_identity,
-client_public_key, `AuthInit`): upon receipt of a client's request `AuthInit`,
-engage in the AKE.
-- ServerFinalize(`AuthFinish`): upon receipt of a client's final AKE message
-`AuthFinish`, complete the protocol for the server.
-
-Both ClientFinalize and ServerFinalize return an error if authentication failed.
-In this case, clients and servers MUST NOT use any outputs from the protocol,
-such as `session_key` or `export_key` (defined below).
-
-Prior to the execution of these functions, both the client and the server MUST
-agree on a configuration; see {{configurations}} for details.
-
-This specification defines one particular AKE based on 3DH;
-see {{ake-protocol}}. 3DH assumes a prime-order group as described in
-{{OPRF, Section 2.1}}.
 
 # Protocol Overview {#protocol-overview}
 
@@ -551,15 +516,8 @@ The authenticated key exchange flow is shown below:
 
 These messages are named `KE1`, `KE2`, and `KE3`, respectively. They carry the
 messages of the concurrent execution of the key recovery process (OPRF) and the
-authenticated key exchange (AKE):
-
-- `KE1` is composed of the `CredentialRequest` and `AuthInit` messages
-- `KE2` is composed of the `CredentialResponse` and `AuthResponse` messages
-- `KE3` represents the `AuthFinish` message
-
-The `CredentialRequest` and `CredentialResponse` message contents and wire
-format are specified in {{cred-retrieval}}, and those of `AuthInit`,
-`AuthResponse` and `AuthFinish` are specified in {{ake-messages}}.
+authenticated key exchange (AKE), and their corresponding wire formats are
+specified in {{ake-messages}}.
 
 The rest of this document describes the details of these stages in detail.
 {{client-material}} describes how client credential information is
@@ -1045,7 +1003,7 @@ Output:
 
 def ClientFinish(client_identity, server_identity, ke2):
   (client_private_key, server_public_key, export_key) =
-    RecoverCredentials(state.password, state.blind, ke2.CredentialResponse,
+    RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
   (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
@@ -1270,16 +1228,32 @@ server functions, respectively.
 
 ### AKE Messages {#ake-messages}
 
+In this section, we define the `KE1`, `KE2`, and `KE3` structs which make up
+the AKE messages used in the protocol. `KE1` is composed of a `CredentialRequest`
+and `AuthRequest`, and `KE2` is composed of a `CredentialResponse`
+and `AuthResponse`.
+
 ~~~
 struct {
   uint8 client_nonce[Nn];
   uint8 client_keyshare[Npk];
-} AuthInit;
+} AuthRequest;
 ~~~
 
 client_nonce : A fresh randomly generated nonce of length Nn.
 
-client_keyshare : Client ephemeral key share of fixed size Npk.
+client_keyshare : Serialized client ephemeral key share of fixed size Npk.
+
+~~~
+struct {
+  CredentialRequest credential_request;
+  AuthRequest auth_request;
+} KE1;
+~~~
+
+credential_request: A CredentialRequest structure.
+
+auth_request: An AuthRequest structure.
 
 ~~~
 struct {
@@ -1299,12 +1273,23 @@ computed using Km2, defined below.
 
 ~~~
 struct {
+  CredentialResponse credential_response;
+  AuthResponse auth_response;
+} KE2;
+~~~
+
+credential_response: A CredentialResponse structure.
+
+auth_response: An AuthResponse structure.
+
+~~~
+struct {
   uint8 client_mac[Nm];
-} AuthFinish;
+} KE3;
 ~~~
 
 client_mac : An authentication tag computed over the handshake transcript
-computed using Km2, defined below.
+of fixed size Nm, computed using Km2, defined below.
 
 ### Key Creation {#key-creation}
 
@@ -1380,7 +1365,8 @@ def Preamble(client_identity, ke1, server_identity, ke2):
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
                      ke2.credential_response,
-                     ke2.AuthResponse.server_nonce, ke2.AuthResponse.server_keyshare)
+                     ke2.auth_response.server_nonce,
+                     ke2.auth_response.server_keyshare)
   return preamble
 ~~~
 
@@ -1430,7 +1416,8 @@ Output:
 def Start(credential_request):
   client_nonce = random(Nn)
   (client_secret, client_keyshare) = GenerateAuthKeyPair()
-  Create KE1 ke1 with (credential_request, client_nonce, client_keyshare)
+  Create AuthRequest auth_request with (client_nonce, client_keyshare)
+  Create KE1 ke1 with (credential_request, auth_request)
   Populate state with ClientState(client_secret, ke1)
   return (ke1, client_secret)
 ~~~
@@ -1505,8 +1492,8 @@ def Response(server_identity, server_private_key, client_identity,
   Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
   preamble = Preamble(client_identity, ke1, server_identity, ike2)
 
-  dh1 = SerializeElement(server_private_keyshare * ke1.client_keyshare)
-  dh2 = SerializeElement(server_private_key * ke1.client_keyshare)
+  dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_keyshare)
+  dh2 = SerializeElement(server_private_key * ke1.auth_request.client_keyshare)
   dh3 = SerializeElement(server_private_keyshare * client_public_key)
   ikm = concat(dh1, dh2, dh3)
 
@@ -2082,7 +2069,8 @@ preamble = concat("HMQV",
                   KE1,
                   I2OSP(len(server_identity), 2), server_identity,
                   KE2.credential_response,
-                  KE2.AuthResponse.server_nonce, KE2.AuthResponse.server_keyshare)
+                  KE2.auth_response.server_nonce,
+                  KE2.auth_response.server_keyshare)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
