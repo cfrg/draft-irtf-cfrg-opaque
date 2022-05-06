@@ -1008,7 +1008,7 @@ def ClientFinish(client_identity, server_identity, ke2):
   (ke3, session_key) =
     ClientFinalize(client_identity, client_private_key, server_identity,
                     server_public_key, ke2)
-  return (ke3, session_key)
+  return (ke3, session_key, export_key)
 ~~~
 
 ## Server Authentication Functions {#opaque-server}
