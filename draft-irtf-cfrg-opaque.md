@@ -727,6 +727,7 @@ The registration protocol then runs as shown below:
               ------------------------->
 ~~~
 
+{{registration-messages}} describes the formats for the above messages, and
 {{registration-functions}} describes details of the functions and the
 corresponding parameters referenced above.
 
@@ -954,11 +955,89 @@ The server state may have the following fields:
 - server_ake_state: The server's AKE state if necessary.
 
 The rest of this section describes these authenticated key exchange messages
-and their parameters in more detail. {{cred-retrieval}} discusses internal
-functions used for retrieving client credentials, and {{ake-protocol}} discusses
-how these functions are used to execute the authenticated key exchange protocol.
+and their parameters in more detail. {{ake-messages}} defines the structure of the
+messages passed between client and server in the above setup. {{ake-functions}}
+describes details of the functions and corresponding parameters mentioned above.
+{{cred-retrieval}} discusses internal functions used for retrieving client
+credentials, and {{ake-protocol}} discusses how these functions are used to execute
+the authenticated key exchange protocol.
 
-## Client Authentication Functions {#opaque-client}
+## AKE Messages {#ake-messages}
+
+In this section, we define the `KE1`, `KE2`, and `KE3` structs which make up
+the AKE messages used in the protocol. `KE1` is composed of a `CredentialRequest`
+and `AuthRequest`, and `KE2` is composed of a `CredentialResponse`
+and `AuthResponse`.
+
+~~~
+struct {
+  uint8 client_nonce[Nn];
+  uint8 client_keyshare[Npk];
+} AuthRequest;
+~~~
+
+client_nonce: A fresh randomly generated nonce of length `Nn`.
+
+client_keyshare: A serialized client ephemeral key share of fixed size `Npk`.
+
+~~~
+struct {
+  CredentialRequest credential_request;
+  AuthRequest auth_request;
+} KE1;
+~~~
+
+credential_request: A `CredentialRequest` structure.
+
+auth_request: An `AuthRequest` structure.
+
+~~~
+struct {
+  uint8 server_nonce[Nn];
+  uint8 server_keyshare[Npk];
+  uint8 server_mac[Nm];
+} AuthResponse;
+~~~
+
+server_nonce: A fresh randomly generated nonce of length `Nn`.
+
+server_keyshare: Server ephemeral key share of fixed size `Npk`, where `Npk`
+depends on the corresponding prime order group.
+
+server_mac: An authentication tag computed over the handshake transcript
+computed using `Km2`, defined below.
+
+~~~
+struct {
+  CredentialResponse credential_response;
+  AuthResponse auth_response;
+} KE2;
+~~~
+
+credential_response: A `CredentialResponse` structure.
+
+auth_response: An `AuthResponse` structure.
+
+~~~
+struct {
+  uint8 client_mac[Nm];
+} KE3;
+~~~
+
+client_mac: An authentication tag computed over the handshake transcript
+of fixed size `Nm`, computed using `Km2`, defined below.
+
+## AKE Functions {#ake-functions}
+
+In this section, we define the main functions used to produce the AKE messages
+in the protocol. Note that this section relies on definitions of subroutines defined
+in later sections:
+- `CreateCredentialRequest`, `CreateCredentialResponse`, `RecoverCredentials`
+  defined in {{cred-retrieval}}
+- `AuthStart`, `AuthRespond`, `AuthClientFinalize`, and `AuthServerFinalize`
+  defined in {{ake-client}} and {{ake-server}}
+
+### ClientInit
 
 ~~~
 ClientInit
@@ -975,9 +1054,39 @@ Output:
 def ClientInit(password):
   request, blind = CreateCredentialRequest(password)
   state.blind = blind
-  ake_1 = Start(request)
+  ake_1 = AuthStart(request)
   return KE1(request, ake_1)
 ~~~
+
+### ServerInit
+
+~~~
+ServerInit
+
+Input:
+- server_identity, the optional encoded server identity, which is set to
+  server_public_key if nil.
+- server_private_key, the server's private key.
+- server_public_key, the server's public key.
+- record, the client's RegistrationRecord structure.
+- credential_identifier, an identifier that uniquely represents the credential.
+- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- ke1, a KE1 message structure.
+- client_identity, the encoded client identity.
+
+Output:
+- ke2, a KE2 structure.
+
+def ServerInit(server_identity, server_private_key, server_public_key,
+               record, credential_identifier, oprf_seed, ke1, client_identity):
+  response = CreateCredentialResponse(ke1.request, server_public_key, record,
+    credential_identifier, oprf_seed)
+  ake_2 = AuthRespond(server_identity, server_private_key,
+    client_identity, record.client_public_key, ke1, response)
+  return KE2(response, ake_2)
+~~~
+
+### ClientFinish
 
 ~~~
 ClientFinish
@@ -1002,47 +1111,38 @@ def ClientFinish(client_identity, server_identity, ke2):
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
   (ke3, session_key) =
-    ClientFinalize(client_identity, client_private_key, server_identity,
-                    server_public_key, ke2)
+    AuthClientFinalize(client_identity, client_private_key, server_identity,
+                       server_public_key, ke2)
   return (ke3, session_key, export_key)
 ~~~
 
-## Server Authentication Functions {#opaque-server}
-
-~~~
-ServerInit
-
-Input:
-- server_identity, the optional encoded server identity, which is set to
-  server_public_key if nil.
-- server_private_key, the server's private key.
-- server_public_key, the server's public key.
-- record, the client's RegistrationRecord structure.
-- credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
-- ke1, a KE1 message structure.
-- client_identity, the encoded client identity.
-
-Output:
-- ke2, a KE2 structure.
-
-def ServerInit(server_identity, server_private_key, server_public_key,
-               record, credential_identifier, oprf_seed, ke1, client_identity):
-  response = CreateCredentialResponse(ke1.request, server_public_key, record,
-    credential_identifier, oprf_seed)
-  ake_2 = Response(server_identity, server_private_key,
-    client_identity, record.client_public_key, ke1, response)
-  return KE2(response, ake_2)
-~~~
+### ServerFinish
 
 Since the OPRF is a two-message protocol, KE3 has no element of the OPRF. We can
-therefore call the AKE's `ServerFinalize()` directly. The `ServerFinalize()` function
+therefore call the AKE's `AuthServerFinalize` directly. The `AuthServerFinalize` function
 MUST take `KE3` as input and MUST verify the client authentication material it contains
 before the `session_key` value can be used. This verification is paramount in order to
 ensure forward secrecy against active attackers.
 
+~~~
+ServerFinish
+
+State:
+- state, a ServerState structure.
+
+Input:
+- ke3, a KE3 structure.
+
+Output:
+- session_key, the shared session secret if and only if ke3 is valid.
+
+def ServerFinish(ke3):
+  return AuthServerFinalize(ke3)
+~~~
+
 This function MUST NOT return the `session_key` value if the client authentication
-material is invalid, and may instead return an appropriate error message like ClientAuthenticationError.
+material is invalid, and may instead return an appropriate error message such as
+ClientAuthenticationError, invoked from `AuthServerFinalize`.
 
 ## Credential Retrieval {#cred-retrieval}
 
@@ -1218,71 +1318,6 @@ following fields:
 {{ake-client}} and {{ake-server}} specify the inner workings of client and
 server functions, respectively.
 
-### AKE Messages {#ake-messages}
-
-In this section, we define the `KE1`, `KE2`, and `KE3` structs which make up
-the AKE messages used in the protocol. `KE1` is composed of a `CredentialRequest`
-and `AuthRequest`, and `KE2` is composed of a `CredentialResponse`
-and `AuthResponse`.
-
-~~~
-struct {
-  uint8 client_nonce[Nn];
-  uint8 client_keyshare[Npk];
-} AuthRequest;
-~~~
-
-client_nonce: A fresh randomly generated nonce of length `Nn`.
-
-client_keyshare: A serialized client ephemeral key share of fixed size `Npk`.
-
-~~~
-struct {
-  CredentialRequest credential_request;
-  AuthRequest auth_request;
-} KE1;
-~~~
-
-credential_request: A `CredentialRequest` structure.
-
-auth_request: An `AuthRequest` structure.
-
-~~~
-struct {
-  uint8 server_nonce[Nn];
-  uint8 server_keyshare[Npk];
-  uint8 server_mac[Nm];
-} AuthResponse;
-~~~
-
-server_nonce: A fresh randomly generated nonce of length `Nn`.
-
-server_keyshare: Server ephemeral key share of fixed size `Npk`, where `Npk`
-depends on the corresponding prime order group.
-
-server_mac: An authentication tag computed over the handshake transcript
-computed using `Km2`, defined below.
-
-~~~
-struct {
-  CredentialResponse credential_response;
-  AuthResponse auth_response;
-} KE2;
-~~~
-
-credential_response: A `CredentialResponse` structure.
-
-auth_response: An `AuthResponse` structure.
-
-~~~
-struct {
-  uint8 client_mac[Nm];
-} KE3;
-~~~
-
-client_mac: An authentication tag computed over the handshake transcript
-of fixed size `Nm`, computed using `Km2`, defined below.
-
 ### Key Creation {#key-creation}
 
 We assume the following functions to exist for all candidate groups in this
@@ -1391,7 +1426,7 @@ def DeriveKeys(ikm, preamble):
 ### 3DH Client Functions {#ake-client}
 
 ~~~
-Start
+AuthStart
 
 Parameters:
 - Nn, the nonce length.
@@ -1405,7 +1440,7 @@ Input:
 Output:
 - ke1, a KE1 structure.
 
-def Start(credential_request):
+def AuthStart(credential_request):
   client_nonce = random(Nn)
   (client_secret, client_keyshare) = GenerateAuthKeyPair()
   Create AuthRequest auth_request with (client_nonce, client_keyshare)
@@ -1415,7 +1450,7 @@ def Start(credential_request):
 ~~~
 
 ~~~
-ClientFinalize
+AuthClientFinalize
 
 State:
 - state, a ClientState structure.
@@ -1436,8 +1471,8 @@ Output:
 Exceptions:
 - ServerAuthenticationError, the handshake fails.
 
-def ClientFinalize(client_identity, client_private_key, server_identity,
-                   server_public_key, ke2):
+def AuthClientFinalize(client_identity, client_private_key, server_identity,
+                       server_public_key, ke2):
 
   dh1 = SerializeElement(state.client_secret * ke2.server_keyshare)
   dh2 = SerializeElement(state.client_secret * server_public_key)
@@ -1457,7 +1492,7 @@ def ClientFinalize(client_identity, client_private_key, server_identity,
 ### 3DH Server Functions {#ake-server}
 
 ~~~
-Response
+AuthRespond
 
 Parameters:
 - Nn, the nonce length.
@@ -1477,8 +1512,8 @@ Input:
 Output:
 - ke2, a KE2 structure.
 
-def Response(server_identity, server_private_key, client_identity,
-             client_public_key, ke1, credential_response):
+def AuthRespond(server_identity, server_private_key, client_identity,
+                client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
   (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
   Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
@@ -1498,7 +1533,7 @@ def Response(server_identity, server_private_key, client_identity,
 ~~~
 
 ~~~
-ServerFinalize
+AuthServerFinalize
 
 State:
 - state, a ServerState structure.
@@ -1507,12 +1542,12 @@ Input:
 - ke3, a KE3 structure.
 
 Output:
-- session_key, the shared session secret if and only if KE3 is valid.
+- session_key, the shared session secret if and only if ke3 is valid.
 
 Exceptions:
 - ClientAuthenticationError, the handshake fails.
 
-def ServerFinalize(ke3):
+def AuthServerFinalize(ke3):
   if !ct_equal(ke3.client_mac, state.expected_client_mac):
     raise ClientAuthenticationError
   return state.session_key
