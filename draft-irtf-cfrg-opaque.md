@@ -1034,7 +1034,7 @@ in the protocol. Note that this section relies on definitions of subroutines def
 in later sections:
 - `CreateCredentialRequest`, `CreateCredentialResponse`, `RecoverCredentials`
   defined in {{cred-retrieval}}
-- `AuthStart`, `AuthRespond`, `AuthClientFinalize`, and `AuthServerFinalize`
+- `AuthClientStart`, `AuthServerRespond`, `AuthClientFinalize`, and `AuthServerFinalize`
   defined in {{ake-client}} and {{ake-server}}
 
 ### ClientInit
@@ -1054,7 +1054,7 @@ Output:
 def ClientInit(password):
   request, blind = CreateCredentialRequest(password)
   state.blind = blind
-  ake_1 = AuthStart(request)
+  ake_1 = AuthClientStart(request)
   return KE1(request, ake_1)
 ~~~
 
@@ -1081,7 +1081,7 @@ def ServerInit(server_identity, server_private_key, server_public_key,
                record, credential_identifier, oprf_seed, ke1, client_identity):
   response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-  ake_2 = AuthRespond(server_identity, server_private_key,
+  ake_2 = AuthServerRespond(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, response)
   return KE2(response, ake_2)
 ~~~
@@ -1426,7 +1426,7 @@ def DeriveKeys(ikm, preamble):
 ### 3DH Client Functions {#ake-client}
 
 ~~~
-AuthStart
+AuthClientStart
 
 Parameters:
 - Nn, the nonce length.
@@ -1440,7 +1440,7 @@ Input:
 Output:
 - ke1, a KE1 structure.
 
-def AuthStart(credential_request):
+def AuthClientStart(credential_request):
   client_nonce = random(Nn)
   (client_secret, client_keyshare) = GenerateAuthKeyPair()
   Create AuthRequest auth_request with (client_nonce, client_keyshare)
@@ -1492,7 +1492,7 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
 ### 3DH Server Functions {#ake-server}
 
 ~~~
-AuthRespond
+AuthServerRespond
 
 Parameters:
 - Nn, the nonce length.
@@ -1512,8 +1512,8 @@ Input:
 Output:
 - ke2, a KE2 structure.
 
-def AuthRespond(server_identity, server_private_key, client_identity,
-                client_public_key, ke1, credential_response):
+def AuthServerRespond(server_identity, server_private_key, client_identity,
+                      client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
   (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
   Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
