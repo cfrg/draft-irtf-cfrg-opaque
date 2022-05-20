@@ -815,7 +815,7 @@ Exceptions:
 
 def CreateRegistrationResponse(request, server_public_key,
                                credential_identifier, oprf_seed):
-  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nseed)
+  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
   (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
@@ -932,8 +932,8 @@ The protocol runs as shown below:
 
     (ke3,
     session_key,
-    export_key) = ClientFinish(client_identity, password,
-                              server_identity, ke2)
+    export_key) = ClientFinish(client_identity,
+                               server_identity, ke2)
 
                          ke3
               ------------------------->
@@ -1053,8 +1053,8 @@ Output:
 
 def ClientInit(password):
   request, blind = CreateCredentialRequest(password)
-  state.blind = blind
   ake_1 = AuthClientStart(request)
+  Populate state with (password, blind)
   return KE1(request, ake_1)
 ~~~
 
@@ -1445,7 +1445,7 @@ def AuthClientStart(credential_request):
   (client_secret, client_keyshare) = GenerateAuthKeyPair()
   Create AuthRequest auth_request with (client_nonce, client_keyshare)
   Create KE1 ke1 with (credential_request, auth_request)
-  Populate state with ClientState(client_secret, ke1)
+  Populate state with (client_secret, ke1)
   return (ke1, client_secret)
 ~~~
 
@@ -1474,9 +1474,9 @@ Exceptions:
 def AuthClientFinalize(client_identity, client_private_key, server_identity,
                        server_public_key, ke2):
 
-  dh1 = SerializeElement(state.client_secret * ke2.server_keyshare)
+  dh1 = SerializeElement(state.client_secret * ke2.auth_response.server_keyshare)
   dh2 = SerializeElement(state.client_secret * server_public_key)
-  dh3 = SerializeElement(client_private_key  * ke2.server_keyshare)
+  dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
@@ -1527,7 +1527,7 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
   expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-  Populate state with ServerState(expected_client_mac, session_key)
+  Populate state with (expected_client_mac, session_key)
   Create KE2 ke2 with (ike2, server_mac)
   return ke2
 ~~~
