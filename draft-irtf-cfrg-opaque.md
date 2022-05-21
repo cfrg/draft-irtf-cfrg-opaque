@@ -746,8 +746,8 @@ the client's credentials for later use. Moreover, the client MAY use the output
 
 ## Registration Messages {#registration-messages}
 
-This section contains definitions of the RegistrationRequest,
-RegistrationResponse, and RegistrationRecord messages exchanged between
+This section contains definitions of the `RegistrationRequest`,
+`RegistrationResponse`, and `RegistrationRecord` messages exchanged between
 client and server during registration.
 
 ~~~
@@ -790,8 +790,8 @@ envelope: The client's `Envelope` structure.
 ## Registration Functions {#registration-functions}
 
 This section contains definitions of the functions used by client and server
-during registration, including CreateRegistrationRequest, CreateRegistrationResponse,
-and FinalizeRegistrationRequest.
+during registration, including `CreateRegistrationRequest`, `CreateRegistrationResponse`,
+and `FinalizeRegistrationRequest`.
 
 ### CreateRegistrationRequest
 
@@ -1049,7 +1049,7 @@ in later sections:
 
 ### ClientInit
 
-The ClientInit function begins the AKE protocol and produces the client's KE1
+The `ClientInit` function begins the AKE protocol and produces the client's `KE1`
 output for the server.
 
 ~~~
@@ -1073,8 +1073,8 @@ def ClientInit(password):
 
 ### ServerInit
 
-The ServerInit function continues the AKE protocol by processing the client's KE1 message
-and producing the server's KE2 output.
+The `ServerInit` function continues the AKE protocol by processing the client's `KE1` message
+and producing the server's `KE2` output.
 
 ~~~
 ServerInit
@@ -1104,8 +1104,8 @@ def ServerInit(server_identity, server_private_key, server_public_key,
 
 ### ClientFinish
 
-The ClientFinish function completes the AKE protocol for the client and
-produces the client's KE3 output for the server, as well as the `session_key`
+The `ClientFinish` function completes the AKE protocol for the client and
+produces the client's `KE3` output for the server, as well as the `session_key`
 and `export_key` outputs from the AKE.
 
 ~~~
@@ -1138,8 +1138,8 @@ def ClientFinish(client_identity, server_identity, ke2):
 
 ### ServerFinish
 
-The ServerFinish function completes the AKE protocol for the server, yielding the `session_key`.
-Since the OPRF is a two-message protocol, KE3 has no element of the OPRF, and it
+The `ServerFinish` function completes the AKE protocol for the server, yielding the `session_key`.
+Since the OPRF is a two-message protocol, `KE3` has no element of the OPRF, and it
 therefore invokes the AKE's `AuthServerFinalize` directly. The `AuthServerFinalize` function
 takes `KE3` as input and MUST verify the client authentication material it contains
 before the `session_key` value can be used. This verification is necessary to ensure
@@ -1172,7 +1172,7 @@ recover the client credentials.
 
 ### Credential Retrieval Messages
 
-This section describes the CredentialRequest and CredentialResponse messages exchanged
+This section describes the `CredentialRequest` and `CredentialResponse` messages exchanged
 between client and server to perform credential retrieval.
 
 ~~~
@@ -1201,13 +1201,13 @@ client's `Envelope` structure.
 
 ### Credential Retrieval Functions
 
-This section describes the CreateCredentialRequest, CreateCredentialResponse,
-and RecoverCredentials functions used for credential retrieval.
+This section describes the `CreateCredentialRequest`, `CreateCredentialResponse`,
+and `RecoverCredentials` functions used for credential retrieval.
 
 #### CreateCredentialRequest {#create-credential-request}
 
-The CreateCredentialRequest is used by the client to initiate the credential
-retrieval process, and it produces a CredentialRequest message and OPRF state.
+The `CreateCredentialRequest` is used by the client to initiate the credential
+retrieval process, and it produces a `CredentialRequest` message and OPRF state.
 
 ~~~
 CreateCredentialRequest
@@ -1228,18 +1228,18 @@ def CreateCredentialRequest(password):
 
 #### CreateCredentialResponse {#create-credential-response}
 
-The CreateCredentialResponse function is used by the server to process the client's
-CredentialRequest message and complete the credential retrieval process, producing
-a CredentialResponse.
+The `CreateCredentialResponse` function is used by the server to process the client's
+`CredentialRequest` message and complete the credential retrieval process, producing
+a `CredentialResponse`.
 
-There are two scenarios to handle for the construction of a CredentialResponse
+There are two scenarios to handle for the construction of a `CredentialResponse`
 object: either the record for the client exists (corresponding to a properly
 registered client), or it was never created (corresponding to a client that has
 yet to register).
 
 In the case of an existing record with the corresponding identifier
 `credential_identifier`, the server invokes the following function to
-produce a CredentialResponse:
+produce a `CredentialResponse`:
 
 ~~~
 CreateCredentialResponse
@@ -1295,8 +1295,8 @@ that is unable to guess the registered password for the client corresponding to 
 
 #### RecoverCredentials {#recover-credentials}
 
-The RecoverCredentials function is used by the client to process the server's
-CredentialResponse message and produce the client's private key, server public
+The `RecoverCredentials` function is used by the client to process the server's
+`CredentialResponse` message and produce the client's private key, server public
 key, and the `export_key`.
 
 ~~~
@@ -1468,8 +1468,8 @@ def DeriveKeys(ikm, preamble):
 
 ### 3DH Client Functions {#ake-client}
 
-The AuthClientStart function is used by the client to create a KE1
-message using a CredentialRequest function.
+The `AuthClientStart` function is used by the client to create a `KE1`
+message using a `CredentialRequest` function.
 
 ~~~
 AuthClientStart
@@ -1495,8 +1495,8 @@ def AuthClientStart(credential_request):
   return ke1
 ~~~
 
-The AuthClientFinalize function is used by the client to create a KE3
-message and output `session_key` using the server's KE2 message and
+The `AuthClientFinalize` function is used by the client to create a `KE3`
+message and output `session_key` using the server's `KE2` message and
 recovered credential information.
 
 ~~~
@@ -1541,8 +1541,8 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
 
 ### 3DH Server Functions {#ake-server}
 
-The AuthServerRespond function is used by the server to process the client's
-KE1 message and public credential information to create a KE2 message.
+The `AuthServerRespond` function is used by the server to process the client's
+`KE1` message and public credential information to create a `KE2` message.
 
 ~~~
 AuthServerRespond
@@ -1585,8 +1585,8 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
   return ke2
 ~~~
 
-The AuthServerFinalize function is used by the server to process the client's
-KE3 message and output the final `session_key`.
+The `AuthServerFinalize` function is used by the server to process the client's
+`KE3` message and output the final `session_key`.
 
 ~~~
 AuthServerFinalize
