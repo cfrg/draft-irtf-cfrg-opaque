@@ -1877,8 +1877,8 @@ sent from client to server at the application layer using public key encryption,
 with HPKE {{?RFC9180}}.
 
 Alternatively, it is also possible to replace the symmetric masking mechanism altogether
-using public key encryption in both the registration and the login phases, replacing the
-symmetric encryption key with a client provided public key.
+using public key encryption in the login phase, replacing the symmetric masking key
+on registration with a client provided public key.
 
 However, the threat models and the added complexity for these mechanims are out of scope
 of this document.
