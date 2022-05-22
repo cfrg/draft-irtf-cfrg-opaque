@@ -1873,8 +1873,8 @@ an authenticated channel, such as one provided by TLS {{RFC8446}}.
 In the event that this channel is compromised, this encryption key could be leaked
 to an attacker.
 
-One mitigation against this threat is to additionally encrypt the `RegistrationRecord` 
-sent from client to server at the application layer using public key encryption, e.g., 
+One mitigation against this threat is to additionally encrypt the `RegistrationRecord`
+sent from client to server at the application layer using public key encryption, e.g.,
 with HPKE {{?RFC9180}}.
 
 It is also possible to avoid using a symmetric encryption key at all by replacing
