@@ -213,7 +213,7 @@ protocols"
 
   WhatsAppE2E:
     title: Security of End-to-End Encrypted Backups
-    target: https://scontent.whatsapp.net/v/t39.8562-34/241394876_546674233234181_8907137889500301879_n.pdf/WhatsApp_Security_Encrypted_Backups_Whitepaper.pdf?ccb=1-5&_nc_sid=2fbf2a&_nc_ohc=Y3PFzd-3LG4AX9AdA8_&_nc_ht=scontent.whatsapp.net&oh=01_AVwwbFhPNWAn-u9VV4wqetjL2T9rX2pDmXwlk0aus4YrKA&oe=620029BC
+    target: https://www.whatsapp.com/security/WhatsApp_Security_Encrypted_Backups_Whitepaper.pdf
     authors:
       -
         ins: WhatsApp
