@@ -956,25 +956,12 @@ material for the OPRF and AKE, `client_state` and `server_state`, respectively.
 
 The client state `ClientState` may have the following fields:
 
-```
-struct {
-  opaque password<1..2^16-1>,
-  opaque blind<1..2^16-1>,
-  ClientAkeState client_ake_state,
-} ClientState;
-```
 
 - password: The client's password.
 - blind: The random blinding inverter returned by `Blind()`.
 - client_ake_state: The `ClientAkeState` defined in {{ake-protocol}}.
 
 The server state `ServerState` may have the following fields:
-
-```
-struct {
-  ServerAkeState server_ake_state,
-} ServerState;
-```
 
 - server_ake_state: The `ServerAkeState` defined in {{ake-protocol}}.
 
@@ -1362,29 +1349,14 @@ This section describes the authenticated key exchange protocol for OPAQUE using
 3DH, a 3-message AKE which satisfies the forward secrecy and KCI properties
 discussed in {{security-considerations}}.
 
-The client AKEstate `ClientAkeState` mentioned in {{online-phase}} has the
+The client AKE state `ClientAkeState` mentioned in {{online-phase}} has the
 following fields:
-
-```
-struct {
-  opaque client_secret[Nsk],
-  KE1 ke1,
-} ClientAkeState;
-```
 
 - client_secret: An opaque byte string of length `Nsk`.
 - ke1: A value of type `KE1`.
 
 The server AKE state `ServerAkeState` mentioned in {{online-phase}} has the
 following fields:
-
-```
-struct {
-  opaque expected_client_mac[Nm],
-  opaque session_key[Nx],
-} ServerAkeState;
-```
-
 - expected_client_mac: An opaque byte string of length `Nm`.
 - session_key: An opaque byte string of length `Nx`.
 
