@@ -954,15 +954,16 @@ The protocol runs as shown below:
 Both client and server may use implicit internal state objects to keep necessary
 material for the OPRF and AKE, `client_state` and `server_state`, respectively.
 
-The client state may have the following fields:
+The client state `ClientState` may have the following fields:
+
 
 - password: The client's password.
 - blind: The random blinding inverter returned by `Blind()`.
-- client_ake_state: The client's AKE state if necessary.
+- client_ake_state: The `ClientAkeState` defined in {{ake-protocol}}.
 
-The server state may have the following fields:
+The server state `ServerState` may have the following fields:
 
-- server_ake_state: The server's AKE state if necessary.
+- server_ake_state: The `ServerAkeState` defined in {{ake-protocol}}.
 
 The rest of this section describes these authenticated key exchange messages
 and their parameters in more detail. {{ake-messages}} defines the structure of the
@@ -1067,7 +1068,8 @@ Output:
 def ClientInit(password):
   request, blind = CreateCredentialRequest(password)
   ake_1 = AuthClientStart(request)
-  Populate state with (password, blind)
+  state.password = password
+  state.blind = blind
   return KE1(request, ake_1)
 ~~~
 
@@ -1078,6 +1080,9 @@ and producing the server's `KE2` output.
 
 ~~~
 ServerInit
+
+State:
+- state, a ServerState structure.
 
 Input:
 - server_identity, the optional encoded server identity, which is set to
@@ -1344,15 +1349,14 @@ This section describes the authenticated key exchange protocol for OPAQUE using
 3DH, a 3-message AKE which satisfies the forward secrecy and KCI properties
 discussed in {{security-considerations}}.
 
-The AKE client state `client_ake_state` mentioned in {{online-phase}} has the
+The client AKE state `ClientAkeState` mentioned in {{online-phase}} has the
 following fields:
 
 - client_secret: An opaque byte string of length `Nsk`.
-- ke1: a value of type `KE1`.
+- ke1: A value of type `KE1`.
 
-The server state `server_ake_state` mentioned in {{online-phase}} has the
+The server AKE state `ServerAkeState` mentioned in {{online-phase}} has the
 following fields:
-
 - expected_client_mac: An opaque byte string of length `Nm`.
 - session_key: An opaque byte string of length `Nx`.
 
@@ -1478,7 +1482,7 @@ Parameters:
 - Nn, the nonce length.
 
 State:
-- state, a ClientState structure.
+- state, a ClientAkeState structure.
 
 Input:
 - credential_request, a CredentialRequest structure.
@@ -1491,7 +1495,8 @@ def AuthClientStart(credential_request):
   (client_secret, client_keyshare) = GenerateAuthKeyPair()
   Create AuthRequest auth_request with (client_nonce, client_keyshare)
   Create KE1 ke1 with (credential_request, auth_request)
-  Populate state with (client_secret, ke1)
+  state.client_secret = client_secret
+  state.ke1 = ke1
   return ke1
 ~~~
 
@@ -1503,7 +1508,7 @@ recovered credential information.
 AuthClientFinalize
 
 State:
-- state, a ClientState structure.
+- state, a ClientAkeState structure.
 
 Input:
 - client_identity, the optional encoded client identity, which is
@@ -1551,7 +1556,7 @@ Parameters:
 - Nn, the nonce length.
 
 State:
-- state, a ServerState structure.
+- state, a ServerAkeState structure.
 
 Input:
 - server_identity, the optional encoded server identity, which is set to
@@ -1579,8 +1584,8 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
-  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
-  Populate state with (expected_client_mac, session_key)
+  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  state.session_key = session_key
   Create KE2 ke2 with (ike2, server_mac)
   return ke2
 ~~~
@@ -1592,7 +1597,7 @@ The `AuthServerFinalize` function is used by the server to process the client's
 AuthServerFinalize
 
 State:
-- state, a ServerState structure.
+- state, a ServerAkeState structure.
 
 Input:
 - ke3, a KE3 structure.
