@@ -1066,11 +1066,11 @@ Output:
 - ke1, a KE1 message structure.
 
 def ClientInit(password):
-  request, blind = CreateCredentialRequest(password)
-  ake_1 = AuthClientStart(request)
+  credential_request, blind = CreateCredentialRequest(password)
   state.password = password
   state.blind = blind
-  return KE1(request, ake_1)
+  ke1 = AuthClientStart(request)
+  return ke1
 ~~~
 
 ### ServerInit
@@ -1100,11 +1100,11 @@ Output:
 
 def ServerInit(server_identity, server_private_key, server_public_key,
                record, credential_identifier, oprf_seed, ke1, client_identity):
-  response = CreateCredentialResponse(ke1.request, server_public_key, record,
+  credential_response = CreateCredentialResponse(ke1.request, server_public_key, record,
     credential_identifier, oprf_seed)
-  ake_2 = AuthServerRespond(server_identity, server_private_key,
-    client_identity, record.client_public_key, ke1, response)
-  return KE2(response, ake_2)
+  auth_response = AuthServerRespond(server_identity, server_private_key,
+    client_identity, record.client_public_key, ke1, credential_response)
+  Create KE2 ke2 with (credential_response, auth_response)
 ~~~
 
 ### ClientFinish
@@ -1472,8 +1472,8 @@ def DeriveKeys(ikm, preamble):
 
 ### 3DH Client Functions {#ake-client}
 
-The `AuthClientStart` function is used by the client to create a `KE1`
-message using a `CredentialRequest` function.
+The `AuthClientStart` function is used by the client to create a
+`KE1` structure.
 
 ~~~
 AuthClientStart
@@ -1534,7 +1534,7 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
   dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
-  preamble = Preamble(client_identity, state.ke1, server_identity, ke2.inner_ke2)
+  preamble = Preamble(client_identity, state.ke1, server_identity, ke2)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
@@ -1568,13 +1568,12 @@ Input:
 - ke1, a KE1 message structure.
 
 Output:
-- ke2, a KE2 structure.
+- auth_response, an AuthResponse structure.
 
 def AuthServerRespond(server_identity, server_private_key, client_identity,
                       client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
   (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
-  Create inner_ke2 ike2 with (ke1.credential_response, server_nonce, server_keyshare)
   preamble = Preamble(client_identity, ke1, server_identity, ike2)
 
   dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_keyshare)
@@ -1584,10 +1583,12 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
+  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+
   state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
   state.session_key = session_key
-  Create KE2 ke2 with (ike2, server_mac)
-  return ke2
+  Create AuthResponse auth_response with (server_nonce, server_keyshare, server_mac)
+  return auth_response
 ~~~
 
 The `AuthServerFinalize` function is used by the server to process the client's
