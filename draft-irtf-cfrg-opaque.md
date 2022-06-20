@@ -1427,7 +1427,9 @@ Input:
 - ke1, a KE1 message structure.
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
-- ke2, a KE2 message structure.
+- credential_response, the corresponding field on the KE2 structure.
+- server_nonce, the corresponding field on the AuthResponse structure.
+- server_keyshare, the corresponding field on the AuthResponse structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1438,9 +1440,9 @@ def Preamble(client_identity, ke1, server_identity, ke2):
                      I2OSP(len(client_identity), 2), client_identity,
                      ke1,
                      I2OSP(len(server_identity), 2), server_identity,
-                     ke2.credential_response,
-                     ke2.auth_response.server_nonce,
-                     ke2.auth_response.server_keyshare)
+                     credential_response,
+                     server_nonce,
+                     server_keyshare)
   return preamble
 ~~~
 
@@ -1534,7 +1536,12 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
   dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
-  preamble = Preamble(client_identity, state.ke1, server_identity, ke2)
+  preamble = Preamble(client_identity,
+                      state.ke1,
+                      server_identity,
+                      ke2.credential_response,
+                      ke2.auth_response.server_nonce,
+                      ke2.auth_response.server_keyshare)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
@@ -1574,7 +1581,12 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
                       client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
   (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
-  preamble = Preamble(client_identity, ke1, server_identity, ike2)
+  preamble = Preamble(client_identity,
+                      ke1,
+                      server_identity,
+                      credential_response,
+                      server_nonce,
+                      server_keyshare)
 
   dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_keyshare)
   dh2 = SerializeElement(server_private_key * ke1.auth_request.client_keyshare)
