@@ -1876,11 +1876,7 @@ One mitigation against this threat is to additionally encrypt the `RegistrationR
 sent from client to server at the application layer using public key encryption, e.g.,
 with HPKE {{?RFC9180}}.
 
-Alternatively, it is also possible to replace the symmetric masking mechanism altogether
-using public key encryption in the login phase, replacing the symmetric masking key
-on registration with a client provided public key.
-
-However, the threat models and the added complexity for these mechanims are out of scope
+However, the threat models and the added complexity for this mechanim are out of scope
 of this document.
 
 ## Password Salt and Storage Implications
