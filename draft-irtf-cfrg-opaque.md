@@ -1875,8 +1875,7 @@ channel is compromised, this encryption key could be leaked to an attacker.
 One mitigation against this threat is to additionally encrypt the `RegistrationRecord`
 sent from client to server at the application layer using public key encryption, e.g.,
 with HPKE {{?RFC9180}}.
-
-However, the threat models and the added complexity for this mechanim are out of scope
+However, the details of this mechanism are out of scope
 of this document.
 
 ## Password Salt and Storage Implications
