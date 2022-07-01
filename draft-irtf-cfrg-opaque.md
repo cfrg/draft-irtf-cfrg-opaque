@@ -392,7 +392,7 @@ This specification uses a KDF with the following API and parameters:
 
 - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
   input keying material `ikm` and an optional byte string `salt`.
-- Expand(prk, info, L): Expand a pseudorandom key `prk` using optional string `info`
+- Expand(prk, info, L): Expand a pseudorandom key `prk` using the optional string `info`
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
@@ -443,8 +443,8 @@ each client).
 Registration is the only stage in OPAQUE that requires a server-authenticated
 and confidential channel: either physical, out-of-band, PKI-based, etc.
 
-The client inputs its credentials, which includes its password and user
-identifier, and the server inputs its parameters, which includes its private key
+The client inputs its credentials, which include its password and user
+identifier, and the server inputs its parameters, which include its private key
 and other information.
 
 The client output of this stage is a single value `export_key` that the client
@@ -453,7 +453,7 @@ information for storage on the server. The server does not have access to this
 `export_key`.
 
 The server output of this stage is a record corresponding to the client's
-registration that it stores in a credential file alongside other client
+registration that it stores in a credential file alongside other clients
 registrations as needed.
 
 The registration flow is shown below:
@@ -590,7 +590,7 @@ def CreateCleartextCredentials(server_public_key, client_public_key,
 ## Key Recovery {#key-recovery}
 
 This specification defines a key recovery mechanism that uses the stretched OPRF
-output as a seed to directly derive the private and public key using the
+output as a seed to directly derive the private and public keys using the
 `DeriveAuthKeyPair()` function defined in {{key-creation}}.
 
 ### Envelope Structure {#envelope-structure}
@@ -604,7 +604,7 @@ struct {
 } Envelope;
 ~~~
 
-nonce: A unique nonce of length `Nn` used to protect this `Envelope`.
+nonce: A unique nonce of length `Nn`, used to protect this `Envelope`.
 
 auth_tag: An authentication tag protecting the contents of the envelope, covering
 the envelope nonce and `CleartextCredentials`.
@@ -916,7 +916,7 @@ The server inputs the following values:
 - oprf_seed: The seed used to derive per-client OPRF keys.
 
 The client receives two outputs: a session secret and an export key. The export
-key is only available to the client, and may be used for additional
+key is only available to the client and may be used for additional
 application-specific purposes, as outlined in {{export-key-usage}}. The output
 `export_key` MUST NOT be used in any way before the protocol completes
 successfully. See {{alternate-key-recovery}} for more details about this
@@ -975,7 +975,7 @@ the authenticated key exchange protocol.
 
 ## AKE Messages {#ake-messages}
 
-In this section, we define the `KE1`, `KE2`, and `KE3` structs which make up
+In this section, we define the `KE1`, `KE2`, and `KE3` structs that make up
 the AKE messages used in the protocol. `KE1` is composed of a `CredentialRequest`
 and `AuthRequest`, and `KE2` is composed of a `CredentialResponse`
 and `AuthResponse`.
@@ -1144,8 +1144,8 @@ def ClientFinish(client_identity, server_identity, ke2):
 ### ServerFinish
 
 The `ServerFinish` function completes the AKE protocol for the server, yielding the `session_key`.
-Since the OPRF is a two-message protocol, `KE3` has no element of the OPRF, and it
-therefore invokes the AKE's `AuthServerFinalize` directly. The `AuthServerFinalize` function
+Since the OPRF is a two-message protocol, `KE3` has no element of the OPRF, and it, therefore,
+invokes the AKE's `AuthServerFinalize` directly. The `AuthServerFinalize` function
 takes `KE3` as input and MUST verify the client authentication material it contains
 before the `session_key` value can be used. This verification is necessary to ensure
 forward secrecy against active attackers.
@@ -1293,7 +1293,7 @@ argument that is configured so that:
 
 It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
 of the application) and stored alongside legitimate client records. This allows servers to locate
-the record in time comparable to that of a legitimate client record.
+the record in a time comparable to that of a legitimate client record.
 
 Note that the responses output by either scenario are indistinguishable to an adversary
 that is unable to guess the registered password for the client corresponding to `credential_identifier`.
@@ -1689,11 +1689,11 @@ applications can use to control OPAQUE:
   and servers are identified with their public keys by default. However, applications
   may choose alternate identities that are pinned to these public keys. For example,
   servers may use a domain name instead of a public key as their identifier. Absent
-  alternate notions of an identity, applications SHOULD set these identities to nil
+  alternate notions of identity, applications SHOULD set these identities to nil
   and rely solely on public key information.
 - Enumeration prevention: As described in {{create-credential-response}}, if servers
   receive a credential request for a non-existent client, they SHOULD respond with a
-  "fake" response in order to prevent active client enumeration attacks. Servers that
+  "fake" response to prevent active client enumeration attacks. Servers that
   implement this mitigation SHOULD use the same configuration information (such as
   the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
   where this attack is not a concern, servers may choose to not support this functionality.
@@ -1712,7 +1712,7 @@ retain these values in memory when no longer needed. Moreover, all operations,
 particularly the cryptographic and group arithmetic operations, should be
 constant-time and independent of the bits of any secrets. This includes any
 conditional branching during the creation of the credential response, as needed
-to mitigate against client enumeration attacks.
+to mitigate client enumeration attacks.
 
 As specified in {{offline-phase}} and {{online-phase}}, OPAQUE only requires
 the client password as input to the OPRF for registration and authentication.
@@ -1724,17 +1724,17 @@ between different clients that might otherwise share the same password.
 
 Finally, note that online guessing attacks (against any aPAKE) can be done from
 both the client side and the server side. In particular, a malicious server can
-attempt to simulate honest responses in order to learn the client's password.
+attempt to simulate honest responses to learn the client's password.
 Implementations and deployments of OPAQUE SHOULD consider additional checks to
 mitigate this type of attack: for instance, by ensuring that there is a
-server-authenticated channel over which OPAQUE registration and login is run.
+server-authenticated channel over which OPAQUE registration and login are run.
 
 ## Error Considerations
 
 Some functions included in this specification are fallible. For example, the
 authenticated key exchange protocol may fail because the client's password was
 incorrect or the authentication check failed, yielding an error. The explicit
-errors generated throughout this specifiation, along with conditions that lead
+errors generated throughout this specification, along with conditions that lead
 to each error, are as follows:
 
 - EnvelopeRecoveryError: The envelope Recover function failed to produce any
@@ -1746,7 +1746,7 @@ to each error, are as follows:
 
 Beyond these explicit errors, OPAQUE implementations can produce implicit errors.
 For example, if protocol messages sent between client and server do not match
-their expected size, an implementaton should produce an error. More generally,
+their expected size, an implementation should produce an error. More generally,
 if any protocol message received from the peer is invalid, perhaps because the
 message contains an invalid public key (indicated by the AKE DeserializeElement
 function failing) or an invalid OPRF element (indicated by the OPRF DeserializeElement),
@@ -1807,7 +1807,7 @@ implementation considerations.
   equivocability and random key robustness for the encryption function. The
   latter property is only required for authentication and achieved by a
   collision-resistant MAC. This change was made for two reasons. First, it
-  reduces the number of bytes stored in envelopes, which is an helpful
+  reduces the number of bytes stored in envelopes, which is a helpful
   improvement for large applications of OPAQUE with many registered users.
   Second, it removes the need for client applications to generate authentication
   keys during registration. Instead, this responsibility is handled by OPAQUE,
@@ -1827,15 +1827,15 @@ implementation considerations.
   cross-user key) applied to users' identities satisfies this assumption.
   This change was made to support real-world use cases where client or user
   enumeration is a security (or privacy) risk.
-- The protocol outputs an export key for the client in addition to shared
+- The protocol outputs an export key for the client in addition to a shared
   session key that can be used for application-specific purposes. This key
   is a pseudorandom value independent of other values in the protocol and
-  has no influence in the security analysis (it can be simulated with a
+  has no influence on the security analysis (it can be simulated with a
   random output). This change was made to support more application use cases
-  for OPAQUE, such as use of OPAQUE for end-to-end encrypted backups;
+  for OPAQUE, such as the use of OPAQUE for end-to-end encrypted backups;
   see {{WhatsAppE2E}}.
 - The protocol admits optional application-layer client and server identities.
-  In the absence of these identities, client and server are authenticated
+  In the absence of these identities, the client and server are authenticated
   against their public keys. Binding authentication to identities is part
   of the AKE part of OPAQUE. The type of identities and their semantics
   are application dependent and independent of the protocol analysis. This
@@ -1845,16 +1845,16 @@ implementation considerations.
 - The protocol admits application-specific context information configured
   out-of-band in the AKE transcript. This allows domain separation between
   different application uses of OPAQUE. This is a mechanism for the AKE
-  component and is best practice as for domain separation between different
+  component and is best practice for domain separation between different
   applications of the protocol. This change was made to allow different
-  applications to use OPAQUE without risk of cross-protocol attacks.
+  applications to use OPAQUE without the risk of cross-protocol attacks.
 - Servers use a separate identifier for computing OPRF evaluations and
   indexing into the password file storage, called the credential_identifier.
   This allows clients to change their application-layer identity
   (client_identity) without inducing server-side changes, e.g., by changing
   an email address associated with a given account. This mechanism is part
   of the derivation of OPRF keys via a single PRF. As long as the derivation
-  of different OPRF keys from a single OPRF have different PRF inputs, the
+  of different OPRF keys from a single OPRF has different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
 
 The following list enumerates notable differences and refinements from the original
@@ -1864,7 +1864,7 @@ suitable for interoperable implementations.
 
 - {{JKX18}} used a generic prime-order group for the DH-OPRF and HMQV operations,
   and includes necessary prime-order subgroup checks when receiving attacker-controlled
-  values over the wire. This specification instantiates the prime-order group using for
+  values over the wire. This specification instantiates the prime-order group used for
   3DH using prime-order groups based on elliptic curves, as described in
   {{I-D.irtf-cfrg-voprf, Section 2.1}}. This specification also delegates OPRF group
   choice and operations to {{!I-D.irtf-cfrg-voprf}}. As such, the prime-order group as used
@@ -1958,7 +1958,7 @@ agreed bit representation of these identities as needed.
 
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie client_identity to the identity the server uses
-to fetch envelope (hence determined during password registration) and to tie server_identity
+to fetch the envelope (hence determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session. server_identity and client_identity can also
 be part of the envelope or be tied to the parties' public keys. In principle, identities
@@ -1975,7 +1975,7 @@ during the registration stage. Furthermore, they will be substituted with
 client_identity = client_public_key and server_identity = server_public_key during
 the authenticated key exchange stage.
 
-The advantage to supplying a custom client_identity and server_identity (instead of simply relying
+The advantage of supplying a custom client_identity and server_identity (instead of simply relying
 on a fallback to client_public_key and server_public_key) is that the client can then ensure that any
 mappings between client_identity and client_public_key (and server_identity and server_public_key)
 are protected by the authentication from the envelope. Then, the client can verify that the
@@ -2023,7 +2023,7 @@ not the point at infinity.
 
 ## OPRF Key Stretching
 
-Applying a key streching function to the output of the OPRF greatly increases the cost of an offline
+Applying a key stretching function to the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
 SHOULD select parameters that balance cost and complexity. Note that in
 OPAQUE, the key stretching function is executed by the client, as opposed to
@@ -2045,7 +2045,7 @@ changed its identity.
 
 OPAQUE prevents these attacks during the authentication flow. The first is
 prevented by requiring servers to act with unregistered client identities in a
-way that is indistinguishable from its behavior with existing registered clients.
+way that is indistinguishable from their behavior with existing registered clients.
 Servers do this by simulating a fake CredentialResponse as specified in
 {{create-credential-response}} for unregistered users, and also encrypting both
 CredentialResponse using a masking key. In this way, real and fake CredentialResponse
@@ -2121,7 +2121,7 @@ This document makes no IANA requests.
 
 # Acknowledgments
 
-The OPAQUE protocol and its analysis is joint work of the author with Stanislaw
+The OPAQUE protocol and its analysis is the joint work of the author with Stanislaw
 Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
@@ -2231,8 +2231,8 @@ and protocol outputs.
 
 Similarly, each fake test vector in {{fake-vectors}} specifies
 the configuration information, protocol inputs, and protocol
-outputs computed during authentication of an unknown or unregistered user. Note that `masking_key`, `client_private_key`, and
-`client_public_key` are used as additional inputs as described in
+outputs computed during the authentication of an unknown or unregistered user. Note that `masking_key`,
+`client_private_key`, and `client_public_key` are used as additional inputs as described in
 {{create-credential-response}}. `client_public_key` is used as the fake record's public key, and
 `masking_key` for the fake record's masking key parameter.
 
