@@ -1804,7 +1804,7 @@ implementation considerations.
   information used to derive client private key material for the AKE. This
   variant is also analyzed in the new paper referred to in the previous item.
   This change improves the assumption behind the protocol by getting rid of
-  equivocability and random key robustness for the encryption function. The
+  equivocality and random key robustness for the encryption function. The
   latter property is only required for authentication and achieved by a
   collision-resistant MAC. This change was made for two reasons. First, it
   reduces the number of bytes stored in envelopes, which is a helpful
