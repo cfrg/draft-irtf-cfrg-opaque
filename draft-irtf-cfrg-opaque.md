@@ -612,7 +612,9 @@ the envelope nonce and `CleartextCredentials`.
 ### Envelope Creation {#envelope-creation}
 
 Clients create an `Envelope` at registration with the function `Store` defined
-below.
+below. Note that `DeriveAuthKeyPair` in this function can fail with negligible
+probability. If this occurs, servers should re-run the function, sampling a
+new `envelope_nonce`, to completion.
 
 ~~~
 Store
@@ -795,7 +797,9 @@ and `FinalizeRegistrationRequest`.
 
 ### CreateRegistrationRequest
 
-To begin the registration flow, the client executes the following function.
+To begin the registration flow, the client executes the following function. This function
+can fail with a InvalidInputError error with negligibile probability. A different input
+password is necessary in the event of this error.
 
 ~~~
 CreateRegistrationRequest
@@ -807,6 +811,9 @@ Output:
 - request, a RegistrationRequest structure.
 - blind, an OPRF scalar value.
 
+Exceptions:
+- InvalidInputError, when Blind fails
+
 def CreateRegistrationRequest(password):
   (blind, blinded_element) = Blind(password)
   blinded_message = SerializeElement(blinded_element)
@@ -817,7 +824,10 @@ def CreateRegistrationRequest(password):
 ### CreateRegistrationResponse {#create-reg-response}
 
 To process the client's registration request, the server executes
-the following function.
+the following function. This function can fail with a `DeriveKeyPairError`
+error with negligible probability. In this case, application can
+choose a new `credential_identifier` for this registration record
+and re-run this function.
 
 ~~~
 CreateRegistrationResponse
@@ -833,6 +843,7 @@ Output:
 
 Exceptions:
 - DeserializeError, when OPRF element deserialization fails.
+- DeriveKeyPairError, when OPRF key derivation fails.
 
 def CreateRegistrationResponse(request, server_public_key,
                                credential_identifier, oprf_seed):
@@ -1043,6 +1054,7 @@ of fixed size `Nm`, computed using `Km2`, defined below.
 In this section, we define the main functions used to produce the AKE messages
 in the protocol. Note that this section relies on definitions of subroutines defined
 in later sections:
+
 - `CreateCredentialRequest`, `CreateCredentialResponse`, `RecoverCredentials`
   defined in {{cred-retrieval}}
 - `AuthClientStart`, `AuthServerRespond`, `AuthClientFinalize`, and `AuthServerFinalize`
@@ -1213,6 +1225,10 @@ and `RecoverCredentials` functions used for credential retrieval.
 
 The `CreateCredentialRequest` is used by the client to initiate the credential
 retrieval process, and it produces a `CredentialRequest` message and OPRF state.
+Like `CreateRegistrationRequest`, this function can fail with a InvalidInputError
+error with negligibile probability. However, this should not occur since
+registration (via `CreateRegistrationRequest`) will fail when provided the same
+password input.
 
 ~~~
 CreateCredentialRequest
@@ -1223,6 +1239,9 @@ Input:
 Output:
 - request, a CredentialRequest structure.
 - blind, an OPRF scalar value.
+
+Exceptions:
+- InvalidInputError, when Blind fails
 
 def CreateCredentialRequest(password):
   (blind, blinded_element) = Blind(password)
