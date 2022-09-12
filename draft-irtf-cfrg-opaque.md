@@ -1673,8 +1673,8 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), internal, ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), internal, P-256
+- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
