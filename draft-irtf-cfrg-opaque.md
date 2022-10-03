@@ -1000,7 +1000,7 @@ struct {
 
 client_nonce: A fresh randomly generated nonce of length `Nn`.
 
-client_keyshare: A serialized client ephemeral key share of fixed size `Npk`.
+client_keyshare: A serialized client ephemeral public key of fixed size `Npk`.
 
 ~~~
 struct {
@@ -1023,7 +1023,7 @@ struct {
 
 server_nonce: A fresh randomly generated nonce of length `Nn`.
 
-server_keyshare: Server ephemeral key share of fixed size `Npk`, where `Npk`
+server_keyshare: A server ephemeral public key of fixed size `Npk`, where `Npk`
 depends on the corresponding prime order group.
 
 server_mac: An authentication tag computed over the handshake transcript
@@ -2252,7 +2252,7 @@ computed as in OPAQUE-3DH.
 
 The key schedule would also change. Specifically, the key schedule `preamble` value would
 use a different constant prefix -- "SIGMA-I" instead of "3DH" -- and the `IKM` computation
-would use only the ephemeral key shares exchanged between client and server.
+would use only the ephemeral public keys exchanged between client and server.
 
 # Test Vectors {#test-vectors}
 
