@@ -1204,7 +1204,7 @@ blinded_message: A serialized OPRF group element.
 struct {
   uint8 evaluated_message[Noe];
   uint8 masking_nonce[Nn];
-  uint8 masked_response[Npk + Ne];
+  uint8 masked_response[Npk + Nn + Nm];
 } CredentialResponse;
 ~~~
 
@@ -1294,7 +1294,7 @@ def CreateCredentialResponse(request, server_public_key, record,
   masking_nonce = random(Nn)
   credential_response_pad = Expand(record.masking_key,
                                    concat(masking_nonce, "CredentialResponsePad"),
-                                   Npk + Ne)
+                                   Npk + Nn + Nm)
   masked_response = xor(credential_response_pad,
                         concat(server_public_key, record.envelope))
   Create CredentialResponse response with (evaluated_message, masking_nonce, masked_response)
@@ -1308,7 +1308,7 @@ argument that is configured so that:
 
 - `record.client_public_key` is set to a randomly generated public key of length `Npk`
 - `record.masking_key` is set to a random byte string of length `Nh`
-- `record.envelope` is set to the byte string consisting only of zeros of length `Ne`
+- `record.envelope` is set to the byte string consisting only of zeros of length `Nn + Nm`
 
 It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
 of the application) and stored alongside legitimate client records. This allows servers to locate
@@ -1352,7 +1352,7 @@ def RecoverCredentials(password, blind, response,
   masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
   credential_response_pad = Expand(masking_key,
                                    concat(response.masking_nonce, "CredentialResponsePad"),
-                                   Npk + Ne)
+                                   Npk + Nn + Nm)
   concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
   (client_private_key, export_key) =
