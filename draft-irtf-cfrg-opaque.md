@@ -675,7 +675,7 @@ Exceptions:
 def Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity):
   auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
+  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey"), Nh)
   seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
   (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
 
@@ -1565,7 +1565,7 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
     raise ServerAuthenticationError
-  client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
+  client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac)))
   Create KE3 ke3 with client_mac
   return (ke3, session_key)
 ~~~
@@ -1614,9 +1614,9 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
-  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
 
-  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
   Create AuthResponse auth_response with (server_nonce, server_keyshare, server_mac)
   return auth_response
