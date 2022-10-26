@@ -1117,6 +1117,7 @@ def ServerInit(server_identity, server_private_key, server_public_key,
   auth_response = AuthServerRespond(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, credential_response)
   Create KE2 ke2 with (credential_response, auth_response)
+  return ke2
 ~~~
 
 ### ClientFinish
