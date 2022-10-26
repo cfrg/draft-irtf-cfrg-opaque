@@ -1078,7 +1078,7 @@ Output:
 - ke1, a KE1 message structure.
 
 def ClientInit(password):
-  credential_request, blind = CreateCredentialRequest(password)
+  request, blind = CreateCredentialRequest(password)
   state.password = password
   state.blind = blind
   ke1 = AuthClientStart(request)
