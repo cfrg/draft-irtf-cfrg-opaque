@@ -1662,7 +1662,7 @@ such that the following conditions are met:
   to align with the target security level of the OPAQUE configuration. For example,
   if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
 - The KSF has fixed parameters, chosen by the application, and implements the
-  interface in {{dependencies}}. Examples include Argon2 {{?ARGON2=RFC9106}},
+  interface in {{dependencies}}. Examples include Argon2id {{?ARGON2=RFC9106}},
   scrypt {{?SCRYPT=RFC7914}}, and PBKDF2 {{?PBKDF2=RFC2898}} with fixed parameter choices.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
@@ -1674,8 +1674,9 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512, Scrypt(32768,8,1), ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Scrypt(32768,8,1), P-256
+- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512,
+    Argon2id(t=1, p=4, m=2^21), ristretto255
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id, P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
