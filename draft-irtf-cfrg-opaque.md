@@ -675,7 +675,7 @@ Exceptions:
 def Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity):
   auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey", Nh)
+  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey"), Nh)
   seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
   (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
 
