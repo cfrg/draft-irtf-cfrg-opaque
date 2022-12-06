@@ -1078,7 +1078,7 @@ Output:
 - ke1, a KE1 message structure.
 
 def ClientInit(password):
-  credential_request, blind = CreateCredentialRequest(password)
+  request, blind = CreateCredentialRequest(password)
   state.password = password
   state.blind = blind
   ke1 = AuthClientStart(request)
@@ -1117,6 +1117,7 @@ def ServerInit(server_identity, server_private_key, server_public_key,
   auth_response = AuthServerRespond(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, credential_response)
   Create KE2 ke2 with (credential_response, auth_response)
+  return ke2
 ~~~
 
 ### ClientFinish
@@ -1565,7 +1566,7 @@ def AuthClientFinalize(client_identity, client_private_key, server_identity,
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
     raise ServerAuthenticationError
-  client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac))
+  client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac)))
   Create KE3 ke3 with client_mac
   return (ke3, session_key)
 ~~~
@@ -1614,9 +1615,9 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
-  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
 
-  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac))
+  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
   Create AuthResponse auth_response with (server_nonce, server_keyshare, server_mac)
   return auth_response
