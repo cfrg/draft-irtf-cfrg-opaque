@@ -1676,7 +1676,7 @@ Absent an application-specific profile, the following configurations are RECOMME
 
 - OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512,
     Argon2id(t=1, p=4, m=2^21), ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id, P-256
+- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id(t=1, p=4, m=2^21), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
