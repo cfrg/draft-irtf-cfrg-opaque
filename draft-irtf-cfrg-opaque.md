@@ -369,9 +369,9 @@ The following OPRF client APIs are used:
 
 Moreover, the following OPRF server APIs are used:
 
-- Evaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
+- BlindEvaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
-  the Evaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
+  the BlindEvaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
 - DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
   from a seed and info parameter, as described in {{OPRF, Section 3.2}}.
 
@@ -851,7 +851,7 @@ def CreateRegistrationResponse(request, server_public_key,
   (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
-  evaluated_element = Evaluate(oprf_key, blinded_element)
+  evaluated_element = BlindEvaluate(oprf_key, blinded_element)
   evaluated_message = SerializeElement(evaluated_element)
 
   Create RegistrationResponse response with (evaluated_message, server_public_key)
@@ -1289,7 +1289,7 @@ def CreateCredentialResponse(request, server_public_key, record,
   (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
-  evaluated_element = Evaluate(oprf_key, blinded_element)
+  evaluated_element = BlindEvaluate(oprf_key, blinded_element)
   evaluated_message = SerializeElement(evaluated_element)
 
   masking_nonce = random(Nn)
