@@ -357,7 +357,7 @@ the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively, where
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
 server for computing a PRF such that the client learns the PRF output and neither party learns
 the input of the other. This specification depends on the prime-order OPRF construction specified
-in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -10, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
+in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -20, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
 The following OPRF client APIs are used:
 
@@ -1653,8 +1653,8 @@ An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, KSF, Group, Contex
 such that the following conditions are met:
 
 - The OPRF protocol uses the "base mode" variant of {{OPRF}} and implements
-  the interface in {{dependencies}}. Examples include OPRF(ristretto255, SHA-512) and
-  OPRF(P-256, SHA-256).
+  the interface in {{dependencies}}. Examples include ristretto255-SHA512 and
+  P256-SHA256.
 - The KDF, MAC, and Hash functions implement the interfaces in {{dependencies}}.
   Examples include HKDF {{RFC5869}} for the KDF, HMAC {{!RFC2104}} for the MAC,
   and SHA-256 and SHA-512 for the Hash functions. If an extensible output function
@@ -1665,7 +1665,7 @@ such that the following conditions are met:
   interface in {{dependencies}}. Examples include Argon2id {{?ARGON2=RFC9106}},
   scrypt {{?SCRYPT=RFC7914}}, and PBKDF2 {{?PBKDF2=RFC2898}} with fixed parameter choices.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
-  match that of the OPRF. For example, if the OPRF is OPRF(ristretto255, SHA-512),
+  match that of the OPRF. For example, if the OPRF is ristretto255-SHA512,
   then Group SHOULD be ristretto255.
 
 Context is the shared parameter used to construct the preamble in {{transcript-functions}}.
@@ -1674,9 +1674,9 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
-- OPRF(ristretto255, SHA-512), HKDF-SHA-512, HMAC-SHA-512, SHA-512,
+- ristretto255-SHA512, HKDF-SHA-512, HMAC-SHA-512, SHA-512,
     Argon2id(t=1, p=4, m=2^21), ristretto255
-- OPRF(P-256, SHA-256), HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id(t=1, p=4, m=2^21), P-256
+- P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id(t=1, p=4, m=2^21), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
