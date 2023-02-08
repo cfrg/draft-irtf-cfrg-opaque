@@ -1098,14 +1098,15 @@ State:
 
 Input:
 - server_identity, the optional encoded server identity, which is set to
-  server_public_key if nil.
+  server_public_key if not specified.
 - server_private_key, the server's private key.
 - server_public_key, the server's public key.
 - record, the client's RegistrationRecord structure.
 - credential_identifier, an identifier that uniquely represents the credential.
 - oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
 - ke1, a KE1 message structure.
-- client_identity, the encoded client identity.
+- client_identity, the optional encoded client identity, which is set to
+  client_public_key if not specified.
 
 Output:
 - ke2, a KE2 structure.
