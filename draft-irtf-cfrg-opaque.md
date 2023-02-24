@@ -1113,7 +1113,7 @@ Output:
 
 def ServerInit(server_identity, server_private_key, server_public_key,
                record, credential_identifier, oprf_seed, ke1, client_identity):
-  credential_response = CreateCredentialResponse(ke1.request, server_public_key, record,
+  credential_response = CreateCredentialResponse(ke1.credential_request, server_public_key, record,
     credential_identifier, oprf_seed)
   auth_response = AuthServerRespond(server_identity, server_private_key,
     client_identity, record.client_public_key, ke1, credential_response)
