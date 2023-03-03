@@ -1,7 +1,3 @@
-[submodule "poc/h2c"]
-	path = poc/h2c
-	url = git@github.com:cfrg/draft-irtf-cfrg-hash-to-curve.git
-	branch = main
 [submodule "poc/voprf"]
 	path = poc/voprf
 	url = git@github.com:cfrg/draft-irtf-cfrg-voprf.git
