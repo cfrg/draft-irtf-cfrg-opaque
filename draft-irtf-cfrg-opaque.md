@@ -1378,6 +1378,7 @@ following fields:
 
 The server AKE state `ServerAkeState` mentioned in {{online-phase}} has the
 following fields:
+
 - expected_client_mac: An opaque byte string of length `Nm`.
 - session_key: An opaque byte string of length `Nx`.
 
@@ -2069,7 +2070,7 @@ OPAQUE prevents these attacks during the authentication flow. The first is
 prevented by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from their behavior with existing registered clients.
 Servers do this by simulating a fake CredentialResponse as specified in
-{{create-credential-response}} for unregistered users, and also encrypting both
+{{create-credential-response}} for unregistered users, and also encrypting
 CredentialResponse using a masking key. In this way, real and fake CredentialResponse
 messages are indistinguishable from one another.
 Implementations must also take care to avoid side-channel leakage (e.g., timing
