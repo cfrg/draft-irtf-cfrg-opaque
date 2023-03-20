@@ -61,7 +61,7 @@ class OPAQUE3DH(KeyExchange):
         return {
             "Name": "3DH",
             "Group": self.config.group.name,
-            "OPRF": to_hex(I2OSP(self.config.oprf_suite.identifier, 2)),
+            "OPRF": self.config.oprf_suite.identifier,
             "KDF": self.config.kdf.name,
             "MAC": self.config.mac.name,
             "Hash": self.config.hash().name.upper(),

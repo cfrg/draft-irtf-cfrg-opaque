@@ -3,7 +3,7 @@ PYFILES := $(addprefix sagelib/, $(addsuffix .py,$(SAGEFILES)))
 .PRECIOUS: $(PYFILES)
 
 .PHONY: pyfiles
-pyfiles: sagelib/__init__.py $(PYFILES)
+pyfiles: setup sagelib/__init__.py $(PYFILES)
 
 sagelib/__init__.py:
 	mkdir -p sagelib
@@ -15,11 +15,12 @@ sagelib/%.py: %.sage
 	@mv $<.py $@
 
 setup:
-	cp h2c/poc/hash_to_field.py .
-	cp h2c/poc/*.sage .
+	cp voprf/poc/h2c/poc/hash_to_field.py .
+	cp voprf/poc/h2c/poc/*.sage .
 	cp voprf/poc/*.sage .
 
 test: pyfiles
+	@mkdir -p vectors
 	sage test_opaque_ake.sage
 
 vectors: pyfiles
