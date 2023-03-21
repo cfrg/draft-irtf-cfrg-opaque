@@ -320,6 +320,7 @@ The following functions are used throughout this document:
 - concat(x0, ..., xN): Concatenate byte strings. For example,
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a cryptographically secure pseudorandom byte string of length `n` bytes.
+- zeroes(n): Generate a string of `n` bytes all equal to 0 (zero).
 - xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with arguments of unequal length.
 - ct_equal(a, b): Return `true` if `a` is equal to `b`, and false otherwise.
@@ -1679,9 +1680,9 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
 - ristretto255-SHA512, HKDF-SHA-512, HMAC-SHA-512, SHA-512,
-    Argon2id(t=1, p=4, m=2^21), ristretto255
+    Argon2id(S = zeroes(16), p=4, T = 32, m=2^21, t=1, v = 0x13, K = nil, X = "RFCXXXX", y = 2), ristretto255
 - P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256,
-    Argon2id(t=1, p=4, m=2^21), P-256
+    Argon2id(S = zeroes(16), p=4, T = 32, m=2^21, t=1, v = 0x13, K = nil, X = "RFCXXXX", y = 2), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
