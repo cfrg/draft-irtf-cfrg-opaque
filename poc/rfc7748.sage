@@ -34,12 +34,6 @@ def decodeScalar25519(k):
     k_list[31] |= 64
     return decodeLittleEndian(k_list, 255)
 
-def decodeScalar448(k):
-    k_list = string_or_bytes_to_list(k)    
-    k_list[0] &= 252
-    k_list[55] |= 128
-    return decodeLittleEndian(k_list, 448)
-
 def encodeScalar(u, bits):
     num_bytes = floor((bits+7)/8)
     result = bytearray(num_bytes)
@@ -53,11 +47,6 @@ def decodeScalarForInverse25519(k):
     k_list = string_or_bytes_to_list(k)    
     k_list[0] &= 248
     return decodeLittleEndian(k_list, 255)
-
-def decodeScalarForInverse448(k):
-    k_list = string_or_bytes_to_list(k)    
-    k_list[0] &= 252
-    return decodeLittleEndian(k_list, 448)
 
 def decodeUnclampedScalar(k):
     k_list = string_or_bytes_to_list(k)    
@@ -89,9 +78,6 @@ def X25519(scalar, basepoint, warnForPointOnTwist = True, unclamped_basepoint = 
                warnForPointOnTwist = warnForPointOnTwist, 
                A = 486662, field_prime = 2^255-19, unclamped_basepoint = unclamped_basepoint)
 
-
-########## Common for X448 and X25519 ##################
-
 def is_on_curve(basepoint, A = 486662, field_prime = 2^255-19):
     F = GF(field_prime)
     A = F(A)
@@ -117,7 +103,7 @@ def get_nonsquare(F):
 def X__(encoded_scalar, basepoint, scalar_decoder=decodeScalar25519, 
         warnForPointOnTwist = True, 
         A = 486662, field_prime = 2^255-19, unclamped_basepoint = False):
-    """Implements scalar multiplication for both, X448 and X25519."""
+    """Implements scalar multiplication for X25519."""
     num_bytes_for_field = ceil(log(field_prime,2) / 8)
     num_bits_for_field = ceil(log(float(field_prime),2))
     F = GF(Integer(field_prime))
@@ -169,16 +155,7 @@ class X25519_testCase:
             return False
         print ("Pass")
         return True
-    
-    def docOutput(self):
-        print ("Test case for X25519:")
-        print ("u:"),
-        print (IntegerToLEPrintString(self.u_in))
-        print ("s:"),
-        print (IntegerToLEPrintString(self.s_in))
-        print ("r:"),
-        print (IntegerToLEPrintString(self.u_out))
-            
+                
 if __name__ == "__main__":
     testCases = []
 
@@ -222,21 +199,6 @@ if __name__ == "__main__":
 
     for x in testCases:
         x.docOutput()
-        
-    input_scalar = 599189175373896402783756016145213256157230856085026129926891459468622403380588640249457727683869421921443004045221642549886377526240828
-    input_coor = 382239910814107330116229961234899377031416365240571325148346555922438025162094455820962429142971339584360034337310079791515452463053830
-    correct_output =  0xce3e4ff95a60dc6697da1db1d85e6afbdf79b50a2412d7546d5f239fe14fbaadeb445fc66a01b0779d98223961111e21766282f73dd96b6f
-
-    own_result = X448(IntegerToByteArray(input_scalar,57),IntegerToByteArray(input_coor,57))
-    own_result = bytes(reversed(own_result))
-
-    if correct_output == ByteArrayToInteger(own_result, 56):
-        print ("X448 result matches test vector.\n", ByteArrayToLEPrintString(own_result))
-    else:
-        print ("X448 result does not match:\n", 
-               ByteArrayToLEPrintString(own_result),"\n",
-               IntegerToLEPrintString(correct_output))
-    
 
     input_scalar = 31029842492115040904895560451863089656472772604678260265531221036453811406496
     input_coor =   34426434033919594451155107781188821651316167215306631574996226621102155684838
@@ -244,9 +206,4 @@ if __name__ == "__main__":
 
     own_result = X25519(IntegerToByteArray(input_scalar),IntegerToByteArray(input_coor))
     own_result = bytes(reversed(own_result))
-    if correct_output == ByteArrayToInteger(own_result, 32):
-        print ("X25519 result matches test vector.\n", ByteArrayToLEPrintString(own_result))
-    else:
-        print ("X25519 result does not match:\n", 
-               ByteArrayToLEPrintString(own_result),"\n",
-               IntegerToLEPrintString(correct_output))
+    assert(correct_output == ByteArrayToInteger(own_result, 32))
