@@ -667,7 +667,7 @@ Input:
 
 Output:
 - client_private_key, the encoded client private key for the AKE protocol.
-- client_public_key, the encoded client public key for the AKE protocol.
+- cleartext_credentials, a CleartextCredentials structure.
 - export_key, an additional client key.
 
 Exceptions:
@@ -680,12 +680,12 @@ def Recover(randomized_pwd, server_public_key, envelope,
   seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
   (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
 
-  cleartext_creds = CreateCleartextCredentials(server_public_key,
+  cleartext_credentials = CreateCleartextCredentials(server_public_key,
                       client_public_key, server_identity, client_identity)
-  expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
+  expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_credentials))
   If !ct_equal(envelope.auth_tag, expected_tag)
     raise EnvelopeRecoveryError
-  return (client_private_key, client_public_key, export_key)
+  return (client_private_key, cleartext_credentials, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
@@ -1147,14 +1147,11 @@ Output:
 - export_key, an additional client key.
 
 def ClientFinish(client_identity, server_identity, ke2):
-  (client_private_key, client_public_key, server_public_key, export_key) =
+  (client_private_key, cleartext_credentials, server_public_key, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
-  if client_identity == nil
-    client_identity = client_public_key
   (ke3, session_key) =
-    AuthClientFinalize(client_identity, client_private_key, server_identity,
-                       server_public_key, ke2)
+    AuthClientFinalize(cleartext_credentials, client_private_key, ke2)
   return (ke3, session_key, export_key)
 ~~~
 
@@ -1340,7 +1337,7 @@ Input:
 
 Output:
 - client_private_key, the the encoded client private key for the AKE protocol.
-- client_public_key, the the encoded client public key for the AKE protocol.
+- cleartext_credentials, a CleartextCredentials structure.
 - server_public_key, the public key of the server.
 - export_key, an additional client key.
 
@@ -1361,11 +1358,11 @@ def RecoverCredentials(password, blind, response,
                                    Npk + Nn + Nm)
   concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-  (client_private_key, client_public_key, export_key) =
+  (client_private_key, cleartext_credentials, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity)
 
-  return (client_private_key, client_public_key, server_public_key, export_key)
+  return (client_private_key, cleartext_credentials, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
@@ -1539,12 +1536,8 @@ State:
 - state, a ClientAkeState structure.
 
 Input:
-- client_identity, the optional encoded client identity, which is
-  set to client_public_key if not specified.
+- cleartext_credentials, a CleartextCredentials structure.
 - client_private_key, the client's private key.
-- server_identity, the optional encoded server identity, which is
-  set to server_public_key if not specified.
-- server_public_key, the server's public key.
 - ke2, a KE2 message structure.
 
 Output:
@@ -1554,17 +1547,16 @@ Output:
 Exceptions:
 - ServerAuthenticationError, the handshake fails.
 
-def AuthClientFinalize(client_identity, client_private_key, server_identity,
-                       server_public_key, ke2):
+def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
 
   dh1 = SerializeElement(state.client_secret * ke2.auth_response.server_keyshare)
-  dh2 = SerializeElement(state.client_secret * server_public_key)
+  dh2 = SerializeElement(state.client_secret * cleartext_credentials.server_public_key)
   dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
-  preamble = Preamble(client_identity,
+  preamble = Preamble(cleartext_credentials.client_identity,
                       state.ke1,
-                      server_identity,
+                      cleartext_credentials.server_identity,
                       ke2.credential_response,
                       ke2.auth_response.server_nonce,
                       ke2.auth_response.server_keyshare)
