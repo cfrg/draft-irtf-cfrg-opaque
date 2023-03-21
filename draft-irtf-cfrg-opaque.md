@@ -218,6 +218,24 @@ protocols"
       -
         ins: WhatsApp
         name: WhatsApp
+  
+  TOPPSS:
+    title: "TOPPSS: Cost-minimal Password-Protected Secret Sharing based on Threshold OPRF"
+    seriesinfo: Applied Cryptology and Network Security – ACNS 2017
+    date: 2017
+    author:
+      -
+        ins: S. Jarecki
+        name: Stanislaw Jarecki
+      -
+        ins: A. Kiayias
+        name: Aggelos Kiayias
+      -
+        ins: H. Krawczyk
+        name: Hugo Krawczyk
+      -
+        ins: J. Xu
+        name: Jiayu Xu
 
   RFC2945:
   RFC5869:
@@ -1877,6 +1895,14 @@ implementation considerations.
   of the derivation of OPRF keys via a single PRF. As long as the derivation
   of different OPRF keys from a single OPRF has different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
+- {{JKX18}} comments on a strong defense against essentially the only
+  inherent remaining weakness of a "strong aPAKE", namely, offline
+  dictionary attacks upon server compromise. The authors suggest implementing
+  the OPRF phase as a Threshold OPRF {{TOPPSS}}, effecitvely forcing an
+  attacker to act online or to control at least t key shares, the threshold
+  number of keyshares necessary to recombine the shared key. This implementation
+  only affects the server and changes nothing for the client. However, this
+  mechanism is out of scope for this document.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
@@ -2124,10 +2150,7 @@ In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibi
 of pre-computation attacks. No extra salt value is needed. Also, clients never
 disclose their passwords to the server, even during registration. Note that a corrupted
 server can run an exhaustive offline dictionary attack to validate guesses for the client's
-password; this is inevitable in any aPAKE protocol. (OPAQUE enables defense against such
-offline dictionary attacks by distributing the server so that an offline attack is only
-possible if all - or a minimal number of - servers are compromised {{JKX18}}, but the details
-of this mechanism are out of scope for this document.) Furthermore, if the server does not
+password; this is inevitable in any aPAKE protocol. Furthermore, if the server does not
 sample this OPRF key with sufficiently high entropy, or if it is not kept hidden from an
 adversary, then any derivatives from the client's password may also be susceptible to an
 offline dictionary attack to recover the original password.
