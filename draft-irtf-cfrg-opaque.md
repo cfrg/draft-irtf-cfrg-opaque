@@ -2191,7 +2191,7 @@ OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has
 flow above and security properties (KCI resistance and forward secrecy) outlined
 in {{security-considerations}}. Note that such an instantiation is not quantum-safe unless
 the OPRF is quantum-safe. However, an OPAQUE instantiation where the AKE is quantum-safe,
-but the OPRF is not, would still ensure the confidentiality of application data encrypted
+but the OPRF is not, would still ensure the confidentiality and integrity of application data encrypted
 under session_key (or a key derived from it) with a quantum-safe encryption function.
 
 ## HMQV Instantiation Sketch {#hmqv-sketch}
