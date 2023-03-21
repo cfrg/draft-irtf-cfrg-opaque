@@ -12,6 +12,7 @@ try:
     from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, \
             deserialize_credential_request, deserialize_credential_response
     from sagelib.groups import GroupRistretto255, GroupP256
+    from sagelib.ake_group import GroupX25519
     from sagelib.opaque_common import zero_bytes, _as_bytes, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
     from sagelib.opaque_drng import OPAQUEDRNG
@@ -35,8 +36,8 @@ def test_core_protocol_serialization():
 
     config = default_opaque_configuration 
     group = config.group
-    skS = ZZ(group.random_scalar(rng))
-    pkS = skS * group.generator()
+    skS = group.random_scalar(rng)
+    pkS = group.scalar_mult(skS, group.generator())
     pkS_enc = group.serialize(pkS)
     oprf_seed = rng.random_bytes(config.hash().digest_size)
 
@@ -89,8 +90,8 @@ def test_registration_and_authentication():
 
     config = default_opaque_configuration 
     group = config.group
-    skS = ZZ(group.random_scalar(rng))
-    pkS = skS * group.generator()
+    skS = group.random_scalar(rng)
+    pkS = group.scalar_mult(skS, group.generator())
     pkS_enc = group.serialize(pkS)
     oprf_seed = rng.random_bytes(config.hash().digest_size)
 
@@ -130,8 +131,8 @@ def run_test_vector(params, seed):
     group = params.group
     core_rng = OPAQUEDRNG(_as_bytes("run_test_vector") + seed)
 
-    skS = ZZ(group.random_scalar(core_rng))
-    pkS = skS * group.generator()
+    skS = group.random_scalar(core_rng)
+    pkS = group.scalar_mult(skS, group.generator())
     skS_bytes = group.serialize_scalar(skS)
     pkS_bytes = group.serialize(pkS)
     oprf_seed = core_rng.random_bytes(fast_hash().digest_size)
@@ -149,8 +150,8 @@ def run_test_vector(params, seed):
         pkU = group.deserialize(pkU_enc)
         pkU_bytes = pkU_enc
     else:
-        fake_skU = ZZ(group.random_scalar(core_rng))
-        fake_pkU = fake_skU * group.generator()
+        fake_skU = group.random_scalar(core_rng)
+        fake_pkU = group.scalar_mult(fake_skU, group.generator())
         fake_skU_bytes = group.serialize_scalar(fake_skU)
         fake_pkU_bytes = group.serialize(fake_pkU)
 
@@ -263,6 +264,7 @@ def test_3DH():
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
         (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupRistretto255()),
+        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupX25519()),
         (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, KeyStretchingFunction("Identity", identity_stretch), GroupP256()),
     ]
 

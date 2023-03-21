@@ -76,9 +76,9 @@ class OPAQUE3DH(KeyExchange):
         }
 
     def derive_3dh_keys(self, dh_components, info):
-        dh1 = dh_components.sk1 * dh_components.pk1
-        dh2 = dh_components.sk2 * dh_components.pk2
-        dh3 = dh_components.sk3 * dh_components.pk3
+        dh1 = self.config.group.scalar_mult(dh_components.sk1, dh_components.pk1)
+        dh2 = self.config.group.scalar_mult(dh_components.sk2, dh_components.pk2)
+        dh3 = self.config.group.scalar_mult(dh_components.sk3, dh_components.pk3)
 
         dh1_encoded = self.config.group.serialize(dh1)
         dh2_encoded = self.config.group.serialize(dh2)
@@ -104,8 +104,8 @@ class OPAQUE3DH(KeyExchange):
         serialized_request = cred_request.serialize()
 
         nonceU = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        eskU = ZZ(self.config.group.random_scalar(self.rng))
-        epkU = eskU * self.config.group.generator()
+        eskU = self.config.group.random_scalar(self.rng)
+        epkU = self.config.group.scalar_mult(eskU, self.config.group.generator())
         ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
 
         self.serialized_request = serialized_request
@@ -127,8 +127,8 @@ class OPAQUE3DH(KeyExchange):
         serialized_response = cred_response.serialize()
 
         nonceS = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        eskS = ZZ(self.config.group.random_scalar(self.rng))
-        epkS = eskS * self.config.group.generator()
+        eskS = self.config.group.random_scalar(self.rng)
+        epkS = self.config.group.scalar_mult(eskS, self.config.group.generator())
         nonceU = ke1.nonceU
         epkU = self.config.group.deserialize(ke1.epkU)
 
@@ -177,9 +177,12 @@ class OPAQUE3DH(KeyExchange):
         serialized_response = cred_response.serialize()
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
         skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, idU, idS)
-        skU = OS2IP(skU_bytes)
-        if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
+        if "x25519" in self.config.group.name:
+            skU = skU_bytes
+        elif "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)
+        else:
+            skU = OS2IP(skU_bytes)
         pkS = self.config.group.deserialize(pkS_bytes)
 
         eskU = self.eskU

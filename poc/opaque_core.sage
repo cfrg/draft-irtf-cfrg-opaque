@@ -53,20 +53,26 @@ class OPAQUECore(object):
         sk = OS2IP(private_key)
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             sk = OS2IP_le(private_key)
-        pk = sk * self.config.group.generator()
+        pk = self.config.group.scalar_mult(sk, self.config.group.generator())
         return self.config.group.serialize(pk)
 
     def derive_group_key_pair(self, seed):
         return DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
 
-    def create_cleartext_credentials(self, server_public_key, client_public_key, server_identity, client_identity):
-        if server_identity == None:
-            server_identity = server_public_key
-        if client_identity == None:
-            client_identity = client_public_key
-        return CleartextCredentials(server_public_key, client_identity, server_identity)
+    def derive_auth_key_pair(self, seed):
+        if self.config.group.name == "x25519":
+            return seed, self.config.group.scalar_mult(seed, self.config.group.generator())
+        else:
+            return self.derive_group_key_pair(seed)
 
-    def create_envelope(self, random_pwd, server_public_key, idU, idS):
+    def create_cleartext_credentials(self, encoded_server_public_key, encoded_client_public_key, server_identity, client_identity):
+        if server_identity == None:
+            server_identity = encoded_server_public_key
+        if client_identity == None:
+            client_identity = encoded_client_public_key
+        return CleartextCredentials(encoded_server_public_key, client_identity, server_identity)
+
+    def create_envelope(self, random_pwd, encoded_server_public_key, idU, idS):
         envelope_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("AuthKey"), Nh)
@@ -74,18 +80,18 @@ class OPAQUECore(object):
         masking_key = self.derive_masking_key(random_pwd)
 
         seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (_, client_public_key) = self.derive_group_key_pair(seed)
+        (_, client_public_key) = self.derive_auth_key_pair(seed)
         pk_bytes = self.config.group.serialize(client_public_key)
-        client_public_key = self.config.group.serialize(client_public_key)
+        encoded_client_public_key = self.config.group.serialize(client_public_key)
 
-        cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, idS, idU)
+        cleartext_creds = self.create_cleartext_credentials(encoded_server_public_key, encoded_client_public_key, idS, idU)
         auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_creds.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
         self.auth_key = auth_key
         self.envelope_nonce = envelope.nonce
 
-        return envelope, client_public_key, masking_key, export_key
+        return envelope, encoded_client_public_key, masking_key, export_key
 
     def finalize_request(self, pwdU, blind, response, idU=None, idS=None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind)
@@ -123,7 +129,7 @@ class OPAQUECore(object):
 
     def recover_keys(self, random_pwd, envelope_nonce):
         seed = self.config.kdf.expand(random_pwd, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (client_private_key, client_public_key) = self.derive_group_key_pair(seed)
+        (client_private_key, client_public_key) = self.derive_auth_key_pair(seed)
         sk_bytes = self.config.group.serialize_scalar(client_private_key)
         pk_bytes = self.config.group.serialize(client_public_key)
         return sk_bytes, pk_bytes

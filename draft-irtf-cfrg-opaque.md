@@ -1385,22 +1385,67 @@ following fields:
 {{ake-client}} and {{ake-server}} specify the inner workings of client and
 server functions, respectively.
 
-### Key Creation {#key-creation}
+### AKE Group {#key-creation}
 
 We assume the following functions to exist for all candidate groups in this
 setting:
 
 - DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
-  deterministically from the input `seed`. This function is implemented as
-  DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
-  as specified in {{OPRF, Section 3.2}}.
+  deterministically from the input `seed`.
 - GenerateAuthKeyPair(): Return a randomly generated private and public key
   pair. This can be implemented by invoking DeriveAuthKeyPair with `Nseed`
   random bytes as input.
-- SerializeElement(element): A member function of the underlying group that
-  maps `element` to a unique byte array, mirrored from the definition of the
-  similarly-named function of the OPRF group described in
-  {{OPRF, Section 2.1}}.
+- SerializeElement(element): A function that maps `element` to a unique byte
+  array, mirrored from the definition of the similarly-named function of the
+  OPRF group described in {{OPRF, Section 2.1}}.
+- ScalarMult(k, B): A function that performs scalar multiplication between the
+  scalar input `k` and element `B`.
+
+Implementations for recommended groups in {{configurations}}, as well as groups
+covered by test vectors in {{test-vectors}}, are described in the following sections.
+
+#### ristretto255 Group
+
+This section describes the implementation of the AKE group based on ristretto255,
+as defined in {{?RISTRETTO=I-D.irtf-cfrg-ristretto255-decaf448}}.
+
+- DeriveAuthKeyPair(seed): This function is implemented as
+  DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
+  as specified in {{OPRF, Section 3.2}}.
+- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
+  with `Nseed` random bytes as input.
+- SerializeElement(element): This is implemented using the similarly-named
+  function of the OPRF group described in {{OPRF, Section 2.1}}.
+- ScalarMult(k, B): Implemented as scalar multiplication as described in
+  {{Section 4 of RISTRETTO}}.
+
+#### P-256 Group
+
+This section describes the implementation of the AKE group based on NIST P-256,
+as defined in {{?NISTCurves=DOI.10.6028/NIST.FIPS.186-4}}.
+
+- DeriveAuthKeyPair(seed): This function is implemented as
+  DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
+  as specified in {{OPRF, Section 3.2}}.
+- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
+  with `Nseed` random bytes as input.
+- SerializeElement(element): This is implemented using the similarly-named
+  function of the OPRF group described in {{OPRF, Section 2.1}}.
+- ScalarMult(k, B): Implemented as scalar multiplication as described in
+  {{NISTCurves}}.
+
+#### Curve25519 Group
+
+This section describes the implementation of the AKE group based on Curve25519,
+as defined in {{?Curve25519=RFC7748}}.
+
+- DeriveAuthKeyPair(seed): This function is implemented by returning the private
+  key based on seed (of length `Nseed = 32` bytes), as described in {{Section 5 of Curve25519}}.
+- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
+  with `Nseed` random bytes as input.
+- SerializeElement(element): This is implemented using the similarly-named
+  function of the OPRF group described in {{OPRF, Section 2.1}}.
+- ScalarMult(k, B): Implemented using the X25519 function in {{Section 5 of Curve25519}}.
 
 ### Key Schedule Functions
 
@@ -1553,9 +1598,9 @@ Exceptions:
 def AuthClientFinalize(client_identity, client_private_key, server_identity,
                        server_public_key, ke2):
 
-  dh1 = SerializeElement(state.client_secret * ke2.auth_response.server_keyshare)
-  dh2 = SerializeElement(state.client_secret * server_public_key)
-  dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
+  dh1 = SerializeElement(ScalarMult(state.client_secret, ke2.auth_response.server_keyshare))
+  dh2 = SerializeElement(ScalarMult(state.client_secret, server_public_key))
+  dh3 = SerializeElement(ScalarMult(client_private_key, ke2.auth_response.server_keyshare))
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(client_identity,
@@ -1690,6 +1735,12 @@ See {{RFC5869}} for details.
 2. The output size of the Hash function SHOULD be long enough to produce a key for
 MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 32 bytes.
+
+## AKE Implementations
+
+This function is implemented as
+  DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
+  as specified in {{OPRF, Section 3.2}}.
 
 # Application Considerations {#app-considerations}
 
