@@ -660,13 +660,13 @@ Recover
 
 Input:
 - randomized_pwd, a randomized password.
-- server_public_key, the encoded server public key for the AKE protocol.
 - envelope, the client's Envelope structure.
 - server_identity, the optional encoded server identity.
 - client_identity, the optional encoded client identity.
 
 Output:
 - client_private_key, the encoded client private key for the AKE protocol.
+- client_public_key, the encoded client public key for the AKE protocol.
 - export_key, an additional client key.
 
 Exceptions:
@@ -684,7 +684,7 @@ def Recover(randomized_pwd, server_public_key, envelope,
   expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_creds))
   If !ct_equal(envelope.auth_tag, expected_tag)
     raise EnvelopeRecoveryError
-  return (client_private_key, export_key)
+  return (client_private_key, client_public_key, export_key)
 ~~~
 
 # Offline Registration {#offline-phase}
@@ -1146,9 +1146,11 @@ Output:
 - export_key, an additional client key.
 
 def ClientFinish(client_identity, server_identity, ke2):
-  (client_private_key, server_public_key, export_key) =
+  (client_private_key, client_public_key, client_private_keyserver_public_key, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
+  if client_identity == nil
+    client_identity = client_public_key
   (ke3, session_key) =
     AuthClientFinalize(client_identity, client_private_key, server_identity,
                        server_public_key, ke2)
@@ -1336,7 +1338,8 @@ Input:
 - client_identity, The encoded client identity.
 
 Output:
-- client_private_key, the client's private key for the AKE protocol.
+- client_private_key, the the encoded client private key for the AKE protocol.
+- client_public_key, the the encoded client public key for the AKE protocol.
 - server_public_key, the public key of the server.
 - export_key, an additional client key.
 
@@ -1357,11 +1360,11 @@ def RecoverCredentials(password, blind, response,
                                    Npk + Nn + Nm)
   concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
-  (client_private_key, export_key) =
+  (client_private_key, client_public_key, export_key) =
     Recover(randomized_pwd, server_public_key, envelope,
             server_identity, client_identity)
 
-  return (client_private_key, server_public_key, export_key)
+  return (client_private_key, client_public_key, server_public_key, export_key)
 ~~~
 
 ## AKE Protocol {#ake-protocol}
