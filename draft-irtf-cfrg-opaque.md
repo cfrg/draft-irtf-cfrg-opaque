@@ -441,7 +441,7 @@ each client).
 ## Offline Registration
 
 Registration is the only stage in OPAQUE that requires a server-authenticated
-and confidential channel: either physical, out-of-band, PKI-based, etc.
+channel with confidentiality and integrity: either physical, out-of-band, PKI-based, etc.
 
 The client inputs its credentials, which include its password and user
 identifier, and the server inputs its parameters, which include its private key
