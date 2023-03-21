@@ -1680,9 +1680,9 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
 - ristretto255-SHA512, HKDF-SHA-512, HMAC-SHA-512, SHA-512,
-    Argon2id(S = zeroes(16), p = 4, T = 32, m = 2^21, t = 1, v = 0x13, K = nil, X = "RFCXXXX", y = 2), ristretto255
+    Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), ristretto255
 - P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256,
-    Argon2id(S = zeroes(16), p = 4, T = 32, m = 2^21, t = 1, v = 0x13, K = nil, X = "RFCXXXX", y = 2), P-256
+    Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
