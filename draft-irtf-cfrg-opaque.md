@@ -660,6 +660,7 @@ Recover
 
 Input:
 - randomized_pwd, a randomized password.
+- server_public_key, the encoded server public key for the AKE protocol.
 - envelope, the client's Envelope structure.
 - server_identity, the optional encoded server identity.
 - client_identity, the optional encoded client identity.
@@ -1146,7 +1147,7 @@ Output:
 - export_key, an additional client key.
 
 def ClientFinish(client_identity, server_identity, ke2):
-  (client_private_key, client_public_key, client_private_keyserver_public_key, export_key) =
+  (client_private_key, client_public_key, server_public_key, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
   if client_identity == nil
