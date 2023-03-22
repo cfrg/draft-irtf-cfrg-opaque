@@ -1901,7 +1901,7 @@ implementation considerations.
   The authors suggest implementing the OPRF phase as a Threshold OPRF {{TOPPSS}},
   effectively forcing an attacker to act online or to control at least t key
   shares, where t is the threshold number of shares necessary to recombine
-  the secret OPRF key. This implementation only affects the server and changes
+  the secret OPRF key and run an offline dictionary attack. This implementation only affects the server and changes
   nothing for the client. However, this mechanism is out of scope for this document.
 
 The following list enumerates notable differences and refinements from the original
