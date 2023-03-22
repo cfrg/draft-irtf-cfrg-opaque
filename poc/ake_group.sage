@@ -6,53 +6,9 @@ from sagelib.rfc7748 import *
 from sagelib.groups import *
 from sagelib.string_utils import *
 
-class H_SHA512:
-    def __init__(self):
-        self.b_in_bytes = 64
-        self.bmax_in_bytes = 64
-        self.s_in_bytes = 128
-        self.name = "SHA-512"
-        
-    def hash(self,input_str, l = 64):
-        m = hashlib.sha512(input_str)
-        digest = m.digest()
-        if len(digest) < l:
-            raise ValueError("Output length of Hash primitive (%i bytes) not long enough. %i bytes were requested." % (len(digest), l))
-        return digest[0:l]
-
-class G_Montgomery:
-    def decodeLittleEndian(self, b):
-        bits = self.field_size_bits
-        num_bytes = floor((bits+7)/8)
-        return sum([b[i] << 8*i for i in range(num_bytes)])
-
-    def decodeUCoordinate(self, u):        
-        u_list = [b for b in u]
-        # Ignore any unused bits.
-        if self.field_size_bits % 8:
-            u_list[-1] &= (1<<(self.field_size_bits%8))-1
-        return self.decodeLittleEndian(u_list)
-
-    def encodeUCoordinate(self,u):
-        u = u % self.q
-        return IntegerToByteArray(u,self.field_size_bytes)
-    
-class G_X25519(G_Montgomery):
-    def __init__(self):
-        self.q = 2^255 - 19
-        self.A = 486662
-        
-    def scalar_mult(self,scalar,point):
-        return X25519(scalar,point)
-
-    def scalar_mult_vfy(self,scalar,point):
-        return X25519(scalar,point)
-
-
 class GroupX25519(Group):
     def __init__(self):
         Group.__init__(self, "x25519")
-        self.G = G_X25519()
 
     def generator(self):
         return IntegerToByteArray(9)
@@ -79,7 +35,7 @@ class GroupX25519(Group):
         return os.urandom(32)
 
     def scalar_mult(self, x, y):
-        return self.G.scalar_mult(x, y)
+        return X25519(x, y)
 
     def __str__(self):
         return self.name
