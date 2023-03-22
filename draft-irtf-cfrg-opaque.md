@@ -218,7 +218,7 @@ protocols"
       -
         ins: WhatsApp
         name: WhatsApp
-  
+
   TOPPSS:
     title: "TOPPSS: Cost-minimal Password-Protected Secret Sharing based on Threshold OPRF"
     seriesinfo: Applied Cryptology and Network Security – ACNS 2017
