@@ -1898,9 +1898,9 @@ implementation considerations.
 - {{JKX18}} comments on a strong defense against essentially the only
   inherent remaining weakness of a "strong aPAKE", namely, offline
   dictionary attacks upon server compromise. The authors suggest implementing
-  the OPRF phase as a Threshold OPRF {{TOPPSS}}, effecitvely forcing an
-  attacker to act online or to control at least t key shares, the threshold
-  number of keyshares necessary to recombine the shared key. This implementation
+  the OPRF phase as a Threshold OPRF {{TOPPSS}}, effectively forcing an
+  attacker to act online or to control at least t key shares, where t is the threshold
+  number of shares necessary to recombine the secret OPRF key. This implementation
   only affects the server and changes nothing for the client. However, this
   mechanism is out of scope for this document.
 
