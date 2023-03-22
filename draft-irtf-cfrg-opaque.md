@@ -441,7 +441,7 @@ each client).
 ## Offline Registration
 
 Registration is the only stage in OPAQUE that requires a server-authenticated
-and confidential channel: either physical, out-of-band, PKI-based, etc.
+channel with confidentiality and integrity: either physical, out-of-band, PKI-based, etc.
 
 The client inputs its credentials, which include its password and user
 identifier, and the server inputs its parameters, which include its private key
@@ -2191,7 +2191,7 @@ OPAQUE may also be instantiated with any post-quantum (PQ) AKE protocol that has
 flow above and security properties (KCI resistance and forward secrecy) outlined
 in {{security-considerations}}. Note that such an instantiation is not quantum-safe unless
 the OPRF is quantum-safe. However, an OPAQUE instantiation where the AKE is quantum-safe,
-but the OPRF is not, would still ensure the confidentiality of application data encrypted
+but the OPRF is not, would still ensure the confidentiality and integrity of application data encrypted
 under session_key (or a key derived from it) with a quantum-safe encryption function.
 
 ## HMQV Instantiation Sketch {#hmqv-sketch}
