@@ -168,9 +168,6 @@ class KeyStretchingFunction(object):
         self.name = name
         self.stretch = stretch
 
-def scrypt_stretch(pwd):
-    return scrypt(pwd, b'', 32768, 8, 1, 64)
-
 def identity_stretch(pwd):
     return pwd
 
@@ -227,8 +224,3 @@ class HMAC(MAC):
     def mac(self, key, input):
         return hmac.digest(key, input, self.hash)
 
-def scrypt_stretch(pwd):
-    return scrypt(pwd, b'', 32768, 8, 1, 64)
-
-def identity_stretch(pwd):
-    return pwd

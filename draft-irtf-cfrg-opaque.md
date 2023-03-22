@@ -320,6 +320,7 @@ The following functions are used throughout this document:
 - concat(x0, ..., xN): Concatenate byte strings. For example,
   `concat(0x01, 0x0203, 0x040506) = 0x010203040506`.
 - random(n): Generate a cryptographically secure pseudorandom byte string of length `n` bytes.
+- zeroes(n): Generate a string of `n` bytes all equal to 0 (zero).
 - xor(a,b): Apply XOR to byte strings. For example, `xor(0xF0F0, 0x1234) = 0xE2C4`.
   It is an error to call this function with arguments of unequal length.
 - ct_equal(a, b): Return `true` if `a` is equal to `b`, and false otherwise.
@@ -415,9 +416,9 @@ API and parameters:
 This specification makes use of a Key Stretching Function (KSF), which is a slow
 and expensive cryptographic hash function with the following API:
 
-- Stretch(msg, params): Apply a key stretching function with parameters
-  `params` to stretch the input `msg` and harden it against offline
-  dictionary attacks. This function also needs to satisfy collision resistance.
+- Stretch(msg): Apply a key stretching function to stretch the input `msg` and
+  harden it against offline dictionary attacks. This function also needs to
+  satisfy collision resistance.
 
 # Protocol Overview {#protocol-overview}
 
@@ -884,7 +885,7 @@ def FinalizeRegistrationRequest(password, blind, response, server_identity, clie
   evaluated_element = DeserializeElement(response.evaluated_message)
   oprf_output = Finalize(password, blind, evaluated_element)
 
-  stretched_oprf_output = Stretch(oprf_output, params)
+  stretched_oprf_output = Stretch(oprf_output)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
 
   (envelope, client_public_key, masking_key, export_key) =
@@ -1348,7 +1349,7 @@ def RecoverCredentials(password, blind, response,
   evaluated_element = DeserializeElement(response.evaluated_message)
 
   oprf_output = Finalize(password, blind, evaluated_element)
-  stretched_oprf_output = Stretch(oprf_output, params)
+  stretched_oprf_output = Stretch(oprf_output)
   randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
 
   masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
@@ -1663,9 +1664,11 @@ such that the following conditions are met:
   such as SHAKE128 {{FIPS202}} is used then the output length `Nh` MUST be chosen
   to align with the target security level of the OPAQUE configuration. For example,
   if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
-- The KSF has fixed parameters, chosen by the application, and implements the
-  interface in {{dependencies}}. Examples include Argon2id {{?ARGON2=RFC9106}},
-  scrypt {{?SCRYPT=RFC7914}}, and PBKDF2 {{?PBKDF2=RFC2898}} with fixed parameter choices.
+- The KSF is determined by the application and implements the interface in
+  {{dependencies}}. As noted, collision resistance is required. Examples for KSF
+  include Argon2id {{?ARGON2=RFC9106}}, scrypt {{?SCRYPT=RFC7914}}, and PBKDF2
+  {{?PBKDF2=RFC2898}} with fixed parameter choices. See {{app-considerations}}
+  for more information about this choice of function.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is ristretto255-SHA512,
   then Group SHOULD be ristretto255.
@@ -1677,8 +1680,9 @@ parameters that are needed to prevent cross-protocol or downgrade attacks.
 Absent an application-specific profile, the following configurations are RECOMMENDED:
 
 - ristretto255-SHA512, HKDF-SHA-512, HMAC-SHA-512, SHA-512,
-    Argon2id(t=1, p=4, m=2^21), ristretto255
-- P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256, Argon2id(t=1, p=4, m=2^21), P-256
+    Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), ristretto255
+- P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256,
+    Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
@@ -1714,6 +1718,18 @@ applications can use to control OPAQUE:
   servers may use a domain name instead of a public key as their identifier. Absent
   alternate notions of identity, applications SHOULD set these identities to nil
   and rely solely on public key information.
+- Configuration and envelope updates: Applications may wish to update or change their
+  configuration or other parameters which affect the client's RegistrationRecord over
+  time. Some reasons for changing these are to use different cryptographic algorithms,
+  e.g., a different KSF with improved parameters, or to update key material that is
+  cryptographically bound to the RegistrationRecord, such as the server's public key
+  (server_public_key). Any such change will require users to re-register to create a
+  new RegistrationRecord. Supporting these types of updates can be helpful for applications
+  which anticipate such changes in their deployment setting.
+- Password hardening parameters: Key stretching is done to help prevent password disclosure
+  in the event of server compromise; see {{key-stretch}}. There is no ideal or default
+  set of parameters, though relevant specifications for KSFs give some reasonable
+  defaults.
 - Enumeration prevention: As described in {{create-credential-response}}, if servers
   receive a credential request for a non-existent client, they SHOULD respond with a
   "fake" response to prevent active client enumeration attacks. Servers that
@@ -2044,15 +2060,16 @@ is on the curve, and that the point is not the point at infinity.
 Additionally, validation MUST ensure the Diffie-Hellman shared secret is
 not the point at infinity.
 
-## OPRF Key Stretching
+## OPRF Key Stretching {#key-stretch}
 
 Applying a key stretching function to the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
-SHOULD select parameters that balance cost and complexity. Note that in
-OPAQUE, the key stretching function is executed by the client, as opposed to
-the server. This means that applications must consider a tradeoff between the
-performance of the protocol on clients (specifically low-end devices) and
-protection against offline attacks after a server compromise.
+SHOULD select parameters for the KSF that balance cost and complexity across
+all possible client implementations and deployments. Note that in OPAQUE, the
+key stretching function is executed by the client, as opposed to the server in
+traditional password hashing scenarios. This means that applications must consider
+a tradeoff between the performance of the protocol on clients (specifically low-end
+devices) and protection against offline attacks after a server compromise.
 
 ## Client Enumeration {#preventing-client-enumeration}
 
@@ -2275,7 +2292,9 @@ outputs computed during the authentication of an unknown or unregistered user. N
 All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
-draft-10 of {{OPRF}}.
+draft-21 of {{OPRF}}. The KSF used for each test vector is the identity function
+(denoted Identity), which returns as output the input message supplied to the function
+without any modification, i.e., msg = Stretch(msg).
 
 ## Real Test Vectors {#real-vectors}
 
