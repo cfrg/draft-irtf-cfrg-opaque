@@ -1897,12 +1897,12 @@ implementation considerations.
   protocol is secure. The choice of such inputs is up to the application.
 - {{JKX18}} comments on a strong defense against essentially the only
   inherent remaining weakness of a "strong aPAKE", namely, offline
-  dictionary attacks upon server compromise. The authors suggest implementing
-  the OPRF phase as a Threshold OPRF {{TOPPSS}}, effectively forcing an
-  attacker to act online or to control at least t key shares, where t is the threshold
-  number of shares necessary to recombine the secret OPRF key. This implementation
-  only affects the server and changes nothing for the client. However, this
-  mechanism is out of scope for this document.
+  dictionary attacks upon server compromise or honest-but-curious servers.
+  The authors suggest implementing the OPRF phase as a Threshold OPRF {{TOPPSS}},
+  effectively forcing an attacker to act online or to control at least t key
+  shares, where t is the threshold number of shares necessary to recombine
+  the secret OPRF key. This implementation only affects the server and changes
+  nothing for the client. However, this mechanism is out of scope for this document.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
