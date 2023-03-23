@@ -32,7 +32,11 @@ class GroupX25519(Group):
         return 32
 
     def random_scalar(self, rng):
-        return os.urandom(32)
+        key = bytearray(os.urandom(32))
+        key[0] &= 248
+        key[31] &= 127
+        key[31] |= 64
+        return bytes(key)
 
     def scalar_mult(self, x, y):
         return X25519(x, y)

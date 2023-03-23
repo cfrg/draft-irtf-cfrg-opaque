@@ -357,7 +357,7 @@ the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively, where
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
 server for computing a PRF such that the client learns the PRF output and neither party learns
 the input of the other. This specification depends on the prime-order OPRF construction specified
-in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -20, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
+in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -21, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
 The following OPRF client APIs are used:
 
@@ -2321,7 +2321,7 @@ outputs computed during the authentication of an unknown or unregistered user. N
 All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
-draft-10 of {{OPRF}}.
+draft version -21 of {{OPRF}}.
 
 ## Real Test Vectors {#real-vectors}
 
