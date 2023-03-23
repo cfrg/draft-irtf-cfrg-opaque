@@ -2321,7 +2321,9 @@ outputs computed during the authentication of an unknown or unregistered user. N
 All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
-draft version -21 of {{OPRF}}.
+draft-21 of {{OPRF}}. The KSF used for each test vector is the identity function
+(denoted Identity), which returns as output the input message supplied to the function
+without any modification, i.e., msg = Stretch(msg).
 
 ## Real Test Vectors {#real-vectors}
 
