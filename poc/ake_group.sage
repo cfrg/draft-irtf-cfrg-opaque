@@ -33,9 +33,9 @@ class GroupX25519(Group):
 
     def random_scalar(self, rng):
         key = bytearray(os.urandom(32))
-        key[0] &= 248
-        key[31] &= 127
-        key[31] |= 64
+        key[31] &= 248
+        key[0] &= 127
+        key[0] |= 64
         return bytes(key)
 
     def scalar_mult(self, x, y):
