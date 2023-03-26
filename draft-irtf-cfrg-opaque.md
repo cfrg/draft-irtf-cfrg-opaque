@@ -641,10 +641,10 @@ def Store(randomized_pwd, server_public_key, server_identity, client_identity):
   seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
   (_, client_public_key) = DeriveAuthKeyPair(seed)
 
-  cleartext_creds =
+  cleartext_credentials =
     CreateCleartextCredentials(server_public_key, client_public_key,
                                server_identity, client_identity)
-  auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_creds))
+  auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_credentials))
 
   Create Envelope envelope with (envelope_nonce, auth_tag)
   return (envelope, client_public_key, masking_key, export_key)
