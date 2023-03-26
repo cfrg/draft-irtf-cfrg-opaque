@@ -44,7 +44,7 @@ input_keys = [
 intermediate_keys = [
     "client_public_key",
     "auth_key",
-    "randomized_pwd",
+    "randomized_password",
     "pseudorandom_pad",
     "envelope",
     "handshake_secret",
