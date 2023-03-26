@@ -639,7 +639,7 @@ new `envelope_nonce`, to completion.
 Store
 
 Input:
-- randomized_pwd, a randomized password.
+- randomized_password, a randomized password.
 - server_public_key, the encoded server public key for
   the AKE protocol.
 - server_identity, the optional encoded server identity.
@@ -652,12 +652,12 @@ Output:
   of defending against client enumeration attacks.
 - export_key, an additional client key.
 
-def Store(randomized_pwd, server_public_key, server_identity, client_identity):
+def Store(randomized_password, server_public_key, server_identity, client_identity):
   envelope_nonce = random(Nn)
-  masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
-  auth_key = Expand(randomized_pwd, concat(envelope_nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_pwd, concat(envelope_nonce, "ExportKey"), Nh)
-  seed = Expand(randomized_pwd, concat(envelope_nonce, "PrivateKey"), Nseed)
+  masking_key = Expand(randomized_password, "MaskingKey", Nh)
+  auth_key = Expand(randomized_password, concat(envelope_nonce, "AuthKey"), Nh)
+  export_key = Expand(randomized_password, concat(envelope_nonce, "ExportKey"), Nh)
+  seed = Expand(randomized_password, concat(envelope_nonce, "PrivateKey"), Nseed)
   (_, client_public_key) = DeriveAuthKeyPair(seed)
 
   cleartext_creds =
@@ -678,7 +678,7 @@ defined below.
 Recover
 
 Input:
-- randomized_pwd, a randomized password.
+- randomized_password, a randomized password.
 - server_public_key, the encoded server public key for the AKE protocol.
 - envelope, the client's Envelope structure.
 - server_identity, the optional encoded server identity.
@@ -691,11 +691,11 @@ Output:
 Exceptions:
 - EnvelopeRecoveryError, the envelope fails to be recovered.
 
-def Recover(randomized_pwd, server_public_key, envelope,
+def Recover(randomized_password, server_public_key, envelope,
             server_identity, client_identity):
-  auth_key = Expand(randomized_pwd, concat(envelope.nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_pwd, concat(envelope.nonce, "ExportKey"), Nh)
-  seed = Expand(randomized_pwd, concat(envelope.nonce, "PrivateKey"), Nseed)
+  auth_key = Expand(randomized_password, concat(envelope.nonce, "AuthKey"), Nh)
+  export_key = Expand(randomized_password, concat(envelope.nonce, "ExportKey"), Nh)
+  seed = Expand(randomized_password, concat(envelope.nonce, "PrivateKey"), Nseed)
   (client_private_key, client_public_key) = DeriveAuthKeyPair(seed)
 
   cleartext_creds = CreateCleartextCredentials(server_public_key,
@@ -903,10 +903,10 @@ def FinalizeRegistrationRequest(password, blind, response, server_identity, clie
   oprf_output = Finalize(password, blind, evaluated_element)
 
   stretched_oprf_output = Stretch(oprf_output)
-  randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
+  randomized_password = Extract("", concat(oprf_output, stretched_oprf_output))
 
   (envelope, client_public_key, masking_key, export_key) =
-    Store(randomized_pwd, response.server_public_key,
+    Store(randomized_password, response.server_public_key,
           server_identity, client_identity)
   Create RegistrationRecord record with (client_public_key, masking_key, envelope)
   return (record, export_key)
@@ -957,12 +957,12 @@ The protocol runs as shown below:
 ~~~
   Client                                         Server
  ------------------------------------------------------
-  ke1 = ClientInit(password)
+  ke1 = GenerateKE1(password)
 
                          ke1
               ------------------------->
 
-  ke2 = ServerInit(server_identity, server_private_key,
+  ke2 = GenerateKE2(server_identity, server_private_key,
                     server_public_key, record,
                     credential_identifier, oprf_seed, ke1)
 
@@ -971,7 +971,7 @@ The protocol runs as shown below:
 
     (ke3,
     session_key,
-    export_key) = ClientFinish(client_identity,
+    export_key) = GenerateKE3(client_identity,
                                server_identity, ke2)
 
                          ke3
@@ -1078,13 +1078,13 @@ in later sections:
 - `AuthClientStart`, `AuthServerRespond`, `AuthClientFinalize`, and `AuthServerFinalize`
   defined in {{ake-client}} and {{ake-server}}
 
-### ClientInit
+### GenerateKE1
 
-The `ClientInit` function begins the AKE protocol and produces the client's `KE1`
+The `GenerateKE1` function begins the AKE protocol and produces the client's `KE1`
 output for the server.
 
 ~~~
-ClientInit
+GenerateKE1
 
 State:
 - state, a ClientState structure.
@@ -1095,7 +1095,7 @@ Input:
 Output:
 - ke1, a KE1 message structure.
 
-def ClientInit(password):
+def GenerateKE1(password):
   request, blind = CreateCredentialRequest(password)
   state.password = password
   state.blind = blind
@@ -1103,13 +1103,13 @@ def ClientInit(password):
   return ke1
 ~~~
 
-### ServerInit
+### GenerateKE2
 
-The `ServerInit` function continues the AKE protocol by processing the client's `KE1` message
+The `GenerateKE2` function continues the AKE protocol by processing the client's `KE1` message
 and producing the server's `KE2` output.
 
 ~~~
-ServerInit
+GenerateKE2
 
 State:
 - state, a ServerState structure.
@@ -1129,7 +1129,7 @@ Input:
 Output:
 - ke2, a KE2 structure.
 
-def ServerInit(server_identity, server_private_key, server_public_key,
+def GenerateKE2(server_identity, server_private_key, server_public_key,
                record, credential_identifier, oprf_seed, ke1, client_identity):
   credential_response = CreateCredentialResponse(ke1.credential_request, server_public_key, record,
     credential_identifier, oprf_seed)
@@ -1139,14 +1139,14 @@ def ServerInit(server_identity, server_private_key, server_public_key,
   return ke2
 ~~~
 
-### ClientFinish
+### GenerateKE3
 
-The `ClientFinish` function completes the AKE protocol for the client and
+The `GenerateKE3` function completes the AKE protocol for the client and
 produces the client's `KE3` output for the server, as well as the `session_key`
 and `export_key` outputs from the AKE.
 
 ~~~
-ClientFinish
+GenerateKE3
 
 State:
 - state, a ClientState structure.
@@ -1163,7 +1163,7 @@ Output:
 - session_key, the session's shared secret.
 - export_key, an additional client key.
 
-def ClientFinish(client_identity, server_identity, ke2):
+def GenerateKE3(client_identity, server_identity, ke2):
   (client_private_key, server_public_key, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
@@ -1367,16 +1367,16 @@ def RecoverCredentials(password, blind, response,
 
   oprf_output = Finalize(password, blind, evaluated_element)
   stretched_oprf_output = Stretch(oprf_output)
-  randomized_pwd = Extract("", concat(oprf_output, stretched_oprf_output))
+  randomized_password = Extract("", concat(oprf_output, stretched_oprf_output))
 
-  masking_key = Expand(randomized_pwd, "MaskingKey", Nh)
+  masking_key = Expand(randomized_password, "MaskingKey", Nh)
   credential_response_pad = Expand(masking_key,
                                    concat(response.masking_nonce, "CredentialResponsePad"),
                                    Npk + Nn + Nm)
   concat(server_public_key, envelope) = xor(credential_response_pad,
                                               response.masked_response)
   (client_private_key, export_key) =
-    Recover(randomized_pwd, server_public_key, envelope,
+    Recover(randomized_password, server_public_key, envelope,
             server_identity, client_identity)
 
   return (client_private_key, server_public_key, export_key)
@@ -2382,7 +2382,7 @@ client_public_key: 2ec892bdbf9b3e2ea834be9eb11f5d187e64ba661ec041c0a3
 b66db8b7d6cc30
 auth_key: 6cd32316f18d72a9a927a83199fa030663a38ce0c11fbaef82aa9003773
 0494fc555c4d49506284516edd1628c27965b7555a4ebfed2223199f6c67966dde822
-randomized_pwd: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
+randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
 eb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf150031d
 1435d9
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
@@ -2501,7 +2501,7 @@ client_public_key: 2ec892bdbf9b3e2ea834be9eb11f5d187e64ba661ec041c0a3
 b66db8b7d6cc30
 auth_key: 6cd32316f18d72a9a927a83199fa030663a38ce0c11fbaef82aa9003773
 0494fc555c4d49506284516edd1628c27965b7555a4ebfed2223199f6c67966dde822
-randomized_pwd: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
+randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
 eb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf150031d
 1435d9
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
@@ -2617,7 +2617,7 @@ client_public_key: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e70
 3031e09114ba2be0
 auth_key: 5bd4be1602516092dc5078f8d699f5721dc1720a49fb80d8e5c16377abd
 0987b
-randomized_pwd: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
+randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
 b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51fe155412cb432898eda63529c3b2633521f770cccbd25d7548a4e20665a45e65a
@@ -2724,7 +2724,7 @@ client_public_key: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e70
 3031e09114ba2be0
 auth_key: 5bd4be1602516092dc5078f8d699f5721dc1720a49fb80d8e5c16377abd
 0987b
-randomized_pwd: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
+randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
 b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51f4d7773a36a208a866301dbb2858e40dc5638017527cf91aef32d3848eebe0971
