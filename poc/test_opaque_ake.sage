@@ -145,9 +145,8 @@ def run_test_vector(params, seed):
         reg_request, metadata = core.create_registration_request(password)
         reg_response, kU = core.create_registration_response(reg_request, server_public_key_bytes, oprf_seed, credential_identifier)
         record, export_key = core.finalize_request(password, metadata, reg_response, client_identity, server_identity)
-        client_public_key_enc = record.client_public_key
-        client_public_key = group.deserialize(client_public_key_enc)
-        client_public_key_bytes = client_public_key_enc
+        client_public_key_bytes = record.client_public_key
+        client_public_key = group.deserialize(client_public_key_bytes)
     else:
         fake_client_private_key = ZZ(group.random_scalar(core_rng))
         fake_client_public_key = fake_client_private_key * group.generator()

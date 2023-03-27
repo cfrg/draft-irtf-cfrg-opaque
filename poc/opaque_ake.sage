@@ -116,37 +116,31 @@ class OPAQUE3DH(KeyExchange):
 
         return self.serialized_request + ke1.serialize()
 
-    def transcript_hasher(self, serialized_request, serialized_response , client_identity, client_public_key, client_nonce, epkU_bytes, server_identity, server_public_key_bytes, server_nonce, epkS_bytes):
+    def transcript_hasher(self, serialized_request, serialized_response, cleartext_credentials, client_nonce, epkU_bytes, server_nonce, epkS_bytes):
         hasher = self.config.hash()
-        hasher.update(_as_bytes("RFCXXXX")) # RFCXXXX
-        hasher.update(encode_vector(self.config.context)) # context
-        if client_identity: # client identity
-            hasher.update(encode_vector_len(client_identity, 2))
-        else:
-            hasher.update(encode_vector_len(self.config.group.serialize(client_public_key), 2))
-        hasher.update(serialized_request)          # ke1: cred request
-        hasher.update(client_nonce)                            # ke1: client nonce
-        hasher.update(epkU_bytes) # ke1: client keyshare
-        if server_identity: # server identity
-            hasher.update(encode_vector_len(server_identity, 2))
-        else:
-            hasher.update(encode_vector_len(server_public_key_bytes, 2))
-        hasher.update(serialized_response)              # ke2: cred response
-        hasher.update(server_nonce)                            # ke2: server nonce
-        hasher.update(epkS_bytes) # ke2: server keyshare
+        hasher.update(_as_bytes("RFCXXXX"))                                         # RFCXXXX
+        hasher.update(encode_vector(self.config.context))                           # context
+        hasher.update(encode_vector_len(cleartext_credentials.client_identity, 2))  # client_identity
+        hasher.update(serialized_request)                                           # ke1: cred request
+        hasher.update(client_nonce)                                                 # ke1: client nonce
+        hasher.update(epkU_bytes)                                                   # ke1: client keyshare
+        hasher.update(encode_vector_len(cleartext_credentials.server_identity, 2))  # server identity
+        hasher.update(serialized_response)                                          # ke2: cred response
+        hasher.update(server_nonce)                                                 # ke2: server nonce
+        hasher.update(epkS_bytes)                                                   # ke2: server keyshare
 
         self.hasher = hasher
 
         return hasher.digest()
 
-    def auth_server_respond(self, cred_request, cred_response, ke1, server_identity, server_public_key_bytes, server_private_key, client_identity, client_public_key):
+    def auth_server_respond(self, cred_request, cred_response, ke1, cleartext_credentials, server_private_key, client_public_key):
         self.server_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         self.eskS = ZZ(self.config.group.random_scalar(self.rng))
         self.epkS = self.eskS * self.config.group.generator()
         epkS_bytes = self.config.group.serialize(self.epkS)
         epkU = self.config.group.deserialize(ke1.epkU)
 
-        transcript_hash = self.transcript_hasher(cred_request.serialize(), cred_response.serialize(), client_identity, client_public_key, ke1.client_nonce, ke1.epkU, server_identity, server_public_key_bytes, self.server_nonce, epkS_bytes)
+        transcript_hash = self.transcript_hasher(cred_request.serialize(), cred_response.serialize(), cleartext_credentials, ke1.client_nonce, ke1.epkU, self.server_nonce, epkS_bytes)
 
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
         dh_components = TripleDHComponents(epkU, self.eskS, epkU, server_private_key, client_public_key, self.eskS)
@@ -173,14 +167,16 @@ class OPAQUE3DH(KeyExchange):
         serialized_response = cred_response.serialize()
         self.masking_nonce = cred_response.masking_nonce
 
-        ake2 = self.auth_server_respond(cred_request, cred_response, ke1, server_identity, server_public_key_bytes, server_private_key, client_identity, client_public_key)
+        cleartext_credentials = self.core.create_cleartext_credentials(server_public_key_bytes, self.config.group.serialize(client_public_key), server_identity, client_identity)
+        ake2 = self.auth_server_respond(cred_request, cred_response, ke1, cleartext_credentials, server_private_key, client_public_key)
 
         return serialized_response + ake2.serialize()
 
-    def auth_client_finalize(self, cred_response, ake2, client_identity, client_private_key, client_public_key, server_identity, server_public_key, server_public_key_bytes):
-        transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), client_identity, client_public_key, self.client_nonce, self.epkU_bytes, server_identity, server_public_key_bytes, ake2.server_nonce, ake2.epkS)
+    def auth_client_finalize(self, cred_response, ake2, cleartext_credentials, client_private_key, client_public_key):
+        transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), cleartext_credentials, self.client_nonce, self.epkU_bytes, ake2.server_nonce, ake2.epkS)
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
+        server_public_key = self.config.group.deserialize(cleartext_credentials.server_public_key_bytes)
         epkS = self.config.group.deserialize(ake2.epkS)
         dh_components = TripleDHComponents(epkS, self.eskU, server_public_key, self.eskU, epkS, client_private_key)
         server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
@@ -204,15 +200,13 @@ class OPAQUE3DH(KeyExchange):
     def generate_ke3(self, msg, client_identity, client_public_key, server_identity):
         cred_response, offset = deserialize_credential_response(self.config, msg)
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
-        client_private_key_bytes, server_public_key_bytes, export_key = self.core.recover_credentials(self.password, self.cred_metadata, cred_response, client_identity, server_identity)
+        client_private_key_bytes, cleartext_credentials, export_key = self.core.recover_credentials(self.password, self.cred_metadata, cred_response, client_identity, server_identity)
         client_private_key = OS2IP(client_private_key_bytes)
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             client_private_key = OS2IP_le(client_private_key_bytes)
-        server_public_key = self.config.group.deserialize(server_public_key_bytes)
-
         self.export_key = export_key
 
-        ke3 = self.auth_client_finalize(cred_response, ake2, client_identity, client_private_key, client_public_key, server_identity, server_public_key, server_public_key_bytes)
+        ke3 = self.auth_client_finalize(cred_response, ake2, cleartext_credentials, client_private_key, client_public_key)
 
         return ke3.serialize()
 

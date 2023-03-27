@@ -14,13 +14,13 @@ except ImportError as e:
 #   uint8 client_identity<1..2^16-1>;
 # } CleartextCredentials;
 class CleartextCredentials(object):
-    def __init__(self, server_public_key, client_identity, server_identity):
-        self.server_public_key = server_public_key
+    def __init__(self, server_public_key_bytes, client_identity, server_identity):
+        self.server_public_key_bytes = server_public_key_bytes
         self.client_identity = client_identity
         self.server_identity = server_identity
 
     def serialize(self):
-        return self.server_public_key + encode_vector(self.server_identity) + encode_vector(self.client_identity)
+        return self.server_public_key_bytes + encode_vector(self.server_identity) + encode_vector(self.client_identity)
 
 class Credentials(object):
     def __init__(self, client_private_key, client_public_key, client_identity = None, server_identity = None):
