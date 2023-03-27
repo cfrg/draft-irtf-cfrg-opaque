@@ -78,8 +78,8 @@ class OPAQUECore(object):
         pk_bytes = self.config.group.serialize(client_public_key)
         client_public_key = self.config.group.serialize(client_public_key)
 
-        cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, idS, idU)
-        auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_creds.serialize())
+        cleartext_credentials = self.create_cleartext_credentials(server_public_key, client_public_key, idS, idU)
+        auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_credentials.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
         self.auth_key = auth_key
@@ -137,12 +137,12 @@ class OPAQUECore(object):
         self.credential_export_key = export_key
         
         client_private_key, client_public_key = self.recover_keys(random_pwd, envelope.nonce)
-        cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
-        expected_tag = self.config.mac.mac(auth_key, envelope.nonce + cleartext_creds.serialize())
+        cleartext_credentials = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
+        expected_tag = self.config.mac.mac(auth_key, envelope.nonce + cleartext_credentials.serialize())
         if expected_tag != envelope.auth_tag:
             raise Exception("Invalid tag")
 
-        return client_private_key, export_key
+        return client_private_key, cleartext_credentials, export_key
 
     def recover_credentials(self, pwdU, blind, response, idU = None, idS = None):
         random_pwd = self.derive_random_pwd(pwdU, response, blind)
@@ -159,9 +159,9 @@ class OPAQUECore(object):
         self.credential_decryption_pad = credential_response_pad
         self.credential_masking_key = masking_key
 
-        skU, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
+        skU, cleartext_credentials, export_key = self.recover_envelope(random_pwd, server_public_key, idU, idS, envelope)
 
-        return skU, server_public_key, export_key
+        return skU, cleartext_credentials, export_key
 
 class KeyStretchingFunction(object):
     def __init__(self, name, stretch):

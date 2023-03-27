@@ -176,11 +176,11 @@ class OPAQUE3DH(KeyExchange):
         cred_response, offset = deserialize_credential_response(self.config, msg)
         serialized_response = cred_response.serialize()
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
-        skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, idU, idS)
+        skU_bytes, cleartext_credentials, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, idU, idS)
         skU = OS2IP(skU_bytes)
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)
-        pkS = self.config.group.deserialize(pkS_bytes)
+        pkS = self.config.group.deserialize(cleartext_credentials.server_public_key)
 
         eskU = self.eskU
         epkU = self.epkU
@@ -192,17 +192,11 @@ class OPAQUE3DH(KeyExchange):
         hasher = self.config.hash()
         hasher.update(_as_bytes("RFCXXXX")) # RFCXXXX
         hasher.update(encode_vector(self.config.context)) # context
-        if idU: # client identity
-            hasher.update(encode_vector_len(idU, 2))
-        else:
-            hasher.update(encode_vector_len(self.config.group.serialize(pkU), 2))
+        hasher.update(encode_vector_len(cleartext_credentials.client_identity, 2)) # client identity
         hasher.update(self.serialized_request)           # ke1: cred request
         hasher.update(self.nonceU)                       # ke1: client nonce
         hasher.update(self.config.group.serialize(epkU)) # ke1: client keyshare
-        if idS: # server identity
-            hasher.update(encode_vector_len(idS, 2))
-        else:
-            hasher.update(encode_vector_len(self.config.group.serialize(pkS), 2))
+        hasher.update(encode_vector_len(cleartext_credentials.server_identity, 2)) # server identity
         hasher.update(serialized_response)               # ke2: cred response
         hasher.update(nonceS)                            # ke2: server nonce
         hasher.update(self.config.group.serialize(epkS)) # ke2: server keyshare
