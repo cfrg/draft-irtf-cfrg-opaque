@@ -1908,14 +1908,15 @@ implementation considerations.
   of the derivation of OPRF keys via a single PRF. As long as the derivation
   of different OPRF keys from a single OPRF has different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
-- {{JKX18}} comments on a strong defense against essentially the only
+- {{JKX18}} comments on a very strong defense against essentially the only
   inherent remaining weakness of a "strong aPAKE", namely, offline
   dictionary attacks upon server compromise or honest-but-curious servers.
   The authors suggest implementing the OPRF phase as a Threshold OPRF {{TOPPSS}},
   effectively forcing an attacker to act online or to control at least t key
   shares, where t is the threshold number of shares necessary to recombine
-  the secret OPRF key and run an offline dictionary attack. This implementation only affects the server and changes
-  nothing for the client. However, this mechanism is out of scope for this document.
+  the secret OPRF key, and only then be able to run an offline dictionary attack.
+  This implementation only affects the server and change nothing for the client.
+  However, this mechanism is out of scope for this document.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
