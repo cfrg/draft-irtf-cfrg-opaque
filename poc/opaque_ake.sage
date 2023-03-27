@@ -218,7 +218,7 @@ class OPAQUE3DH(KeyExchange):
 
     def auth_server_finish(self, msg):
         ke3 = deserialize_tripleDH_finish(self.config, msg)
-        
+
         client_mac_key = self.client_mac_key
         self.hasher.update(self.server_mac)
         transcript_hash = self.hasher.digest()

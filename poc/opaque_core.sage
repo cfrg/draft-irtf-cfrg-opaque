@@ -79,7 +79,7 @@ class OPAQUECore(object):
         client_public_key = self.config.group.serialize(client_public_key)
 
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
-        auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_creds.serialize())
+        auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_credentials.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
         self.auth_key = auth_key
@@ -138,7 +138,7 @@ class OPAQUECore(object):
         
         client_private_key, client_public_key = self.recover_keys(randomized_password, envelope.nonce)
         cleartext_creds = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
-        expected_tag = self.config.mac.mac(auth_key, envelope.nonce + cleartext_creds.serialize())
+        expected_tag = self.config.mac.mac(auth_key, envelope.nonce + cleartext_credentials.serialize())
         if expected_tag != envelope.auth_tag:
             raise Exception("Invalid tag")
 
@@ -161,7 +161,7 @@ class OPAQUECore(object):
 
         client_private_key, export_key = self.recover_envelope(randomized_password, server_public_key, client_identity, server_identity, envelope)
 
-        return client_private_key, server_public_key, export_key
+        return client_private_key, cleartext_credentials, server_public_key, export_key
 
 class KeyStretchingFunction(object):
     def __init__(self, name, stretch):
