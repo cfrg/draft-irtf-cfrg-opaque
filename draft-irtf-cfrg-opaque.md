@@ -1354,7 +1354,7 @@ Input:
 - client_identity, The encoded client identity.
 
 Output:
-- client_private_key, the the encoded client private key for the AKE protocol.
+- client_private_key, the encoded client private key for the AKE protocol.
 - cleartext_credentials, a CleartextCredentials structure.
 - server_public_key, the public key of the server.
 - export_key, an additional client key.

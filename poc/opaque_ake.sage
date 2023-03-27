@@ -106,15 +106,6 @@ class OPAQUE3DH(KeyExchange):
 
             return TripleDHMessageInit(self.client_nonce, self.epkU_bytes)
 
-    def generate_ke1(self, pwdU):
-        cred_request, cred_metadata = self.core.create_credential_request(pwdU)
-        serialized_request = cred_request.serialize()
-
-        nonceU = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        eskU = ZZ(self.config.group.random_scalar(self.rng))
-        epkU = eskU * self.config.group.generator()
-        ke1 = TripleDHMessageInit(nonceU, self.config.group.serialize(epkU))
-
     def generate_ke1(self, password):
         cred_request, cred_metadata = self.core.create_credential_request(password)
         self.serialized_request = cred_request.serialize()
