@@ -101,10 +101,10 @@ class OPAQUE3DH(KeyExchange):
 
     def auth_client_start(self):
         self.client_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        self.eskU = ZZ(self.config.group.random_scalar(self.rng))
-        self.epkU_bytes = self.config.group.serialize(self.eskU * self.config.group.generator())
+        self.client_private_keyshare = ZZ(self.config.group.random_scalar(self.rng))
+        self.client_public_keyshare_bytes = self.config.group.serialize(self.client_private_keyshare * self.config.group.generator())
 
-        return TripleDHMessageInit(self.client_nonce, self.epkU_bytes)
+        return TripleDHMessageInit(self.client_nonce, self.client_public_keyshare_bytes)
 
     def generate_ke1(self, password):
         cred_request, cred_metadata = self.core.create_credential_request(password)
@@ -116,18 +116,18 @@ class OPAQUE3DH(KeyExchange):
 
         return self.serialized_request + ke1.serialize()
 
-    def transcript_hasher(self, serialized_request, serialized_response, cleartext_credentials, client_nonce, epkU_bytes, server_nonce, epkS_bytes):
+    def transcript_hasher(self, serialized_request, serialized_response, cleartext_credentials, client_nonce, client_public_keyshare_bytes, server_nonce, server_public_keyshare_bytes):
         hasher = self.config.hash()
         hasher.update(_as_bytes("RFCXXXX"))                                         # RFCXXXX
         hasher.update(encode_vector(self.config.context))                           # context
         hasher.update(encode_vector_len(cleartext_credentials.client_identity, 2))  # client_identity
         hasher.update(serialized_request)                                           # ke1: cred request
         hasher.update(client_nonce)                                                 # ke1: client nonce
-        hasher.update(epkU_bytes)                                                   # ke1: client keyshare
+        hasher.update(client_public_keyshare_bytes)                                 # ke1: client keyshare
         hasher.update(encode_vector_len(cleartext_credentials.server_identity, 2))  # server identity
         hasher.update(serialized_response)                                          # ke2: cred response
         hasher.update(server_nonce)                                                 # ke2: server nonce
-        hasher.update(epkS_bytes)                                                   # ke2: server keyshare
+        hasher.update(server_public_keyshare_bytes)                                 # ke2: server keyshare
 
         self.hasher = hasher
 
@@ -135,19 +135,19 @@ class OPAQUE3DH(KeyExchange):
 
     def auth_server_respond(self, cred_request, cred_response, ke1, cleartext_credentials, server_private_key, client_public_key):
         self.server_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        self.eskS = ZZ(self.config.group.random_scalar(self.rng))
-        self.epkS = self.eskS * self.config.group.generator()
-        epkS_bytes = self.config.group.serialize(self.epkS)
-        epkU = self.config.group.deserialize(ke1.epkU)
+        self.server_private_keyshare = ZZ(self.config.group.random_scalar(self.rng))
+        self.server_public_keyshare = self.server_private_keyshare * self.config.group.generator()
+        server_public_keyshare_bytes = self.config.group.serialize(self.server_public_keyshare)
+        client_public_keyshare = self.config.group.deserialize(ke1.client_public_keyshare)
 
-        transcript_hash = self.transcript_hasher(cred_request.serialize(), cred_response.serialize(), cleartext_credentials, ke1.client_nonce, ke1.epkU, self.server_nonce, epkS_bytes)
+        transcript_hash = self.transcript_hasher(cred_request.serialize(), cred_response.serialize(), cleartext_credentials, ke1.client_nonce, ke1.client_public_keyshare, self.server_nonce, server_public_keyshare_bytes)
 
         # K3dh = epkU^eskS || epkU^skS || pkU^eskS
-        dh_components = TripleDHComponents(epkU, self.eskS, epkU, server_private_key, client_public_key, self.eskS)
-        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
+        dh_components = TripleDHComponents(client_public_keyshare, self.server_private_keyshare, client_public_keyshare, server_private_key, client_public_key, self.server_private_keyshare)
 
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
         mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
-        ake2 = TripleDHMessageRespond(self.server_nonce, epkS_bytes, mac)
+        ake2 = TripleDHMessageRespond(self.server_nonce, server_public_keyshare_bytes, mac)
 
         self.server_mac_key = server_mac_key
         self.ake2 = ake2
@@ -173,14 +173,14 @@ class OPAQUE3DH(KeyExchange):
         return serialized_response + ake2.serialize()
 
     def auth_client_finalize(self, cred_response, ake2, cleartext_credentials, client_private_key, client_public_key):
-        transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), cleartext_credentials, self.client_nonce, self.epkU_bytes, ake2.server_nonce, ake2.epkS)
+        transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), cleartext_credentials, self.client_nonce, self.client_public_keyshare_bytes, ake2.server_nonce, ake2.server_public_keyshare_bytes)
+        server_public_key = self.config.group.deserialize(cleartext_credentials.server_public_key_bytes)
+        server_public_keyshare = self.config.group.deserialize(ake2.server_public_keyshare_bytes)
 
         # K3dh = epkS^eskU || pkS^eskU || epkS^skU
-        server_public_key = self.config.group.deserialize(cleartext_credentials.server_public_key_bytes)
-        epkS = self.config.group.deserialize(ake2.epkS)
-        dh_components = TripleDHComponents(epkS, self.eskU, server_public_key, self.eskU, epkS, client_private_key)
-        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
+        dh_components = TripleDHComponents(server_public_keyshare, self.client_private_keyshare, server_public_key, self.client_private_keyshare, server_public_keyshare, client_private_key)
 
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
         server_mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
         assert server_mac == ake2.mac
 
@@ -224,46 +224,46 @@ class OPAQUE3DH(KeyExchange):
 
 # struct {
 #      opaque client_nonce[32];
-#      opaque epkU[LK];
+#      opaque client_public_keyshare[LK];
 #  } KE1M;
 def deserialize_tripleDH_init(config, data):
     client_nonce = data[0:OPAQUE_NONCE_LENGTH]
-    epkU_bytes = data[OPAQUE_NONCE_LENGTH:]
+    client_public_keyshare_bytes = data[OPAQUE_NONCE_LENGTH:]
     length = config.oprf_suite.group.element_byte_length()
-    if len(epkU_bytes) != length:
-        raise Exception("Invalid epkU length: %d %d" % (len(epkU_bytes), length))
-    return TripleDHMessageInit(client_nonce, epkU_bytes)
+    if len(client_public_keyshare_bytes) != length:
+        raise Exception("Invalid client_public_keyshare length: %d %d" % (len(client_public_keyshare_bytes), length))
+    return TripleDHMessageInit(client_nonce, client_public_keyshare_bytes)
 
 class TripleDHMessageInit(object):
-    def __init__(self, client_nonce, epkU):
+    def __init__(self, client_nonce, client_public_keyshare):
         self.client_nonce = client_nonce
-        self.epkU = epkU
+        self.client_public_keyshare = client_public_keyshare
 
     def serialize(self):
-        return self.client_nonce + self.epkU
+        return self.client_nonce + self.client_public_keyshare
 
 # struct {
 #      opaque server_nonce[32];
-#      opaque epkS[LK];
+#      opaque server_public_keyshare[LK];
 #      opaque mac[LH];
 #  } KE2M;
 def deserialize_tripleDH_respond(config, data):
     length = config.oprf_suite.group.element_byte_length()
     server_nonce = data[0:OPAQUE_NONCE_LENGTH]
-    epkS = data[OPAQUE_NONCE_LENGTH:OPAQUE_NONCE_LENGTH+length]
+    server_public_keyshare_bytes = data[OPAQUE_NONCE_LENGTH:OPAQUE_NONCE_LENGTH+length]
     mac = data[OPAQUE_NONCE_LENGTH+length:]
     if len(mac) != config.hash().digest_size:
         raise Exception("Invalid MAC length: %d %d" % (len(mac), config.hash().digest_size))
-    return TripleDHMessageRespond(server_nonce, epkS, mac)
+    return TripleDHMessageRespond(server_nonce, server_public_keyshare_bytes, mac)
 
 class TripleDHMessageRespond(object):
-    def __init__(self, server_nonce, epkS, mac):
+    def __init__(self, server_nonce, server_public_keyshare_bytes, mac):
         self.server_nonce = server_nonce
-        self.epkS = epkS
+        self.server_public_keyshare_bytes = server_public_keyshare_bytes
         self.mac = mac
 
     def serialize(self):
-        return self.server_nonce + self.epkS + self.mac
+        return self.server_nonce + self.server_public_keyshare_bytes + self.mac
 
 # struct {
 #      opaque mac[LH];

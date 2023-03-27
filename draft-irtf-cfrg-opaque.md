@@ -1013,13 +1013,13 @@ and `AuthResponse`.
 ~~~
 struct {
   uint8 client_nonce[Nn];
-  uint8 client_keyshare[Npk];
+  uint8 client_public_keyshare[Npk];
 } AuthRequest;
 ~~~
 
 client_nonce: A fresh randomly generated nonce of length `Nn`.
 
-client_keyshare: A serialized client ephemeral public key of fixed size `Npk`.
+client_public_keyshare: A serialized client ephemeral public key of fixed size `Npk`.
 
 ~~~
 struct {
@@ -1035,14 +1035,14 @@ auth_request: An `AuthRequest` structure.
 ~~~
 struct {
   uint8 server_nonce[Nn];
-  uint8 server_keyshare[Npk];
+  uint8 server_public_keyshare[Npk];
   uint8 server_mac[Nm];
 } AuthResponse;
 ~~~
 
 server_nonce: A fresh randomly generated nonce of length `Nn`.
 
-server_keyshare: A server ephemeral public key of fixed size `Npk`, where `Npk`
+server_public_keyshare: A server ephemeral public key of fixed size `Npk`, where `Npk`
 depends on the corresponding prime order group.
 
 server_mac: An authentication tag computed over the handshake transcript
@@ -1134,8 +1134,10 @@ def GenerateKE2(server_identity, server_private_key, server_public_key,
                record, credential_identifier, oprf_seed, ke1, client_identity):
   credential_response = CreateCredentialResponse(ke1.credential_request, server_public_key, record,
     credential_identifier, oprf_seed)
-  auth_response = AuthServerRespond(server_identity, server_private_key,
-    client_identity, record.client_public_key, ke1, credential_response)
+  cleartext_credentials = CreateCleartextCredentials(server_public_key,
+                      record.client_public_key, server_identity, client_identity)
+  auth_response = AuthServerRespond(cleartext_credentials, server_private_key,
+                      record.client_public_key, ke1, credential_response)
   Create KE2 ke2 with (credential_response, auth_response)
   return ke2
 ~~~
@@ -1470,7 +1472,7 @@ Input:
   to server_public_key if not specified.
 - credential_response, the corresponding field on the KE2 structure.
 - server_nonce, the corresponding field on the AuthResponse structure.
-- server_keyshare, the corresponding field on the AuthResponse structure.
+- server_public_keyshare, the corresponding field on the AuthResponse structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1483,7 +1485,7 @@ def Preamble(client_identity, ke1, server_identity, ke2):
                      I2OSP(len(server_identity), 2), server_identity,
                      credential_response,
                      server_nonce,
-                     server_keyshare)
+                     server_public_keyshare)
   return preamble
 ~~~
 
@@ -1535,8 +1537,8 @@ Output:
 
 def AuthClientStart(credential_request):
   client_nonce = random(Nn)
-  (client_secret, client_keyshare) = GenerateAuthKeyPair()
-  Create AuthRequest auth_request with (client_nonce, client_keyshare)
+  (client_secret, client_public_keyshare) = GenerateAuthKeyPair()
+  Create AuthRequest auth_request with (client_nonce, client_public_keyshare)
   Create KE1 ke1 with (credential_request, auth_request)
   state.client_secret = client_secret
   state.ke1 = ke1
@@ -1567,9 +1569,9 @@ Exceptions:
 
 def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
 
-  dh1 = SerializeElement(state.client_secret * ke2.auth_response.server_keyshare)
+  dh1 = SerializeElement(state.client_secret * ke2.auth_response.server_public_keyshare)
   dh2 = SerializeElement(state.client_secret * cleartext_credentials.server_public_key)
-  dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_keyshare)
+  dh3 = SerializeElement(client_private_key  * ke2.auth_response.server_public_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(cleartext_credentials.client_identity,
@@ -1577,7 +1579,7 @@ def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
                       cleartext_credentials.server_identity,
                       ke2.credential_response,
                       ke2.auth_response.server_nonce,
-                      ke2.auth_response.server_keyshare)
+                      ke2.auth_response.server_public_keyshare)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
   if !ct_equal(ke2.server_mac, expected_server_mac),
@@ -1602,30 +1604,26 @@ State:
 - state, a ServerAkeState structure.
 
 Input:
-- server_identity, the optional encoded server identity, which is set to
-  server_public_key if not specified.
+- cleartext_credentials, a CleartextCredentials structure.
 - server_private_key, the server's private key.
-- client_identity, the optional encoded client identity, which is set to
-  client_public_key if not specified.
 - client_public_key, the client's public key.
 - ke1, a KE1 message structure.
 
 Output:
 - auth_response, an AuthResponse structure.
 
-def AuthServerRespond(server_identity, server_private_key, client_identity,
-                      client_public_key, ke1, credential_response):
+def AuthServerRespond(cleartext_credentials, server_private_key, client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
-  (server_private_keyshare, server_keyshare) = GenerateAuthKeyPair()
-  preamble = Preamble(client_identity,
+  (server_private_keyshare, server_public_keyshare) = GenerateAuthKeyPair()
+  preamble = Preamble(cleartext_credentials.client_identity,
                       ke1,
-                      server_identity,
+                      cleartext_credentials.server_identity,
                       credential_response,
                       server_nonce,
-                      server_keyshare)
+                      server_public_keyshare)
 
-  dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_keyshare)
-  dh2 = SerializeElement(server_private_key * ke1.auth_request.client_keyshare)
+  dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_public_keyshare)
+  dh2 = SerializeElement(server_private_key * ke1.auth_request.client_public_keyshare)
   dh3 = SerializeElement(server_private_keyshare * client_public_key)
   ikm = concat(dh1, dh2, dh3)
 
@@ -1635,7 +1633,7 @@ def AuthServerRespond(server_identity, server_private_key, client_identity,
 
   state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
-  Create AuthResponse auth_response with (server_nonce, server_keyshare, server_mac)
+  Create AuthResponse auth_response with (server_nonce, server_public_keyshare, server_mac)
   return auth_response
 ~~~
 
@@ -2243,7 +2241,7 @@ preamble = concat("HMQV",
                   I2OSP(len(server_identity), 2), server_identity,
                   KE2.credential_response,
                   KE2.auth_response.server_nonce,
-                  KE2.auth_response.server_keyshare)
+                  KE2.auth_response.server_public_keyshare)
 ~~~
 
 Second, the IKM derivation would change. Assuming HMQV is instantiated with a cyclic
@@ -2357,10 +2355,8 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1acc69c94d
-d48497fe4028
-client_keyshare: 0c3a00c961fead8a16f818929cc976f0475e4f723519318b96f4
-947a7a5f9663
+server_public_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1ac
+c69c94dd48497fe4028
 server_private_keyshare: 2e842960258a95e28bcfef489cffd19d8ec99cc1375d
 840f96936da7dbb0b40d
 client_private_keyshare: 22c919134c9bdd9dc0c5ef3450f18b54820f43f646a9
@@ -2378,9 +2374,9 @@ client_public_key: 2ec892bdbf9b3e2ea834be9eb11f5d187e64ba661ec041c0a3
 b66db8b7d6cc30
 auth_key: 6cd32316f18d72a9a927a83199fa030663a38ce0c11fbaef82aa9003773
 0494fc555c4d49506284516edd1628c27965b7555a4ebfed2223199f6c67966dde822
-randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
-eb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf150031d
-1435d9
+randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7
+d329beb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf15
+0031d1435d9
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
 8dfecb9dbe7d48cf714fc3533becab6faf60b783c94d258477eb74ecc453413bf61c5
 3fd58f0fb3c1175410b674c02e1b59b2d729a865b709db3dc4ee2bb45703d5a8
@@ -2476,10 +2472,8 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1acc69c94d
-d48497fe4028
-client_keyshare: 0c3a00c961fead8a16f818929cc976f0475e4f723519318b96f4
-947a7a5f9663
+server_public_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1ac
+c69c94dd48497fe4028
 server_private_keyshare: 2e842960258a95e28bcfef489cffd19d8ec99cc1375d
 840f96936da7dbb0b40d
 client_private_keyshare: 22c919134c9bdd9dc0c5ef3450f18b54820f43f646a9
@@ -2497,9 +2491,9 @@ client_public_key: 2ec892bdbf9b3e2ea834be9eb11f5d187e64ba661ec041c0a3
 b66db8b7d6cc30
 auth_key: 6cd32316f18d72a9a927a83199fa030663a38ce0c11fbaef82aa9003773
 0494fc555c4d49506284516edd1628c27965b7555a4ebfed2223199f6c67966dde822
-randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7d329b
-eb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf150031d
-1435d9
+randomized_password: aac48c25ab036e30750839d31d6e73007344cb1155289fb7
+d329beb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf15
+0031d1435d9
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
 8dfec1ac902dc5589e9a5f0de56ad685ea8486210ef41449cd4d8712828913c5d2b68
 0b2b3af4a26c765cff329bfb66d38ecf1d6cfa9e7a73c222c6efe0d9520f7d7c
@@ -2592,10 +2586,8 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f
 91fdaeeb1
-server_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d11e2032c
-e19b1832ae8e0f
-client_keyshare: 03493f36ca12467d1f5eaaabea67ca31377c4869c1e9a62346b6
-f01a991624b95d
+server_public_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d1
+1e2032ce19b1832ae8e0f
 server_private_keyshare: 9addab838c920fa7044f3a46b91ecaea24b0e7203992
 8ee7d4c37a5b9bc17349
 client_private_keyshare: 89d5a7e18567f255748a86beac13913df755a5adf776
@@ -2613,8 +2605,8 @@ client_public_key: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e70
 3031e09114ba2be0
 auth_key: 5bd4be1602516092dc5078f8d699f5721dc1720a49fb80d8e5c16377abd
 0987b
-randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
-b9382258fb0
+randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa3
+19151b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51fe155412cb432898eda63529c3b2633521f770cccbd25d7548a4e20665a45e65a
 handshake_secret: c59197dd9269abfdb3037ea1c203a97627e2c0aa142000d1c3f
@@ -2699,10 +2691,8 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f
 91fdaeeb1
-server_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d11e2032c
-e19b1832ae8e0f
-client_keyshare: 03493f36ca12467d1f5eaaabea67ca31377c4869c1e9a62346b6
-f01a991624b95d
+server_public_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d1
+1e2032ce19b1832ae8e0f
 server_private_keyshare: 9addab838c920fa7044f3a46b91ecaea24b0e7203992
 8ee7d4c37a5b9bc17349
 client_private_keyshare: 89d5a7e18567f255748a86beac13913df755a5adf776
@@ -2720,8 +2710,8 @@ client_public_key: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e70
 3031e09114ba2be0
 auth_key: 5bd4be1602516092dc5078f8d699f5721dc1720a49fb80d8e5c16377abd
 0987b
-randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa319151
-b9382258fb0
+randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa3
+19151b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51f4d7773a36a208a866301dbb2858e40dc5638017527cf91aef32d3848eebe0971
 handshake_secret: 0ee4a82c4a34992f72bfbcb5d2ce64044477dfe200b9d8c92bf
@@ -2808,8 +2798,8 @@ server_public_key: 825f832667480f08b0c9069da5083ac4d0e9ee31b49c4e0310
 031fea04d52966
 server_nonce: 1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813
 055ae2d12
-server_keyshare: 5236e2e06d49f0b496db2a786f6ee1016f15b4fd6c0dbd95d6b1
-17055d914157
+server_public_keyshare: 5236e2e06d49f0b496db2a786f6ee1016f15b4fd6c0db
+d95d6b117055d914157
 server_private_keyshare: 6d8fba9741a357584770f85294430bce2252fe212a8a
 372152a73c7ffe414503
 masking_key: 39ebd51f0e39a07a1c2d2431995b0399bca9996c5d10014d6ebab445
@@ -2875,8 +2865,8 @@ server_public_key: 0221e034c0e202fe883dcfc96802a7624166fed4cfcab4ae30
 cf5f3290d01c88bf
 server_nonce: 1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813
 055ae2d12
-server_keyshare: 03f42965d5bcba2a590a49eb2418061effe40b5c29a34b8e5163
-e0ef32044b2e4c
+server_public_keyshare: 03f42965d5bcba2a590a49eb2418061effe40b5c29a34
+b8e5163e0ef32044b2e4c
 server_private_keyshare: 1a2a0ff27f3ca75221378a2a21fe5222ce0b439452f8
 70475857a34197ba8f6d
 masking_key: caecc6ccb4cae27cb54d8f3a1af1bac52a3d53107ce08497cdd362b1
