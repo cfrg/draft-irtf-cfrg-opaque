@@ -100,11 +100,11 @@ class OPAQUE3DH(KeyExchange):
         return server_mac_key, client_mac_key, session_key, handshake_secret
 
     def auth_client_start(self):
-            self.client_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-            self.eskU = ZZ(self.config.group.random_scalar(self.rng))
-            self.epkU_bytes = self.config.group.serialize(self.eskU * self.config.group.generator())
+        self.client_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
+        self.eskU = ZZ(self.config.group.random_scalar(self.rng))
+        self.epkU_bytes = self.config.group.serialize(self.eskU * self.config.group.generator())
 
-            return TripleDHMessageInit(self.client_nonce, self.epkU_bytes)
+        return TripleDHMessageInit(self.client_nonce, self.epkU_bytes)
 
     def generate_ke1(self, password):
         cred_request, cred_metadata = self.core.create_credential_request(password)
@@ -178,55 +178,55 @@ class OPAQUE3DH(KeyExchange):
         return serialized_response + ake2.serialize()
 
     def auth_client_finalize(self, cred_response, ake2, client_identity, client_private_key, client_public_key, server_identity, server_public_key, server_public_key_bytes):
-            transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), client_identity, client_public_key, self.client_nonce, self.epkU_bytes, server_identity, server_public_key_bytes, ake2.server_nonce, ake2.epkS)
+        transcript_hash = self.transcript_hasher(self.serialized_request, cred_response.serialize(), client_identity, client_public_key, self.client_nonce, self.epkU_bytes, server_identity, server_public_key_bytes, ake2.server_nonce, ake2.epkS)
 
-            # K3dh = epkS^eskU || pkS^eskU || epkS^skU
-            epkS = self.config.group.deserialize(ake2.epkS)
-            dh_components = TripleDHComponents(epkS, self.eskU, server_public_key, self.eskU, epkS, client_private_key)
-            server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
+        # K3dh = epkS^eskU || pkS^eskU || epkS^skU
+        epkS = self.config.group.deserialize(ake2.epkS)
+        dh_components = TripleDHComponents(epkS, self.eskU, server_public_key, self.eskU, epkS, client_private_key)
+        server_mac_key, client_mac_key, session_key, handshake_secret = self.derive_3dh_keys(dh_components, self.hasher.digest())
 
-            server_mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
-            assert server_mac == ake2.mac
+        server_mac = hmac.digest(server_mac_key, transcript_hash, self.config.hash)
+        assert server_mac == ake2.mac
 
-            self.session_key = session_key
-            self.server_mac_key = server_mac_key
-            self.client_mac_key = client_mac_key
-            self.handshake_secret = handshake_secret
+        self.session_key = session_key
+        self.server_mac_key = server_mac_key
+        self.client_mac_key = client_mac_key
+        self.handshake_secret = handshake_secret
 
-            # transcript3 == transcript2, plus server_mac
-            self.hasher.update(server_mac)
-            transcript_hash = self.hasher.digest()
+        # transcript3 == transcript2, plus server_mac
+        self.hasher.update(server_mac)
+        transcript_hash = self.hasher.digest()
 
-            client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
+        client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
 
-            return TripleDHMessageFinish(client_mac)
+        return TripleDHMessageFinish(client_mac)
 
-        def generate_ke3(self, msg, client_identity, client_public_key, server_identity):
-            cred_response, offset = deserialize_credential_response(self.config, msg)
-            ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
-            client_private_key_bytes, server_public_key_bytes, export_key = self.core.recover_credentials(self.password, self.cred_metadata, cred_response, client_identity, server_identity)
-            client_private_key = OS2IP(client_private_key_bytes)
-            if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
-                client_private_key = OS2IP_le(client_private_key_bytes)
-            server_public_key = self.config.group.deserialize(server_public_key_bytes)
+    def generate_ke3(self, msg, client_identity, client_public_key, server_identity):
+        cred_response, offset = deserialize_credential_response(self.config, msg)
+        ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
+        client_private_key_bytes, server_public_key_bytes, export_key = self.core.recover_credentials(self.password, self.cred_metadata, cred_response, client_identity, server_identity)
+        client_private_key = OS2IP(client_private_key_bytes)
+        if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
+            client_private_key = OS2IP_le(client_private_key_bytes)
+        server_public_key = self.config.group.deserialize(server_public_key_bytes)
 
-            self.export_key = export_key
+        self.export_key = export_key
 
-            ke3 = self.auth_client_finalize(cred_response, ake2, client_identity, client_private_key, client_public_key, server_identity, server_public_key, server_public_key_bytes)
+        ke3 = self.auth_client_finalize(cred_response, ake2, client_identity, client_private_key, client_public_key, server_identity, server_public_key, server_public_key_bytes)
 
-            return ke3.serialize()
+        return ke3.serialize()
 
-        def auth_server_finish(self, msg):
-            ke3 = deserialize_tripleDH_finish(self.config, msg)
+    def auth_server_finish(self, msg):
+        ke3 = deserialize_tripleDH_finish(self.config, msg)
 
-            client_mac_key = self.client_mac_key
-            self.hasher.update(self.server_mac)
-            transcript_hash = self.hasher.digest()
+        client_mac_key = self.client_mac_key
+        self.hasher.update(self.server_mac)
+        transcript_hash = self.hasher.digest()
 
-            client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
-            assert client_mac == ke3.mac
+        client_mac = hmac.digest(client_mac_key, transcript_hash, self.config.hash)
+        assert client_mac == ke3.mac
 
-            return self.session_key
+        return self.session_key
 
 # struct {
 #      opaque client_nonce[32];
