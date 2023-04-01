@@ -1908,8 +1908,7 @@ implementation considerations.
   of the derivation of OPRF keys via a single PRF. As long as the derivation
   of different OPRF keys from a single OPRF has different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
-- {{JKX18}} comments on a very strong defense against essentially the only
-  inherent remaining weakness of a "strong aPAKE", namely, offline
+- {{JKX18}} comments on a defense against offline
   dictionary attacks upon server compromise or honest-but-curious servers.
   The authors suggest implementing the OPRF phase as a Threshold OPRF {{TOPPSS}},
   effectively forcing an attacker to act online or to control at least t key
