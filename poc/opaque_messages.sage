@@ -14,20 +14,20 @@ except ImportError as e:
 #   uint8 client_identity<1..2^16-1>;
 # } CleartextCredentials;
 class CleartextCredentials(object):
-    def __init__(self, server_public_key, client_identity, server_identity):
-        self.server_public_key = server_public_key
+    def __init__(self, server_public_key_bytes, client_identity, server_identity):
+        self.server_public_key_bytes = server_public_key_bytes
         self.client_identity = client_identity
         self.server_identity = server_identity
 
     def serialize(self):
-        return self.server_public_key + encode_vector(self.server_identity) + encode_vector(self.client_identity)
+        return self.server_public_key_bytes + encode_vector(self.server_identity) + encode_vector(self.client_identity)
 
 class Credentials(object):
-    def __init__(self, skU, pkU, idU = None, idS = None):
-        self.skU = skU
-        self.pkU = pkU
-        self.idU = idU
-        self.idS = idS
+    def __init__(self, client_private_key, client_public_key, client_identity = None, server_identity = None):
+        self.client_private_key = client_private_key
+        self.client_public_key = client_public_key
+        self.client_identity = client_identity
+        self.server_identity = server_identity
 
 # struct {
 #   opaque nonce[Nn];
@@ -93,52 +93,52 @@ class RegistrationRequest(ProtocolMessage):
 
 # struct {
 #     opaque evaluated_message[Noe];
-#     opaque pkS[Npk];
+#     opaque server_public_key[Npk];
 # } RegistrationResponse;
 def deserialize_registration_response(config, msg_bytes):
     length = config.oprf_suite.group.element_byte_length()
     data = msg_bytes[0:length]
-    pkS = msg_bytes[length:]
-    if len(pkS) != config.Npk:
-        raise Exception("Invalid message: %d %d" % (len(pkS), config.Npk))
+    server_public_key = msg_bytes[length:]
+    if len(server_public_key) != config.Npk:
+        raise Exception("Invalid message: %d %d" % (len(server_public_key), config.Npk))
 
-    return RegistrationResponse(data, pkS)
+    return RegistrationResponse(data, server_public_key)
 
 class RegistrationResponse(ProtocolMessage):
-    def __init__(self, data, pkS):
+    def __init__(self, data, server_public_key):
         ProtocolMessage.__init__(self)
         self.data = data
-        self.pkS = pkS
+        self.server_public_key = server_public_key
 
     def serialize(self):
-        return self.data + self.pkS
+        return self.data + self.server_public_key
 
 # struct {
-#     opaque pkU[Npk];
+#     opaque client_public_key[Npk];
 #     opaque masking_key[Nh];
 #     Envelope envU;
 # } RegistrationUpload;
 def deserialize_registration_upload(config, msg_bytes):
     if len(msg_bytes) < config.Npk:
         raise Exception("Invalid message")
-    pkU = msg_bytes[:config.Npk]
+    client_public_key = msg_bytes[:config.Npk]
 
     Nh = config.hash().digest_size
     masking_key = msg_bytes[config.Npk:config.Npk+Nh]
 
     envU, _ = deserialize_envelope(config, msg_bytes[config.Npk+Nh:])
 
-    return RegistrationUpload(pkU, masking_key, envU)
+    return RegistrationUpload(client_public_key, masking_key, envU)
 
 class RegistrationUpload(ProtocolMessage):
-    def __init__(self, pkU, masking_key, envU):
+    def __init__(self, client_public_key, masking_key, envU):
         ProtocolMessage.__init__(self)
-        self.pkU = pkU
+        self.client_public_key = client_public_key
         self.masking_key = masking_key
         self.envU = envU
 
     def serialize(self):
-        return self.pkU + self.masking_key + self.envU.serialize()
+        return self.client_public_key + self.masking_key + self.envU.serialize()
 
 # struct {
 #     opaque blinded_message[Noe];
