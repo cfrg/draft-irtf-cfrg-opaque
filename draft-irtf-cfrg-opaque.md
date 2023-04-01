@@ -1910,7 +1910,7 @@ implementation considerations.
   protocol is secure. The choice of such inputs is up to the application.
 - {{JKX18}} comments on a defense against offline
   dictionary attacks upon server compromise or honest-but-curious servers.
-  The authors suggest implementing the OPRF phase as a Threshold OPRF {{TOPPSS}},
+  The authors suggest implementing the OPRF phase as a threshold OPRF {{TOPPSS}},
   effectively forcing an attacker to act online or to control at least t key
   shares (among the total n), where t is the threshold number of shares necessary
   to recombine the secret OPRF key, and only then be able to run an offline dictionary
