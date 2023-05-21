@@ -102,7 +102,7 @@ class OPAQUE3DH(KeyExchange):
     def auth_client_start(self):
         self.client_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         self.client_private_keyshare = self.config.group.random_scalar(self.rng)
-        self.client_public_keyshare_bytes = self.config.group.scalar_mult(self.client_private_keyshare, self.config.group.generator())
+        self.client_public_keyshare_bytes = self.config.group.serialize(self.config.group.scalar_mult(self.client_private_keyshare, self.config.group.generator()))
         return TripleDHMessageInit(self.client_nonce, self.client_public_keyshare_bytes)
 
     def generate_ke1(self, password):
@@ -134,8 +134,8 @@ class OPAQUE3DH(KeyExchange):
 
     def auth_server_respond(self, cred_request, cred_response, ke1, cleartext_credentials, server_private_key, client_public_key):
         self.server_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
-        self.server_private_keyshare = ZZ(self.config.group.random_scalar(self.rng))
-        self.server_public_keyshare = self.server_private_keyshare * self.config.group.generator()
+        self.server_private_keyshare = self.config.group.random_scalar(self.rng)
+        self.server_public_keyshare = self.config.group.scalar_mult(self.server_private_keyshare, self.config.group.generator())
         server_public_keyshare_bytes = self.config.group.serialize(self.server_public_keyshare)
         client_public_keyshare = self.config.group.deserialize(ke1.client_public_keyshare)
 
@@ -200,11 +200,15 @@ class OPAQUE3DH(KeyExchange):
         cred_response, offset = deserialize_credential_response(self.config, msg)
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
         client_private_key_bytes, cleartext_credentials, export_key = self.core.recover_credentials(self.password, self.cred_metadata, cred_response, client_identity, server_identity)
-        client_private_key = OS2IP(client_private_key_bytes)
-        if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
-            client_private_key = OS2IP_le(client_private_key_bytes)
-        self.export_key = export_key
 
+        if "curve25519" in self.config.group.name:
+            client_private_key = client_private_key_bytes
+        elif "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
+            client_private_key = OS2IP_le(client_private_key_bytes)
+        else:
+            client_private_key = OS2IP(client_private_key_bytes)
+
+        self.export_key = export_key
         ke3 = self.auth_client_finalize(cred_response, ake2, cleartext_credentials, client_private_key, client_public_key)
 
         return ke3.serialize()

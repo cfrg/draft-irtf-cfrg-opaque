@@ -73,7 +73,7 @@ class OPAQUECore(object):
             client_identity = client_public_key_bytes
         return CleartextCredentials(server_public_key_bytes, client_identity, server_identity)
 
-    def create_envelope(self, randomized_password, server_public_key, client_identity, server_identity):
+    def create_envelope(self, randomized_password, encoded_server_public_key, client_identity, server_identity):
         envelope_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("AuthKey"), Nh)
@@ -85,7 +85,7 @@ class OPAQUECore(object):
         pk_bytes = self.config.group.serialize(client_public_key)
         encoded_client_public_key = self.config.group.serialize(client_public_key)
 
-        cleartext_credentials = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
+        cleartext_credentials = self.create_cleartext_credentials(encoded_server_public_key, encoded_client_public_key, server_identity, client_identity)
         auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_credentials.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 

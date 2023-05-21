@@ -136,19 +136,19 @@
     "inputs": {
       "blind_login": "6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4b0790308",
       "blind_registration": "c575731ffe1cb0ca5ba63b42c4699767b8b9ab78ba39316ee04baddb2034a70a",
-      "client_keyshare": "10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5c00c78affd80026c911",
       "client_nonce": "da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc",
       "client_private_keyshare": "80850a697b42a505f5b68fcdafce8c31f0af2b581f063cf1091933541936304b",
+      "client_public_keyshare": "10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5c00c78affd80026c911",
       "credential_identifier": "31323334",
       "envelope_nonce": "40d6b67fdd7da7c49894750754514dbd2070a407166bd2a5237cca9bf44d6e0b",
       "masking_nonce": "38fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6d",
       "oprf_seed": "a78342ab84d3d30f08d5a9630c79bf311c31ed7f85d9d4959bf492ec67a0eec8a67dfbf4497248eebd49e878aab173e5e4ff76354288fdd53e949a5f7c9f7f1b",
       "password": "436f7272656374486f72736542617474657279537461706c65",
-      "server_keyshare": "41f55f0bef355cfb34ccd468fdacad75865ee7efef95f4cb6c25d477f7205026",
       "server_nonce": "71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a1",
       "server_private_key": "c06139381df63bfc91c850db0b9cfbec7a62e86d80040a41aa7725bf0e79d564",
       "server_private_keyshare": "00a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a1e85ff80da12f986f",
-      "server_public_key": "a41e28269b4e97a66468cc00c5a57753e192e152766989770688aa90486ef031"
+      "server_public_key": "a41e28269b4e97a66468cc00c5a57753e192e152766989770688aa90486ef031",
+      "server_public_keyshare": "41f55f0bef355cfb34ccd468fdacad75865ee7efef95f4cb6c25d477f7205026"
     },
     "intermediates": {
       "auth_key": "7e880ab484f750e80e6f839d975aff476070ce65066d85ea62523d1d5764739d91307fac47186a4ab935e6a5c7f70cb47faa9473311947502c022cc67ae9440c",
@@ -158,7 +158,7 @@
       "handshake_secret": "6936d2b78f13d865997dd37c42c741dfe4c0297199e55d7f8891fa4771ed2357e990b44faec69733c607b7541442b5f27ea01513b4f0b84545e0ff7581ea7764",
       "masking_key": "6d23c6ed818882f9bdfdcf91389fcbc0b7a3faf92bd0bd6be4a1e7730277b694fc7c6ba327fbe786af18487688e0f7c148bbd54dc2fc80c28e7a976d9ef53c35",
       "oprf_key": "62ef7f7d9506a14600c34f642aaf6ef8019cc82a6755db4fded5248ea146030a",
-      "randomized_pwd": "3a602c295a9c323d9362fe286f104567ed6862b25dbe30fada844f19e41cf40047424b7118e15dc2c1a815a70fea5c8de6c30aa61440cd4b4b5e8f3963fbb2e1",
+      "randomized_password": "3a602c295a9c323d9362fe286f104567ed6862b25dbe30fada844f19e41cf40047424b7118e15dc2c1a815a70fea5c8de6c30aa61440cd4b4b5e8f3963fbb2e1",
       "server_mac_key": "62a11be878ecfcbd7c8875e86a0f479befcb4b1742480c9ac2d2a5fa8d9e96c3bf60edb953ba15e32dc3e2cba60029c0c61481fdc7a80946f596b77fff6b18ee"
     },
     "outputs": {
@@ -194,20 +194,20 @@
       "blind_login": "6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4b0790308",
       "blind_registration": "c575731ffe1cb0ca5ba63b42c4699767b8b9ab78ba39316ee04baddb2034a70a",
       "client_identity": "616c696365",
-      "client_keyshare": "10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5c00c78affd80026c911",
       "client_nonce": "da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc",
       "client_private_keyshare": "80850a697b42a505f5b68fcdafce8c31f0af2b581f063cf1091933541936304b",
+      "client_public_keyshare": "10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5c00c78affd80026c911",
       "credential_identifier": "31323334",
       "envelope_nonce": "40d6b67fdd7da7c49894750754514dbd2070a407166bd2a5237cca9bf44d6e0b",
       "masking_nonce": "38fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6d",
       "oprf_seed": "a78342ab84d3d30f08d5a9630c79bf311c31ed7f85d9d4959bf492ec67a0eec8a67dfbf4497248eebd49e878aab173e5e4ff76354288fdd53e949a5f7c9f7f1b",
       "password": "436f7272656374486f72736542617474657279537461706c65",
       "server_identity": "626f62",
-      "server_keyshare": "41f55f0bef355cfb34ccd468fdacad75865ee7efef95f4cb6c25d477f7205026",
       "server_nonce": "71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a1",
       "server_private_key": "c06139381df63bfc91c850db0b9cfbec7a62e86d80040a41aa7725bf0e79d564",
       "server_private_keyshare": "00a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a1e85ff80da12f986f",
-      "server_public_key": "a41e28269b4e97a66468cc00c5a57753e192e152766989770688aa90486ef031"
+      "server_public_key": "a41e28269b4e97a66468cc00c5a57753e192e152766989770688aa90486ef031",
+      "server_public_keyshare": "41f55f0bef355cfb34ccd468fdacad75865ee7efef95f4cb6c25d477f7205026"
     },
     "intermediates": {
       "auth_key": "7e880ab484f750e80e6f839d975aff476070ce65066d85ea62523d1d5764739d91307fac47186a4ab935e6a5c7f70cb47faa9473311947502c022cc67ae9440c",
@@ -217,7 +217,7 @@
       "handshake_secret": "f5b8fa77a67e638114899eca80c3549aa2c8e277a3412bccbe0a7e3943a5798d1e5ede2a847144759b17eb253f2f65efcccf82fe7b5f26e17175713dbe845786",
       "masking_key": "6d23c6ed818882f9bdfdcf91389fcbc0b7a3faf92bd0bd6be4a1e7730277b694fc7c6ba327fbe786af18487688e0f7c148bbd54dc2fc80c28e7a976d9ef53c35",
       "oprf_key": "62ef7f7d9506a14600c34f642aaf6ef8019cc82a6755db4fded5248ea146030a",
-      "randomized_pwd": "3a602c295a9c323d9362fe286f104567ed6862b25dbe30fada844f19e41cf40047424b7118e15dc2c1a815a70fea5c8de6c30aa61440cd4b4b5e8f3963fbb2e1",
+      "randomized_password": "3a602c295a9c323d9362fe286f104567ed6862b25dbe30fada844f19e41cf40047424b7118e15dc2c1a815a70fea5c8de6c30aa61440cd4b4b5e8f3963fbb2e1",
       "server_mac_key": "a8cdc5647342743be8ae6fc51e7105651b16bcb5fe4913834e7c2139dbc06d84c75215e7e84e1785f431c925844eb8c9c0d14959239422368166f41485e7847a"
     },
     "outputs": {
@@ -414,11 +414,11 @@
       "masking_nonce": "9c035896a043e70f897d87180c543e7a063b83c1bb728fbd189c619e27b6e5a6",
       "oprf_seed": "66e650652a8266b2205f31fdd68adeb739a05b5e650b19e7edc75e734a1296d6088188ca46c31ae8ccbd42a52ed338c06e53645387a7efbc94b6a0449526155e",
       "server_identity": "626f62",
-      "server_keyshare": "2d9055eb8f83e1b497370adad5cc2a417bf9be436a792def0c7b7ccb92b9e275",
       "server_nonce": "1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813055ae2d12",
       "server_private_key": "30fbe7e830be1fe8d2187c97414e3826040cbe49b893b64229bab5e85a588846",
       "server_private_keyshare": "300b0937f47d45f6123a4d8f0d0c0814b6120d840ebb8bc5b4f6b62df07f7842",
-      "server_public_key": "78b3040047ff26572a7619617601a61b9c81899bee92f00cfcaa5eed96863555"
+      "server_public_key": "78b3040047ff26572a7619617601a61b9c81899bee92f00cfcaa5eed96863555",
+      "server_public_keyshare": "2d9055eb8f83e1b497370adad5cc2a417bf9be436a792def0c7b7ccb92b9e275"
     },
     "intermediates": {},
     "outputs": {
