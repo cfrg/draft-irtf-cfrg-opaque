@@ -12,8 +12,8 @@ try:
     from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, \
             deserialize_credential_request, deserialize_credential_response
     from sagelib.groups import GroupRistretto255, GroupP256
-    from sagelib.ake_group import GroupX25519
-    from sagelib.opaque_common import zero_bytes, _as_bytes, to_hex, OPAQUE_NONCE_LENGTH
+    from sagelib.ake_group import GroupCurve25519
+    from sagelib.opaque_common import curve25519_clamp, zero_bytes, _as_bytes, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
     from sagelib.opaque_drng import OPAQUEDRNG
 except ImportError as e:
@@ -115,6 +115,16 @@ def test_registration_and_authentication():
     except:
         # We expect the MAC authentication tag to fail, so should get here
         pass
+
+# Checks that a the scalar value represented by vector[key] has indeed been clamped
+def assert_entry_clamped(vector, key):
+    if key not in vector:
+        # No need to do the check if the key doesn't exist
+        return
+
+    hex_scalar = vector[key]
+    scalar = _as_bytes(bytes.fromhex(hex_scalar))
+    assert scalar == curve25519_clamp(scalar)
 
 TestVectorParams = namedtuple("TestVectorParams", "is_fake idU credential_identifier idS pwdU context oprf fast_hash ksf group")
 
@@ -264,7 +274,7 @@ def test_3DH():
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
         (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupRistretto255()),
-        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupX25519()),
+        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupCurve25519()),
         (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, KeyStretchingFunction("Identity", identity_stretch), GroupP256()),
     ]
 
@@ -279,6 +289,14 @@ def test_3DH():
         fake_params = TestVectorParams(True, idU, credential_identifier, idS, pwdU, context, oprf, fast_hash, ksf, group)
         vector = run_test_vector(fake_params, _as_bytes("fake test vector seed"))
         vectors.append(vector)
+
+    # Ensure that curve25519 private keys are all clamped
+    for vector in vectors:
+        if vector["config"]["Group"] == "curve25519":
+            assert_entry_clamped(vector["inputs"], "client_private_key")
+            assert_entry_clamped(vector["inputs"], "server_private_key")
+            assert_entry_clamped(vector["inputs"], "client_private_keyshare")
+            assert_entry_clamped(vector["inputs"], "server_private_keyshare")
 
     return json.dumps(vectors, sort_keys=True, indent=2)
 

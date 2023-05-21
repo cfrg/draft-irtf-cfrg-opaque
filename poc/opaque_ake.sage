@@ -177,7 +177,7 @@ class OPAQUE3DH(KeyExchange):
         serialized_response = cred_response.serialize()
         ake2 = deserialize_tripleDH_respond(self.config, msg[offset:])
         skU_bytes, pkS_bytes, export_key = self.core.recover_credentials(self.pwdU, self.cred_metadata, cred_response, idU, idS)
-        if "x25519" in self.config.group.name:
+        if "curve25519" in self.config.group.name:
             skU = skU_bytes
         elif "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             skU = OS2IP_le(skU_bytes)

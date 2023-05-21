@@ -1398,8 +1398,8 @@ setting:
 - SerializeElement(element): A function that maps `element` to a unique byte
   array, mirrored from the definition of the similarly-named function of the
   OPRF group described in {{OPRF, Section 2.1}}.
-- ScalarMult(k, B): A function that performs scalar multiplication between the
-  scalar input `k` and element `B`.
+- DiffieHellman(k, B): A function that performs the Diffie-Hellman operation
+  between the scalar input `k` and element `B`.
 
 Implementations for recommended groups in {{configurations}}, as well as groups
 covered by test vectors in {{test-vectors}}, are described in the following sections.
@@ -1416,7 +1416,7 @@ as defined in {{?RISTRETTO=I-D.irtf-cfrg-ristretto255-decaf448}}.
   with `Nseed` random bytes as input.
 - SerializeElement(element): This is implemented using the similarly-named
   function of the OPRF group described in {{OPRF, Section 2.1}}.
-- ScalarMult(k, B): Implemented as scalar multiplication as described in
+- DiffieHellman(k, B): Implemented as scalar multiplication as described in
   {{Section 4 of RISTRETTO}}.
 
 #### P-256 Group
@@ -1431,7 +1431,7 @@ as defined in {{?NISTCurves=DOI.10.6028/NIST.FIPS.186-4}}.
   with `Nseed` random bytes as input.
 - SerializeElement(element): This is implemented using the similarly-named
   function of the OPRF group described in {{OPRF, Section 2.1}}.
-- ScalarMult(k, B): Implemented as scalar multiplication as described in
+- DiffieHellman(k, B): Implemented as scalar multiplication as described in
   {{NISTCurves}}.
 
 #### Curve25519 Group
@@ -1441,12 +1441,12 @@ as defined in {{?Curve25519=RFC7748}}.
 
 - DeriveAuthKeyPair(seed): This function is implemented by returning the private
   key `k` based on seed (of length `Nseed = 32` bytes), as described in {{Section 5 of Curve25519}},
-  as well as the result of ScalarMult(k, B), where B is the base point of Curve25519.
+  as well as the result of DiffieHellman(k, B), where B is the base point of Curve25519.
 - GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
   with `Nseed` random bytes as input.
 - SerializeElement(element): This is implemented using the similarly-named
   function of the OPRF group described in {{OPRF, Section 2.1}}.
-- ScalarMult(k, B): Implemented using the X25519 function in {{Section 5 of Curve25519}}.
+- DiffieHellman(k, B): Implemented using the X25519 function in {{Section 5 of Curve25519}}.
 
 ### Key Schedule Functions
 
@@ -1599,9 +1599,9 @@ Exceptions:
 def AuthClientFinalize(client_identity, client_private_key, server_identity,
                        server_public_key, ke2):
 
-  dh1 = SerializeElement(ScalarMult(state.client_secret, ke2.auth_response.server_keyshare))
-  dh2 = SerializeElement(ScalarMult(state.client_secret, server_public_key))
-  dh3 = SerializeElement(ScalarMult(client_private_key, ke2.auth_response.server_keyshare))
+  dh1 = SerializeElement(DiffieHellman(state.client_secret, ke2.auth_response.server_keyshare))
+  dh2 = SerializeElement(DiffieHellman(state.client_secret, server_public_key))
+  dh3 = SerializeElement(DiffieHellman(client_private_key, ke2.auth_response.server_keyshare))
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(client_identity,

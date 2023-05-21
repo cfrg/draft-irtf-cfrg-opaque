@@ -6,9 +6,15 @@ from sagelib.rfc7748 import *
 from sagelib.groups import *
 from sagelib.string_utils import *
 
-class GroupX25519(Group):
+try:
+    from sagelib.opaque_common import curve25519_clamp
+except ImportError as e:
+    sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
+
+
+class GroupCurve25519(Group):
     def __init__(self):
-        Group.__init__(self, "x25519")
+        Group.__init__(self, "curve25519")
 
     def generator(self):
         return IntegerToByteArray(9)
@@ -32,11 +38,7 @@ class GroupX25519(Group):
         return 32
 
     def random_scalar(self, rng):
-        key = bytearray(os.urandom(32))
-        key[31] &= 248
-        key[0] &= 127
-        key[0] |= 64
-        return bytes(key)
+        return curve25519_clamp(rng.random_bytes(32))
 
     def scalar_mult(self, x, y):
         return X25519(x, y)
@@ -48,6 +50,6 @@ if __name__ == "__main__":
     # From RFC7748: https://www.rfc-editor.org/rfc/rfc7748#section-6.1
     a = bytes.fromhex("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a")
     A = bytes.fromhex("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a")
-    G = GroupX25519()
+    G = GroupCurve25519()
     A_exp = G.scalar_mult(a, G.generator())
     assert(A_exp == A)

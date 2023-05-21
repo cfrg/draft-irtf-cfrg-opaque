@@ -8,7 +8,7 @@ from hash import scrypt
 try:
     from sagelib.oprf import SetupOPRFClient, SetupOPRFServer, DeriveKeyPair, MODE_OPRF
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, CleartextCredentials, Envelope, deserialize_envelope
-    from sagelib.opaque_common import xor, OS2IP, OS2IP_le, _as_bytes, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import curve25519_clamp, xor, OS2IP, OS2IP_le, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -60,8 +60,9 @@ class OPAQUECore(object):
         return DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
 
     def derive_auth_key_pair(self, seed):
-        if self.config.group.name == "x25519":
-            return seed, self.config.group.scalar_mult(seed, self.config.group.generator())
+        if self.config.group.name == "curve25519":
+            clamped_seed = curve25519_clamp(seed)
+            return clamped_seed, self.config.group.scalar_mult(clamped_seed, self.config.group.generator())
         else:
             return self.derive_group_key_pair(seed)
 
