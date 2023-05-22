@@ -172,16 +172,16 @@ def run_test_vector(params, seed):
     server_kex = OPAQUE3DH(config, OPAQUEDRNG(_as_bytes("server") + seed))
 
     ke1 = client_kex.generate_ke1(password)
-    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, server_identity, server_private_key, server_public_key, client_identity, fake_client_public_key if is_fake else client_public_key)
+    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, server_identity, server_private_key, server_public_key_bytes, client_identity, fake_client_public_key_bytes if is_fake else client_public_key_bytes)
     if is_fake:
         try:
-            ke3 = client_kex.generate_ke3(ke2, client_identity, fake_client_public_key, server_identity)
+            ke3 = client_kex.generate_ke3(ke2, client_identity, server_identity)
             assert False
         except:
             # Expected since the MAC was generated using garbage
             pass
     else:
-        ke3 = client_kex.generate_ke3(ke2, client_identity, client_public_key, server_identity)
+        ke3 = client_kex.generate_ke3(ke2, client_identity, server_identity)
         server_session_key = server_kex.auth_server_finish(ke3)
         assert server_session_key == client_kex.session_key
 
@@ -202,10 +202,8 @@ def run_test_vector(params, seed):
         inputs["server_public_key"] = to_hex(server_public_key_bytes)
         inputs["client_nonce"] = to_hex(client_kex.client_nonce)
         inputs["server_nonce"] = to_hex(server_kex.server_nonce)
-        inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.client_private_keyshare))
-        inputs["client_public_keyshare"] = to_hex(client_kex.client_public_keyshare_bytes)
-        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.server_private_keyshare))
-        inputs["server_public_keyshare"] = to_hex(group.serialize(server_kex.server_public_keyshare))
+        inputs["client_keyshare_seed"] = to_hex(client_kex.client_keyshare_seed)
+        inputs["server_keyshare_seed"] = to_hex(server_kex.server_keyshare_seed)
         inputs["envelope_nonce"] = to_hex(core.envelope_nonce)
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
         inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
@@ -244,8 +242,8 @@ def run_test_vector(params, seed):
         inputs["server_private_key"] = to_hex(server_private_key_bytes)
         inputs["server_public_key"] = to_hex(server_public_key_bytes)
         inputs["server_nonce"] = to_hex(server_kex.server_nonce)
-        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.server_private_keyshare))
-        inputs["server_public_keyshare"] = to_hex(group.serialize(server_kex.server_public_keyshare))
+        inputs["client_keyshare_seed"] = to_hex(client_kex.client_keyshare_seed)
+        inputs["server_keyshare_seed"] = to_hex(server_kex.server_keyshare_seed)
         inputs["masking_key"] = to_hex(fake_masking_key)
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
         inputs["KE1"] = to_hex(ke1)
