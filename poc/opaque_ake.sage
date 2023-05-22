@@ -102,7 +102,7 @@ class OPAQUE3DH(KeyExchange):
     def auth_client_start(self):
         self.client_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         self.client_keyshare_seed = self.rng.random_bytes(OPAQUE_SEED_LENGTH)
-        self.client_private_keyshare, self.client_public_keyshare = self.core.derive_auth_key_pair(self.client_keyshare_seed)
+        self.client_private_keyshare, self.client_public_keyshare = self.core.derive_diffie_hellman_key_pair(self.client_keyshare_seed)
         return TripleDHMessageInit(self.client_nonce, self.client_public_keyshare)
 
     def generate_ke1(self, password):
@@ -135,7 +135,7 @@ class OPAQUE3DH(KeyExchange):
     def auth_server_respond(self, cred_request, cred_response, ke1, cleartext_credentials, server_private_key, client_public_keyshare):
         self.server_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         self.server_keyshare_seed = self.rng.random_bytes(OPAQUE_SEED_LENGTH)
-        self.server_private_keyshare, self.server_public_keyshare_bytes = self.core.derive_auth_key_pair(self.server_keyshare_seed)
+        self.server_private_keyshare, self.server_public_keyshare_bytes = self.core.derive_diffie_hellman_key_pair(self.server_keyshare_seed)
 
         transcript_hash = self.transcript_hasher(cred_request.serialize(), cred_response.serialize(), cleartext_credentials, ke1.client_nonce, ke1.client_public_keyshare, self.server_nonce, self.server_public_keyshare_bytes)
 
