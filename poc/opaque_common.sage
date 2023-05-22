@@ -28,6 +28,14 @@ def xor(a, b):
         c[i] = c[i] ^^ v  # bitwise XOR
     return bytes(c)
 
+# Performs the curve25519 clamping operation
+def curve25519_clamp(scalar):
+    arr = bytearray(scalar)
+    arr[0] &= 248
+    arr[31] &= 127
+    arr[31] |= 64
+    return bytes(arr)
+
 def hkdf_extract(config, salt, ikm):
     return hmac.digest(salt, ikm, config.hash)
 

@@ -8,7 +8,7 @@ from hash import scrypt
 try:
     from sagelib.oprf import SetupOPRFClient, SetupOPRFServer, DeriveKeyPair, MODE_OPRF
     from sagelib.opaque_messages import RegistrationRequest, RegistrationResponse, RegistrationUpload, CredentialRequest, CredentialResponse, CleartextCredentials, Envelope, deserialize_envelope
-    from sagelib.opaque_common import xor, OS2IP, OS2IP_le, _as_bytes, OPAQUE_NONCE_LENGTH
+    from sagelib.opaque_common import curve25519_clamp, xor, OS2IP, OS2IP_le, _as_bytes, OPAQUE_NONCE_LENGTH
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + e)
 
@@ -53,11 +53,19 @@ class OPAQUECore(object):
         sk = OS2IP(private_key)
         if "ristretto" in self.config.group.name or "decaf" in self.config.group.name:
             sk = OS2IP_le(private_key)
-        pk = sk * self.config.group.generator()
+        pk = self.config.group.scalar_mult(sk, self.config.group.generator())
         return self.config.group.serialize(pk)
 
-    def derive_group_key_pair(self, seed):
-        return DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
+    def derive_dh_group_key_pair(self, seed):
+        sk, pk = DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveDiffieHellmanKeyPair"))
+        return sk, self.config.group.serialize(pk)
+
+    def derive_diffie_hellman_key_pair(self, seed):
+        if self.config.group.name == "curve25519":
+            clamped_seed = curve25519_clamp(seed)
+            return clamped_seed, self.config.group.serialize(self.config.group.scalar_mult(clamped_seed, self.config.group.generator()))
+        else:
+            return self.derive_dh_group_key_pair(seed)
 
     def create_cleartext_credentials(self, server_public_key_bytes, client_public_key_bytes, server_identity, client_identity):
         if server_identity == None:
@@ -66,7 +74,7 @@ class OPAQUECore(object):
             client_identity = client_public_key_bytes
         return CleartextCredentials(server_public_key_bytes, client_identity, server_identity)
 
-    def create_envelope(self, randomized_password, server_public_key, client_identity, server_identity):
+    def create_envelope(self, randomized_password, encoded_server_public_key, client_identity, server_identity):
         envelope_nonce = self.rng.random_bytes(OPAQUE_NONCE_LENGTH)
         Nh = self.config.hash().digest_size
         auth_key = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("AuthKey"), Nh)
@@ -74,18 +82,16 @@ class OPAQUECore(object):
         masking_key = self.derive_masking_key(randomized_password)
 
         seed = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (_, client_public_key) = self.derive_group_key_pair(seed)
-        pk_bytes = self.config.group.serialize(client_public_key)
-        client_public_key = self.config.group.serialize(client_public_key)
+        (_, client_public_key_bytes) = self.derive_diffie_hellman_key_pair(seed)
 
-        cleartext_credentials = self.create_cleartext_credentials(server_public_key, client_public_key, server_identity, client_identity)
+        cleartext_credentials = self.create_cleartext_credentials(encoded_server_public_key, client_public_key_bytes, server_identity, client_identity)
         auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_credentials.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
         self.auth_key = auth_key
         self.envelope_nonce = envelope.nonce
 
-        return envelope, client_public_key, masking_key, export_key
+        return envelope, client_public_key_bytes, masking_key, export_key
 
     def finalize_request(self, password, blind, response, client_identity=None, server_identity=None):
         randomized_password = self.derive_randomized_password(password, response, blind)
@@ -123,10 +129,9 @@ class OPAQUECore(object):
 
     def recover_keys(self, randomized_password, envelope_nonce):
         seed = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (client_private_key, client_public_key) = self.derive_group_key_pair(seed)
+        (client_private_key, client_public_key_bytes) = self.derive_diffie_hellman_key_pair(seed)
         sk_bytes = self.config.group.serialize_scalar(client_private_key)
-        pk_bytes = self.config.group.serialize(client_public_key)
-        return sk_bytes, pk_bytes
+        return sk_bytes, client_public_key_bytes
 
     def recover_envelope(self, randomized_password, server_public_key, client_identity, server_identity, envelope):
         Nh = self.config.hash().digest_size

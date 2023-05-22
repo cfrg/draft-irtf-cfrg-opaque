@@ -12,7 +12,8 @@ try:
     from sagelib.opaque_messages import RegistrationUpload, Envelope, deserialize_envelope, deserialize_registration_request, deserialize_registration_response, \
             deserialize_credential_request, deserialize_credential_response
     from sagelib.groups import GroupRistretto255, GroupP256
-    from sagelib.opaque_common import zero_bytes, _as_bytes, to_hex, OPAQUE_NONCE_LENGTH
+    from sagelib.ake_group import GroupCurve25519
+    from sagelib.opaque_common import curve25519_clamp, zero_bytes, _as_bytes, to_hex, OPAQUE_NONCE_LENGTH
     from sagelib.opaque_ake import OPAQUE3DH, Configuration
     from sagelib.opaque_drng import OPAQUEDRNG
 except ImportError as e:
@@ -35,8 +36,8 @@ def test_core_protocol_serialization():
 
     config = default_opaque_configuration 
     group = config.group
-    server_private_key = ZZ(group.random_scalar(rng))
-    server_public_key = server_private_key * group.generator()
+    server_private_key = group.random_scalar(rng)
+    server_public_key = group.scalar_mult(server_private_key, group.generator())
     server_public_key_enc = group.serialize(server_public_key)
     oprf_seed = rng.random_bytes(config.hash().digest_size)
 
@@ -89,8 +90,8 @@ def test_registration_and_authentication():
 
     config = default_opaque_configuration 
     group = config.group
-    server_private_key = ZZ(group.random_scalar(rng))
-    server_public_key = server_private_key * group.generator()
+    server_private_key = group.random_scalar(rng)
+    server_public_key = group.scalar_mult(server_private_key, group.generator())
     server_public_key_enc = group.serialize(server_public_key)
     oprf_seed = rng.random_bytes(config.hash().digest_size)
 
@@ -115,6 +116,16 @@ def test_registration_and_authentication():
         # We expect the MAC authentication tag to fail, so should get here
         pass
 
+# Checks that a the scalar value represented by vector[key] has indeed been clamped
+def assert_entry_clamped(vector, key):
+    if key not in vector:
+        # No need to do the check if the key doesn't exist
+        return
+
+    hex_scalar = vector[key]
+    scalar = _as_bytes(bytes.fromhex(hex_scalar))
+    assert scalar == curve25519_clamp(scalar)
+
 TestVectorParams = namedtuple("TestVectorParams", "is_fake client_identity credential_identifier server_identity password context oprf fast_hash ksf group")
 
 def run_test_vector(params, seed):
@@ -130,8 +141,8 @@ def run_test_vector(params, seed):
     group = params.group
     core_rng = OPAQUEDRNG(_as_bytes("run_test_vector") + seed)
 
-    server_private_key = ZZ(group.random_scalar(core_rng))
-    server_public_key = server_private_key * group.generator()
+    server_private_key = group.random_scalar(core_rng)
+    server_public_key = group.scalar_mult(server_private_key, group.generator())
     server_private_key_bytes = group.serialize_scalar(server_private_key)
     server_public_key_bytes = group.serialize(server_public_key)
     oprf_seed = core_rng.random_bytes(fast_hash().digest_size)
@@ -148,8 +159,8 @@ def run_test_vector(params, seed):
         client_public_key_bytes = record.client_public_key
         client_public_key = group.deserialize(client_public_key_bytes)
     else:
-        fake_client_private_key = ZZ(group.random_scalar(core_rng))
-        fake_client_public_key = fake_client_private_key * group.generator()
+        fake_client_private_key = group.random_scalar(core_rng)
+        fake_client_public_key = group.scalar_mult(fake_client_private_key, group.generator())
         fake_client_private_key_bytes = group.serialize_scalar(fake_client_private_key)
         fake_client_public_key_bytes = group.serialize(fake_client_public_key)
 
@@ -161,16 +172,16 @@ def run_test_vector(params, seed):
     server_kex = OPAQUE3DH(config, OPAQUEDRNG(_as_bytes("server") + seed))
 
     ke1 = client_kex.generate_ke1(password)
-    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, server_identity, server_private_key, server_public_key, client_identity, fake_client_public_key if is_fake else client_public_key)
+    ke2 = server_kex.generate_ke2(ke1, oprf_seed, credential_identifier, record.envU, record.masking_key, server_identity, server_private_key, server_public_key_bytes, client_identity, fake_client_public_key_bytes if is_fake else client_public_key_bytes)
     if is_fake:
         try:
-            ke3 = client_kex.generate_ke3(ke2, client_identity, fake_client_public_key, server_identity)
+            ke3 = client_kex.generate_ke3(ke2, client_identity, server_identity)
             assert False
         except:
             # Expected since the MAC was generated using garbage
             pass
     else:
-        ke3 = client_kex.generate_ke3(ke2, client_identity, client_public_key, server_identity)
+        ke3 = client_kex.generate_ke3(ke2, client_identity, server_identity)
         server_session_key = server_kex.auth_server_finish(ke3)
         assert server_session_key == client_kex.session_key
 
@@ -191,10 +202,8 @@ def run_test_vector(params, seed):
         inputs["server_public_key"] = to_hex(server_public_key_bytes)
         inputs["client_nonce"] = to_hex(client_kex.client_nonce)
         inputs["server_nonce"] = to_hex(server_kex.server_nonce)
-        inputs["client_private_keyshare"] = to_hex(group.serialize_scalar(client_kex.client_private_keyshare))
-        inputs["client_public_keyshare"] = to_hex(client_kex.client_public_keyshare_bytes)
-        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.server_private_keyshare))
-        inputs["server_public_keyshare"] = to_hex(group.serialize(server_kex.server_public_keyshare))
+        inputs["client_keyshare_seed"] = to_hex(client_kex.client_keyshare_seed)
+        inputs["server_keyshare_seed"] = to_hex(server_kex.server_keyshare_seed)
         inputs["envelope_nonce"] = to_hex(core.envelope_nonce)
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
         inputs["blind_registration"] = to_hex(config.oprf_suite.group.serialize_scalar(metadata))
@@ -233,8 +242,8 @@ def run_test_vector(params, seed):
         inputs["server_private_key"] = to_hex(server_private_key_bytes)
         inputs["server_public_key"] = to_hex(server_public_key_bytes)
         inputs["server_nonce"] = to_hex(server_kex.server_nonce)
-        inputs["server_private_keyshare"] = to_hex(group.serialize_scalar(server_kex.server_private_keyshare))
-        inputs["server_public_keyshare"] = to_hex(group.serialize(server_kex.server_public_keyshare))
+        inputs["client_keyshare_seed"] = to_hex(client_kex.client_keyshare_seed)
+        inputs["server_keyshare_seed"] = to_hex(server_kex.server_keyshare_seed)
         inputs["masking_key"] = to_hex(fake_masking_key)
         inputs["masking_nonce"] = to_hex(server_kex.masking_nonce)
         inputs["KE1"] = to_hex(ke1)
@@ -262,6 +271,7 @@ def test_3DH():
     # https://cfrg.github.io/draft-irtf-cfrg-opaque/draft-irtf-cfrg-opaque.html#name-configurations
     configs = [
         (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupRistretto255()),
+        (oprf_ciphersuites[ciphersuite_ristretto255_sha512], hashlib.sha512, KeyStretchingFunction("Identity", identity_stretch), GroupCurve25519()),
         (oprf_ciphersuites[ciphersuite_p256_sha256], hashlib.sha256, KeyStretchingFunction("Identity", identity_stretch), GroupP256()),
     ]
 
@@ -276,6 +286,14 @@ def test_3DH():
         fake_params = TestVectorParams(True, client_identity, credential_identifier, server_identity, password, context, oprf, fast_hash, ksf, group)
         vector = run_test_vector(fake_params, _as_bytes("fake test vector seed"))
         vectors.append(vector)
+
+    # Ensure that curve25519 private keys are all clamped
+    for vector in vectors:
+        if vector["config"]["Group"] == "curve25519":
+            assert_entry_clamped(vector["inputs"], "client_private_key")
+            assert_entry_clamped(vector["inputs"], "server_private_key")
+            assert_entry_clamped(vector["inputs"], "client_private_keyshare")
+            assert_entry_clamped(vector["inputs"], "server_private_keyshare")
 
     return json.dumps(vectors, sort_keys=True, indent=2)
 
