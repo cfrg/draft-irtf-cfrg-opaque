@@ -57,12 +57,13 @@ class OPAQUECore(object):
         return self.config.group.serialize(pk)
 
     def derive_group_key_pair(self, seed):
-        return DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
+        sk, pk = DeriveKeyPair(MODE_OPRF, self.config.oprf_suite.identifier, seed, _as_bytes("OPAQUE-DeriveAuthKeyPair"))
+        return sk, self.config.group.serialize(pk)
 
     def derive_auth_key_pair(self, seed):
         if self.config.group.name == "curve25519":
             clamped_seed = curve25519_clamp(seed)
-            return clamped_seed, self.config.group.scalar_mult(clamped_seed, self.config.group.generator())
+            return clamped_seed, self.config.group.serialize(self.config.group.scalar_mult(clamped_seed, self.config.group.generator()))
         else:
             return self.derive_group_key_pair(seed)
 
@@ -81,18 +82,16 @@ class OPAQUECore(object):
         masking_key = self.derive_masking_key(randomized_password)
 
         seed = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (_, client_public_key) = self.derive_auth_key_pair(seed)
-        pk_bytes = self.config.group.serialize(client_public_key)
-        encoded_client_public_key = self.config.group.serialize(client_public_key)
+        (_, client_public_key_bytes) = self.derive_auth_key_pair(seed)
 
-        cleartext_credentials = self.create_cleartext_credentials(encoded_server_public_key, encoded_client_public_key, server_identity, client_identity)
+        cleartext_credentials = self.create_cleartext_credentials(encoded_server_public_key, client_public_key_bytes, server_identity, client_identity)
         auth_tag = self.config.mac.mac(auth_key, envelope_nonce + cleartext_credentials.serialize())
         envelope = Envelope(envelope_nonce, auth_tag)
 
         self.auth_key = auth_key
         self.envelope_nonce = envelope.nonce
 
-        return envelope, encoded_client_public_key, masking_key, export_key
+        return envelope, client_public_key_bytes, masking_key, export_key
 
     def finalize_request(self, password, blind, response, client_identity=None, server_identity=None):
         randomized_password = self.derive_randomized_password(password, response, blind)
@@ -130,10 +129,9 @@ class OPAQUECore(object):
 
     def recover_keys(self, randomized_password, envelope_nonce):
         seed = self.config.kdf.expand(randomized_password, envelope_nonce + _as_bytes("PrivateKey"), OPAQUE_SEED_LENGTH)
-        (client_private_key, client_public_key) = self.derive_auth_key_pair(seed)
+        (client_private_key, client_public_key_bytes) = self.derive_auth_key_pair(seed)
         sk_bytes = self.config.group.serialize_scalar(client_private_key)
-        pk_bytes = self.config.group.serialize(client_public_key)
-        return sk_bytes, pk_bytes
+        return sk_bytes, client_public_key_bytes
 
     def recover_envelope(self, randomized_password, server_public_key, client_identity, server_identity, envelope):
         Nh = self.config.hash().digest_size

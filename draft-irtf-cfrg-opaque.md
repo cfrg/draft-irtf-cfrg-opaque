@@ -33,7 +33,6 @@ author:
     email: caw@heapingbits.net
 
 informative:
-
   I-D.krawczyk-cfrg-opaque-03:
     title: The OPAQUE Asymmetric PAKE Protocol
     target: https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03
@@ -214,7 +213,7 @@ protocols"
   WhatsAppE2E:
     title: Security of End-to-End Encrypted Backups
     target: https://www.whatsapp.com/security/WhatsApp_Security_Encrypted_Backups_Whitepaper.pdf
-    authors:
+    author:
       -
         ins: WhatsApp
         name: WhatsApp
@@ -237,10 +236,8 @@ protocols"
         ins: J. Xu
         name: Jiayu Xu
 
-  RFC2945:
   RFC5869:
   RFC8125:
-  RFC8446:
 
 --- abstract
 
@@ -986,7 +983,6 @@ material for the OPRF and AKE, `client_state` and `server_state`, respectively.
 
 The client state `ClientState` may have the following fields:
 
-
 - password: The client's password.
 - blind: The random blinding inverter returned by `Blind()`.
 - client_ake_state: The `ClientAkeState` defined in {{ake-protocol}}.
@@ -1385,7 +1381,7 @@ def RecoverCredentials(password, blind, response,
   return (client_private_key, cleartext_credentials, server_public_key, export_key)
 ~~~
 
-## AKE Protocol {#ake-protocol}
+## 3DH Protocol {#ake-protocol}
 
 This section describes the authenticated key exchange protocol for OPAQUE using
 3DH, a 3-message AKE which satisfies the forward secrecy and KCI properties
@@ -1406,68 +1402,62 @@ following fields:
 {{ake-client}} and {{ake-server}} specify the inner workings of client and
 server functions, respectively.
 
-### AKE Group {#key-creation}
+### 3DH Primitives {#key-creation}
 
-We assume the following functions to exist for all candidate groups in this
+We assume the following functions to exist for all Diffie Hellman groups in this
 setting:
 
-- DeriveAuthKeyPair(seed): Derive a private and public authentication key pair
-  deterministically from the input `seed`.
-- GenerateAuthKeyPair(): Return a randomly generated private and public key
-  pair. This can be implemented by invoking DeriveAuthKeyPair with `Nseed`
-  random bytes as input.
-- SerializeElement(element): A function that maps `element` to a unique byte
-  array, mirrored from the definition of the similarly-named function of the
-  OPRF group described in {{OPRF, Section 2.1}}.
-- DiffieHellman(k, B): A function that performs the Diffie-Hellman operation
-  between the scalar input `k` and element `B`.
+- DeriveDHKeypair(seed): Derive a private and public DiffieHellman
+  key pair deterministically from the input `seed`. The type of the private key
+  depends on the implementation, whereas the type of the public key is a
+  byte string of `Npk` bytes.
+- DH(k, B): A function that performs the Diffie-Hellman operation
+  between the private input `k` and public input `B`.
+  The output of this function is a unique, fixed-length byte string.
 
 Implementations for recommended groups in {{configurations}}, as well as groups
 covered by test vectors in {{test-vectors}}, are described in the following sections.
 
-#### ristretto255 Group
+#### 3DH ristretto255
 
-This section describes the implementation of the AKE group based on ristretto255,
+This section describes the implementation of the DH primitive based on ristretto255,
 as defined in {{?RISTRETTO=I-D.irtf-cfrg-ristretto255-decaf448}}.
 
-- DeriveAuthKeyPair(seed): This function is implemented as
+- DeriveDHKeypair(seed): This function is implemented as
   DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
-  as specified in {{OPRF, Section 3.2}}.
-- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
-  with `Nseed` random bytes as input.
-- SerializeElement(element): This is implemented using the similarly-named
-  function of the OPRF group described in {{OPRF, Section 2.1}}.
-- DiffieHellman(k, B): Implemented as scalar multiplication as described in
-  {{Section 4 of RISTRETTO}}.
+  as specified in {{OPRF, Section 3.2}}. The public value from DeriveKeyPair
+  is encoded using SerializeElement from {{Section 2.1 of OPRF}}.
+- DH(k, B): Implemented as scalar multiplication as described in
+  {{Section 4 of RISTRETTO}} after decoding `B` from its encoded input using
+  the Decode function in {{Section 4.3.1 of RISTRETTO}}. The output is then
+  encoded using the SerializeElement function of the OPRF group described in
+  {{OPRF, Section 2.1}}.
 
-#### P-256 Group
+#### 3DH P-256
 
-This section describes the implementation of the AKE group based on NIST P-256,
+This section describes the implementation of the DH primitive based on NIST P-256,
 as defined in {{?NISTCurves=DOI.10.6028/NIST.FIPS.186-4}}.
 
-- DeriveAuthKeyPair(seed): This function is implemented as
+- DeriveDHKeypair(seed): This function is implemented as
   DeriveKeyPair(seed, "OPAQUE-DeriveAuthKeyPair"), where DeriveKeyPair is
-  as specified in {{OPRF, Section 3.2}}.
-- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
-  with `Nseed` random bytes as input.
-- SerializeElement(element): This is implemented using the similarly-named
-  function of the OPRF group described in {{OPRF, Section 2.1}}.
-- DiffieHellman(k, B): Implemented as scalar multiplication as described in
-  {{NISTCurves}}.
+  as specified in {{OPRF, Section 3.2}}. The public value from DeriveKeyPair
+  is encoded using SerializeElement from {{Section 2.1 of OPRF}}.
+- DH(k, B): Implemented as scalar multiplication as described in
+  {{NISTCurves}}, after decoding `B` from its encoded input using
+  the compressed Octet-String-to-Elliptic-Curve-Point method according to {{NISTCurves}}.
+  The output is then encoded using the SerializeElement function of the OPRF
+  group described in {{OPRF, Section 2.1}}.
 
-#### Curve25519 Group
+#### 3DH Curve25519
 
-This section describes the implementation of the AKE group based on Curve25519,
+This section describes the implementation of the DH primitive based on Curve25519,
 as defined in {{?Curve25519=RFC7748}}.
 
-- DeriveAuthKeyPair(seed): This function is implemented by returning the private
+- DeriveDHKeypair(seed): This function is implemented by returning the private
   key `k` based on seed (of length `Nseed = 32` bytes), as described in {{Section 5 of Curve25519}},
-  as well as the result of DiffieHellman(k, B), where B is the base point of Curve25519.
-- GenerateAuthKeyPair(): This is implemented by invoking DeriveAuthKeyPair
-  with `Nseed` random bytes as input.
-- SerializeElement(element): This is implemented using the similarly-named
-  function of the OPRF group described in {{OPRF, Section 2.1}}.
-- DiffieHellman(k, B): Implemented using the X25519 function in {{Section 5 of Curve25519}}.
+  as well as the result of DH(k, B), where B is the base point of Curve25519.
+- DH(k, B): Implemented using the X25519 function in {{Section 5 of Curve25519}}.
+  The output is then used raw, with no processing.
 
 ### Key Schedule Functions
 
@@ -1583,7 +1573,8 @@ Output:
 
 def AuthClientStart(credential_request):
   client_nonce = random(Nn)
-  (client_secret, client_public_keyshare) = GenerateAuthKeyPair()
+  client_keyshare_seed = random(Nseed)
+  (client_secret, client_public_keyshare) = DeriveDHKeypair(client_keyshare_seed)
   Create AuthRequest auth_request with (client_nonce, client_public_keyshare)
   Create KE1 ke1 with (credential_request, auth_request)
   state.client_secret = client_secret
@@ -1615,9 +1606,9 @@ Exceptions:
 
 def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
 
-  dh1 = SerializeElement(DiffieHellman(state.client_secret, ke2.auth_response.server_public_keyshare))
-  dh2 = SerializeElement(DiffieHellman(state.client_secret, cleartext_credentials.server_public_key))
-  dh3 = SerializeElement(DiffieHellman(client_private_key, ke2.auth_response.server_public_keyshare))
+  dh1 = DH(state.client_secret, ke2.auth_response.server_public_keyshare)
+  dh2 = DH(state.client_secret, cleartext_credentials.server_public_key)
+  dh3 = DH(client_private_key, ke2.auth_response.server_public_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(cleartext_credentials.client_identity,
@@ -1660,7 +1651,8 @@ Output:
 
 def AuthServerRespond(cleartext_credentials, server_private_key, client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
-  (server_private_keyshare, server_public_keyshare) = GenerateAuthKeyPair()
+  server_keyshare_seed = random(Nseed)
+  (server_private_keyshare, server_public_keyshare) = DeriveDHKeypair(server_keyshare_seed)
   preamble = Preamble(cleartext_credentials.client_identity,
                       ke1,
                       cleartext_credentials.server_identity,
@@ -1668,9 +1660,9 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
                       server_nonce,
                       server_public_keyshare)
 
-  dh1 = SerializeElement(server_private_keyshare * ke1.auth_request.client_public_keyshare)
-  dh2 = SerializeElement(server_private_key * ke1.auth_request.client_public_keyshare)
-  dh3 = SerializeElement(server_private_keyshare * client_public_key)
+  dh1 = DH(server_private_keyshare, ke1.auth_request.client_public_keyshare)
+  dh2 = DH(server_private_key, ke1.auth_request.client_public_keyshare)
+  dh3 = DH(server_private_keyshare, client_public_key)
   ikm = concat(dh1, dh2, dh3)
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
@@ -1875,7 +1867,7 @@ protocols such as TLS.
 
 ## Notable Design Differences
 
-[[RFC EDITOR: Please delete this section before publication.]]
+**xbefore publication.**
 
 The specification as written here differs from the original cryptographic design in {{JKX18}}
 and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
@@ -2404,14 +2396,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_public_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1ac
-c69c94dd48497fe4028
-client_public_keyshare: 0c3a00c961fead8a16f818929cc976f0475e4f7235193
-18b96f4947a7a5f9663
-server_private_keyshare: 2e842960258a95e28bcfef489cffd19d8ec99cc1375d
-840f96936da7dbb0b40d
-client_private_keyshare: 22c919134c9bdd9dc0c5ef3450f18b54820f43f646a9
-5223bf4a85b2018c2001
+client_keyshare_seed: 82850a697b42a505f5b68fcdafce8c31f0af2b581f063cf
+1091933541936304b
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: 76cfbfe758db884bebb33582331ba9f159720ca8784a2a070
 a265d9c2d6abe01
 blind_login: 6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4
@@ -2431,15 +2419,15 @@ d329beb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf15
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
 8dfecb9dbe7d48cf714fc3533becab6faf60b783c94d258477eb74ecc453413bf61c5
 3fd58f0fb3c1175410b674c02e1b59b2d729a865b709db3dc4ee2bb45703d5a8
-handshake_secret: 562564da0d4efdc73cb6efbb454388dabfa5052d4e7e83f4d02
-40c5afd8352881e762755c2f1a9110e36b05fe770f0f48658489c9730dcd365e6c2d4
-049c8fe3
-server_mac_key: 59473632c53a647f9f4ab4d6c3b81e241dd9cb19ca05f0eabed7e
-593f0407ff57e7f060621e5e48d5291be600a1959fbecbc26d4a7157bd227a993c37b
-645f73
-client_mac_key: f2d019bad603b45b2ac50376279a0a37d097723b5405aa4fb20a5
-9f60cdbdd52ec043372cedcdbbdb634c54483e1be51a88d13a5798180acb84c10b129
-7069fd
+handshake_secret: 62ea1c61b6d82791c36cd28b28415e24b794bb58b80e3fe3366
+95a56f5bf053f28522dc14d4903609daa218aeedc2b6b64b94e24df97a9b471b32200
+52d8f1ae
+server_mac_key: d04a930b10615434a087ff9018dbaf4533e8038b4822f4c633c7e
+20bb66cfad21238f346f2475f9c7c2115b6811dfef8627c17aa2c3c40c285bd6717e3
+02e659
+client_mac_key: a35b2d795846fda796fc5c3421a518148700dcb20f80c35e40d15
+22dcb8c33597d22bfb32019a250fe41feffb70715796e9c0fcee27e7e95d3bf911249
+92b7fe
 oprf_key: 5d4c6a8b7c7138182afb4345d1fae6a9f18a1744afbcc3854f8f5a2b4b4
 c6d05
 ~~~
@@ -2459,26 +2447,26 @@ a3b66db8b7d6cc301ac5844383c7708077dea41cbefe2fa15724f449e535dd7dd562e
 cb9dbe7d48cf714fc3533becab6faf60b783c94d258477eb74ecc453413bf61c53fd5
 8f0fb3c1175410b674c02e1b59b2d729a865b709db3dc4ee2bb45703d5a8
 KE1: c4dedb0ba6ed5d965d6f250fbe554cd45cba5dfcce3ce836e4aee778aa3cd44d
-da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc0c3a0
-0c961fead8a16f818929cc976f0475e4f723519318b96f4947a7a5f9663
+da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc7ea3d
+a5c6239cfd0d37d50231920953b55adbed40a81731ac0e6cfcd5b8d6b7a
 KE2: 7e308140890bcde30cbcea28b01ea1ecfbd077cff62c4def8efa075aabcbb471
 38fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6dd6ec6
 0bcdb26dc455ddf3e718f1020490c192d70dfc7e403981179d8073d1146a4f9aa1ced
 4e4cd984c657eb3b54ced3848326f70331953d91b02535af44d9fe0610f003be80cb2
 098357928c8ea17bb065af33095f39d4e0b53b1687f02d522d96bad4ca354293d5c40
 1177ccbd302cf565b96c327f71bc9eaf2890675d2fbb71cd9960ecef2fe0d0f749498
-6fa3d8b2bb01963537e60efb13981e138e3d4a1c8c39f573135474c51660b02425bca
-633e339cec4e1acc69c94dd48497fe40287f33611c2cf0eef57adbf48942737d9421e
-6b20e4b9d6e391d4168bf4bf96ea57aa42ad41c977605e027a9ef706a349f4b2919fe
-3562c8e86c4eeecf2f9457d4
-KE3: df9a13cd256091f90f0fcb2ef6b3411e4aebff07bb0813299c0ec7f5dedd33a7
-681231a001a82f1dece1777921f42abfeee551ee34392e1c9743c5cc1dc1ef8c
+6fa3d8b2bb01963537e60efb13981e138e3d4a1864115e56d0fb2ca8c4b957ad9db88
+272f9d7b150bbe42242c9f7f99d086af2b5dd883fdd4a4f1406e9ef95b5f354948ec1
+45537a37b0af957fe0de56ef35b44474c26b8bb7d6c7e261b44feefffe74d3f1dae1c
+b360210718bceb5dbaef6c79
+KE3: d8720bc1192aa74cd9760508f8cf3c024948e8b0f9125a55cfa65e9369e616f4
+1c6fa77f150d114da2f6637367b33022759c9308b7be4d5289e5550a4bb29823
 export_key: 1ef15b4fa99e8a852412450ab78713aad30d21fa6966c9b8c9fb3262a
 970dc62950d4dd4ed62598229b1b72794fc0335199d9f7fcc6eaedde92cc04870e63f
 16
-session_key: 8a0f9f4928fc0c3b5bb261c4b7b3997600405424a8128632e85a5667
-b4b742484ed791933971be6d3fcf2b23c56b8e8f7e7edcae19a03b8fd87f5999fce12
-9d2
+session_key: 38ffca7c2bfc95fe3a0af3a52d6596314ff18ee211e70eef68a29de1
+29fe9a2d38efab9826382fec5f336fea4c3f66cfb01211cd3e8cc79fc85d073808bf1
+c61
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 2
@@ -2523,14 +2511,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_public_keyshare: c8c39f573135474c51660b02425bca633e339cec4e1ac
-c69c94dd48497fe4028
-client_public_keyshare: 0c3a00c961fead8a16f818929cc976f0475e4f7235193
-18b96f4947a7a5f9663
-server_private_keyshare: 2e842960258a95e28bcfef489cffd19d8ec99cc1375d
-840f96936da7dbb0b40d
-client_private_keyshare: 22c919134c9bdd9dc0c5ef3450f18b54820f43f646a9
-5223bf4a85b2018c2001
+client_keyshare_seed: 82850a697b42a505f5b68fcdafce8c31f0af2b581f063cf
+1091933541936304b
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: 76cfbfe758db884bebb33582331ba9f159720ca8784a2a070
 a265d9c2d6abe01
 blind_login: 6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4
@@ -2550,15 +2534,15 @@ d329beb932e9adeea73d5d5c22a0ce1952f8aba6d66007615cd1698d4ac85ef1fcf15
 envelope: ac13171b2f17bc2c74997f0fce1e1f35bec6b91fe2e12dbd323d23ba7a3
 8dfec1ac902dc5589e9a5f0de56ad685ea8486210ef41449cd4d8712828913c5d2b68
 0b2b3af4a26c765cff329bfb66d38ecf1d6cfa9e7a73c222c6efe0d9520f7d7c
-handshake_secret: bc2abaa979af9cbb6859856b7d5d201a038fbdfa7e10f11d131
-d3f8f6fc3b263bde4db6d2d9207d4648ff80415a276d5f157f9d37a3eade559db2e5f
-3fa026b2
-server_mac_key: 2420461c589866700b08c8818cbf390c872629a14cf32a264dad3
-375f85f33188c8f04bdb71880b2d4613187a0e416808ab62b45858b88319882602371
-ef5f75
-client_mac_key: 156e4ab0b9f71ef994bbbb73928e6d14d7335cf9561f113d61ac6
-b41fab35f9c72fe827d3c4d7dd91d8398ee619810e4f9286e6b32f329eb6b1476ce18
-fa8500
+handshake_secret: a37b880fa247810fcf96704e06b9036dac9b928be4339b1eefe
+d12070e562b4302c358aeb39bfe0d1037407023d65bcbff3399202d7eafd4e5354a93
+55423ae6
+server_mac_key: fe72f683f6a2938cffc29b4fb8a11956f07ace937c2a4cee40e16
+cf6468825b40feebaffab12413d250d80bda3d3e96976bccdf222a2208ec1e4cbf709
+ae4535
+client_mac_key: b3c6c95f4283ac3ce767d88f2d7748354dcdf7ae21450fccf0a95
+da3cc8cfe2b764138cb6cd860912555658795a183047c3da506c089e797502e1d4545
+6d08cd
 oprf_key: 5d4c6a8b7c7138182afb4345d1fae6a9f18a1744afbcc3854f8f5a2b4b4
 c6d05
 ~~~
@@ -2578,26 +2562,26 @@ a3b66db8b7d6cc301ac5844383c7708077dea41cbefe2fa15724f449e535dd7dd562e
 c1ac902dc5589e9a5f0de56ad685ea8486210ef41449cd4d8712828913c5d2b680b2b
 3af4a26c765cff329bfb66d38ecf1d6cfa9e7a73c222c6efe0d9520f7d7c
 KE1: c4dedb0ba6ed5d965d6f250fbe554cd45cba5dfcce3ce836e4aee778aa3cd44d
-da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc0c3a0
-0c961fead8a16f818929cc976f0475e4f723519318b96f4947a7a5f9663
+da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb380cae6a6cc7ea3d
+a5c6239cfd0d37d50231920953b55adbed40a81731ac0e6cfcd5b8d6b7a
 KE2: 7e308140890bcde30cbcea28b01ea1ecfbd077cff62c4def8efa075aabcbb471
 38fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6dd6ec6
 0bcdb26dc455ddf3e718f1020490c192d70dfc7e403981179d8073d1146a4f9aa1ced
 4e4cd984c657eb3b54ced3848326f70331953d91b02535af44d9fea502150b67fe367
 95dd8914f164e49f81c7688a38928372134b7dccd50e09f8fed9518b7b2f94835b3c4
 fe4c8475e7513f20eb97ff0568a39caee3fd6251876f71cd9960ecef2fe0d0f749498
-6fa3d8b2bb01963537e60efb13981e138e3d4a1c8c39f573135474c51660b02425bca
-633e339cec4e1acc69c94dd48497fe4028c463164503598ea84fab9005b9cd51b7bb3
-206fb22a412e8a86b9cb6ffca18f5ea6b4c24fdc94865e8bf74248e6be15b85b16041
-40ffad2175f9518452d381af
-KE3: a86ece659d90525e2476aa1756d313b067581cb7b0643b97be6b8ab8d0f10843
-57e514ecfaff9dc18f6cca37da630545f0048393f16bc175eb819653ebc45b60
+6fa3d8b2bb01963537e60efb13981e138e3d4a1864115e56d0fb2ca8c4b957ad9db88
+272f9d7b150bbe42242c9f7f99d086af2b6d193260225a47f6cf93182066c1a6cae66
+57c8f0ef08f51c348c7eec363a45ecba472ceead6facfbb2b060a7fab4e4011e2ae9d
+4f9f12139ba3c956d98e7f6b
+KE3: 5d2e38739d6e7af684f2dbbb1b08ff54b3af2574bc9d1e3f13f24d1ee172ea7f
+79ccb8884b51b5d05aa000503d85dc800c606f0361438289d13c8b37a545cac7
 export_key: 1ef15b4fa99e8a852412450ab78713aad30d21fa6966c9b8c9fb3262a
 970dc62950d4dd4ed62598229b1b72794fc0335199d9f7fcc6eaedde92cc04870e63f
 16
-session_key: 0968e91efeb702d6aa09023a9a79803332d8bd3442a79b8ad09490b9
-267161013bf475bed945238a5e976ef7d7de7ff41ae30439fe2fc39758fb3e56f2683
-e60
+session_key: e3aa391926ff2c03434b8da2cb8f0f6500e71f9e37cbfd30f77890c1
+251fc3346808369a181e43da9814055784afbb102a5c5e63ef5aa6d164764c9d03ed7
+a6c
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 3
@@ -2640,14 +2624,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_public_keyshare: 41f55f0bef355cfb34ccd468fdacad75865ee7efef95f
-4cb6c25d477f7205026
-client_public_keyshare: 10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5
-c00c78affd80026c911
-server_private_keyshare: 00a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b
-40a1e85ff80da12f986f
-client_private_keyshare: 80850a697b42a505f5b68fcdafce8c31f0af2b581f06
-3cf1091933541936304b
+client_keyshare_seed: 82850a697b42a505f5b68fcdafce8c31f0af2b581f063cf
+1091933541936304b
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: c575731ffe1cb0ca5ba63b42c4699767b8b9ab78ba39316ee
 04baddb2034a70a
 blind_login: 6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4
@@ -2759,14 +2739,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: da7e07376d6d6f034cfa9bb537d11b8c6b4238c334333d1f0aebb38
 0cae6a6cc
-server_public_keyshare: 41f55f0bef355cfb34ccd468fdacad75865ee7efef95f
-4cb6c25d477f7205026
-client_public_keyshare: 10a83b9117d3798cb2957fbdb0268a0d63dbf9d66bde5
-c00c78affd80026c911
-server_private_keyshare: 00a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b
-40a1e85ff80da12f986f
-client_private_keyshare: 80850a697b42a505f5b68fcdafce8c31f0af2b581f06
-3cf1091933541936304b
+client_keyshare_seed: 82850a697b42a505f5b68fcdafce8c31f0af2b581f063cf
+1091933541936304b
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: c575731ffe1cb0ca5ba63b42c4699767b8b9ab78ba39316ee
 04baddb2034a70a
 blind_login: 6ecc102d2e7a7cf49617aad7bbe188556792d4acd60a1a8a8d2b65d4
@@ -2875,14 +2851,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f
 91fdaeeb1
-server_public_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d1
-1e2032ce19b1832ae8e0f
-client_public_keyshare: 03493f36ca12467d1f5eaaabea67ca31377c4869c1e9a
-62346b6f01a991624b95d
-server_private_keyshare: 9addab838c920fa7044f3a46b91ecaea24b0e7203992
-8ee7d4c37a5b9bc17349
-client_private_keyshare: 89d5a7e18567f255748a86beac13913df755a5adf776
-d69e143147b545d22134
+client_keyshare_seed: 633b875d74d1556d2a2789309972b06db21dfcc4f5ad51d
+7e74d783b7cfab8dc
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: 411bf1a62d119afe30df682b91a0a33d777972d4f2daa4b34
 ca527d597078153
 blind_login: c497fddf6056d241e6cf9fb7ac37c384f49b357a221eb0a802c989b9
@@ -2900,12 +2872,12 @@ randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa3
 19151b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51fe155412cb432898eda63529c3b2633521f770cccbd25d7548a4e20665a45e65a
-handshake_secret: c59197dd9269abfdb3037ea1c203a97627e2c0aa142000d1c3f
-06a2c8713077d
-server_mac_key: a431a5c1d3cb5772cbc66af0c2851e23dd9ad153a0c8b99081c7d
-0d543173fde
-client_mac_key: 7329ffd54df21db5532fce8794fca78b505fef9397aad28a424f6
-ea3f97c51ca
+handshake_secret: a8f9cc543472cae536de2786fd81fbd6173747a5506475bbfbb
+c3b1104a1c299
+server_mac_key: 47256c030132289f6c68c90c4eb729210d9d5f8933f89da74bf7a
+7d333fd9127
+client_mac_key: 493e2a2b806a4c631f0e15042899faffdcfdd5eeeb262563b8bce
+805c48c0380
 oprf_key: 2dfb5cb9aa1476093be74ca0d43e5b02862a05f5d6972614d7433acdc66
 f7f31
 ~~~
@@ -2924,21 +2896,21 @@ registration_upload: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e
 5670e51fe155412cb432898eda63529c3b2633521f770cccbd25d7548a4e20665a45e
 65a
 KE1: 037342f0bcb3ecea754c1e67576c86aa90c1de3875f390ad599a26686cdfee6e
-07ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f91fdaeeb1034
-93f36ca12467d1f5eaaabea67ca31377c4869c1e9a62346b6f01a991624b95d
+07ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f91fdaeeb103e
+03340e23473648db2b2cb760bcda822efdcf37ff476488cd567fbed683ba3f4
 KE2: 0246da9fe4d41d5ba69faa6c509a1d5bafd49a48615a47a8dd4b0823cc147648
 1138fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6d2f0
 c547f70deaeca54d878c14c1aa5e1ab405dec833777132eea905c2fbb12504a67dcbe
 0e66740c76b62c13b04a38a77926e19072953319ec65e41f9bfd2ae2687bd3348bfe3
 3cb0bb9864fdb3b307f7dd68a17f3f150074a0bfc830ab889717d71cd9960ecef2fe0
-d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a1020e67941e94deba83521
-4421d2d8c90de9b0f7f925d11e2032ce19b1832ae8e0fb5166145361a2c344d9737dd
-5c826fede3bbfafa418ad379ce4fa65fbb15db6e
-KE3: 272d04758b2b436bf0239ba7b9bd0a1686a9b6542ceaaf08732054beda956498
+d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a103c6b3ff9b2f1259abec5
+d69deced490b77eb1a178a05de0311761d4e6e490b5199db49930bbdee688106935d4
+31bf56b0e40be6ef19fbc62570ee4f5a65d00f96
+KE3: 800cc814220e14db58fb0ae480742658efbeaf7e9fec0e13e92f8970277c9c55
 export_key: c3c9a1b0e33ac84dd83d0b7e8af6794e17e7a3caadff289fbd9dc769a
 853c64b
-session_key: a224790a010afc0a3f37e23c1b7a5cb7f9e73e3d9a924116510d97d8
-0e2a1e0c
+session_key: 7075fbf101d6e3da80035ff90271994bcbec837b8541a3204fbcbb00
+362b05c5
 ~~~
 
 ### OPAQUE-3DH Real Test Vector 6
@@ -2982,14 +2954,10 @@ server_nonce: 71cd9960ecef2fe0d0f7494986fa3d8b2bb01963537e60efb13981e
 138e3d4a1
 client_nonce: ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f
 91fdaeeb1
-server_public_keyshare: 020e67941e94deba835214421d2d8c90de9b0f7f925d1
-1e2032ce19b1832ae8e0f
-client_public_keyshare: 03493f36ca12467d1f5eaaabea67ca31377c4869c1e9a
-62346b6f01a991624b95d
-server_private_keyshare: 9addab838c920fa7044f3a46b91ecaea24b0e7203992
-8ee7d4c37a5b9bc17349
-client_private_keyshare: 89d5a7e18567f255748a86beac13913df755a5adf776
-d69e143147b545d22134
+client_keyshare_seed: 633b875d74d1556d2a2789309972b06db21dfcc4f5ad51d
+7e74d783b7cfab8dc
+server_keyshare_seed: 05a4f54206eef1ba2f615bc0aa285cb22f26d1153b5b40a
+1e85ff80da12f982f
 blind_registration: 411bf1a62d119afe30df682b91a0a33d777972d4f2daa4b34
 ca527d597078153
 blind_login: c497fddf6056d241e6cf9fb7ac37c384f49b357a221eb0a802c989b9
@@ -3007,12 +2975,12 @@ randomized_password: 06be0a1a51d56557a3adad57ba29c5510565dcd8b5078fa3
 19151b9382258fb0
 envelope: a921f2a014513bd8a90e477a629794e89fec12d12206dde662ebdcf6567
 0e51f4d7773a36a208a866301dbb2858e40dc5638017527cf91aef32d3848eebe0971
-handshake_secret: 0ee4a82c4a34992f72bfbcb5d2ce64044477dfe200b9d8c92bf
-1759b219b3485
-server_mac_key: 77ebd7511216a51e9c2f3368ce6c1e40513f24b6f42085ef18e7f
-737b427aab5
-client_mac_key: e48e2064cf570dbd18eb42550d4459c58ac4ae4e28881d1aefbab
-d668f7f1df9
+handshake_secret: 283514c3b8b6b81737e874cf823e02889e0261d618378b401b5
+27a6f95a22bae
+server_mac_key: 2d128d61152e82ef3bc590a2c8d269337c3ef557f2c1b27ee1515
+95735ef53b2
+client_mac_key: 7aee2b1a82dacf8c3482b906828bd0f416eb465224a52fd594f4b
+1dd618f4628
 oprf_key: 2dfb5cb9aa1476093be74ca0d43e5b02862a05f5d6972614d7433acdc66
 f7f31
 ~~~
@@ -3031,21 +2999,21 @@ registration_upload: 02dc91b178ba2c4bbf9b9403fca25457b906a7f507e59b6e
 5670e51f4d7773a36a208a866301dbb2858e40dc5638017527cf91aef32d3848eebe0
 971
 KE1: 037342f0bcb3ecea754c1e67576c86aa90c1de3875f390ad599a26686cdfee6e
-07ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f91fdaeeb1034
-93f36ca12467d1f5eaaabea67ca31377c4869c1e9a62346b6f01a991624b95d
+07ab3d33bde0e93eda72392346a7a73051110674bbf6b1b7ffab8be4f91fdaeeb103e
+03340e23473648db2b2cb760bcda822efdcf37ff476488cd567fbed683ba3f4
 KE2: 0246da9fe4d41d5ba69faa6c509a1d5bafd49a48615a47a8dd4b0823cc147648
 1138fe59af0df2c79f57b8780278f5ae47355fe1f817119041951c80f612fdfc6d2f0
 c547f70deaeca54d878c14c1aa5e1ab405dec833777132eea905c2fbb12504a67dcbe
 0e66740c76b62c13b04a38a77926e19072953319ec65e41f9bfd2ae268d7f10604202
 1c80300e4c6f585980cf39fc51a4a6bba41b0729f9b240c729e5671cd9960ecef2fe0
-d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a1020e67941e94deba83521
-4421d2d8c90de9b0f7f925d11e2032ce19b1832ae8e0fdca637d2a5390f4c809a67b4
-6977c536fe9f643f703178a17a413d14e4bb523c
-KE3: 298cd0077d018f122bc95d706e5fef06537814c567f08d5e40b0c0ae918f9287
+d0f7494986fa3d8b2bb01963537e60efb13981e138e3d4a103c6b3ff9b2f1259abec5
+d69deced490b77eb1a178a05de0311761d4e6e490b5197466f995859517ffc6b2b496
+dfb3eb727760806e186cafe8eef2bac7c32912a6
+KE3: 3e0a83e317c197cf881e8964b59cfc54bf8b0c1c9f76954db1188dc84fb9154d
 export_key: c3c9a1b0e33ac84dd83d0b7e8af6794e17e7a3caadff289fbd9dc769a
 853c64b
-session_key: 0c59872e9bcdde274f4f52f6ba0fd1acca211d6eb7db98677b457a73
-9ef1f0d8
+session_key: fe91c2835ccc40e84326ab89945e27aef6eac1dd919897415312b3bb
+2d323114
 ~~~
 
 ## Fake Test Vectors {#fake-vectors}
@@ -3091,16 +3059,16 @@ server_public_key: 825f832667480f08b0c9069da5083ac4d0e9ee31b49c4e0310
 031fea04d52966
 server_nonce: 1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813
 055ae2d12
-server_public_keyshare: 5236e2e06d49f0b496db2a786f6ee1016f15b4fd6c0db
-d95d6b117055d914157
-server_private_keyshare: 6d8fba9741a357584770f85294430bce2252fe212a8a
-372152a73c7ffe414503
+client_keyshare_seed: a270dc715dc2b4612bc7864312a05c3e9788ee1bad1f276
+d1e15bdeb4c355e94
+server_keyshare_seed: 360b0937f47d45f6123a4d8f0d0c0814b6120d840ebb8bc
+5b4f6b62df07f78c2
 masking_key: 39ebd51f0e39a07a1c2d2431995b0399bca9996c5d10014d6ebab445
 3dc10ce5cef38ed3df6e56bfff40c2d8dd4671c2b4cf63c3d54860f31fe40220d690b
 b71
 KE1: b0a26dcaca2230b8f5e4b1bcab9c84b586140221bb8b2848486874b0be448905
-42d4e61ed3f8d64cdd3b9d153343eca15b9b0d5e388232793c6376bd2d9cfd0a0e4ed
-8bcc15f3dd01a30365c97c0c0de0a3dd3fbf5d3cbec55fb6ac1d3bf740f
+42d4e61ed3f8d64cdd3b9d153343eca15b9b0d5e388232793c6376bd2d9cfd0af6838
+106886c2d0e347f55d364c7b0fae9c3a7d56a478a2567ce2839a0269539
 ~~~
 
 #### Output Values
@@ -3112,10 +3080,10 @@ b1bff96636144faa4f9f9afaac75dd88ea99cf5175902ae3f3b2195693f165f11929b
 a510a5978e64dcdabecbd7ee1e4380ce270e58fea58e6462d92964a1aaef72698bca1
 c673baeb04cc2bf7de5f3c2f5553464552d3a0f7698a9ca7f9c5e70c6cb1f706b2f17
 5ab9d04bbd13926e816b6811a50b4aafa9799d5ed7971e10f6eeab2a7a420bf09da9b
-27a4639645622c46358de9cf7ae813055ae2d125236e2e06d49f0b496db2a786f6ee1
-016f15b4fd6c0dbd95d6b117055d914157cb5e11625c701e642293ad32bfcf88da653
-c9b6e71efc8a89607fd46ed5e7b9bf7cc7dbb997a4fd41194a04bcd0c5d88052e080a
-2f02c68d8d9e9c0ce15c92ff
+27a4639645622c46358de9cf7ae813055ae2d12746ad2678ba1acf539be8129c767a9
+c2e0a4dc951ff1317c36c503d51b38a870aaa9607a4cdf69668b09c6d3aa179054888
+01e77f2ab0fd58840bc882c6be49a4754c2d6d4e0fd8e1a2e1a55f39033fc576fb573
+d5790226182dc775077188b6
 ~~~
 
 ### OPAQUE-3DH Fake Test Vector 2
@@ -3159,10 +3127,10 @@ server_public_key: 78b3040047ff26572a7619617601a61b9c81899bee92f00cfc
 aa5eed96863555
 server_nonce: 1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813
 055ae2d12
-server_public_keyshare: 2d9055eb8f83e1b497370adad5cc2a417bf9be436a792
-def0c7b7ccb92b9e275
-server_private_keyshare: 300b0937f47d45f6123a4d8f0d0c0814b6120d840ebb
-8bc5b4f6b62df07f7842
+client_keyshare_seed: a270dc715dc2b4612bc7864312a05c3e9788ee1bad1f276
+d1e15bdeb4c355e94
+server_keyshare_seed: 360b0937f47d45f6123a4d8f0d0c0814b6120d840ebb8bc
+5b4f6b62df07f78c2
 masking_key: 79ad2621b0757a447dff7108a8ae20a068ce67872095620f415ea611
 c9dcc04972fa359538cd2fd6528775ca775487b2b56db642049b8a90526b975a38484
 c6a
@@ -3226,15 +3194,15 @@ server_public_key: 0221e034c0e202fe883dcfc96802a7624166fed4cfcab4ae30
 cf5f3290d01c88bf
 server_nonce: 1e10f6eeab2a7a420bf09da9b27a4639645622c46358de9cf7ae813
 055ae2d12
-server_public_keyshare: 03f42965d5bcba2a590a49eb2418061effe40b5c29a34
-b8e5163e0ef32044b2e4c
-server_private_keyshare: 1a2a0ff27f3ca75221378a2a21fe5222ce0b439452f8
-70475857a34197ba8f6d
+client_keyshare_seed: a270dc715dc2b4612bc7864312a05c3e9788ee1bad1f276
+d1e15bdeb4c355e94
+server_keyshare_seed: 360b0937f47d45f6123a4d8f0d0c0814b6120d840ebb8bc
+5b4f6b62df07f78c2
 masking_key: caecc6ccb4cae27cb54d8f3a1af1bac52a3d53107ce08497cdd362b1
 992e4e5e
 KE1: 0396875da2b4f7749bba411513aea02dc514a48d169d8a9531bd61d3af3fa9ba
-ae42d4e61ed3f8d64cdd3b9d153343eca15b9b0d5e388232793c6376bd2d9cfd0a039
-94d4f1221bfd205063469e92ea4d492f7cc76a327223633ab74590c30cf7285
+ae42d4e61ed3f8d64cdd3b9d153343eca15b9b0d5e388232793c6376bd2d9cfd0a03f
+4500f79dc362f7e94251868ff80fb5d2bdf8577f68ee55121420ec06a0214dd
 ~~~
 
 #### Output Values
@@ -3245,7 +3213,7 @@ KE2: 0201198dcd13f9792eb75dcfa815f61b049abfe2e3e9456d4bbbceec5f442efd
 da65ce0a97b9085e7af07f61fd3fdd046d257cbf2183ce8766090b8041a8bf28d79dd
 4c9031ddc75bb6ddb4c291e639937840e3d39fc0d5a3d6e7723c09f7945df485bcf9a
 efe3fe82d149e84049e259bb5b33d6a2ff3b25e4bfb7eff0962821e10f6eeab2a7a42
-0bf09da9b27a4639645622c46358de9cf7ae813055ae2d1203f42965d5bcba2a590a4
-9eb2418061effe40b5c29a34b8e5163e0ef32044b2e4c196137813ed8ec48627f0b0d
-90d9427f4ec137f8360769df167c25836eae5d91
+0bf09da9b27a4639645622c46358de9cf7ae813055ae2d120375fc0750618592b3329
+f5c9842c6a71ea8b800f62a2f8734bfee7a0d909b78ea8fac0aeb79341ee9c48777df
+9e406c1ebeb0a5b964c202ffe8a5056d29745ffb
 ~~~
