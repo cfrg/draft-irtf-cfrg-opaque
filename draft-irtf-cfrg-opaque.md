@@ -985,18 +985,18 @@ The client state `ClientState` may have the following fields:
 
 - password: The client's password.
 - blind: The random blinding inverter returned by `Blind()`.
-- client_ake_state: The `ClientAkeState` defined in {{3dh-protocol}}.
+- client_ake_state: The `ClientAkeState` defined in {{protocol-3dh}}.
 
 The server state `ServerState` may have the following fields:
 
-- server_ake_state: The `ServerAkeState` defined in {{3dh-protocol}}.
+- server_ake_state: The `ServerAkeState` defined in {{protocol-3dh}}.
 
 The rest of this section describes these authenticated key exchange messages
 and their parameters in more detail. {{ake-messages}} defines the structure of the
 messages passed between client and server in the above setup. {{ake-functions}}
 describes details of the functions and corresponding parameters mentioned above.
 {{cred-retrieval}} discusses internal functions used for retrieving client
-credentials, and {{3dh-protocol}} discusses how these functions are used to execute
+credentials, and {{protocol-3dh}} discusses how these functions are used to execute
 the authenticated key exchange protocol.
 
 ## AKE Messages {#ake-messages}
@@ -1381,7 +1381,7 @@ def RecoverCredentials(password, blind, response,
   return (client_private_key, cleartext_credentials, server_public_key, export_key)
 ~~~
 
-## 3DH Protocol {#3dh-protocol}
+## 3DH Protocol {#protocol-3dh}
 
 This section describes the authenticated key exchange protocol for OPAQUE using
 3DH, a 3-message AKE which satisfies the forward secrecy and KCI properties
@@ -1987,7 +1987,7 @@ suitable for interoperable implementations.
   simplicity and ease of implementation.
 - The DH-OPRF and HMQV instantiation of OPAQUE in {{JKX18}}, Figure 12 uses
   a different transcript than that which is described in this specification. In particular,
-  the key exchange transcript specified in {{3dh-protocol}} is a superset of the transcript
+  the key exchange transcript specified in {{protocol-3dh}} is a superset of the transcript
   as defined in {{JKX18}}. This was done to align with best practices, such as is
   done for key exchange protocols like TLS 1.3 {{RFC8446}}.
 - Neither {{JKX18}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
