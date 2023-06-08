@@ -1732,6 +1732,7 @@ Absent an application-specific profile, the following configurations are RECOMME
     Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), ristretto255
 - P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256,
     Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), P-256
+- P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256, scrypt(N = 32768, r = 8, p = 1), P-256
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
