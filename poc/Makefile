@@ -3,7 +3,7 @@ PYFILES := $(addprefix sagelib/, $(addsuffix .py,$(SAGEFILES)))
 .PRECIOUS: $(PYFILES)
 
 .PHONY: pyfiles
-pyfiles: setup sagelib/__init__.py $(PYFILES)
+pyfiles: sagelib/__init__.py $(PYFILES)
 
 sagelib/__init__.py:
 	mkdir -p sagelib
