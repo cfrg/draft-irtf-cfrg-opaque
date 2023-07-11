@@ -1938,7 +1938,7 @@ implementation considerations.
   applications of the protocol. This change was made to allow different
   applications to use OPAQUE without the risk of cross-protocol attacks.
 - Servers use a separate identifier for computing OPRF evaluations and
-  indexing into the password file storage, called the credential_identifier.
+  indexing into the registration record storage, called the credential_identifier.
   This allows clients to change their application-layer identity
   (client_identity) without inducing server-side changes, e.g., by changing
   an email address associated with a given account. This mechanism is part
