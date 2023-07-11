@@ -24,7 +24,7 @@ author:
  -
     ins: K. Lewi
     name: Kevin Lewi
-    organization: Novi Research
+    organization: Meta
     email: lewi.kevin.k@gmail.com
  -
     ins: C. A. Wood
