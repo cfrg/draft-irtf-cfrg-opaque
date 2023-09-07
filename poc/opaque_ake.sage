@@ -117,7 +117,7 @@ class OPAQUE3DH(KeyExchange):
 
     def transcript_hasher(self, serialized_request, serialized_response, cleartext_credentials, client_nonce, client_public_keyshare, server_nonce, server_public_keyshare_bytes):
         hasher = self.config.hash()
-        hasher.update(_as_bytes("RFCXXXX"))                                         # RFCXXXX
+        hasher.update(_as_bytes("OPAQUEv1-"))                                       # OPAQUEv1-
         hasher.update(encode_vector(self.config.context))                           # context
         hasher.update(encode_vector_len(cleartext_credentials.client_identity, 2))  # client_identity
         hasher.update(serialized_request)                                           # ke1: cred request
