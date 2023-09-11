@@ -393,7 +393,7 @@ Moreover, the following OPRF server APIs are used:
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
-- SerializeElement(element): Map input `element` to a fixed-length byte array `buf`.
+- SerializeElement(element): Map input `element` to a fixed-length byte array.
 - DeserializeElement(buf): Attempt to map input byte array `buf` to an OPRF group element.
   This function can raise a DeserializeError upon failure; see {{OPRF, Section 2.1}}
   for more details.
@@ -437,7 +437,7 @@ and expensive cryptographic hash function with the following API:
 
 # Protocol Overview {#protocol-overview}
 
-OPAQUE consists of two stages: registration and authenticated key exchange.
+OPAQUE consists of two stages: registration and authenticated key exchange (AKE).
 In the first stage, a client registers its password with the server and stores
 its credential file on the server. In the second stage (also called the
 "login" stage), the client recovers its authentication material and uses it to
@@ -464,8 +464,8 @@ identifier, and the server inputs its parameters, which include its private key
 and other information.
 
 The client output of this stage is a single value `export_key` that the client
-may use for application-specific purposes, e.g., to encrypt additional
-information for storage on the server. The server does not have access to this
+may use for application-specific purposes, e.g., as a symmetric key used to encrypt
+additional information for storage on the server. The server does not have access to this
 `export_key`.
 
 The server output of this stage is a record corresponding to the client's
@@ -565,7 +565,7 @@ application credential information are considered:
   If not specified, it defaults to the server's public key. See {{identities}} for
   information about this identity.
 
-These credential values are used in the `CleartextCredentials` structure as follows:
+A subset of these credential values are used in the `CleartextCredentials` structure as follows:
 
 ~~~
 struct {
@@ -620,7 +620,7 @@ struct {
 } Envelope;
 ~~~
 
-nonce: A unique nonce of length `Nn`, used to protect this `Envelope`.
+nonce: A randomly-sampled nonce of length `Nn`, used to protect this `Envelope`.
 
 auth_tag: An authentication tag protecting the contents of the envelope, covering
 the envelope nonce and `CleartextCredentials`.
@@ -703,6 +703,9 @@ def Recover(randomized_password, server_public_key, envelope,
     raise EnvelopeRecoveryError
   return (client_private_key, cleartext_credentials, export_key)
 ~~~
+
+In the case of `EnvelopeRecoveryError` being raised, all previously-computed
+intermediary values in this function MUST be deleted.
 
 # Offline Registration {#offline-phase}
 
@@ -814,7 +817,7 @@ and `FinalizeRegistrationRequest`.
 ### CreateRegistrationRequest
 
 To begin the registration flow, the client executes the following function. This function
-can fail with a InvalidInputError error with negligibile probability. A different input
+can fail with an `InvalidInputError` error with negligibile probability. A different input
 password is necessary in the event of this error.
 
 ~~~
@@ -1198,7 +1201,7 @@ def ServerFinish(ke3):
 
 This function MUST NOT return the `session_key` value if the client authentication
 material is invalid, and may instead return an appropriate error message such as
-ClientAuthenticationError, invoked from `AuthServerFinalize`.
+`ClientAuthenticationError`, invoked from `AuthServerFinalize`.
 
 ## Credential Retrieval {#cred-retrieval}
 
@@ -1243,7 +1246,7 @@ and `RecoverCredentials` functions used for credential retrieval.
 
 The `CreateCredentialRequest` is used by the client to initiate the credential
 retrieval process, and it produces a `CredentialRequest` message and OPRF state.
-Like `CreateRegistrationRequest`, this function can fail with a InvalidInputError
+Like `CreateRegistrationRequest`, this function can fail with an `InvalidInputError`
 error with negligibile probability. However, this should not occur since
 registration (via `CreateRegistrationRequest`) will fail when provided the same
 password input.
@@ -1329,7 +1332,7 @@ argument that is configured so that:
 - `record.envelope` is set to the byte string consisting only of zeros of length `Nn + Nm`
 
 It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
-of the application) and stored alongside legitimate client records. This allows servers to locate
+of the application) and stored alongside legitimate client records. This allows servers to retrieve
 the record in a time comparable to that of a legitimate client record.
 
 Note that the responses output by either scenario are indistinguishable to an adversary
@@ -1712,7 +1715,8 @@ such that the following conditions are met:
   and SHA-256 and SHA-512 for the Hash functions. If an extensible output function
   such as SHAKE128 {{FIPS202}} is used then the output length `Nh` MUST be chosen
   to align with the target security level of the OPAQUE configuration. For example,
-  if the target security parameter for the configuration is 128-bits, then `Nh` SHOULD be at least 32 bytes.
+  if the target security parameter for the configuration is 128 bits, then `Nh` SHOULD
+  be at least 32 bytes.
 - The KSF is determined by the application and implements the interface in
   {{dependencies}}. As noted, collision resistance is required. Examples for KSF
   include Argon2id {{?ARGON2=RFC9106}}, scrypt {{?SCRYPT=RFC7914}}, and PBKDF2
@@ -1733,6 +1737,8 @@ Absent an application-specific profile, the following configurations are RECOMME
 - P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256,
     Argon2id(S = zeroes(16), p = 4, T = Nh, m = 2^21, t = 1, v = 0x13, K = nil, X = nil, y = 2), P-256
 - P256-SHA256, HKDF-SHA-256, HMAC-SHA-256, SHA-256, scrypt(N = 32768, r = 8, p = 1), P-256
+
+The above recommended configurations target 128-bit security.
 
 Future configurations may specify different combinations of dependent algorithms,
 with the following considerations:
@@ -2214,6 +2220,9 @@ rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
 passwords.
+
+In general, passwords should be selected with sufficient entropy to avoid being susceptible
+to recovery through dictionary attacks, both online and offline.
 
 ## AKE Private Key Storage
 
