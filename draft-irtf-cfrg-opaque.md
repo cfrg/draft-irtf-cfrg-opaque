@@ -82,7 +82,7 @@ protocols"
         ins: J. H. Cheon
         name: Jung Hee Cheon
 
-    seriesinfo: Euroctypt 2006
+    seriesinfo: Eurocrypt 2006
     date: 2006
 
   FK00:
