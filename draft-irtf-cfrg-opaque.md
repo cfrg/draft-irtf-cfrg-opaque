@@ -19,7 +19,7 @@ author:
  -
     ins: H. Krawczyk
     name: Hugo Krawczyk
-    organization: Algorand Foundation
+    organization: AWS
     email: hugokraw@gmail.com
  -
     ins: K. Lewi
@@ -82,7 +82,7 @@ protocols"
         ins: J. H. Cheon
         name: Jung Hee Cheon
 
-    seriesinfo: Eurocrypt 2006
+    seriesinfo: Eurocrypt
     date: 2006
 
   FK00:
@@ -121,6 +121,25 @@ protocols"
 
     seriesinfo: CRYPTO
     date: 2006
+
+  HJKW23:
+    title: "Password-Authenticated TLS via OPAQUE and Post-Handshake Authentication"
+    author:
+      -
+        ins: J. Hesse
+        name: Julia Hesse
+      -
+        ins: S. Jarecki
+        name: Stanislaw Jarecki
+      -
+        ins: H. Krawczyk
+        name: Hugo Krawczyk
+      -
+        ins: C. Wood
+        name: Christopher Wood
+
+    seriesinfo: EUROCRYPT
+    date: 2023
 
   AuCPace:
     title: "AuCPace: Efficient verifier-based PAKE protocol tailored for the IIoT"
@@ -195,6 +214,16 @@ protocols"
     seriesinfo: CRYPTO
     date: 2005
 
+  SIGMA-I:
+    title: "SIGMA: The ‘SIGn-and-MAc’ Approach to Authenticated Diffie-Hellman and its Use in the IKE Protocols"
+    author:
+      -
+        ins: H. Krawczyk
+        name: Hugo Krawczyk
+
+    seriesinfo: https://www.iacr.org/cryptodb/archive/2003/CRYPTO/1495/1495.pdf
+    date: 2003
+
   SPAKE2plus:
     title: "Security Analysis of SPAKE2+"
     author:
@@ -205,10 +234,11 @@ protocols"
     seriesinfo: http://eprint.iacr.org/2020/313
     date: 2020
 
-  3DH:
+  TripleDH:
     title: "Simplifying OTR deniability"
     seriesinfo: https://signal.org/blog/simplifying-otr-deniability
     date: 2016
+
 
   WhatsAppE2E:
     title: Security of End-to-End Encrypted Backups
@@ -298,7 +328,7 @@ and an authenticated key exchange (AKE) protocol. It can be seen
 as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
-based on {{3DH}}. Other instantiations are possible, as discussed in
+based on {{TripleDH}}. Other instantiations are possible, as discussed in
 {{alternate-akes}}, but their details are out of scope for this document.
 In general, the modularity of OPAQUE's design makes it easy to integrate
 with additional AKE protocols, e.g., TLS or HMQV, and with future ones such
@@ -370,9 +400,12 @@ the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively, where
 
 ## Oblivious Pseudorandom Function {#deps-oprf}
 
-An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and
-server for computing a PRF such that the client learns the PRF output and neither party learns
-the input of the other. This specification depends on the prime-order OPRF construction specified
+An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between
+client and server for computing a PRF, where the PRF key is held by the server
+and the input to the function is provided by the client.  The client does not
+learn anything about the PRF other than the obtained output and the server
+learns nothing about the client's input or the function output.
+This specification depends on the prime-order OPRF construction specified
 in {{!OPRF=I-D.irtf-cfrg-voprf}}, draft version -21, using the OPRF mode (0x00) from {{OPRF, Section 3.1}}.
 
 The following OPRF client APIs are used:
@@ -388,8 +421,8 @@ Moreover, the following OPRF server APIs are used:
 - BlindEvaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
   the BlindEvaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
-- DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
-  from a seed and info parameter, as described in {{OPRF, Section 3.2}}.
+- DeriveKeyPair(seed, info): Create and output (`sk`, `pk`), consisting of a private and public key derived
+  deterministically from a `seed`` and `info`` parameter, as described in {{OPRF, Section 3.2}}.
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
@@ -412,8 +445,10 @@ This specification uses a KDF with the following API and parameters:
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
-This specification also makes use of a collision-resistant Message Authentication Code
-(MAC) with the following API and parameters:
+This specification also makes use of a random-key robust Message Authentication Code
+(MAC). The random-key robustness property states that, given two random keys k1 and k2,
+it is infeasible to find a message m such that MAC(k1, m) = MAC(k2, m).
+The API and parameters for the random-key robust MAC are as follows:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
   `key`, producing a fixed-length output of `Nm` bytes.
@@ -440,7 +475,7 @@ and expensive cryptographic hash function with the following API:
 OPAQUE consists of two stages: registration and authenticated key exchange (AKE).
 In the first stage, a client registers its password with the server and stores
 its credential file on the server. In the second stage (also called the
-"login" stage), the client recovers its authentication material and uses it to
+"login" or "online" stage), the client recovers its authentication material and uses it to
 perform a mutually authenticated key exchange.
 
 ## Setup
@@ -450,7 +485,7 @@ fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
 The server chooses a pair of keys (`server_private_key` and `server_public_key`)
 for the AKE, and chooses a seed (`oprf_seed`) of `Nh` bytes for the OPRF.
-The server can use this single pair of keys with multiple
+The server can use `server_private_key` and `server_public_key` with multiple
 clients and can opt to use multiple seeds (so long as they are kept consistent for
 each client).
 
@@ -534,7 +569,7 @@ messages of the concurrent execution of the key recovery process (OPRF) and the
 authenticated key exchange (AKE), and their corresponding wire formats are
 specified in {{ake-messages}}.
 
-The rest of this document describes the details of these stages in detail.
+The rest of this document describes the specifics of these stages in detail.
 {{client-material}} describes how client credential information is
 generated, encoded, and stored on the server during registration, and recovered during
 login. {{offline-phase}} describes the first registration stage of the protocol,
@@ -548,8 +583,6 @@ OPAQUE makes use of a structure called `Envelope` to manage client credentials.
 The client creates its `Envelope` on registration and sends it to the server for
 storage. On every login, the server sends this `Envelope` to the client so it can
 recover its key material for use in the AKE.
-
-Future variants of OPAQUE may use different key recovery mechanisms. See {{key-recovery}} for details.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
@@ -802,9 +835,8 @@ struct {
 client_public_key: The client's encoded public key, corresponding to
 the private key `client_private_key`.
 
-masking_key: An encryption key used by the server to preserve
-confidentiality of the envelope during login to defend against
-client enumeration attacks.
+masking_key: An encryption key used by the server with the sole purpose
+of defending against client enumeration attacks.
 
 envelope: The client's `Envelope` structure.
 
@@ -947,9 +979,10 @@ The server inputs the following values:
 
 The client receives two outputs: a session secret and an export key. The export
 key is only available to the client and may be used for additional
-application-specific purposes, as outlined in {{export-key-usage}}. The output
-`export_key` MUST NOT be used in any way before the protocol completes
-successfully. See {{alternate-key-recovery}} for more details about this
+application-specific purposes, as outlined in {{export-key-usage}}.
+Clients and servers MUST NOT use the output `export_key` before
+authenticating the peer in the authenticated key exchange protocol.
+See {{alternate-key-recovery}} for more details about this
 requirement. The server receives a single output: a session secret matching the
 client's.
 
@@ -993,6 +1026,8 @@ The client state `ClientState` may have the following fields:
 The server state `ServerState` may have the following fields:
 
 - server_ake_state: The `ServerAkeState` defined in {{protocol-3dh}}.
+
+Both of these states are ephemeral and should be erased after the protocol completes.
 
 The rest of this section describes these authenticated key exchange messages
 and their parameters in more detail. {{ake-messages}} defines the structure of the
@@ -1279,8 +1314,8 @@ a `CredentialResponse`.
 
 There are two scenarios to handle for the construction of a `CredentialResponse`
 object: either the record for the client exists (corresponding to a properly
-registered client), or it was never created (corresponding to a client that has
-yet to register).
+registered client), or it was never created (corresponding to an unregistered
+client identity, possibly the result of an enumeration attack attempt).
 
 In the case of an existing record with the corresponding identifier
 `credential_identifier`, the server invokes the following function to
@@ -1491,7 +1526,7 @@ Derive-Secret(Secret, Label, Transcript-Hash) =
 
 Note that the `Label` parameter is not a NULL-terminated string.
 
-OPAQUE-3DH can optionally include shared `context` information in the
+OPAQUE-3DH can optionally include application-specific, shared `context` information in the
 transcript, such as configuration parameters or application-specific info, e.g.
 "appXYZ-v1.2.3".
 
@@ -1820,9 +1855,12 @@ between different clients that might otherwise share the same password.
 Finally, note that online guessing attacks (against any aPAKE) can be done from
 both the client side and the server side. In particular, a malicious server can
 attempt to simulate honest responses to learn the client's password.
-Implementations and deployments of OPAQUE SHOULD consider additional checks to
-mitigate this type of attack: for instance, by ensuring that there is a
-server-authenticated channel over which OPAQUE registration and login are run.
+While this constitutes an exhaustive online attack, hence as expensive as an
+online guessing attack from the client side, it can be mitigated when the channel
+between client and server is authenticated, e.g., using server-authenticated TLS.
+In such cases, these online attacks are limited to clients and the authenticated server
+itself. Moreover, such a channel provides privacy of user information, including identity
+and envelope values.
 
 ## Error Considerations
 
@@ -1862,8 +1900,8 @@ happens with negligible probability
 OPAQUE is defined as the composition of two functionalities: an OPRF and
 an AKE protocol. It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy; see below)
-into a secure aPAKE protocol. In OPAQUE, the client stores a secret private key at the
-server during password registration and retrieves this key each time
+into a secure aPAKE protocol. In OPAQUE, the client derives a private key
+during password registration and retrieves this key each time
 it needs to authenticate to the server. The OPRF security properties
 ensure that only the correct password can unlock the private key
 while at the same time avoiding potential offline guessing attacks.
@@ -1872,9 +1910,7 @@ enables a variety of OPAQUE instantiations, from optimized
 performance to integration with existing authenticated key exchange
 protocols such as TLS.
 
-## Notable Design Differences
-
-**RFC editor: remove this section before publication.**
+## Notable Design Differences {#notable-design-differences}
 
 The specification as written here differs from the original cryptographic design in {{JKX18}}
 and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
@@ -1890,21 +1926,20 @@ implementation considerations.
   server, as described in {{offline-phase}}, whereas the servers construct
   envelopes in {{JKX18}}. This change adds to the security of the protocol.
   {{JKX18}} considered the case where the envelope was constructed by the
-  server for reasons of compatibility with previous UC modeling. An upcoming
-  paper analyzes the registration phase as specified in this document. This
+  server for reasons of compatibility with previous UC modeling. {{HJKW23}}
+  analyzes the registration phase as specified in this document. This
   change was made to support registration flows where the client chooses the
   password and wishes to keep it secret from the server, and it is compatible
   with the variant in {{JKX18}} that was originally analyzed.
 - Envelopes do not contain encrypted credentials. Instead, envelopes contain
-  information used to derive client private key material for the AKE. This
-  variant is also analyzed in the new paper referred to in the previous item.
+  information used to derive client private key material for the AKE.
   This change improves the assumption behind the protocol by getting rid of
-  equivocality and random key robustness for the encryption function. The
-  latter property is only required for authentication and achieved by a
-  collision-resistant MAC. This change was made for two reasons. First, it
+  equivocality and random key robustness for the encryption function.
+  The random-key robustness property defined in {{deps-symmetric}} is only
+  needed for the MAC function. This change was made for two reasons. First, it
   reduces the number of bytes stored in envelopes, which is a helpful
   improvement for large applications of OPAQUE with many registered users.
-  Second, it removes the need for client applications to generate authentication
+  Second, it removes the need for client applications to generate private
   keys during registration. Instead, this responsibility is handled by OPAQUE,
   thereby simplifying the client interface to the protocol.
 - Envelopes are masked with a per-user masking key as a way of preventing
@@ -1924,7 +1959,7 @@ implementation considerations.
   enumeration is a security (or privacy) risk.
 - The protocol outputs an export key for the client in addition to a shared
   session key that can be used for application-specific purposes. This key
-  is a pseudorandom value independent of other values in the protocol and
+  is a pseudorandom value derived from the client password (among other values) and
   has no influence on the security analysis (it can be simulated with a
   random output). This change was made to support more application use cases
   for OPAQUE, such as the use of OPAQUE for end-to-end encrypted backups;
@@ -1949,7 +1984,7 @@ implementation considerations.
   (client_identity) without inducing server-side changes, e.g., by changing
   an email address associated with a given account. This mechanism is part
   of the derivation of OPRF keys via a single PRF. As long as the derivation
-  of different OPRF keys from a single OPRF has different PRF inputs, the
+  of different OPRF keys from a single PRF has different PRF inputs, the
   protocol is secure. The choice of such inputs is up to the application.
 - {{JKX18}} comments on a defense against offline
   dictionary attacks upon server compromise or honest-but-curious servers.
@@ -2003,13 +2038,12 @@ suitable for interoperable implementations.
 
 ## Security Analysis {#security-analysis}
 
-Jarecki et al. {{JKX18}} proved the security of OPAQUE
+Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the
+design differences outlined in {{notable-design-differences}})
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
-function and the underlying key exchange protocol. In turn, the
-security of the OPRF protocol from {{OPRF}} is proven
-in the random oracle model under the One-More Diffie-Hellman assumption {{JKKX16}}.
+function and the underlying key exchange protocol.
 
 OPAQUE's design builds on a line of work initiated in the seminal
 paper of Ford and Kaliski {{FK00}} and is based on the HPAKE protocol
@@ -2032,6 +2066,11 @@ compromise of the server, the attacker cannot impersonate the client to the
 server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
+
+In {{JKX18}}, security is proven for one instance (i.e., one
+key) of the OPAQUE protocol, and without batching. There is currently no
+security analysis available for the OPAQUE protocol described in this
+document in a setting with multiple server keys or batching.
 
 ## Related Protocols
 
@@ -2096,10 +2135,10 @@ server_public_key instead) is acceptable.
 
 The export key can be used (separately from the OPAQUE protocol) to provide
 confidentiality and integrity to other data which only the client should be
-able to process. For instance, if the server is expected to maintain any
-client-side secrets which require a password to access, then this export key
-can be used to encrypt these secrets so that they remain hidden from the
-server.
+able to process. For instance, if the client wishes to store secrets with a
+third party, then this export key can be used by the client to encrypt these
+secrets so that they remain hidden from a passive adversary that does not have
+access to the server's secret keys or the client's password.
 
 ## Static Diffie-Hellman Oracles
 
@@ -2132,7 +2171,7 @@ not the point at infinity.
 Applying a key stretching function to the output of the OPRF greatly increases the cost of an offline
 attack upon the compromise of the credential file at the server. Applications
 SHOULD select parameters for the KSF that balance cost and complexity across
-all possible client implementations and deployments. Note that in OPAQUE, the
+different client implementations and deployments. Note that in OPAQUE, the
 key stretching function is executed by the client, as opposed to the server in
 traditional password hashing scenarios. This means that applications must consider
 a tradeoff between the performance of the protocol on clients (specifically low-end
@@ -2140,18 +2179,10 @@ devices) and protection against offline attacks after a server compromise.
 
 ## Client Enumeration {#preventing-client-enumeration}
 
-Client enumeration refers to attacks where the attacker tries to learn
-extra information about the behavior of clients that have registered with
-the server. There are two types of attacks we consider:
-
-1) An attacker tries to learn whether a given client identity is registered
-with a server, and
-2) An attacker tries to learn whether a given client identity has recently
-completed registration, re-registered (e.g. after a password change), or
-changed its identity.
-
-OPAQUE prevents these attacks during the authentication flow. The first is
-prevented by requiring servers to act with unregistered client identities in a
+Client enumeration refers to attacks where the attacker tries to learn whether
+a given user identity is registered with a server or whether a re-registration
+or change of password was performed for that user. OPAQUE counters these
+attacks by requiring servers to act with unregistered client identities in a
 way that is indistinguishable from their behavior with existing registered clients.
 Servers do this by simulating a fake CredentialResponse as specified in
 {{create-credential-response}} for unregistered users, and also encrypting
@@ -2167,24 +2198,7 @@ message for an unregistered client if these client enumeration attacks can
 be mitigated through other application-specific means or are otherwise not
 applicable for their threat model.
 
-Preventing the second type of attack requires the server to supply a
-credential_identifier value for a given client identity, consistently between
-the registration response and credential response; see {{create-reg-response}}
-and {{create-credential-response}}. Note that credential_identifier can be set
-to client_identity for simplicity.
-
-In the event of a server compromise that results in a re-registration of
-credentials for all compromised clients, the oprf_seed value MUST be resampled,
-resulting in a change in the oprf_key value for each client. Although this
-change can be detected by an adversary, it is only leaked upon password rotation
-after the exposure of the credential files, and equally affects all registered
-clients.
-
-Finally, applications must use the same key recovery mechanism when using this
-prevention throughout their lifecycle. The envelope size may vary between
-mechanisms, so a switch could then be detected.
-
-OPAQUE does not prevent either type of attack during the registration flow.
+OPAQUE does not prevent against this type of attack during the registration flow.
 Servers necessarily react differently during the registration flow between
 registered and unregistered clients. This allows an attacker to use the server's
 response during registration as an oracle for whether a given client identity is
@@ -2193,16 +2207,14 @@ limiting or otherwise restricting the registration flow.
 
 ## Protecting the Registration Masking Key
 
-The user enumeration prevention method described in this documents uses a symmetric
-encryption key generated by the client on registration that is sent to the server over
-an authenticated channel, such as one provided by TLS {{RFC8446}}. In the event that this
-channel is compromised, this encryption key could be leaked to an attacker.
-
-One mitigation against this threat is to additionally encrypt the `RegistrationRecord`
-sent from client to server at the application layer using public key encryption, e.g.,
-with HPKE {{?RFC9180}}.
-However, the details of this mechanism are out of scope
-of this document.
+The user enumeration prevention method described in this document uses a
+symmetric encryption key, masking_key, generated and sent to the server
+by the client during registration. This requires a confidential channel
+between client and server during registration, e.g., using TLS {{RFC8446}}.
+If the channel is only authenticated (this is a requirement for correct
+identification of the parties), a confidential channel can be established
+using public-key encryption, e.g., with HPKE {{?RFC9180}}. However, the details
+of this mechanism are out of scope of this document.
 
 ## Password Salt and Storage Implications
 
@@ -2210,8 +2222,10 @@ In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibi
 of pre-computation attacks. No extra salt value is needed. Also, clients never
 disclose their passwords to the server, even during registration. Note that a corrupted
 server can run an exhaustive offline dictionary attack to validate guesses for the client's
-password; this is inevitable in any aPAKE protocol. Furthermore, if the server does not
-sample this OPRF key with sufficiently high entropy, or if it is not kept hidden from an
+password; this is inevitable in any (single-server) aPAKE protocol. It can be avoided in
+the case of OPAQUE by resorting to a multi-server threshold OPRF implementation,
+e.g., {{TOPPSS}}. Furthermore, if the server does not
+sample the PRF seed with sufficiently high entropy, or if it is not kept hidden from an
 adversary, then any derivatives from the client's password may also be susceptible to an
 offline dictionary attack to recover the original password.
 
@@ -2219,7 +2233,7 @@ Some applications may require learning the client's password for enforcing passw
 rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED. Applications should move such checks to the client. Note that
 limited checks at the server are possible to implement, e.g., detecting repeated
-passwords.
+passwords upon re-registrations or password change.
 
 In general, passwords should be selected with sufficient entropy to avoid being susceptible
 to recovery through dictionary attacks, both online and offline.
@@ -2242,12 +2256,13 @@ This document makes no IANA requests.
 
 # Acknowledgments
 
-The OPAQUE protocol and its analysis is the joint work of the author with Stanislaw
-Jarecki and Jiayu Xu. We are indebted to the OPAQUE reviewers during CFRG's
+We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
-to Richard Barnes, Dan Brown, Eric Crockett, Paul Grubbs, Fredrik Kuivinen,
-Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+to Richard Barnes, Dan Brown, Matt Campagna, Eric Crockett, Paul Grubbs,
+Fredrik Kuivinen, Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
+Hugo Krawczyk wishes to thank his OPAQUE co-authors Stas Jarecki and Jiayu Xu
+without whom this work would have not been possible.
 
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
 
@@ -2266,7 +2281,7 @@ recovered, i.e., after the MAC in RecoverCredentials passes verification.
 
 # Alternate AKE Instantiations {#alternate-akes}
 
-It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and SIGMA-I.
+It is possible to instantiate OPAQUE with other AKEs, such as HMQV {{HMQV}} and {{SIGMA-I}}.
 HMQV is similar to 3DH but varies in its key schedule. SIGMA-I uses digital signatures
 rather than static DH keys for authentication. Specification of these instantiations is
 left to future documents. A sketch of how these instantiations might change is included
@@ -2278,6 +2293,11 @@ in {{security-considerations}}. Note that such an instantiation is not quantum-s
 the OPRF is quantum-safe. However, an OPAQUE instantiation where the AKE is quantum-safe,
 but the OPRF is not, would still ensure the confidentiality and integrity of application data encrypted
 under session_key (or a key derived from it) with a quantum-safe encryption function.
+However, the only effect of a break of the OPRF by a future quantum attacker would be
+the ability of this attacker to run at that time an exhaustive dictionary
+attack against the old user's password and only for users whose envelopes were
+harvested while in use (in the case of OPAQUE run over a TLS channel with the
+server, harvesting such envelopes requires targeted active attacks).
 
 ## HMQV Instantiation Sketch {#hmqv-sketch}
 
@@ -2333,7 +2353,7 @@ Its output length (in bits) must be at least L.
 
 ## SIGMA-I Instantiation Sketch
 
-A SIGMA-I instantiation differs more drastically from OPAQUE-3DH since authentication
+A {{SIGMA-I}} instantiation differs more drastically from OPAQUE-3DH since authentication
 uses digital signatures instead of Diffie-Hellman. In particular, both KE2 and KE3
 would carry a digital signature, computed using the server and client private keys
 established during registration, respectively, as well as a MAC, where the MAC is
