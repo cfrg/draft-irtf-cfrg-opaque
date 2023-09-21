@@ -429,7 +429,7 @@ This specification uses a KDF with the following API and parameters:
 This specification also makes use of a random-key robust Message Authentication Code
 (MAC). The random-key robustness property states that, given two random keys k1 and k2,
 it is infeasible to find a message m such that MAC(k1, m) = MAC(k2, m).
-The API and parameters for the random-key robust MAC is as follows:
+The API and parameters for the random-key robust MAC are as follows:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
   `key`, producing a fixed-length output of `Nm` bytes.
