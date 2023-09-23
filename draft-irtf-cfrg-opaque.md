@@ -82,7 +82,7 @@ protocols"
         ins: J. H. Cheon
         name: Jung Hee Cheon
 
-    seriesinfo: Eurocrypt 2006
+    seriesinfo: Eurocrypt
     date: 2006
 
   FK00:
@@ -121,6 +121,25 @@ protocols"
 
     seriesinfo: CRYPTO
     date: 2006
+
+  HJKW23:
+    title: "Password-Authenticated TLS via OPAQUE and Post-Handshake Authentication"
+    author:
+      -
+        ins: J. Hesse
+        name: Julia Hesse
+      -
+        ins: S. Jarecki
+        name: Stanislaw Jarecki
+      -
+        ins: H. Krawczyk
+        name: Hugo Krawczyk
+      -
+        ins: C. Wood
+        name: Christopher Wood
+
+    seriesinfo: EUROCRYPT
+    date: 2023
 
   AuCPace:
     title: "AuCPace: Efficient verifier-based PAKE protocol tailored for the IIoT"
@@ -402,8 +421,8 @@ Moreover, the following OPRF server APIs are used:
 - BlindEvaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
   the BlindEvaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
-- DeriveKeyPair(seed, info): Derive a private and public key pair deterministically
-  from a seed and info parameter, as described in {{OPRF, Section 3.2}}.
+- DeriveKeyPair(seed, info): Create and output (`sk`, `pk`), consisting of a private and public key derived
+  deterministically from a `seed`` and `info`` parameter, as described in {{OPRF, Section 3.2}}.
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
@@ -466,7 +485,7 @@ fully specifies the cryptographic algorithm dependencies necessary to run the
 protocol; see {{configurations}} for details.
 The server chooses a pair of keys (`server_private_key` and `server_public_key`)
 for the AKE, and chooses a seed (`oprf_seed`) of `Nh` bytes for the OPRF.
-The server can use this single pair of keys with multiple
+The server can use `server_private_key` and `server_public_key` with multiple
 clients and can opt to use multiple seeds (so long as they are kept consistent for
 each client).
 
@@ -550,7 +569,7 @@ messages of the concurrent execution of the key recovery process (OPRF) and the
 authenticated key exchange (AKE), and their corresponding wire formats are
 specified in {{ake-messages}}.
 
-The rest of this document describes the details of these stages in detail.
+The rest of this document describes the specifics of these stages in detail.
 {{client-material}} describes how client credential information is
 generated, encoded, and stored on the server during registration, and recovered during
 login. {{offline-phase}} describes the first registration stage of the protocol,
@@ -564,8 +583,6 @@ OPAQUE makes use of a structure called `Envelope` to manage client credentials.
 The client creates its `Envelope` on registration and sends it to the server for
 storage. On every login, the server sends this `Envelope` to the client so it can
 recover its key material for use in the AKE.
-
-Future variants of OPAQUE may use different key recovery mechanisms. See {{key-recovery}} for details.
 
 Applications may pin key material to identities if desired. If no identity is given
 for a party, its value MUST default to its public key. The following types of
@@ -1909,14 +1926,13 @@ implementation considerations.
   server, as described in {{offline-phase}}, whereas the servers construct
   envelopes in {{JKX18}}. This change adds to the security of the protocol.
   {{JKX18}} considered the case where the envelope was constructed by the
-  server for reasons of compatibility with previous UC modeling. An upcoming
-  paper analyzes the registration phase as specified in this document. This
+  server for reasons of compatibility with previous UC modeling. {{HJKW23}}
+  analyzes the registration phase as specified in this document. This
   change was made to support registration flows where the client chooses the
   password and wishes to keep it secret from the server, and it is compatible
   with the variant in {{JKX18}} that was originally analyzed.
 - Envelopes do not contain encrypted credentials. Instead, envelopes contain
-  information used to derive client private key material for the AKE. This
-  variant is also analyzed in the new paper referred to in the previous item.
+  information used to derive client private key material for the AKE.
   This change improves the assumption behind the protocol by getting rid of
   equivocality and random key robustness for the encryption function.
   The random-key robustness property defined in {{deps-symmetric}} is only
@@ -1943,7 +1959,7 @@ implementation considerations.
   enumeration is a security (or privacy) risk.
 - The protocol outputs an export key for the client in addition to a shared
   session key that can be used for application-specific purposes. This key
-  is a pseudorandom value independent of other values in the protocol and
+  is a pseudorandom value derived from the client password (among other values) and
   has no influence on the security analysis (it can be simulated with a
   random output). This change was made to support more application use cases
   for OPAQUE, such as the use of OPAQUE for end-to-end encrypted backups;
@@ -2022,7 +2038,8 @@ suitable for interoperable implementations.
 
 ## Security Analysis {#security-analysis}
 
-Jarecki et al. {{JKX18}} proved the security of OPAQUE
+Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the
+design differences outlined in {{notable-design-differences}})
 in a strong aPAKE model that ensures security against pre-computation attacks
 and is formulated in the Universal Composability (UC) framework {{Canetti01}}
 under the random oracle model. This assumes security of the OPRF
@@ -2049,6 +2066,11 @@ compromise of the server, the attacker cannot impersonate the client to the
 server without first running an exhaustive dictionary attack.
 Another essential requirement from AKE protocols for use in OPAQUE is to
 provide forward secrecy (against active attackers).
+
+In {{JKX18}}, security is proven for one instance (i.e., one
+key) of the OPAQUE protocol, and without batching. There is currently no
+security analysis available for the OPAQUE protocol described in this
+document in a setting with multiple server keys or batching.
 
 ## Related Protocols
 
@@ -2113,10 +2135,10 @@ server_public_key instead) is acceptable.
 
 The export key can be used (separately from the OPAQUE protocol) to provide
 confidentiality and integrity to other data which only the client should be
-able to process. For instance, if the server is expected to maintain any
-client-side secrets which require a password to access, then this export key
-can be used by the client to encrypt these secrets so that they remain hidden
-from the server.
+able to process. For instance, if the client wishes to store secrets with a
+third party, then this export key can be used by the client to encrypt these
+secrets so that they remain hidden from a passive adversary that does not have
+access to the server's secret keys or the client's password.
 
 ## Static Diffie-Hellman Oracles
 
