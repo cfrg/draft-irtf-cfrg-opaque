@@ -1550,7 +1550,8 @@ Input:
 Output:
 - preamble, the protocol transcript with identities and messages.
 
-def Preamble(client_identity, ke1, server_identity, ke2):
+def Preamble(client_identity, ke1, server_identity, credential_response,
+             server_nonce, server_public_keyshare):
   preamble = concat("OPAQUEv1-",
                      I2OSP(len(context), 2), context,
                      I2OSP(len(client_identity), 2), client_identity,
