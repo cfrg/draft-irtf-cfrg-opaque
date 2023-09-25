@@ -446,9 +446,8 @@ This specification uses a KDF with the following API and parameters:
 - Nx: The output size of the `Extract()` function in bytes.
 
 This specification also makes use of a random-key robust Message Authentication Code
-(MAC). The random-key robustness property states that, given two random keys k1 and k2,
-it is infeasible to find a message m such that MAC(k1, m) = MAC(k2, m).
-The API and parameters for the random-key robust MAC are as follows:
+(MAC). See {{rkr-mac}} for more details on this property. The API and parameters for
+the random-key robust MAC are as follows:
 
 - MAC(key, msg): Compute a message authentication code over input `msg` with key
   `key`, producing a fixed-length output of `Nm` bytes.
@@ -1846,7 +1845,9 @@ to mitigate client enumeration attacks.
 
 As specified in {{offline-phase}} and {{online-phase}}, OPAQUE only requires
 the client password as input to the OPRF for registration and authentication.
-However, implementations can incorporate the client identity alongside the
+However, if `client_identity` can be bound to the client's registration record
+(in that the identity will not change during the lifetime of the record),
+then an implementation can incorporate `client_identity` alongside the
 password as input to the OPRF. This provides additional client-side entropy
 which can supplement the entropy that should be introduced by the server during
 an honest execution of the protocol. This also provides domain separation
@@ -2101,6 +2102,11 @@ of identities. In the case of OPAQUE, those identities correspond to client_iden
 Thus, it is essential for the parties to agree on such identities, including an
 agreed bit representation of these identities as needed.
 
+Note that the method of transmission of client_identity from client to server is outside
+the scope of this protocol, and it is up to an application to choose how this identity
+should be delivered (for instance, alongside the first OPAQUE message, or perhaps agreed upon before
+the OPAQUE protocol begins).
+
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie client_identity to the identity the server uses
 to fetch the envelope (hence determined during password registration) and to tie server_identity
@@ -2151,6 +2157,18 @@ number of calls to the OPRF or results in insignificant security loss;
 see {{OPRF}} for more information. For OPAQUE, these attacks
 are particularly impractical as they translate into an infeasible number of
 failed authentication attempts directed at individual users.
+
+## Random-Key Robust MACs {#rkr-mac}
+
+The random-key robustness property for a MAC states
+that, given two random keys k1 and k2, it is infeasible to find a message m
+such that MAC(k1, m) = MAC(k2, m). Note that in general, not every MAC function
+is key-robust. In particular, GMAC (which underlies GCM) does not satisfy
+key-robustness, whereas HMAC with a collision-resistant hash function does
+satisfy key-robustness.
+
+An application can choose to use a non-key-robust MAC within the AKE portion of
+the protocol described in {{protocol-3dh}}.
 
 ## Input Validation {#validation}
 
