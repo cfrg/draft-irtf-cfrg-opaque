@@ -1657,7 +1657,7 @@ def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
                       ke2.auth_response.server_public_keyshare)
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   expected_server_mac = MAC(Km2, Hash(preamble))
-  if !ct_equal(ke2.server_mac, expected_server_mac),
+  if !ct_equal(ke2.auth_response.server_mac, expected_server_mac),
     raise ServerAuthenticationError
   client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac)))
   Create KE3 ke3 with client_mac
@@ -1705,7 +1705,6 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
-  expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
 
   state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
