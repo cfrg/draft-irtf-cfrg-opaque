@@ -1200,7 +1200,7 @@ Output:
 - export_key, an additional client key.
 
 def GenerateKE3(client_identity, server_identity, ke2):
-  (client_private_key, cleartext_credentials, server_public_key, export_key) =
+  (client_private_key, cleartext_credentials, export_key) =
     RecoverCredentials(state.password, state.blind, ke2.credential_response,
                        server_identity, client_identity)
   (ke3, session_key) =
@@ -1391,7 +1391,6 @@ Input:
 Output:
 - client_private_key, the encoded client private key for the AKE protocol.
 - cleartext_credentials, a CleartextCredentials structure.
-- server_public_key, the public key of the server.
 - export_key, an additional client key.
 
 Exceptions:
@@ -1415,7 +1414,7 @@ def RecoverCredentials(password, blind, response,
     Recover(randomized_password, server_public_key, envelope,
             server_identity, client_identity)
 
-  return (client_private_key, cleartext_credentials, server_public_key, export_key)
+  return (client_private_key, cleartext_credentials, export_key)
 ~~~
 
 ## 3DH Protocol {#protocol-3dh}
