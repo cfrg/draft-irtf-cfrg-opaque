@@ -1846,7 +1846,7 @@ As specified in {{offline-phase}} and {{online-phase}}, OPAQUE only requires
 the client password as input to the OPRF for registration and authentication.
 However, if `client_identity` can be bound to the client's registration record
 (in that the identity will not change during the lifetime of the record),
-then an implementation can incorporate `client_identity` alongside the
+then an implementation SHOULD incorporate `client_identity` alongside the
 password as input to the OPRF. This provides additional client-side entropy
 which can supplement the entropy that should be introduced by the server during
 an honest execution of the protocol. This also provides domain separation
@@ -2167,7 +2167,8 @@ key-robustness, whereas HMAC with a collision-resistant hash function does
 satisfy key-robustness.
 
 An application can choose to use a non-key-robust MAC within the AKE portion of
-the protocol described in {{protocol-3dh}}.
+the protocol described in {{protocol-3dh}}, but it MUST use a key-robust MAC
+for the creation of the `auth_tag` parameter in {{envelope-creation}}.
 
 ## Input Validation {#validation}
 
