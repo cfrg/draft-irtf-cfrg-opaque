@@ -313,10 +313,10 @@ Otherwise, the attacker can pre-compute a deterministic list of mapped
 passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
-This document describes OPAQUE, a PKI-free secure aPAKE that is secure
-against pre-computation attacks. OPAQUE provides forward secrecy with
-respect to password leakage while also hiding the password from the
-server, even during password registration. OPAQUE allows applications
+This document describes OPAQUE, an aPAKE that is secure against
+pre-computation attacks (as defined in {{JKX18}}). OPAQUE provides forward
+secrecy with respect to password leakage while also hiding the password from
+the server, even during password registration. OPAQUE allows applications
 to increase the difficulty of offline dictionary attacks via iterated
 hashing or other key stretching schemes. OPAQUE is also extensible, allowing
 clients to safely store and retrieve arbitrary application data on servers
@@ -1453,6 +1453,7 @@ variants:
   between the private input `k` and public input `B`.
   The output of this function is a unique, fixed-length byte string.
 
+It is RECOMMENDED to use Elliptic Curve Diffie-Hellman for this key exchange protocol.
 Implementations for recommended groups in {{configurations}}, as well as groups
 covered by test vectors in {{test-vectors}}, are described in the following sections.
 
@@ -2370,6 +2371,9 @@ s = Hash(hashInput) mod L
 
 Hash is the same hash function used in the main OPAQUE protocol for key derivation.
 Its output length (in bits) must be at least L.
+
+Both parties should perform validation (as in {{validation}}) on each other's
+public keys before computing the above parameters.
 
 ## SIGMA-I Instantiation Sketch
 
