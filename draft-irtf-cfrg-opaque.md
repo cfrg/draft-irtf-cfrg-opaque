@@ -422,7 +422,7 @@ Moreover, the following OPRF server APIs are used:
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
   the BlindEvaluate function described in {{OPRF, Section 3.3.1}}, where `k` is the private key parameter.
 - DeriveKeyPair(seed, info): Create and output (`sk`, `pk`), consisting of a private and public key derived
-  deterministically from a `seed`` and `info`` parameter, as described in {{OPRF, Section 3.2}}.
+  deterministically from a `seed` and `info` parameter, as described in {{OPRF, Section 3.2}}.
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
