@@ -1804,6 +1804,9 @@ applications can use to control OPAQUE:
   cross-protocol or downgrade attacks. This context information is not sent over the
   wire in any key exchange messages. However, applications may choose to send it alongside
   key exchange messages if needed for their use case.
+- Additional information: After completing the online AKE stage, the server
+  may choose to send additional information, encrypted under `session_key`,
+  to the client.
 - Client and server identities: As described in {{client-material}}, clients
   and servers are identified with their public keys by default. However, applications
   may choose alternate identities that are pinned to these public keys. For example,
