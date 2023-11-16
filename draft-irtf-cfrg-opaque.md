@@ -1834,7 +1834,7 @@ applications can use to control OPAQUE:
 This section documents considerations for OPAQUE implementations. This includes
 implementation safeguards and error handling considerations.
 
-## Implementation Safeguards
+## Implementation Safeguards {#implementation-safeguards}
 
 Certain information created, exchanged, and processed in OPAQUE is sensitive.
 Specifically, all private key material and intermediate values, along with the
@@ -1850,10 +1850,10 @@ the client password as input to the OPRF for registration and authentication.
 However, if `client_identity` can be bound to the client's registration record
 (in that the identity will not change during the lifetime of the record),
 then an implementation SHOULD incorporate `client_identity` alongside the
-password as input to the OPRF. This provides additional client-side entropy
-which can supplement the entropy that should be introduced by the server during
-an honest execution of the protocol. This also provides domain separation
-between different clients that might otherwise share the same password.
+password as input to the OPRF. Furthermore, it is RECOMMENDED to incorporate
+`server_identity` alongside the password as input to the OPRF. These
+additions provide domain separation for clients and servers; see
+{{security-analysis}}.
 
 Finally, note that online guessing attacks (against any aPAKE) can be done from
 both the client side and the server side. In particular, a malicious server can
@@ -2074,6 +2074,15 @@ In {{JKX18}}, security is proven for one instance (i.e., one
 key) of the OPAQUE protocol, and without batching. There is currently no
 security analysis available for the OPAQUE protocol described in this
 document in a setting with multiple server keys or batching.
+
+As stated in {{implementation-safeguards}}, incorporating `client_identity`
+adds domain separation, in particular against servers that choose the same
+OPRF key for multiple clients. The `client_identity` as input to the OPRF
+also acts as a key identifier that would be required for a proof of the
+protocol in the multi-key setting; the OPAQUE analysis in {{JKX18}} assumes
+single server-key instances. Adding `server_identity`` to the OPRF input
+provides domain separation for clients that reuse the same `client_identity`
+across different server instantiations.
 
 ## Related Protocols
 
