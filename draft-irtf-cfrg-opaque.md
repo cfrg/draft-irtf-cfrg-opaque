@@ -1828,6 +1828,11 @@ applications can use to control OPAQUE:
   implement this mitigation SHOULD use the same configuration information (such as
   the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
   where this attack is not a concern, servers may choose to not support this functionality.
+- Handling password changes: In the event of a password change, the client and
+  server can run the offline registration phase using the new password as a
+  fresh instance (ensuring to resample all random values). The resulting
+  registration record can then replace the previous record corresponding to
+  the client's old password registration.
 
 # Implementation Considerations {#implementation-considerations}
 
