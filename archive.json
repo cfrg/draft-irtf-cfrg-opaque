@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-12-07T01:12:12.853445+00:00",
+  "timestamp": "2023-12-10T01:16:40.325106+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9047,7 +9047,7 @@
       "labels": [],
       "body": "the section `Password Salt and Storage Implications` says the following:\r\n\r\n> Some applications may require learning the client's password for enforcing password rules. Doing so invalidates this important security property of OPAQUE and is NOT RECOMMENDED.\r\n\r\ni agree that this is not a good thing, and also should not be recommended, but maybe caveat this, with \"depending on threat model, for example internal corporate deployments are possible exceptions were enforcement of strong password policies is mandated by regulation\"\r\n\r\n> Applications should move such checks to the client.\r\n\r\n\"malicious\" clients can easily ignore password rules, and the server will never know about this. This can be a problem when corporate rules mandate strong passwords, but users want to circumvent this for whatever reason (mostly lazyness?) - this is well known rule in application security that the server should never trust any input validation by the client.\r\n\r\n> Note that limited checks at the server are possible to implement, e.g., detecting repeated passwords upon re-registrations or password change.\r\n\r\ni wonder how this would work, can someone enlighten me?",
       "createdAt": "2023-10-22T00:57:17Z",
-      "updatedAt": "2023-12-05T00:41:27Z",
+      "updatedAt": "2023-12-08T01:09:10Z",
       "closedAt": null,
       "comments": [
         {
@@ -9098,6 +9098,48 @@
           "body": "I've been looking at previous versions of the paper (since also my local copy has a bit different wording) and found that the section you quoted previously said:\r\n\r\n> A problem arises with this approach if S\u2019s policy is to check the user\u2019s password for compliance with some rules.\r\n\r\ni must admit i remember something more explicit on this topic. but can't find it myself, but knowing that Hugo likes to have multiple papers on the same topic, it might be that my confusion comes from one of his other papers...\r\n\r\ni'll try to draft a proposal that caveats the contended fragment.",
           "createdAt": "2023-12-05T00:41:26Z",
           "updatedAt": "2023-12-05T00:41:26Z"
+        },
+        {
+          "author": "bbeallo12",
+          "authorAssociation": "NONE",
+          "body": "After reading this thread, I have a question.\r\nWould there be a way for the client to cryptographically prove to the server it hasn't been tampered with in a way only the genuine client could do?",
+          "createdAt": "2023-12-07T23:57:00Z",
+          "updatedAt": "2023-12-07T23:57:00Z"
+        },
+        {
+          "author": "bbeallo12",
+          "authorAssociation": "NONE",
+          "body": "Also doesn't the existence of 2FA make the password complexity issue a non-issue?  If the password is guessed, they still need the 2FA. At which point the user is notified of the attempted login and can easily change their password.\r\n\r\nIf you also require a new 2FA token along with the password change, doesn't that make it even better?",
+          "createdAt": "2023-12-08T00:04:24Z",
+          "updatedAt": "2023-12-08T00:04:24Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "> Also doesn't the existence of 2FA make the password complexity issue a non-issue? If the password is guessed, they still need the 2FA. At which point the user is notified of the attempted login and can easily change their password.\r\n> \r\n> If you also require a new 2FA token along with the password change, doesn't that make it even better?\r\n\r\nOPAQUE is essentially and AKE, and has nothing to do with 2FA, OPAQUE can be part of a 2FA scheme, but that is only one use of an AKE, in other settings where OPAQUE is used to derive a key for an encrypted channel or for retrieving some encrypted blob, there is no 2FA and thus password strength does matter. Futhermore password strength also matters (although not in the enterprise setting) because a server (or someone who has the server records) can just offline brute force the password, and thus even then password strength matters and 2FA is irrelevant.\r\n\r\nre: https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/434#issuecomment-1846285005 - clients can prove correctness using attestation, and that is a brittle concept or it leads to a bad DRM dystopia, on phones this is a bit easier, apple and windows might be able to pull this off, but uefi/secureboot is really a broken concept, so it is quite impossible to do so reliably on desktops.",
+          "createdAt": "2023-12-08T00:40:15Z",
+          "updatedAt": "2023-12-08T00:40:15Z"
+        },
+        {
+          "author": "bbeallo12",
+          "authorAssociation": "NONE",
+          "body": "> > Also doesn't the existence of 2FA make the password complexity issue a non-issue? If the password is guessed, they still need the 2FA. At which point the user is notified of the attempted login and can easily change their password.\r\n> > If you also require a new 2FA token along with the password change, doesn't that make it even better?\r\n> \r\n> OPAQUE is essentially and AKE, and has nothing to do with 2FA, OPAQUE can be part of a 2FA scheme, but that is only one use of an AKE, in other settings where OPAQUE is used to derive a key for an encrypted channel or for retrieving some encrypted blob, there is no 2FA and thus password strength does matter. Futhermore password strength also matters (although not in the enterprise setting) because a server (or someone who has the server records) can just offline brute force the password, and thus even then password strength matters and 2FA is irrelevant.\r\n> \r\n> re: [#434 (comment)](https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/434#issuecomment-1846285005) - clients can prove correctness using attestation, and that is a brittle concept or it leads to a bad DRM dystopia, on phones this is a bit easier, apple and windows might be able to pull this off, but uefi/secureboot is really a broken concept, so it is quite impossible to do so reliably on desktops.\r\n\r\nDoesn't that make the assumption you're using OPAQUE in a vacuum? Why not use it together with multiple authentication methods?\r\n\r\nAs for attestation, so it isn't an issue of possibility but more an issue of the potential implications.",
+          "createdAt": "2023-12-08T00:48:38Z",
+          "updatedAt": "2023-12-08T00:49:11Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "you are reducing OPAQUE to an auth mechanism, instead of considering it an AKE. for an auth mechanism this makes sense, but for an AKE not.",
+          "createdAt": "2023-12-08T01:05:17Z",
+          "updatedAt": "2023-12-08T01:05:17Z"
+        },
+        {
+          "author": "bbeallo12",
+          "authorAssociation": "NONE",
+          "body": "> you are reducing OPAQUE to an auth mechanism, instead of considering it an AKE. for an auth mechanism this makes sense, but for an AKE not.\r\n\r\nAh okay, that makes sense. Thanks for explaining that.\r\n\r\nWhat if hypothetically there could be a zero knowledge proof algorithm that can prove to a server the password was generated using the required complexity requirements without sharing the actual password.  If such an algorithm could exist, would that resolve the issue?",
+          "createdAt": "2023-12-08T01:09:08Z",
+          "updatedAt": "2023-12-08T01:09:08Z"
         }
       ]
     }
@@ -33806,7 +33848,7 @@
       "labels": [],
       "body": "",
       "createdAt": "2023-11-16T19:50:22Z",
-      "updatedAt": "2023-12-04T19:07:39Z",
+      "updatedAt": "2023-12-09T14:52:00Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
@@ -33824,34 +33866,65 @@
           "body": "Should we add this in the reference implementations and vectors ?",
           "createdAt": "2023-12-04T19:07:39Z",
           "updatedAt": "2023-12-04T19:07:39Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "> Should we add this in the reference implementations and vectors ?\r\n\r\nNo, since these are just RECOMMENDED but not required.",
+          "createdAt": "2023-12-07T21:11:14Z",
+          "updatedAt": "2023-12-07T21:11:14Z"
         }
       ],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5puKbk",
+          "commit": {
+            "abbreviatedOid": "483834f"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2023-12-09T14:52:00Z",
+          "updatedAt": "2023-12-09T14:52:00Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 436,
       "id": "PR_kwDOD79ejs5hE7lQ",
       "title": "Adding note on password change",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/436",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Under Application Considerations, we are adding some text to describe how a password change should be handled: by rerunning the registration protocol as a fresh instance using the new password.",
       "createdAt": "2023-12-04T16:40:10Z",
-      "updatedAt": "2023-12-04T19:03:25Z",
+      "updatedAt": "2023-12-07T21:18:40Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "password_change",
       "headRefOid": "cbc12f5d2f344e1dd87874201187dde44d004e56",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
-      "comments": [],
+      "closedAt": "2023-12-07T21:10:47Z",
+      "mergedAt": "2023-12-07T21:10:47Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "ade0cf06672580ef99cd68adb9b942ad7df79509"
+      },
+      "comments": [
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "apologies if this is a bit late, but i just had the thought, the way this is now phrased does not address authorization to replace this record. is there any way the previous record+OPAQUE can be used to provide authorization to this operation?",
+          "createdAt": "2023-12-07T21:18:39Z",
+          "updatedAt": "2023-12-07T21:18:39Z"
+        }
+      ],
       "reviews": [
         {
           "id": "PRR_kwDOD79ejs5pFFHs",
@@ -33906,7 +33979,7 @@
       "labels": [],
       "body": "draft proposal to settle #434",
       "createdAt": "2023-12-05T00:56:38Z",
-      "updatedAt": "2023-12-05T00:56:38Z",
+      "updatedAt": "2023-12-09T14:41:57Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
@@ -33917,7 +33990,15 @@
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I'm hoping to cut down on the wording and avoid referencing corporate deployments. How about the following suggested text, instead? \r\n\r\n> Some applications may require learning the client's password for enforcing password\r\n> rules. Doing so invalidates this important security property of OPAQUE and is\r\n> NOT RECOMMENDED, unless it is not possible for applications to move such checks\r\n> to the client. Note that limited checks at the server are possible to implement, e.g.,\r\n> detecting repeated passwords upon re-registrations or password change.\r\n\r\nNote that the delta is that we are caveating the \"NOT RECOMMENDED\", with the phrasing \"unless it is not possible for applications to move such checks to the client\" without elaborating the different scenarios where that might not be possible. I hope this still captures what you are aiming for!",
+          "createdAt": "2023-12-09T14:41:56Z",
+          "updatedAt": "2023-12-09T14:41:56Z"
+        }
+      ],
       "reviews": []
     }
   ]
