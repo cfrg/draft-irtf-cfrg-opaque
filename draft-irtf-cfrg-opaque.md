@@ -2252,14 +2252,9 @@ offline dictionary attack to recover the original password.
 
 Some applications may require learning the client's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
-NOT RECOMMENDED in most thread models. However for example in case of corporate
-deployments, where the client is under control of the same organisation as the
-server - and regulation or compliance mandates strict checks on password quality
-or even escrow of passwords - it can makes sense to use a version of OPAQUE
-registration which exposes the password to the server during registration.
-However if possible and acceptable applications SHOULD move such checks to the client.
-Note that limited checks at the server are possible to implement without exposing the
-password, e.g., detecting repeated passwords upon re-registrations or password change.
+NOT RECOMMENDED, unless it is not possible for applications to move such checks
+to the client. Note that limited checks at the server are possible to implement, e.g.,
+detecting repeated passwords upon re-registrations or password change.
 
 In general, passwords should be selected with sufficient entropy to avoid being susceptible
 to recovery through dictionary attacks, both online and offline.
