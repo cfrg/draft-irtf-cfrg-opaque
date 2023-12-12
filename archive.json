@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-12-10T01:16:40.325106+00:00",
+  "timestamp": "2023-12-12T01:12:53.278679+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -33815,25 +33815,33 @@
       "id": "PR_kwDOD79ejs5ckS5R",
       "title": "Minor clarification about sending additional information",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/433",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Adding the following sentence under application considerations:\r\n\r\n- Additional information: After completing the online AKE stage, the server\r\n  may choose to send additional information, encrypted under `session_key`,\r\n  to the client.",
       "createdAt": "2023-10-11T21:03:53Z",
-      "updatedAt": "2023-11-16T19:27:09Z",
+      "updatedAt": "2023-12-10T14:52:03Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "hugo_edits_4",
       "headRefOid": "eaf7f1d71c62e604aabb520bc992892d534226b2",
-      "closedAt": null,
+      "closedAt": "2023-12-10T14:52:02Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "After some offline discussion, seems like we can omit making this change as it just adds more confusion.",
+          "createdAt": "2023-12-10T14:52:03Z",
+          "updatedAt": "2023-12-10T14:52:03Z"
+        }
+      ],
       "reviews": []
     },
     {
@@ -33841,24 +33849,26 @@
       "id": "PR_kwDOD79ejs5frCW1",
       "title": "Incorporating server identity into OPRF computation as a recommendation",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/435",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "",
       "createdAt": "2023-11-16T19:50:22Z",
-      "updatedAt": "2023-12-09T14:52:00Z",
+      "updatedAt": "2023-12-11T20:12:50Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "incorporate_server_identity",
       "headRefOid": "483834fe33f6f32d929f7e7e0921a4caeb9dfe10",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2023-12-11T20:12:50Z",
+      "mergedAt": "2023-12-11T20:12:50Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "ee74a9a6e8f6d255b162f357b03515326796643b"
+      },
       "comments": [
         {
           "author": "bytemare",
@@ -33979,7 +33989,7 @@
       "labels": [],
       "body": "draft proposal to settle #434",
       "createdAt": "2023-12-05T00:56:38Z",
-      "updatedAt": "2023-12-09T14:41:57Z",
+      "updatedAt": "2023-12-11T20:13:07Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
@@ -33994,9 +34004,9 @@
         {
           "author": "kevinlewi",
           "authorAssociation": "COLLABORATOR",
-          "body": "I'm hoping to cut down on the wording and avoid referencing corporate deployments. How about the following suggested text, instead? \r\n\r\n> Some applications may require learning the client's password for enforcing password\r\n> rules. Doing so invalidates this important security property of OPAQUE and is\r\n> NOT RECOMMENDED, unless it is not possible for applications to move such checks\r\n> to the client. Note that limited checks at the server are possible to implement, e.g.,\r\n> detecting repeated passwords upon re-registrations or password change.\r\n\r\nNote that the delta is that we are caveating the \"NOT RECOMMENDED\", with the phrasing \"unless it is not possible for applications to move such checks to the client\" without elaborating the different scenarios where that might not be possible. I hope this still captures what you are aiming for!",
+          "body": "I'm hoping to cut down on the wording and avoid referencing corporate deployments. How about the following suggested text, instead? \r\n\r\n> Some applications may require learning the client's password for enforcing password\r\n> rules. Doing so invalidates this important security property of OPAQUE and is\r\n> NOT RECOMMENDED, unless it is not possible for applications to move such checks\r\n> to the client. Note that limited checks at the server are possible to implement, e.g.,\r\n> detecting repeated passwords upon re-registrations or password change.\r\n\r\nNote that the delta is that we are caveating the \"NOT RECOMMENDED\", with the phrasing \"unless it is not possible for applications to move such checks to the client\" without elaborating the different scenarios where that might not be possible. I hope this still captures what you are aiming for!\r\n\r\n@stef ^",
           "createdAt": "2023-12-09T14:41:56Z",
-          "updatedAt": "2023-12-09T14:41:56Z"
+          "updatedAt": "2023-12-11T20:13:07Z"
         }
       ],
       "reviews": []
