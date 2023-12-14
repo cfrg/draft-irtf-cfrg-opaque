@@ -5,12 +5,12 @@
 Network Working Group                                        D. Bourdrez
 Internet-Draft                                                          
 Intended status: Informational                               H. Krawczyk
-Expires: 13 June 2024                                                AWS
+Expires: 16 June 2024                                                AWS
                                                                  K. Lewi
                                                                     Meta
                                                               C. A. Wood
                                                         Cloudflare, Inc.
-                                                        11 December 2023
+                                                        14 December 2023
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -49,7 +49,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 June 2024.
+   This Internet-Draft will expire on 16 June 2024.
 
 Copyright Notice
 
@@ -2270,10 +2270,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
    Some applications may require learning the client's password for
    enforcing password rules.  Doing so invalidates this important
-   security property of OPAQUE and is NOT RECOMMENDED.  Applications
-   should move such checks to the client.  Note that limited checks at
-   the server are possible to implement, e.g., detecting repeated
-   passwords upon re-registrations or password change.
+   security property of OPAQUE and is NOT RECOMMENDED, unless it is not
+   possible for applications to move such checks to the client.  Note
+   that limited checks at the server are possible to implement, e.g.,
+   detecting repeated passwords upon re-registrations or password
+   change.
 
    In general, passwords should be selected with sufficient entropy to
    avoid being susceptible to recovery through dictionary attacks, both
