@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-12-12T01:12:53.278679+00:00",
+  "timestamp": "2023-12-14T01:11:21.124042+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -33989,13 +33989,13 @@
       "labels": [],
       "body": "draft proposal to settle #434",
       "createdAt": "2023-12-05T00:56:38Z",
-      "updatedAt": "2023-12-11T20:13:07Z",
+      "updatedAt": "2023-12-12T21:20:27Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "one-shot-registration",
-      "headRefOid": "00eb278fc9aaa1c7677ee3d0539494de8a67b174",
+      "headRefOid": "9587fa4438c975d56c4bba9f337dd6636de08e11",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -34009,7 +34009,21 @@
           "updatedAt": "2023-12-11T20:13:07Z"
         }
       ],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5p_tKM",
+          "commit": {
+            "abbreviatedOid": "00eb278"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "Marking as request changes for the above comment ^",
+          "createdAt": "2023-12-12T19:38:12Z",
+          "updatedAt": "2023-12-12T19:38:12Z",
+          "comments": []
+        }
+      ]
     }
   ]
 }
