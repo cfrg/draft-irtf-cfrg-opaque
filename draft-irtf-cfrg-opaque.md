@@ -2266,9 +2266,9 @@ offline dictionary attack to recover the original password.
 
 Some applications may require learning the client's password for enforcing password
 rules. Doing so invalidates this important security property of OPAQUE and is
-NOT RECOMMENDED. Applications should move such checks to the client. Note that
-limited checks at the server are possible to implement, e.g., detecting repeated
-passwords upon re-registrations or password change.
+NOT RECOMMENDED, unless it is not possible for applications to move such checks
+to the client. Note that limited checks at the server are possible to implement, e.g.,
+detecting repeated passwords upon re-registrations or password change.
 
 In general, passwords should be selected with sufficient entropy to avoid being susceptible
 to recovery through dictionary attacks, both online and offline.
