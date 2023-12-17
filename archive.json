@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-12-14T01:11:21.124042+00:00",
+  "timestamp": "2023-12-17T01:16:36.542847+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -33982,24 +33982,26 @@
       "id": "PR_kwDOD79ejs5hHkpl",
       "title": "added proposal to caveat the server-side registration warning",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/437",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "draft proposal to settle #434",
       "createdAt": "2023-12-05T00:56:38Z",
-      "updatedAt": "2023-12-12T21:20:27Z",
+      "updatedAt": "2023-12-14T20:41:16Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "6f98fac04f72d9d8449ca763a42e4f486cf7ff11",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "one-shot-registration",
       "headRefOid": "9587fa4438c975d56c4bba9f337dd6636de08e11",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2023-12-14T20:41:16Z",
+      "mergedAt": "2023-12-14T20:41:16Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b"
+      },
       "comments": [
         {
           "author": "kevinlewi",
@@ -34021,6 +34023,32 @@
           "body": "Marking as request changes for the above comment ^",
           "createdAt": "2023-12-12T19:38:12Z",
           "updatedAt": "2023-12-12T19:38:12Z",
+          "comments": []
+        },
+        {
+          "id": "PRR_kwDOD79ejs5qP3PB",
+          "commit": {
+            "abbreviatedOid": "9587fa4"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM, thank you!\r\n\r\nBut I also want to make sure that @chris-wood and @bytemare get a chance to see this before merging.",
+          "createdAt": "2023-12-14T19:17:13Z",
+          "updatedAt": "2023-12-14T19:17:13Z",
+          "comments": []
+        },
+        {
+          "id": "PRR_kwDOD79ejs5qQBvT",
+          "commit": {
+            "abbreviatedOid": "9587fa4"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2023-12-14T19:42:52Z",
+          "updatedAt": "2023-12-14T19:42:52Z",
           "comments": []
         }
       ]
