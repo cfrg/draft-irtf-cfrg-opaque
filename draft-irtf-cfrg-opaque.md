@@ -2085,7 +2085,7 @@ adds domain separation, in particular against servers that choose the same
 OPRF key for multiple clients. The `client_identity` as input to the OPRF
 also acts as a key identifier that would be required for a proof of the
 protocol in the multi-key setting; the OPAQUE analysis in {{JKX18}} assumes
-single server-key instances. Adding `server_identity`` to the OPRF input
+single server-key instances. Adding `server_identity` to the OPRF input
 provides domain separation for clients that reuse the same `client_identity`
 across different server instantiations.
 
