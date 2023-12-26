@@ -318,9 +318,9 @@ pre-computation attacks (as defined in {{JKX18}}). OPAQUE provides forward
 secrecy with respect to password leakage while also hiding the password from
 the server, even during password registration. OPAQUE allows applications
 to increase the difficulty of offline dictionary attacks via iterated
-hashing or other key stretching schemes. OPAQUE is also extensible, allowing
+hashing or other key-stretching schemes. OPAQUE is also extensible, allowing
 clients to safely store and retrieve arbitrary application data on servers
-using only their password.
+using only their passwords.
 
 OPAQUE is defined and proven as the composition of three functionalities:
 an oblivious pseudorandom function (OPRF), a key recovery mechanism,
@@ -329,7 +329,7 @@ as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
 based on {{TripleDH}}. Other instantiations are possible, as discussed in
-{{alternate-akes}}, but their details are out of scope for this document.
+{{alternate-akes}}, but their details are out of the scope of this document.
 In general, the modularity of OPAQUE's design makes it easy to integrate
 with additional AKE protocols, e.g., TLS or HMQV, and with future ones such
 as those based on post-quantum techniques.
@@ -850,7 +850,7 @@ and `FinalizeRegistrationRequest`.
 ### CreateRegistrationRequest
 
 To begin the registration flow, the client executes the following function. This function
-can fail with an `InvalidInputError` error with negligibile probability. A different input
+can fail with an `InvalidInputError` error with negligible probability. A different input
 password is necessary in the event of this error.
 
 ~~~
@@ -877,7 +877,7 @@ def CreateRegistrationRequest(password):
 
 To process the client's registration request, the server executes
 the following function. This function can fail with a `DeriveKeyPairError`
-error with negligible probability. In this case, application can
+error with negligible probability. In this case, applications can
 choose a new `credential_identifier` for this registration record
 and re-run this function.
 
@@ -1283,7 +1283,7 @@ and `RecoverCredentials` functions used for credential retrieval.
 The `CreateCredentialRequest` is used by the client to initiate the credential
 retrieval process, and it produces a `CredentialRequest` message and OPRF state.
 Like `CreateRegistrationRequest`, this function can fail with an `InvalidInputError`
-error with negligibile probability. However, this should not occur since
+error with negligible probability. However, this should not occur since
 registration (via `CreateRegistrationRequest`) will fail when provided the same
 password input.
 
@@ -1811,13 +1811,13 @@ applications can use to control OPAQUE:
   alternate notions of identity, applications SHOULD set these identities to nil
   and rely solely on public key information.
 - Configuration and envelope updates: Applications may wish to update or change their
-  configuration or other parameters which affect the client's RegistrationRecord over
+  configuration or other parameters that affect the client's RegistrationRecord over
   time. Some reasons for changing these are to use different cryptographic algorithms,
   e.g., a different KSF with improved parameters, or to update key material that is
   cryptographically bound to the RegistrationRecord, such as the server's public key
   (server_public_key). Any such change will require users to re-register to create a
   new RegistrationRecord. Supporting these types of updates can be helpful for applications
-  which anticipate such changes in their deployment setting.
+  that anticipate such changes in their deployment setting.
 - Password hardening parameters: Key stretching is done to help prevent password disclosure
   in the event of server compromise; see {{key-stretch}}. There is no ideal or default
   set of parameters, though relevant specifications for KSFs give some reasonable
@@ -1923,7 +1923,7 @@ protocols such as TLS.
 The specification as written here differs from the original cryptographic design in {{JKX18}}
 and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
 as input to the CFRG PAKE competition. This section describes these differences, including
-their motivation and explanation as to why they preserve the provable security of OPAQUE based
+their motivation and explanation as to why they preserve the provable security of OPAQUE-based
 on {{JKX18}}.
 
 The following list enumerates important functional differences that were made
@@ -1976,7 +1976,7 @@ implementation considerations.
   In the absence of these identities, the client and server are authenticated
   against their public keys. Binding authentication to identities is part
   of the AKE part of OPAQUE. The type of identities and their semantics
-  are application dependent and independent of the protocol analysis. This
+  are application-dependent and independent of the protocol analysis. This
   change was made to simplify client and server interfaces to the protocol
   by removing the need to specify additional identities alongside their
   corresponding public authentication keys when not needed.
@@ -2003,8 +2003,8 @@ implementation considerations.
   attack. This implementation only affects the server and changes nothing for the client.
   Furthermore, if the threshold OPRF servers holding these keys are separate from
   the authentication server, then recovering all n shares would still not suffice
-  to run an offline dictionnary attack without access to the client record database.
-  However, this mechanism is out of scope for this document.
+  to run an offline dictionary attack without access to the client record database.
+  However, this mechanism is out of the scope of this document.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
@@ -2063,7 +2063,7 @@ pre-computation attacks or presented a proof of aPAKE security
 The KCI property required from AKE protocols for use with OPAQUE
 states that knowledge of a party's private key does not allow an attacker
 to impersonate others to that party. This is an important security
-property achieved by most public-key based AKE protocols, including
+property achieved by most public-key-based AKE protocols, including
 protocols that use signatures or public key encryption for
 authentication. It is also a property of many implicitly
 authenticated protocols, e.g., HMQV, but not all of them. We also note that
@@ -2204,7 +2204,7 @@ not the point at infinity.
 ## OPRF Key Stretching {#key-stretch}
 
 Applying a key stretching function to the output of the OPRF greatly increases the cost of an offline
-attack upon the compromise of the credential file at the server. Applications
+attack upon the compromise of the credential file on the server. Applications
 SHOULD select parameters for the KSF that balance cost and complexity across
 different client implementations and deployments. Note that in OPAQUE, the
 key stretching function is executed by the client, as opposed to the server in
@@ -2233,7 +2233,7 @@ message for an unregistered client if these client enumeration attacks can
 be mitigated through other application-specific means or are otherwise not
 applicable for their threat model.
 
-OPAQUE does not prevent against this type of attack during the registration flow.
+OPAQUE does not prevent this type of attack during the registration flow.
 Servers necessarily react differently during the registration flow between
 registered and unregistered clients. This allows an attacker to use the server's
 response during registration as an oracle for whether a given client identity is
@@ -2249,7 +2249,7 @@ between client and server during registration, e.g., using TLS {{RFC8446}}.
 If the channel is only authenticated (this is a requirement for correct
 identification of the parties), a confidential channel can be established
 using public-key encryption, e.g., with HPKE {{?RFC9180}}. However, the details
-of this mechanism are out of scope of this document.
+of this mechanism are out of the scope of this document.
 
 ## Password Salt and Storage Implications
 
@@ -2264,7 +2264,7 @@ sample the PRF seed with sufficiently high entropy, or if it is not kept hidden 
 adversary, then any derivatives from the client's password may also be susceptible to an
 offline dictionary attack to recover the original password.
 
-Some applications may require learning the client's password for enforcing password
+Some applications may require learning the client's password to enforce password
 rules. Doing so invalidates this important security property of OPAQUE and is
 NOT RECOMMENDED, unless it is not possible for applications to move such checks
 to the client. Note that limited checks at the server are possible to implement, e.g.,
@@ -2336,7 +2336,7 @@ server, harvesting such envelopes requires targeted active attacks).
 
 ## HMQV Instantiation Sketch {#hmqv-sketch}
 
-An HMQV instantiation would work similar to OPAQUE-3DH, differing primarily in the key
+An HMQV instantiation would work similarly to OPAQUE-3DH, differing primarily in the key
 schedule {{HMQV}}. First, the key schedule `preamble` value would use a different constant prefix
 -- "HMQV" instead of "3DH" -- as shown below.
 
