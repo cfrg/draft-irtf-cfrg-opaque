@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-12-26T01:09:00.311294+00:00",
+  "timestamp": "2023-12-28T01:09:15.165427+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34052,6 +34052,32 @@
           "comments": []
         }
       ]
+    },
+    {
+      "number": 438,
+      "id": "PR_kwDOD79ejs5iwc6L",
+      "title": "Some corrections to the text",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/438",
+      "state": "OPEN",
+      "author": "bytemare",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "As I was rereading the draft, I saw a couple of mistakes and missing spaces. So I ran the text through a corrector that found some other suggestions.",
+      "createdAt": "2023-12-26T02:59:20Z",
+      "updatedAt": "2023-12-26T03:01:36Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
+      "headRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "headRefName": "dbz/draft-corrections",
+      "headRefOid": "62fb6cbef619cb667ebe1c9eac176eab85283589",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
