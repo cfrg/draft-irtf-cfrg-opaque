@@ -2004,7 +2004,7 @@ implementation considerations.
   Furthermore, if the threshold OPRF servers holding these keys are separate from
   the authentication server, then recovering all n shares would still not suffice
   to run an offline dictionary attack without access to the client record database.
-  However, this mechanism is out of the scope of this document.
+  However, this mechanism is out of scope for this document.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
