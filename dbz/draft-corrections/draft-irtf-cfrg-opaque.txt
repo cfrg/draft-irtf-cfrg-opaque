@@ -2250,7 +2250,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    (this is a requirement for correct identification of the parties), a
    confidential channel can be established using public-key encryption,
    e.g., with HPKE [RFC9180].  However, the details of this mechanism
-   are out of the scope of this document.
+   are out of scope for this document.
 
 10.12.  Password Salt and Storage Implications
 
