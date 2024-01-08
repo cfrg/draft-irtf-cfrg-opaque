@@ -2249,7 +2249,7 @@ between client and server during registration, e.g., using TLS {{RFC8446}}.
 If the channel is only authenticated (this is a requirement for correct
 identification of the parties), a confidential channel can be established
 using public-key encryption, e.g., with HPKE {{?RFC9180}}. However, the details
-of this mechanism are out of the scope of this document.
+of this mechanism are out of scope for this document.
 
 ## Password Salt and Storage Implications
 
