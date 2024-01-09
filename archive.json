@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-01-07T01:18:00.929779+00:00",
+  "timestamp": "2024-01-09T01:12:56.504413+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34065,19 +34065,72 @@
       "labels": [],
       "body": "As I was rereading the draft, I saw a couple of mistakes and missing spaces. So I ran the text through a corrector that found some other suggestions.",
       "createdAt": "2023-12-26T02:59:20Z",
-      "updatedAt": "2023-12-26T03:01:36Z",
+      "updatedAt": "2024-01-08T18:35:37Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "dbz/draft-corrections",
-      "headRefOid": "62fb6cbef619cb667ebe1c9eac176eab85283589",
+      "headRefOid": "03648832f9269cbde5743acdb6f846cae8b66e9f",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5r3V8P",
+          "commit": {
+            "abbreviatedOid": "62fb6cb"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "LGTM with some nits",
+          "createdAt": "2024-01-08T17:30:26Z",
+          "updatedAt": "2024-01-08T17:31:39Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "```suggestion\r\nusing only their password.\r\n```",
+              "createdAt": "2024-01-08T17:30:26Z",
+              "updatedAt": "2024-01-08T17:31:39Z"
+            },
+            {
+              "originalPosition": 89,
+              "body": "```suggestion\r\n  However, this mechanism is out of scope for this document.\r\n```",
+              "createdAt": "2024-01-08T17:30:55Z",
+              "updatedAt": "2024-01-08T17:31:39Z"
+            },
+            {
+              "originalPosition": 134,
+              "body": "```suggestion\r\nof this mechanism are out of scope for this document.\r\n```",
+              "createdAt": "2024-01-08T17:31:18Z",
+              "updatedAt": "2024-01-08T17:31:39Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs5r3tmw",
+          "commit": {
+            "abbreviatedOid": "62fb6cb"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-01-08T18:34:53Z",
+          "updatedAt": "2024-01-08T18:34:53Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "I'm not native in English so it's very probable that might suggestion comes from another language.\n\nBut does putting the singular to password not mean something like \"the one password that all the clients have\" instead of \"the password of each client\"?",
+              "createdAt": "2024-01-08T18:34:53Z",
+              "updatedAt": "2024-01-08T18:34:53Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
