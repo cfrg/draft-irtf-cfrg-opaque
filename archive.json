@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-01-09T01:12:56.504413+00:00",
+  "timestamp": "2024-01-11T01:13:10.244370+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34124,9 +34124,9 @@
           "comments": [
             {
               "originalPosition": 8,
-              "body": "I'm not native in English so it's very probable that might suggestion comes from another language.\n\nBut does putting the singular to password not mean something like \"the one password that all the clients have\" instead of \"the password of each client\"?",
+              "body": "I'm not native in English so it's very probable that my suggestion comes from another language.\n\nBut does putting the singular to password not mean something like \"the one password that all the clients have\" instead of \"the password of each client\"?",
               "createdAt": "2024-01-08T18:34:53Z",
-              "updatedAt": "2024-01-08T18:34:53Z"
+              "updatedAt": "2024-01-09T17:30:37Z"
             }
           ]
         }
