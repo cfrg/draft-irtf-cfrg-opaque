@@ -490,7 +490,7 @@ so long as they are maintained across the registration and online AKE stages, an
 kept consistent for each client (since an inconsistent mapping of clients to seeds
 could leak information as described in {{preventing-client-enumeration}}).
 
-## Offline Registration
+## Registration
 
 Registration is the only stage in OPAQUE that requires a server-authenticated
 channel with confidentiality and integrity: either physical, out-of-band, PKI-based, etc.
@@ -741,7 +741,7 @@ def Recover(randomized_password, server_public_key, envelope,
 In the case of `EnvelopeRecoveryError` being raised, all previously-computed
 intermediary values in this function MUST be deleted.
 
-# Offline Registration {#offline-phase}
+# Registration {#registration-phase}
 
 The registration process proceeds as follows. The client inputs
 the following values:
@@ -2191,7 +2191,7 @@ for the creation of the `auth_tag` parameter in {{envelope-creation}}.
 
 Both client and server MUST validate the other party's public key(s) used
 for the execution of OPAQUE. This includes the keys shared during the
-offline registration phase, as well as any keys shared during the online
+registration phase, as well as any keys shared during the online
 key agreement phase. The validation procedure varies depending on the
 type of key. For example, for OPAQUE instantiations
 using 3DH with P-256, P-384, or P-521 as the underlying group, validation
