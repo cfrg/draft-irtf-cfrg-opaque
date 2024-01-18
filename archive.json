@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-01-16T01:12:54.444130+00:00",
+  "timestamp": "2024-01-18T01:12:47.921957+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9142,6 +9142,22 @@
           "updatedAt": "2023-12-08T01:09:08Z"
         }
       ]
+    },
+    {
+      "number": 440,
+      "id": "I_kwDOD79ejs58OBO5",
+      "title": "explicit auth necessary for opaque security?",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/440",
+      "state": "OPEN",
+      "author": "stef",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "doing my full re-read of the doc, for the rglc, i noticed this sentence in section 6:\r\n\r\n> KE3 provides explicit client authentication and full forward security (without it, forward secrecy is only achieved against eavesdroppers, which is insufficient for OPAQUE security)\r\n\r\nskipping KE3 and using the session_key for a protected channel successfully provides implicit authentication, does the above quote mean that with implicit auth OPAQUE security would be reduced? if so how? as the original paper states this implicit auth possibility, it makes sense to describe this deviation and reduced opaque security in the document.",
+      "createdAt": "2024-01-16T14:08:45Z",
+      "updatedAt": "2024-01-16T14:08:45Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
@@ -34131,6 +34147,58 @@
           ]
         }
       ]
+    },
+    {
+      "number": 439,
+      "id": "PR_kwDOD79ejs5kMo6T",
+      "title": "changed offline registration -> registration",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/439",
+      "state": "OPEN",
+      "author": "stef",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "reviewing the document at a whole for the rglc, i notice that registration is consistently referred to as \"offline registration\" - as the meme goes \"You Keep Using That Word, I Do Not Think It Means What You Think It Means\". most people understand offline as something that doesn't need a network connection. and with opaque `offline` in the context of `registration` has a much more nuanced and different meaning, which is confusing for the casual reader and implementer. and thus i think there is two options, the more expensive let's explicitly define \"offline\" in this context (and not mix it up with the other use through out this document in the context of attacks) or simply and cheaply delete the offline adjective from the context of registrations. i think this change eliminates one source of confusion and while doing so decreases entropy.",
+      "createdAt": "2024-01-16T14:00:11Z",
+      "updatedAt": "2024-01-16T14:00:11Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
+      "headRepository": "stef/draft-irtf-cfrg-opaque",
+      "headRefName": "offline-registration",
+      "headRefOid": "4c4df6a481674ce93a562365629800a3a736c14d",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 441,
+      "id": "PR_kwDOD79ejs5kNRYR",
+      "title": "export_key is only used by clients",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/441",
+      "state": "OPEN",
+      "author": "stef",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "only clients use the export_key.",
+      "createdAt": "2024-01-16T15:05:31Z",
+      "updatedAt": "2024-01-16T15:05:31Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
+      "headRepository": "stef/draft-irtf-cfrg-opaque",
+      "headRefName": "export_key",
+      "headRefOid": "203dd460f713f048a172b72aff5e48c4c7dd4928",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
