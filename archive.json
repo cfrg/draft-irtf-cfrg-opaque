@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-02-06T01:07:33.363514+00:00",
+  "timestamp": "2024-02-08T01:06:25.055137+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9156,6 +9156,22 @@
       "body": "doing my full re-read of the doc, for the rglc, i noticed this sentence in section 6:\r\n\r\n> KE3 provides explicit client authentication and full forward security (without it, forward secrecy is only achieved against eavesdroppers, which is insufficient for OPAQUE security)\r\n\r\nskipping KE3 and using the session_key for a protected channel successfully provides implicit authentication, does the above quote mean that with implicit auth OPAQUE security would be reduced? if so how? as the original paper states this implicit auth possibility, it makes sense to describe this deviation and reduced opaque security in the document.",
       "createdAt": "2024-01-16T14:08:45Z",
       "updatedAt": "2024-01-16T14:08:45Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 442,
+      "id": "I_kwDOD79ejs5-jEvy",
+      "title": "2 citation anchors for 1 document",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/442",
+      "state": "OPEN",
+      "author": "tsahara",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "In https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-opaque-13#name-informative-references\r\n\r\n> 12.1. Normative References\r\n>\r\n> [I-D.irtf-cfrg-voprf]\r\n> Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A. Wood, \"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups\", Work in Progress, Internet-Draft, draft-irtf-cfrg-voprf-21, 21 February 2023, <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21>.\r\n>\r\n> [OPRF]\r\n> Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A. Wood, \"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups\", Work in Progress, Internet-Draft, draft-irtf-cfrg-voprf-21, 21 February 2023, <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21>.\r\n\r\n\r\n[I-D.irtf-cfrg-voprf] and [OPRF] point to the same internet-draft.",
+      "createdAt": "2024-02-07T14:09:40Z",
+      "updatedAt": "2024-02-07T14:09:40Z",
       "closedAt": null,
       "comments": []
     }
