@@ -2089,28 +2089,6 @@ single server-key instances. Adding `server_identity`` to the OPRF input
 provides domain separation for clients that reuse the same `client_identity`
 across different server instantiations.
 
-## Related Protocols
-
-Despite the existence of multiple designs for (PKI-free) aPAKE protocols,
-none of these protocols are secure against pre-computation attacks.
-This includes protocols that have recent analyses in the UC model such
-as AuCPace {{AuCPace}} and SPAKE2+ {{SPAKE2plus}}. In particular, none
-of these protocols can use the standard technique against pre-computation
-that combines secret random values ("salt") into the one-way password mappings.
-Either these protocols do not use a salt at all or, if they do, they
-transmit the salt from server to client in the clear, hence losing the
-secrecy of the salt and its defense against pre-computation.
-
-We note that as shown in {{JKX18}}, these protocols, and any aPAKE
-in the model from {{GMR06}}, can be converted into an aPAKE secure against
-pre-computation attacks at the expense of an additional OPRF execution.
-
-Beyond AuCPace and SPAKE2+, the most widely deployed PKI-free aPAKE is SRP {{?RFC2945}},
-which is vulnerable to pre-computation attacks, lacks proof of security, and is
-less efficient than OPAQUE. Moreover, SRP requires a ring as it mixes addition and
-multiplication operations, and thus does not work over standard elliptic curves.
-OPAQUE is therefore a suitable replacement for applications that use SRP.
-
 ## Identities {#identities}
 
 AKE protocols generate keys that need to be uniquely and verifiably bound to a pair
