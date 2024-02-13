@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-02-11T01:12:17.547850+00:00",
+  "timestamp": "2024-02-13T01:07:52.268966+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9174,6 +9174,37 @@
       "updatedAt": "2024-02-07T14:09:40Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 444,
+      "id": "I_kwDOD79ejs5--ndT",
+      "title": "Serialization of Diffie-Hellman output to allow use of HSM protected keys",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/444",
+      "state": "OPEN",
+      "author": "Razumain",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Diffie-Hellman operations using HSM protected keys can potentially be used both in the OPRF function as well as in the 3DH Key-Exchange Functions.\r\n\r\nIn OPRF a DiffieHellman operation can be used on top of the current evaluated element\r\n\r\nThe function `BlindEvaluate(oprf_key, blinded_element)` can be voluntarily extended by the server to:\r\n\r\n`DiffieHellman( ks, BlindEvaluate(oprf_key, blinded_element))`\r\n\r\nThis simply adds another scalar multiplication to the evaluated element, which can be unblinded by the client blind inverse.\r\n\r\nThe only thing that stands in the way of this operation, is the inclusion of the Y coordinate in the result when the corresponding DiffieHellman only produce the X coordinate as result.\r\n\r\nThe same is true for the 3DH key Exchange Functions which could be fully compatible with HSM protected keys if the shared secret was the X coordinate only instead of a full point serialization.\r\n\r\n\r\n",
+      "createdAt": "2024-02-12T15:13:17Z",
+      "updatedAt": "2024-02-12T23:31:56Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "for previous discussion on this see #238 ",
+          "createdAt": "2024-02-12T15:38:55Z",
+          "updatedAt": "2024-02-12T15:38:55Z"
+        },
+        {
+          "author": "Razumain",
+          "authorAssociation": "NONE",
+          "body": "> for previous discussion on this see #238\r\n\r\nIt seems to me that these discussions both adress HSM usage, but adress very different issues.\r\n\r\nNIST SP 800-56A establishes that the shared secret from Diffie-Hellman Z = xP where xP is the x-coordinate of P.\r\nThis is not in harmony with how Diffie-Hellman shared secret is specified in Opaque and effectively blocks performing Diffie-Hellman operations in a HSM that operates according to SP 800-56A.\r\n\r\nIn addition to this. I see a lost opportunity to use a HSM Diffie-Hellman operation to evaluate the blinded password\r\n\r\n- the client hashes an input to a curve using hash-to-curve > point p on the curve\r\n- the client blinds that point with an ephemeral scalar b using scalar multiplication > p^b\r\n- the servers uses the oprf secret scalar o to evaluate that, using scalar multiplication > p^(b . o)\r\n- the servers uses a (possibly) long term secret scalar k to evaluate that, using scalar multiplication via a HSM Diffie-Hellman operation > P = p^(b . o . k) ==> Z = xP\r\n- the client unblinds that using scalar multiplication with the modular inverse (it's noted 1/b) on the compressed point P' = 1|xP > P'^1/b ==> x-coordinate of  p^(o . k)\r\n\r\nThis does work at least for P256 and it seems to work also for 25519, but I have to verify that better in tests.\r\n\r\nIt is all made available by discarding the Y component in 2 places of the spec:\r\n\r\n1. As the used shared secret in 3DH\r\n2. As the unblinded element in the OPRF Finalize function:\r\n\r\nThat is if:\r\n\r\n  hashInput = I2OSP(len(input), 2) || input ||\r\n              I2OSP(len(unblindedElement), 2) || unblindedElement ||\r\n              \"Finalize\"\r\n\r\nInstead would be:\r\n\r\n  hashInput = I2OSP(len(input), 2) || input ||\r\n              I2OSP(len(xP of unblindedElement), 2) || xP of unblindedElement ||\r\n              \"Finalize\"\r\n\r\n\r\nI know this is a big ask, that quite possibly is too much of a change to accommodate. But If there would be any clever way to at least allow this us of a HSM without breaking the standard, that would be very valuable.",
+          "createdAt": "2024-02-12T23:31:54Z",
+          "updatedAt": "2024-02-12T23:31:54Z"
+        }
+      ]
     }
   ],
   "pulls": [
@@ -34202,13 +34233,53 @@
       "labels": [],
       "body": "only clients use the export_key.",
       "createdAt": "2024-01-16T15:05:31Z",
-      "updatedAt": "2024-01-16T15:05:31Z",
+      "updatedAt": "2024-02-12T05:03:52Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "export_key",
       "headRefOid": "203dd460f713f048a172b72aff5e48c4c7dd4928",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5vu1l_",
+          "commit": {
+            "abbreviatedOid": "203dd46"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "Thanks, makes sense!",
+          "createdAt": "2024-02-12T05:03:52Z",
+          "updatedAt": "2024-02-12T05:03:52Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 443,
+      "id": "PR_kwDOD79ejs5mmLM0",
+      "title": "Remove Related Protocols section",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/443",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "As suggested in https://mailarchive.ietf.org/arch/msg/cfrg/Fxxdbe6sBae9yqTtZfwrGvtAKRQ/, this section is out-of-date and does not need to stay in the draft.",
+      "createdAt": "2024-02-12T04:34:19Z",
+      "updatedAt": "2024-02-12T04:36:29Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
+      "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
+      "headRefName": "remove_related_protocols",
+      "headRefOid": "4a6c2ed225a4173fbd11cb8e5f27fb3687d5822e",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
