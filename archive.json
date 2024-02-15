@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-02-13T01:07:52.268966+00:00",
+  "timestamp": "2024-02-15T01:07:43.648090+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9155,9 +9155,24 @@
       "labels": [],
       "body": "doing my full re-read of the doc, for the rglc, i noticed this sentence in section 6:\r\n\r\n> KE3 provides explicit client authentication and full forward security (without it, forward secrecy is only achieved against eavesdroppers, which is insufficient for OPAQUE security)\r\n\r\nskipping KE3 and using the session_key for a protected channel successfully provides implicit authentication, does the above quote mean that with implicit auth OPAQUE security would be reduced? if so how? as the original paper states this implicit auth possibility, it makes sense to describe this deviation and reduced opaque security in the document.",
       "createdAt": "2024-01-16T14:08:45Z",
-      "updatedAt": "2024-01-16T14:08:45Z",
+      "updatedAt": "2024-02-13T15:38:00Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "hugokraw",
+          "authorAssociation": "COLLABORATOR",
+          "body": "OPAQUE with a key exchange that is not forward secure is not a secure aPAKE. The first version of the OPAQUE paper did not identify this issue (forward secrecy was implicit in the formalization of key exchange but not identified as an explicit requirement). This was corrected in subsequent [eprint publication](https://eprint.iacr.org/2018/163.pdf) (and in the CFRG mailing list). The issue is that if the server sends  information encrypted under the session key immediately after the server's (single)  OPAQUE message (without waiting for authentication from the user) then the following attack is possible. The attacker opens a session with the server in the name of some user for whom the attacker does not know the password but where the attacker chooses the ephemeral private key. When the server responds with its OPAQUE message and encrypts information under the session key, the attacker cannot decrypt it as it does not know the password. However, the attacker will be able to decrypt it if it learns the password in the future. The forward secrecy model of aPAKE is that once an attacker learns a password, all future sessions may be insecure, but past sessions should remain secure.",
+          "createdAt": "2024-02-13T05:11:11Z",
+          "updatedAt": "2024-02-13T05:11:11Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Thank you very much for this insightful answer!\r\n\r\nSo the attack only applies if the server sends data encrypted with it's opaque response. right? if it doesn't then the implicit authentication should be enough? I think this is a very interesting and important detail. I'm not sure if this needs to be mentioned explicitly in the document though, what do you think @kevinlewi @chris-wood ?",
+          "createdAt": "2024-02-13T15:37:59Z",
+          "updatedAt": "2024-02-13T15:37:59Z"
+        }
+      ]
     },
     {
       "number": 442,
@@ -9187,7 +9202,7 @@
       "labels": [],
       "body": "Diffie-Hellman operations using HSM protected keys can potentially be used both in the OPRF function as well as in the 3DH Key-Exchange Functions.\r\n\r\nIn OPRF a DiffieHellman operation can be used on top of the current evaluated element\r\n\r\nThe function `BlindEvaluate(oprf_key, blinded_element)` can be voluntarily extended by the server to:\r\n\r\n`DiffieHellman( ks, BlindEvaluate(oprf_key, blinded_element))`\r\n\r\nThis simply adds another scalar multiplication to the evaluated element, which can be unblinded by the client blind inverse.\r\n\r\nThe only thing that stands in the way of this operation, is the inclusion of the Y coordinate in the result when the corresponding DiffieHellman only produce the X coordinate as result.\r\n\r\nThe same is true for the 3DH key Exchange Functions which could be fully compatible with HSM protected keys if the shared secret was the X coordinate only instead of a full point serialization.\r\n\r\n\r\n",
       "createdAt": "2024-02-12T15:13:17Z",
-      "updatedAt": "2024-02-12T23:31:56Z",
+      "updatedAt": "2024-02-14T15:49:06Z",
       "closedAt": null,
       "comments": [
         {
@@ -9203,6 +9218,13 @@
           "body": "> for previous discussion on this see #238\r\n\r\nIt seems to me that these discussions both adress HSM usage, but adress very different issues.\r\n\r\nNIST SP 800-56A establishes that the shared secret from Diffie-Hellman Z = xP where xP is the x-coordinate of P.\r\nThis is not in harmony with how Diffie-Hellman shared secret is specified in Opaque and effectively blocks performing Diffie-Hellman operations in a HSM that operates according to SP 800-56A.\r\n\r\nIn addition to this. I see a lost opportunity to use a HSM Diffie-Hellman operation to evaluate the blinded password\r\n\r\n- the client hashes an input to a curve using hash-to-curve > point p on the curve\r\n- the client blinds that point with an ephemeral scalar b using scalar multiplication > p^b\r\n- the servers uses the oprf secret scalar o to evaluate that, using scalar multiplication > p^(b . o)\r\n- the servers uses a (possibly) long term secret scalar k to evaluate that, using scalar multiplication via a HSM Diffie-Hellman operation > P = p^(b . o . k) ==> Z = xP\r\n- the client unblinds that using scalar multiplication with the modular inverse (it's noted 1/b) on the compressed point P' = 1|xP > P'^1/b ==> x-coordinate of  p^(o . k)\r\n\r\nThis does work at least for P256 and it seems to work also for 25519, but I have to verify that better in tests.\r\n\r\nIt is all made available by discarding the Y component in 2 places of the spec:\r\n\r\n1. As the used shared secret in 3DH\r\n2. As the unblinded element in the OPRF Finalize function:\r\n\r\nThat is if:\r\n\r\n  hashInput = I2OSP(len(input), 2) || input ||\r\n              I2OSP(len(unblindedElement), 2) || unblindedElement ||\r\n              \"Finalize\"\r\n\r\nInstead would be:\r\n\r\n  hashInput = I2OSP(len(input), 2) || input ||\r\n              I2OSP(len(xP of unblindedElement), 2) || xP of unblindedElement ||\r\n              \"Finalize\"\r\n\r\n\r\nI know this is a big ask, that quite possibly is too much of a change to accommodate. But If there would be any clever way to at least allow this us of a HSM without breaking the standard, that would be very valuable.",
           "createdAt": "2024-02-12T23:31:54Z",
           "updatedAt": "2024-02-12T23:31:54Z"
+        },
+        {
+          "author": "Razumain",
+          "authorAssociation": "NONE",
+          "body": "Adding an illustration from my implementation that shows that this works just fine:\r\n\r\nLets first derive the client secret without blinding, using both the oprf private key AND the HSM protected server key ks\r\n\r\nPassword inputElement point (Size: 33)\r\n    03 D1 02 3A DC 03 FC AD AF D2  29 9C 2D 59 17 01 AD C7 5B 0E  2D 0D 84 ED 8D D0 2D 04 15 A0  52 5B 7A \r\nInputElement * oprfKey (Size: 33)\r\n    03 80 22 CD 98 28 8A C2 7E A1  5A 08 CC A9 A0 D3 43 C9 94 8A  1F E2 8D 05 A8 E8 8C 1F F3 B2  82 15 ED \r\nClient secret = DiffieHellman(sk, (InputElement * oprfKey) (Size: 32)\r\n    **11 B0 5C 21 3B 73 CA E5 DD A0  8A B0 5B 31 DD CC D7 16 DE 76  A2 4A 74 16 A6 C1 AC 31 FA 2D  7C EB** \r\n\r\nThe real EC point used to derive the DH shared secret (Size: 33)\r\n    02 11 B0 5C 21 3B 73 CA E5 DD  A0 8A B0 5B 31 DD CC D7 16 DE  76 A2 4A 74 16 A6 C1 AC 31 FA  2D 7C EB \r\n\r\nNote the dropped Y coordinate compressed value = 02\r\n\r\nNow do with with blinding\r\n\r\nBlinded input element (Size: 33)\r\n    02 3C E0 68 E9 BB DA B7 7C 73  7D 26 1F DD AB D9 78 7A 30 D1  C7 01 1D 79 4E 52 09 6F 48 43  41 EF 85 \r\nOPRF evaluate = blinded element * oprfKey (Size: 33)\r\n    02 3B 75 57 05 9D A6 E5 BF 63  3A 60 05 64 DC 7A 24 4D C5 08  02 B9 BD DA 54 5C 54 DC C6 DB  23 8D F1 \r\nHSM Server evaluate = DiffieHellman(ks, (blinded element * oprfKey) (Size: 32)\r\n    41 6C 6B 36 F3 EB 06 59 CB D8  6D 50 5F 98 EA 22 E5 25 D7 DB  83 D4 C5 39 40 A5 A0 42 D6 19  DA EC \r\nECPoint(HSM Server evaluate) =  0x02 | HSM Server evaluate (Size: 33)\r\n    02 41 6C 6B 36 F3 EB 06 59 CB  D8 6D 50 5F 98 EA 22 E5 25 D7  DB 83 D4 C5 39 40 A5 A0 42 D6  19 DA EC \r\nClient unblind = ECPoint(HSM Server evaluate) * 1/b (Size: 33)\r\n    03 11 B0 5C 21 3B 73 CA E5 DD  A0 8A B0 5B 31 DD CC D7 16 DE  76 A2 4A 74 16 A6 C1 AC 31 FA  2D 7C EB \r\n\r\nNote that we actually guessed wrong here on the HSM evaluate output. We added 02 but this was clearly wrong as we distorted the Y coordinate result to be 03, compared with 02 above\r\n\r\nDerived shared secret (Size: 32)\r\n    **11 B0 5C 21 3B 73 CA E5 DD A0  8A B0 5B 31 DD CC D7 16 DE 76  A2 4A 74 16 A6 C1 AC 31 FA 2D  7C EB** \r\n\r\nBu as we only use the X coordinate, the client secret matches anyway.",
+          "createdAt": "2024-02-14T15:48:47Z",
+          "updatedAt": "2024-02-14T15:49:06Z"
         }
       ]
     }
