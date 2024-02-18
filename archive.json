@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-02-15T01:07:43.648090+00:00",
+  "timestamp": "2024-02-18T01:11:29.366825+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9202,7 +9202,7 @@
       "labels": [],
       "body": "Diffie-Hellman operations using HSM protected keys can potentially be used both in the OPRF function as well as in the 3DH Key-Exchange Functions.\r\n\r\nIn OPRF a DiffieHellman operation can be used on top of the current evaluated element\r\n\r\nThe function `BlindEvaluate(oprf_key, blinded_element)` can be voluntarily extended by the server to:\r\n\r\n`DiffieHellman( ks, BlindEvaluate(oprf_key, blinded_element))`\r\n\r\nThis simply adds another scalar multiplication to the evaluated element, which can be unblinded by the client blind inverse.\r\n\r\nThe only thing that stands in the way of this operation, is the inclusion of the Y coordinate in the result when the corresponding DiffieHellman only produce the X coordinate as result.\r\n\r\nThe same is true for the 3DH key Exchange Functions which could be fully compatible with HSM protected keys if the shared secret was the X coordinate only instead of a full point serialization.\r\n\r\n\r\n",
       "createdAt": "2024-02-12T15:13:17Z",
-      "updatedAt": "2024-02-14T15:49:06Z",
+      "updatedAt": "2024-02-15T07:38:42Z",
       "closedAt": null,
       "comments": [
         {
@@ -9225,6 +9225,13 @@
           "body": "Adding an illustration from my implementation that shows that this works just fine:\r\n\r\nLets first derive the client secret without blinding, using both the oprf private key AND the HSM protected server key ks\r\n\r\nPassword inputElement point (Size: 33)\r\n    03 D1 02 3A DC 03 FC AD AF D2  29 9C 2D 59 17 01 AD C7 5B 0E  2D 0D 84 ED 8D D0 2D 04 15 A0  52 5B 7A \r\nInputElement * oprfKey (Size: 33)\r\n    03 80 22 CD 98 28 8A C2 7E A1  5A 08 CC A9 A0 D3 43 C9 94 8A  1F E2 8D 05 A8 E8 8C 1F F3 B2  82 15 ED \r\nClient secret = DiffieHellman(sk, (InputElement * oprfKey) (Size: 32)\r\n    **11 B0 5C 21 3B 73 CA E5 DD A0  8A B0 5B 31 DD CC D7 16 DE 76  A2 4A 74 16 A6 C1 AC 31 FA 2D  7C EB** \r\n\r\nThe real EC point used to derive the DH shared secret (Size: 33)\r\n    02 11 B0 5C 21 3B 73 CA E5 DD  A0 8A B0 5B 31 DD CC D7 16 DE  76 A2 4A 74 16 A6 C1 AC 31 FA  2D 7C EB \r\n\r\nNote the dropped Y coordinate compressed value = 02\r\n\r\nNow do with with blinding\r\n\r\nBlinded input element (Size: 33)\r\n    02 3C E0 68 E9 BB DA B7 7C 73  7D 26 1F DD AB D9 78 7A 30 D1  C7 01 1D 79 4E 52 09 6F 48 43  41 EF 85 \r\nOPRF evaluate = blinded element * oprfKey (Size: 33)\r\n    02 3B 75 57 05 9D A6 E5 BF 63  3A 60 05 64 DC 7A 24 4D C5 08  02 B9 BD DA 54 5C 54 DC C6 DB  23 8D F1 \r\nHSM Server evaluate = DiffieHellman(ks, (blinded element * oprfKey) (Size: 32)\r\n    41 6C 6B 36 F3 EB 06 59 CB D8  6D 50 5F 98 EA 22 E5 25 D7 DB  83 D4 C5 39 40 A5 A0 42 D6 19  DA EC \r\nECPoint(HSM Server evaluate) =  0x02 | HSM Server evaluate (Size: 33)\r\n    02 41 6C 6B 36 F3 EB 06 59 CB  D8 6D 50 5F 98 EA 22 E5 25 D7  DB 83 D4 C5 39 40 A5 A0 42 D6  19 DA EC \r\nClient unblind = ECPoint(HSM Server evaluate) * 1/b (Size: 33)\r\n    03 11 B0 5C 21 3B 73 CA E5 DD  A0 8A B0 5B 31 DD CC D7 16 DE  76 A2 4A 74 16 A6 C1 AC 31 FA  2D 7C EB \r\n\r\nNote that we actually guessed wrong here on the HSM evaluate output. We added 02 but this was clearly wrong as we distorted the Y coordinate result to be 03, compared with 02 above\r\n\r\nDerived shared secret (Size: 32)\r\n    **11 B0 5C 21 3B 73 CA E5 DD A0  8A B0 5B 31 DD CC D7 16 DE 76  A2 4A 74 16 A6 C1 AC 31 FA 2D  7C EB** \r\n\r\nBu as we only use the X coordinate, the client secret matches anyway.",
           "createdAt": "2024-02-14T15:48:47Z",
           "updatedAt": "2024-02-14T15:49:06Z"
+        },
+        {
+          "author": "Razumain",
+          "authorAssociation": "NONE",
+          "body": "I would like to revert my proposal here.\r\n\r\nMathematically and conceptually it works wonders, but given that this is build into OPRF, I think the right way to go, if you use HSM is to recover the missing Y.\r\n\r\nIllary provided a great solution for how to do that with the cost of en extra DH operation with the HSM:\r\n\r\n>- Have HSM output x(aB) and x(a(B+G)).\r\n>- Guess Z=aB from first HSM output.\r\n>- Calculate x coordinate of Z+A, where A is your public key.\r\n>- Check if that is consistent with the second HSM output.\r\n\r\nSo we should not do this for OPRF. If you want to do this in OPRF you simply have to do this trick to recover Y.\r\n\r\nFor the use of DH in 3DH AKE it might still be worth considering only using the X coordinate to be compatible with off the shelf DiffieHellman operations based on PrivateKey objects (rather than raw scalar multiplication).\r\n\r\nFinally, a note about this would be great in the OPAQUE draft to point out that the solution above is possible if you want to extend the security of the OPRF with an HSM protected scalar.\r\n\r\n",
+          "createdAt": "2024-02-15T07:38:42Z",
+          "updatedAt": "2024-02-15T07:38:42Z"
         }
       ]
     }
