@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-02-27T01:06:26.471435+00:00",
+  "timestamp": "2024-02-29T01:06:15.310654+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9040,15 +9040,15 @@
       "id": "I_kwDOD79ejs50kdhs",
       "title": "checking of password strength",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/434",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "the section `Password Salt and Storage Implications` says the following:\r\n\r\n> Some applications may require learning the client's password for enforcing password rules. Doing so invalidates this important security property of OPAQUE and is NOT RECOMMENDED.\r\n\r\ni agree that this is not a good thing, and also should not be recommended, but maybe caveat this, with \"depending on threat model, for example internal corporate deployments are possible exceptions were enforcement of strong password policies is mandated by regulation\"\r\n\r\n> Applications should move such checks to the client.\r\n\r\n\"malicious\" clients can easily ignore password rules, and the server will never know about this. This can be a problem when corporate rules mandate strong passwords, but users want to circumvent this for whatever reason (mostly lazyness?) - this is well known rule in application security that the server should never trust any input validation by the client.\r\n\r\n> Note that limited checks at the server are possible to implement, e.g., detecting repeated passwords upon re-registrations or password change.\r\n\r\ni wonder how this would work, can someone enlighten me?",
       "createdAt": "2023-10-22T00:57:17Z",
-      "updatedAt": "2023-12-08T01:09:10Z",
-      "closedAt": null,
+      "updatedAt": "2024-02-28T16:58:11Z",
+      "closedAt": "2024-02-27T09:18:53Z",
       "comments": [
         {
           "author": "odiferousmint",
@@ -9140,6 +9140,20 @@
           "body": "> you are reducing OPAQUE to an auth mechanism, instead of considering it an AKE. for an auth mechanism this makes sense, but for an AKE not.\r\n\r\nAh okay, that makes sense. Thanks for explaining that.\r\n\r\nWhat if hypothetically there could be a zero knowledge proof algorithm that can prove to a server the password was generated using the required complexity requirements without sharing the actual password.  If such an algorithm could exist, would that resolve the issue?",
           "createdAt": "2023-12-08T01:09:08Z",
           "updatedAt": "2023-12-08T01:09:08Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@bbeallo12 Yes, hypothetically that would resolve the issue. However, the issue is that these ZK proofs are expensive, and it would have to be custom-tailored to the password complexity rules. Either way, out of scope for the draft work here (since in the future if one does pursue that path, it could be sent to the server in addition to the OPAQUE messages).\r\n\r\nClosing this issue since #437 was merged",
+          "createdAt": "2024-02-27T09:18:53Z",
+          "updatedAt": "2024-02-27T09:18:53Z"
+        },
+        {
+          "author": "cyyynthia",
+          "authorAssociation": "NONE",
+          "body": "I'll just add this resource I stumbled across a while ago while researching this myself that might interest people reading this thread; some people have been working on zero-knowledge password policy check protocols, although they are currently impractical. They do exist, though, so there's hope they'll become more practical soon!\r\n\r\n- Kiefer, F., Manulis, M. (2014). Zero-Knowledge Password Policy Checks and Verifier-Based PAKE. In: Kuty\u0142owski, M., Vaidya, J. (eds) Computer Security - ESORICS 2014. ESORICS 2014. Lecture Notes in Computer Science, vol 8713. Springer, Cham. https://doi.org/10.1007/978-3-319-11212-1_17\r\n- Nguyen, K., Tan, B.H.M., Wang, H. (2017). Zero-Knowledge Password Policy Check from Lattices. In: Nguyen, P., Zhou, J. (eds) Information Security. ISC 2017. Lecture Notes in Computer Science(), vol 10599. Springer, Cham. https://doi.org/10.1007/978-3-319-69659-1_6",
+          "createdAt": "2024-02-28T16:58:10Z",
+          "updatedAt": "2024-02-28T16:58:10Z"
         }
       ]
     },
@@ -9148,15 +9162,15 @@
       "id": "I_kwDOD79ejs58OBO5",
       "title": "explicit auth necessary for opaque security?",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/440",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "doing my full re-read of the doc, for the rglc, i noticed this sentence in section 6:\r\n\r\n> KE3 provides explicit client authentication and full forward security (without it, forward secrecy is only achieved against eavesdroppers, which is insufficient for OPAQUE security)\r\n\r\nskipping KE3 and using the session_key for a protected channel successfully provides implicit authentication, does the above quote mean that with implicit auth OPAQUE security would be reduced? if so how? as the original paper states this implicit auth possibility, it makes sense to describe this deviation and reduced opaque security in the document.",
       "createdAt": "2024-01-16T14:08:45Z",
-      "updatedAt": "2024-02-13T15:38:00Z",
-      "closedAt": null,
+      "updatedAt": "2024-02-27T09:43:47Z",
+      "closedAt": "2024-02-27T09:43:46Z",
       "comments": [
         {
           "author": "hugokraw",
@@ -9171,6 +9185,13 @@
           "body": "Thank you very much for this insightful answer!\r\n\r\nSo the attack only applies if the server sends data encrypted with it's opaque response. right? if it doesn't then the implicit authentication should be enough? I think this is a very interesting and important detail. I'm not sure if this needs to be mentioned explicitly in the document though, what do you think @kevinlewi @chris-wood ?",
           "createdAt": "2024-02-13T15:37:59Z",
           "updatedAt": "2024-02-13T15:37:59Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I think it's ok to not add this explicitly to the document, since references to this are already present in multiple locations. In addition to the one cited above, under the `ServerFinish` section:\r\n\r\n>  The AuthServerFinalize function takes KE3 as input and MUST verify the client authentication material it contains before the session_key value can be used. This verification is necessary to ensure forward secrecy against active attackers.\r\n\r\nClosing this issue but feel free to re-open if anyone thinks we should add more verbiage to the document",
+          "createdAt": "2024-02-27T09:43:46Z",
+          "updatedAt": "2024-02-27T09:43:46Z"
         }
       ]
     },
@@ -9202,7 +9223,7 @@
       "labels": [],
       "body": "Diffie-Hellman operations using HSM protected keys can potentially be used both in the OPRF function as well as in the 3DH Key-Exchange Functions.\r\n\r\nIn OPRF a DiffieHellman operation can be used on top of the current evaluated element\r\n\r\nThe function `BlindEvaluate(oprf_key, blinded_element)` can be voluntarily extended by the server to:\r\n\r\n`DiffieHellman( ks, BlindEvaluate(oprf_key, blinded_element))`\r\n\r\nThis simply adds another scalar multiplication to the evaluated element, which can be unblinded by the client blind inverse.\r\n\r\nThe only thing that stands in the way of this operation, is the inclusion of the Y coordinate in the result when the corresponding DiffieHellman only produce the X coordinate as result.\r\n\r\nThe same is true for the 3DH key Exchange Functions which could be fully compatible with HSM protected keys if the shared secret was the X coordinate only instead of a full point serialization.\r\n\r\n\r\n",
       "createdAt": "2024-02-12T15:13:17Z",
-      "updatedAt": "2024-02-15T07:38:42Z",
+      "updatedAt": "2024-02-27T18:44:45Z",
       "closedAt": null,
       "comments": [
         {
@@ -9232,6 +9253,13 @@
           "body": "I would like to revert my proposal here.\r\n\r\nMathematically and conceptually it works wonders, but given that this is build into OPRF, I think the right way to go, if you use HSM is to recover the missing Y.\r\n\r\nIllary provided a great solution for how to do that with the cost of en extra DH operation with the HSM:\r\n\r\n>- Have HSM output x(aB) and x(a(B+G)).\r\n>- Guess Z=aB from first HSM output.\r\n>- Calculate x coordinate of Z+A, where A is your public key.\r\n>- Check if that is consistent with the second HSM output.\r\n\r\nSo we should not do this for OPRF. If you want to do this in OPRF you simply have to do this trick to recover Y.\r\n\r\nFor the use of DH in 3DH AKE it might still be worth considering only using the X coordinate to be compatible with off the shelf DiffieHellman operations based on PrivateKey objects (rather than raw scalar multiplication).\r\n\r\nFinally, a note about this would be great in the OPAQUE draft to point out that the solution above is possible if you want to extend the security of the OPRF with an HSM protected scalar.\r\n\r\n",
           "createdAt": "2024-02-15T07:38:42Z",
           "updatedAt": "2024-02-15T07:38:42Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Hi @Razumain, after reading through the context here, I'm glad to hear that there is a way to make this work, but am currently not seeing a good way to reference this in the draft. Am I also understanding correctly that this is specific to the curve point representation and would not apply to ristretto255 points (or would it)?\r\n\r\nIf you have any recommended language that you would like to add to the draft, it would be great if you could take a stab at it :)",
+          "createdAt": "2024-02-27T18:44:44Z",
+          "updatedAt": "2024-02-27T18:44:44Z"
         }
       ]
     }
@@ -34354,7 +34382,7 @@
       "labels": [],
       "body": "Closes #442 \r\n\r\nUpdates references from \"draft voprf\" to RFC9497\r\nSame with draft hash-to-curve and RFC9380",
       "createdAt": "2024-02-26T01:58:22Z",
-      "updatedAt": "2024-02-26T01:58:22Z",
+      "updatedAt": "2024-02-27T09:17:22Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
