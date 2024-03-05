@@ -320,7 +320,7 @@ the server, even during password registration. OPAQUE allows applications
 to increase the difficulty of offline dictionary attacks via iterated
 hashing or other key-stretching schemes. OPAQUE is also extensible, allowing
 clients to safely store and retrieve arbitrary application data on servers
-using only their passwords.
+using only their password.
 
 OPAQUE is defined and proven as the composition of three functionalities:
 an oblivious pseudorandom function (OPRF), a key recovery mechanism,
@@ -329,7 +329,7 @@ as a "compiler" for transforming any suitable AKE protocol into a secure
 aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
 based on {{TripleDH}}. Other instantiations are possible, as discussed in
-{{alternate-akes}}, but their details are out of the scope of this document.
+{{alternate-akes}}, but their details are out of scope for this document.
 In general, the modularity of OPAQUE's design makes it easy to integrate
 with additional AKE protocols, e.g., TLS or HMQV, and with future ones such
 as those based on post-quantum techniques.
@@ -1923,7 +1923,7 @@ protocols such as TLS.
 The specification as written here differs from the original cryptographic design in {{JKX18}}
 and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
 as input to the CFRG PAKE competition. This section describes these differences, including
-their motivation and explanation as to why they preserve the provable security of OPAQUE-based
+their motivation and explanation as to why they preserve the provable security of OPAQUE based
 on {{JKX18}}.
 
 The following list enumerates important functional differences that were made
