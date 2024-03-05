@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-03T01:10:32.241204+00:00",
+  "timestamp": "2024-03-05T01:06:44.107208+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34185,7 +34185,7 @@
       "labels": [],
       "body": "As I was rereading the draft, I saw a couple of mistakes and missing spaces. So I ran the text through a corrector that found some other suggestions.",
       "createdAt": "2023-12-26T02:59:20Z",
-      "updatedAt": "2024-01-08T18:35:37Z",
+      "updatedAt": "2024-03-03T23:35:50Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
@@ -34247,6 +34247,50 @@
               "body": "I'm not native in English so it's very probable that my suggestion comes from another language.\n\nBut does putting the singular to password not mean something like \"the one password that all the clients have\" instead of \"the password of each client\"?",
               "createdAt": "2024-01-08T18:34:53Z",
               "updatedAt": "2024-01-09T17:30:37Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs5yCGBd",
+          "commit": {
+            "abbreviatedOid": "0364883"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2024-03-03T23:33:39Z",
+          "updatedAt": "2024-03-03T23:35:50Z",
+          "comments": [
+            {
+              "originalPosition": 69,
+              "body": "this change should be reverted",
+              "createdAt": "2024-03-03T23:33:39Z",
+              "updatedAt": "2024-03-03T23:35:50Z"
+            },
+            {
+              "originalPosition": 105,
+              "body": "this change should be reverted",
+              "createdAt": "2024-03-03T23:34:03Z",
+              "updatedAt": "2024-03-03T23:35:50Z"
+            },
+            {
+              "originalPosition": 123,
+              "body": "I think a better change would be \"protect against\"",
+              "createdAt": "2024-03-03T23:34:47Z",
+              "updatedAt": "2024-03-03T23:35:50Z"
+            },
+            {
+              "originalPosition": 8,
+              "body": "I think it is best left signular, agree with Chris's suggestion here",
+              "createdAt": "2024-03-03T23:35:28Z",
+              "updatedAt": "2024-03-03T23:35:50Z"
+            },
+            {
+              "originalPosition": 17,
+              "body": "I would revert this change",
+              "createdAt": "2024-03-03T23:35:40Z",
+              "updatedAt": "2024-03-03T23:35:50Z"
             }
           ]
         }
