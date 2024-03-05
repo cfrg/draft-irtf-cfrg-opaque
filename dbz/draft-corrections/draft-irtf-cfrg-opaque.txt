@@ -5,12 +5,12 @@
 Network Working Group                                        D. Bourdrez
 Internet-Draft                                                          
 Intended status: Informational                               H. Krawczyk
-Expires: 11 July 2024                                                AWS
+Expires: 6 September 2024                                            AWS
                                                                  K. Lewi
                                                                     Meta
                                                               C. A. Wood
                                                         Cloudflare, Inc.
-                                                          8 January 2024
+                                                            5 March 2024
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -49,7 +49,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 11 July 2024.
+   This Internet-Draft will expire on 6 September 2024.
 
 Copyright Notice
 
@@ -185,7 +185,7 @@ Table of Contents
    allows applications to increase the difficulty of offline dictionary
    attacks via iterated hashing or other key-stretching schemes.  OPAQUE
    is also extensible, allowing clients to safely store and retrieve
-   arbitrary application data on servers using only their passwords.
+   arbitrary application data on servers using only their password.
 
    OPAQUE is defined and proven as the composition of three
    functionalities: an oblivious pseudorandom function (OPRF), a key
@@ -195,10 +195,10 @@ Table of Contents
    requirements of the OPRF and AKE protocols.)  This document specifies
    one OPAQUE instantiation based on [TripleDH].  Other instantiations
    are possible, as discussed in Appendix C, but their details are out
-   of the scope of this document.  In general, the modularity of
-   OPAQUE's design makes it easy to integrate with additional AKE
-   protocols, e.g., TLS or HMQV, and with future ones such as those
-   based on post-quantum techniques.
+   of scope for this document.  In general, the modularity of OPAQUE's
+   design makes it easy to integrate with additional AKE protocols,
+   e.g., TLS or HMQV, and with future ones such as those based on post-
+   quantum techniques.
 
    OPAQUE consists of two stages: registration and authenticated key
    exchange.  In the first stage, a client registers its password with
@@ -1869,7 +1869,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    [I-D.krawczyk-cfrg-opaque-03], both of which were used as input to
    the CFRG PAKE competition.  This section describes these differences,
    including their motivation and explanation as to why they preserve
-   the provable security of OPAQUE-based on [JKX18].
+   the provable security of OPAQUE based on [JKX18].
 
    The following list enumerates important functional differences that
    were made as part of the protocol specification process to address
