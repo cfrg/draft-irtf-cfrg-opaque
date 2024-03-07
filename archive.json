@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-05T01:06:44.107208+00:00",
+  "timestamp": "2024-03-07T00:55:51.873324+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34185,13 +34185,13 @@
       "labels": [],
       "body": "As I was rereading the draft, I saw a couple of mistakes and missing spaces. So I ran the text through a corrector that found some other suggestions.",
       "createdAt": "2023-12-26T02:59:20Z",
-      "updatedAt": "2024-03-03T23:35:50Z",
+      "updatedAt": "2024-03-05T06:49:51Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "dbz/draft-corrections",
-      "headRefOid": "03648832f9269cbde5743acdb6f846cae8b66e9f",
+      "headRefOid": "c9e4971e9b455f32ccf1b853b62c73916f9daf7a",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -34269,12 +34269,6 @@
               "updatedAt": "2024-03-03T23:35:50Z"
             },
             {
-              "originalPosition": 105,
-              "body": "this change should be reverted",
-              "createdAt": "2024-03-03T23:34:03Z",
-              "updatedAt": "2024-03-03T23:35:50Z"
-            },
-            {
               "originalPosition": 123,
               "body": "I think a better change would be \"protect against\"",
               "createdAt": "2024-03-03T23:34:47Z",
@@ -34282,9 +34276,9 @@
             },
             {
               "originalPosition": 8,
-              "body": "I think it is best left signular, agree with Chris's suggestion here",
+              "body": "I think it is best left singular, agree with Chris's suggestion here",
               "createdAt": "2024-03-03T23:35:28Z",
-              "updatedAt": "2024-03-03T23:35:50Z"
+              "updatedAt": "2024-03-05T06:47:05Z"
             },
             {
               "originalPosition": 17,
@@ -34293,6 +34287,19 @@
               "updatedAt": "2024-03-03T23:35:50Z"
             }
           ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs5yM6Jr",
+          "commit": {
+            "abbreviatedOid": "c9e4971"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "I went ahead and addressed the comments I left with a commit, so I am approving now!",
+          "createdAt": "2024-03-05T06:49:51Z",
+          "updatedAt": "2024-03-05T06:49:51Z",
+          "comments": []
         }
       ]
     },
@@ -34308,19 +34315,33 @@
       "labels": [],
       "body": "reviewing the document at a whole for the rglc, i notice that registration is consistently referred to as \"offline registration\" - as the meme goes \"You Keep Using That Word, I Do Not Think It Means What You Think It Means\". most people understand offline as something that doesn't need a network connection. and with opaque `offline` in the context of `registration` has a much more nuanced and different meaning, which is confusing for the casual reader and implementer. and thus i think there is two options, the more expensive let's explicitly define \"offline\" in this context (and not mix it up with the other use through out this document in the context of attacks) or simply and cheaply delete the offline adjective from the context of registrations. i think this change eliminates one source of confusion and while doing so decreases entropy.",
       "createdAt": "2024-01-16T14:00:11Z",
-      "updatedAt": "2024-01-16T14:00:11Z",
+      "updatedAt": "2024-03-05T06:35:28Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "offline-registration",
-      "headRefOid": "4c4df6a481674ce93a562365629800a3a736c14d",
+      "headRefOid": "9059a19da6957dc53bb08065e5d1f38f0cef6fad",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5yM182",
+          "commit": {
+            "abbreviatedOid": "9059a19"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "Added some small adjustments to fix tests and catch one more spot where offline registration is mentioned. LGTM",
+          "createdAt": "2024-03-05T06:35:28Z",
+          "updatedAt": "2024-03-05T06:35:28Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 441,
