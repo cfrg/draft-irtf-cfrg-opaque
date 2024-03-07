@@ -981,7 +981,7 @@ The server inputs the following values:
 The client receives two outputs: a session secret and an export key. The export
 key is only available to the client and may be used for additional
 application-specific purposes, as outlined in {{export-key-usage}}.
-Clients and servers MUST NOT use the output `export_key` before
+Clients MUST NOT use the output `export_key` before
 authenticating the peer in the authenticated key exchange protocol.
 See {{alternate-key-recovery}} for more details about this
 requirement. The server receives a single output: a session secret matching the
