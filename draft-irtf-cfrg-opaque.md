@@ -490,7 +490,7 @@ so long as they are maintained across the registration and online AKE stages, an
 kept consistent for each client (since an inconsistent mapping of clients to seeds
 could leak information as described in {{preventing-client-enumeration}}).
 
-## Offline Registration
+## Registration
 
 Registration is the only stage in OPAQUE that requires a server-authenticated
 channel with confidentiality and integrity: either physical, out-of-band, PKI-based, etc.
@@ -573,7 +573,7 @@ specified in {{ake-messages}}.
 The rest of this document describes the specifics of these stages in detail.
 {{client-material}} describes how client credential information is
 generated, encoded, and stored on the server during registration, and recovered during
-login. {{offline-phase}} describes the first registration stage of the protocol,
+login. {{registration-phase}} describes the first registration stage of the protocol,
 and {{online-phase}} describes the second authentication stage of the protocol.
 {{configurations}} describes how to instantiate OPAQUE using different
 cryptographic dependencies and parameters.
@@ -741,7 +741,7 @@ def Recover(randomized_password, server_public_key, envelope,
 In the case of `EnvelopeRecoveryError` being raised, all previously-computed
 intermediary values in this function MUST be deleted.
 
-# Offline Registration {#offline-phase}
+# Registration {#registration-phase}
 
 The registration process proceeds as follows. The client inputs
 the following values:
@@ -959,7 +959,7 @@ which is insufficient for OPAQUE security).
 This section describes the online authenticated key exchange protocol flow,
 message encoding, and helper functions. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
-client and server credentials established during registration; see {{offline-phase}}.
+client and server credentials established during registration; see {{registration-phase}}.
 In the end, the client proves its knowledge of the password, and both client and
 server agree on (1) a mutually authenticated shared secret key and (2) any optional
 application information exchange during the handshake.
@@ -1792,7 +1792,7 @@ MAC of suitable length. For example, if MAC is HMAC-SHA256, then `Nh` could be
 Beyond choosing an appropriate configuration, there are several parameters which
 applications can use to control OPAQUE:
 
-- Credential identifier: As described in {{offline-phase}}, this is a unique
+- Credential identifier: As described in {{registration-phase}}, this is a unique
   handle to the client's credential being stored. In applications where there are alternate
   client identities that accompany an account, such as a username or email address, this
   identifier can be set to those alternate values. For simplicity, applications may choose
@@ -1829,7 +1829,7 @@ applications can use to control OPAQUE:
   the oprf_seed) for all clients; see {{preventing-client-enumeration}}. In settings
   where this attack is not a concern, servers may choose to not support this functionality.
 - Handling password changes: In the event of a password change, the client and
-  server can run the offline registration phase using the new password as a
+  server can run the registration phase using the new password as a
   fresh instance (ensuring to resample all random values). The resulting
   registration record can then replace the previous record corresponding to
   the client's old password registration.
@@ -1850,7 +1850,7 @@ constant-time and independent of the bits of any secrets. This includes any
 conditional branching during the creation of the credential response, as needed
 to mitigate client enumeration attacks.
 
-As specified in {{offline-phase}} and {{online-phase}}, OPAQUE only requires
+As specified in {{registration-phase}} and {{online-phase}}, OPAQUE only requires
 the client password as input to the OPRF for registration and authentication.
 However, if `client_identity` can be bound to the client's registration record
 (in that the identity will not change during the lifetime of the record),
@@ -1931,7 +1931,7 @@ as part of the protocol specification process to address application or
 implementation considerations.
 
 - Clients construct envelope contents without revealing the password to the
-  server, as described in {{offline-phase}}, whereas the servers construct
+  server, as described in {{registration-phase}}, whereas the servers construct
   envelopes in {{JKX18}}. This change adds to the security of the protocol.
   {{JKX18}} considered the case where the envelope was constructed by the
   server for reasons of compatibility with previous UC modeling. {{HJKW23}}
@@ -2191,7 +2191,7 @@ for the creation of the `auth_tag` parameter in {{envelope-creation}}.
 
 Both client and server MUST validate the other party's public key(s) used
 for the execution of OPAQUE. This includes the keys shared during the
-offline registration phase, as well as any keys shared during the online
+registration phase, as well as any keys shared during the online
 key agreement phase. The validation procedure varies depending on the
 type of key. For example, for OPAQUE instantiations
 using 3DH with P-256, P-384, or P-521 as the underlying group, validation
