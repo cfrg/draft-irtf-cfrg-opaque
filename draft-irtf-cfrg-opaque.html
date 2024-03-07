@@ -1178,7 +1178,7 @@ based on 3DH.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                 <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-setup" class="internal xref">Setup</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
-                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-offline-registration" class="internal xref">Offline Registration</a></p>
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-registration" class="internal xref">Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
                 <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-online-authenticated-key-ex" class="internal xref">Online Authenticated Key Exchange</a></p>
@@ -1205,7 +1205,7 @@ based on 3DH.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
-            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-offline-registration-2" class="internal xref">Offline Registration</a></p>
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-registration-2" class="internal xref">Registration</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
                 <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-registration-messages" class="internal xref">Registration Messages</a></p>
@@ -1715,10 +1715,10 @@ kept consistent for each client (since an inconsistent mapping of clients to see
 could leak information as described in <a href="#preventing-client-enumeration" class="auto internal xref">Section 10.10</a>).<a href="#section-3.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="offline-registration">
+<div id="registration">
 <section id="section-3.2">
-        <h3 id="name-offline-registration">
-<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-offline-registration" class="section-name selfRef">Offline Registration</a>
+        <h3 id="name-registration">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-registration" class="section-name selfRef">Registration</a>
         </h3>
 <p id="section-3.2-1">Registration is the only stage in OPAQUE that requires a server-authenticated
 channel with confidentiality and integrity: either physical, out-of-band, PKI-based, etc.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
@@ -1799,7 +1799,7 @@ specified in <a href="#ake-messages" class="auto internal xref">Section 6.1</a>.
 <p id="section-3.3-5">The rest of this document describes the specifics of these stages in detail.
 <a href="#client-material" class="auto internal xref">Section 4</a> describes how client credential information is
 generated, encoded, and stored on the server during registration, and recovered during
-login. <a href="#offline-phase" class="auto internal xref">Section 5</a> describes the first registration stage of the protocol,
+login. <a href="#registration-phase" class="auto internal xref">Section 5</a> describes the first registration stage of the protocol,
 and <a href="#online-phase" class="auto internal xref">Section 6</a> describes the second authentication stage of the protocol.
 <a href="#configurations" class="auto internal xref">Section 7</a> describes how to instantiate OPAQUE using different
 cryptographic dependencies and parameters.<a href="#section-3.3-5" class="pilcrow">¶</a></p>
@@ -2000,10 +2000,10 @@ intermediary values in this function MUST be deleted.<a href="#section-4.1.3-3" 
 </div>
 </section>
 </div>
-<div id="offline-phase">
+<div id="registration-phase">
 <section id="section-5">
-      <h2 id="name-offline-registration-2">
-<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-offline-registration-2" class="section-name selfRef">Offline Registration</a>
+      <h2 id="name-registration-2">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-registration-2" class="section-name selfRef">Registration</a>
       </h2>
 <p id="section-5-1">The registration process proceeds as follows. The client inputs
 the following values:<a href="#section-5-1" class="pilcrow">¶</a></p>
@@ -2253,7 +2253,7 @@ which is insufficient for OPAQUE security).<a href="#section-6-1" class="pilcrow
 <p id="section-6-2">This section describes the online authenticated key exchange protocol flow,
 message encoding, and helper functions. This stage is composed of a concurrent
 OPRF and key exchange flow. The key exchange protocol is authenticated using the
-client and server credentials established during registration; see <a href="#offline-phase" class="auto internal xref">Section 5</a>.
+client and server credentials established during registration; see <a href="#registration-phase" class="auto internal xref">Section 5</a>.
 In the end, the client proves its knowledge of the password, and both client and
 server agree on (1) a mutually authenticated shared secret key and (2) any optional
 application information exchange during the handshake.<a href="#section-6-2" class="pilcrow">¶</a></p>
@@ -3254,7 +3254,7 @@ MAC of suitable length. For example, if MAC is HMAC-SHA256, then <code>Nh</code>
 applications can use to control OPAQUE:<a href="#section-8-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-8-2.1">
-          <p id="section-8-2.1.1">Credential identifier: As described in <a href="#offline-phase" class="auto internal xref">Section 5</a>, this is a unique
+          <p id="section-8-2.1.1">Credential identifier: As described in <a href="#registration-phase" class="auto internal xref">Section 5</a>, this is a unique
 handle to the client's credential being stored. In applications where there are alternate
 client identities that accompany an account, such as a username or email address, this
 identifier can be set to those alternate values. For simplicity, applications may choose
@@ -3303,7 +3303,7 @@ where this attack is not a concern, servers may choose to not support this funct
 </li>
         <li class="normal" id="section-8-2.7">
           <p id="section-8-2.7.1">Handling password changes: In the event of a password change, the client and
-server can run the offline registration phase using the new password as a
+server can run the registration phase using the new password as a
 fresh instance (ensuring to resample all random values). The resulting
 registration record can then replace the previous record corresponding to
 the client's old password registration.<a href="#section-8-2.7.1" class="pilcrow">¶</a></p>
@@ -3331,7 +3331,7 @@ particularly the cryptographic and group arithmetic operations, should be
 constant-time and independent of the bits of any secrets. This includes any
 conditional branching during the creation of the credential response, as needed
 to mitigate client enumeration attacks.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
-<p id="section-9.1-2">As specified in <a href="#offline-phase" class="auto internal xref">Section 5</a> and <a href="#online-phase" class="auto internal xref">Section 6</a>, OPAQUE only requires
+<p id="section-9.1-2">As specified in <a href="#registration-phase" class="auto internal xref">Section 5</a> and <a href="#online-phase" class="auto internal xref">Section 6</a>, OPAQUE only requires
 the client password as input to the OPRF for registration and authentication.
 However, if <code>client_identity</code> can be bound to the client's registration record
 (in that the identity will not change during the lifetime of the record),
@@ -3422,7 +3422,7 @@ implementation considerations.<a href="#section-10.1-2" class="pilcrow">¶</a></
 <ul class="normal">
 <li class="normal" id="section-10.1-3.1">
             <p id="section-10.1-3.1.1">Clients construct envelope contents without revealing the password to the
-server, as described in <a href="#offline-phase" class="auto internal xref">Section 5</a>, whereas the servers construct
+server, as described in <a href="#registration-phase" class="auto internal xref">Section 5</a>, whereas the servers construct
 envelopes in <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span>. This change adds to the security of the protocol.
 <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span> considered the case where the envelope was constructed by the
 server for reasons of compatibility with previous UC modeling. <span>[<a href="#HJKW23" class="cite xref">HJKW23</a>]</span>
@@ -3726,7 +3726,7 @@ for the creation of the <code>auth_tag</code> parameter in <a href="#envelope-cr
         </h3>
 <p id="section-10.8-1">Both client and server MUST validate the other party's public key(s) used
 for the execution of OPAQUE. This includes the keys shared during the
-offline registration phase, as well as any keys shared during the online
+registration phase, as well as any keys shared during the online
 key agreement phase. The validation procedure varies depending on the
 type of key. For example, for OPAQUE instantiations
 using 3DH with P-256, P-384, or P-521 as the underlying group, validation
