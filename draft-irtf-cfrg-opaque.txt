@@ -5,12 +5,12 @@
 Network Working Group                                        D. Bourdrez
 Internet-Draft                                                          
 Intended status: Informational                               H. Krawczyk
-Expires: 16 June 2024                                                AWS
+Expires: 8 September 2024                                            AWS
                                                                  K. Lewi
                                                                     Meta
                                                               C. A. Wood
                                                         Cloudflare, Inc.
-                                                        14 December 2023
+                                                            7 March 2024
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 16 June 2024.
+   This Internet-Draft will expire on 8 September 2024.
 
 Copyright Notice
 
-   Copyright (c) 2023 IETF Trust and the persons identified as the
+   Copyright (c) 2024 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -183,7 +183,7 @@ Table of Contents
    secrecy with respect to password leakage while also hiding the
    password from the server, even during password registration.  OPAQUE
    allows applications to increase the difficulty of offline dictionary
-   attacks via iterated hashing or other key stretching schemes.  OPAQUE
+   attacks via iterated hashing or other key-stretching schemes.  OPAQUE
    is also extensible, allowing clients to safely store and retrieve
    arbitrary application data on servers using only their password.
 
@@ -762,8 +762,8 @@ def Recover(randomized_password, server_public_key, envelope,
 
    To begin the registration flow, the client executes the following
    function.  This function can fail with an InvalidInputError error
-   with negligibile probability.  A different input password is
-   necessary in the event of this error.
+   with negligible probability.  A different input password is necessary
+   in the event of this error.
 
    CreateRegistrationRequest
 
@@ -787,7 +787,7 @@ def Recover(randomized_password, server_public_key, envelope,
 
    To process the client's registration request, the server executes the
    following function.  This function can fail with a DeriveKeyPairError
-   error with negligible probability.  In this case, application can
+   error with negligible probability.  In this case, applications can
    choose a new credential_identifier for this registration record and
    re-run this function.
 
@@ -1188,7 +1188,7 @@ def GenerateKE3(client_identity, server_identity, ke2):
    The CreateCredentialRequest is used by the client to initiate the
    credential retrieval process, and it produces a CredentialRequest
    message and OPRF state.  Like CreateRegistrationRequest, this
-   function can fail with an InvalidInputError error with negligibile
+   function can fail with an InvalidInputError error with negligible
    probability.  However, this should not occur since registration (via
    CreateRegistrationRequest) will fail when provided the same password
    input.
@@ -1741,7 +1741,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       identities to nil and rely solely on public key information.
 
    *  Configuration and envelope updates: Applications may wish to
-      update or change their configuration or other parameters which
+      update or change their configuration or other parameters that
       affect the client's RegistrationRecord over time.  Some reasons
       for changing these are to use different cryptographic algorithms,
       e.g., a different KSF with improved parameters, or to update key
@@ -1749,7 +1749,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       RegistrationRecord, such as the server's public key
       (server_public_key).  Any such change will require users to re-
       register to create a new RegistrationRecord.  Supporting these
-      types of updates can be helpful for applications which anticipate
+      types of updates can be helpful for applications that anticipate
       such changes in their deployment setting.
 
    *  Password hardening parameters: Key stretching is done to help
@@ -1931,7 +1931,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       identities.  In the absence of these identities, the client and
       server are authenticated against their public keys.  Binding
       authentication to identities is part of the AKE part of OPAQUE.
-      The type of identities and their semantics are application
+      The type of identities and their semantics are application-
       dependent and independent of the protocol analysis.  This change
       was made to simplify client and server interfaces to the protocol
       by removing the need to specify additional identities alongside
@@ -1966,7 +1966,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       implementation only affects the server and changes nothing for the
       client.  Furthermore, if the threshold OPRF servers holding these
       keys are separate from the authentication server, then recovering
-      all n shares would still not suffice to run an offline dictionnary
+      all n shares would still not suffice to run an offline dictionary
       attack without access to the client record database.  However,
       this mechanism is out of scope for this document.
 
@@ -2040,7 +2040,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    The KCI property required from AKE protocols for use with OPAQUE
    states that knowledge of a party's private key does not allow an
    attacker to impersonate others to that party.  This is an important
-   security property achieved by most public-key based AKE protocols,
+   security property achieved by most public-key-based AKE protocols,
    including protocols that use signatures or public key encryption for
    authentication.  It is also a property of many implicitly
    authenticated protocols, e.g., HMQV, but not all of them.  We also
@@ -2063,9 +2063,9 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    key for multiple clients.  The client_identity as input to the OPRF
    also acts as a key identifier that would be required for a proof of
    the protocol in the multi-key setting; the OPAQUE analysis in [JKX18]
-   assumes single server-key instances.  Adding server_identityto the
-   OPRF input provides domain separation for clients that reuse the
-   sameclient_identity` across different server instantiations.
+   assumes single server-key instances.  Adding server_identity to the
+   OPRF input provides domain separation for clients that reuse the same
+   client_identity across different server instantiations.
 
 10.3.  Related Protocols
 
@@ -2200,7 +2200,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
    Applying a key stretching function to the output of the OPRF greatly
    increases the cost of an offline attack upon the compromise of the
-   credential file at the server.  Applications SHOULD select parameters
+   credential file on the server.  Applications SHOULD select parameters
    for the KSF that balance cost and complexity across different client
    implementations and deployments.  Note that in OPAQUE, the key
    stretching function is executed by the client, as opposed to the
@@ -2232,11 +2232,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    attacks can be mitigated through other application-specific means or
    are otherwise not applicable for their threat model.
 
-   OPAQUE does not prevent against this type of attack during the
-   registration flow.  Servers necessarily react differently during the
-   registration flow between registered and unregistered clients.  This
-   allows an attacker to use the server's response during registration
-   as an oracle for whether a given client identity is registered.
+   OPAQUE does not prevent this type of attack during the registration
+   flow.  Servers necessarily react differently during the registration
+   flow between registered and unregistered clients.  This allows an
+   attacker to use the server's response during registration as an
+   oracle for whether a given client identity is registered.
    Applications should mitigate against this type of attack by rate
    limiting or otherwise restricting the registration flow.
 
@@ -2250,7 +2250,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    (this is a requirement for correct identification of the parties), a
    confidential channel can be established using public-key encryption,
    e.g., with HPKE [RFC9180].  However, the details of this mechanism
-   are out of scope of this document.
+   are out of scope for this document.
 
 10.12.  Password Salt and Storage Implications
 
@@ -2268,11 +2268,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    be susceptible to an offline dictionary attack to recover the
    original password.
 
-   Some applications may require learning the client's password for
-   enforcing password rules.  Doing so invalidates this important
-   security property of OPAQUE and is NOT RECOMMENDED, unless it is not
-   possible for applications to move such checks to the client.  Note
-   that limited checks at the server are possible to implement, e.g.,
+   Some applications may require learning the client's password to
+   enforce password rules.  Doing so invalidates this important security
+   property of OPAQUE and is NOT RECOMMENDED, unless it is not possible
+   for applications to move such checks to the client.  Note that
+   limited checks at the server are possible to implement, e.g.,
    detecting repeated passwords upon re-registrations or password
    change.
 
@@ -2548,7 +2548,7 @@ Appendix C.  Alternate AKE Instantiations
 
 C.1.  HMQV Instantiation Sketch
 
-   An HMQV instantiation would work similar to OPAQUE-3DH, differing
+   An HMQV instantiation would work similarly to OPAQUE-3DH, differing
    primarily in the key schedule [HMQV].  First, the key schedule
    preamble value would use a different constant prefix -- "HMQV"
    instead of "3DH" -- as shown below.
