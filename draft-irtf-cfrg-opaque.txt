@@ -899,11 +899,10 @@ def FinalizeRegistrationRequest(password, blind, response, server_identity, clie
    The client receives two outputs: a session secret and an export key.
    The export key is only available to the client and may be used for
    additional application-specific purposes, as outlined in
-   Section 10.5.  Clients and servers MUST NOT use the output export_key
-   before authenticating the peer in the authenticated key exchange
-   protocol.  See Appendix B for more details about this requirement.
-   The server receives a single output: a session secret matching the
-   client's.
+   Section 10.5.  Clients MUST NOT use the output export_key before
+   authenticating the peer in the authenticated key exchange protocol.
+   See Appendix B for more details about this requirement.  The server
+   receives a single output: a session secret matching the client's.
 
    The protocol runs as shown below:
 

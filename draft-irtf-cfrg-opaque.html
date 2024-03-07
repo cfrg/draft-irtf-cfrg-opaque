@@ -2290,7 +2290,7 @@ application information exchange during the handshake.<a href="#section-6-2" cla
 <p id="section-6-7">The client receives two outputs: a session secret and an export key. The export
 key is only available to the client and may be used for additional
 application-specific purposes, as outlined in <a href="#export-key-usage" class="auto internal xref">Section 10.5</a>.
-Clients and servers MUST NOT use the output <code>export_key</code> before
+Clients MUST NOT use the output <code>export_key</code> before
 authenticating the peer in the authenticated key exchange protocol.
 See <a href="#alternate-key-recovery" class="auto internal xref">Appendix B</a> for more details about this
 requirement. The server receives a single output: a session secret matching the
