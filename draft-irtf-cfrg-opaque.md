@@ -2295,9 +2295,10 @@ We are indebted to the OPAQUE reviewers during CFRG's
 aPAKE selection process, particularly Julia Hesse and Bjorn Tackmann.
 This draft has benefited from comments by multiple people. Special thanks
 to Richard Barnes, Dan Brown, Matt Campagna, Eric Crockett, Paul Grubbs,
-Fredrik Kuivinen, Payman Mohassel, Jason Resch, Greg Rubin, and Nick Sullivan.
-Hugo Krawczyk wishes to thank his OPAQUE co-authors Stas Jarecki and Jiayu Xu
-without whom this work would have not been possible.
+Fredrik Kuivinen, Stefan Marsiske, Payman Mohassel, Marta Mularczyk,
+Jason Resch, Greg Rubin, and Nick Sullivan. Hugo Krawczyk wishes to thank
+his OPAQUE co-authors Stas Jarecki and Jiayu Xu without whom this work
+would have not been possible.
 
 # Alternate Key Recovery Mechanisms {#alternate-key-recovery}
 
