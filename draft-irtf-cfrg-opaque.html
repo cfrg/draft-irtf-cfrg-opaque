@@ -1577,7 +1577,7 @@ and the input to the function is provided by the client.  The client does not
 learn anything about the PRF other than the obtained output and the server
 learns nothing about the client's input or the function output.
 This specification depends on the prime-order OPRF construction specified
-in <span>[<a href="#OPRF" class="cite xref">OPRF</a>]</span>, draft version -21, using the OPRF mode (0x00) from <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-3.1" class="relref">Section 3.1</a></span>.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
+in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, using the OPRF mode (0x00) from <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.1" class="relref">Section 3.1</a></span>.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
 <p id="section-2.1-2">The following OPRF client APIs are used:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-2.1-3.1">
@@ -1595,11 +1595,11 @@ random inverter <code>blind</code>, and evaluation output <code>evaluated_elemen
 <li class="normal" id="section-2.1-5.1">
             <p id="section-2.1-5.1.1">BlindEvaluate(k, blinded_element): Evaluate blinded input element <code>blinded_element</code> using
 input key <code>k</code>, yielding output element <code>evaluated_element</code>. This is equivalent to
-the BlindEvaluate function described in <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-3.3.1" class="relref">Section 3.3.1</a></span>, where <code>k</code> is the private key parameter.<a href="#section-2.1-5.1.1" class="pilcrow">¶</a></p>
+the BlindEvaluate function described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.3.1" class="relref">Section 3.3.1</a></span>, where <code>k</code> is the private key parameter.<a href="#section-2.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-2.1-5.2">
             <p id="section-2.1-5.2.1">DeriveKeyPair(seed, info): Create and output (<code>sk</code>, <code>pk</code>), consisting of a private and public key derived
-deterministically from a <code>seed</code> and <code>info</code> parameter, as described in <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-3.2" class="relref">Section 3.2</a></span>.<a href="#section-2.1-5.2.1" class="pilcrow">¶</a></p>
+deterministically from a <code>seed</code> and <code>info</code> parameter, as described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>.<a href="#section-2.1-5.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-2.1-6">Finally, this specification makes use of the following shared APIs and parameters:<a href="#section-2.1-6" class="pilcrow">¶</a></p>
@@ -1609,7 +1609,7 @@ deterministically from a <code>seed</code> and <code>info</code> parameter, as d
 </li>
           <li class="normal" id="section-2.1-7.2">
             <p id="section-2.1-7.2.1">DeserializeElement(buf): Attempt to map input byte array <code>buf</code> to an OPRF group element.
-This function can raise a DeserializeError upon failure; see <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a></span>
+This function can raise a DeserializeError upon failure; see <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>
 for more details.<a href="#section-2.1-7.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-2.1-7.3">
@@ -2847,15 +2847,15 @@ as defined in <span>[<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span
 <li class="normal" id="section-6.4.1.1-2.1">
                 <p id="section-6.4.1.1-2.1.1">DeriveDiffieHellmanKeyPair(seed): This function is implemented as
 DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where DeriveKeyPair is
-as specified in <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
-is encoded using SerializeElement from <span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a> of [<a href="#OPRF" class="cite xref">OPRF</a>]</span>.<a href="#section-6.4.1.1-2.1.1" class="pilcrow">¶</a></p>
+as specified in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
+is encoded using SerializeElement from <span><a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a> of [<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-6.4.1.1-2.2">
                 <p id="section-6.4.1.1-2.2.1">DiffieHellman(k, B): Implemented as scalar multiplication as described in
 <span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-08#section-4" class="relref">Section 4</a> of [<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span> after decoding <code>B</code> from its encoded input using
 the Decode function in <span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-08#section-4.3.1" class="relref">Section 4.3.1</a> of [<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span>. The output is then
 encoded using the SerializeElement function of the OPRF group described in
-<span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.1-2.2.1" class="pilcrow">¶</a></p>
+<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
 </section>
@@ -2871,15 +2871,15 @@ as defined in <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</sp
 <li class="normal" id="section-6.4.1.2-2.1">
                 <p id="section-6.4.1.2-2.1.1">DeriveDiffieHellmanKeyPair(seed): This function is implemented as
 DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where DeriveKeyPair is
-as specified in <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
-is encoded using SerializeElement from <span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a> of [<a href="#OPRF" class="cite xref">OPRF</a>]</span>.<a href="#section-6.4.1.2-2.1.1" class="pilcrow">¶</a></p>
+as specified in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
+is encoded using SerializeElement from <span><a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a> of [<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.2-2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-6.4.1.2-2.2">
                 <p id="section-6.4.1.2-2.2.1">DiffieHellman(k, B): Implemented as scalar multiplication as described in
 <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</span>, after decoding <code>B</code> from its encoded input using
 the compressed Octet-String-to-Elliptic-Curve-Point method according to <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</span>.
 The output is then encoded using the SerializeElement function of the OPRF
-group described in <span>[<a href="#OPRF" class="cite xref">OPRF</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.2-2.2.1" class="pilcrow">¶</a></p>
+group described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
 </section>
@@ -3181,7 +3181,7 @@ def AuthServerFinalize(ke3):
 such that the following conditions are met:<a href="#section-7-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-7-2.1">
-          <p id="section-7-2.1.1">The OPRF protocol uses the "base mode" variant of <span>[<a href="#OPRF" class="cite xref">OPRF</a>]</span> and implements
+          <p id="section-7-2.1.1">The OPRF protocol uses the "base mode" variant of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> and implements
 the interface in <a href="#dependencies" class="auto internal xref">Section 2</a>. Examples include ristretto255-SHA512 and
 P256-SHA256.<a href="#section-7-2.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -3521,8 +3521,8 @@ suitable for interoperable implementations.<a href="#section-10.1-4" class="pilc
 and includes necessary prime-order subgroup checks when receiving attacker-controlled
 values over the wire. This specification instantiates the prime-order group used for
 3DH using prime-order groups based on elliptic curves, as described in
-<span>[<a href="#I-D.irtf-cfrg-voprf" class="cite xref">I-D.irtf-cfrg-voprf</a>], <a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21#section-2.1" class="relref">Section 2.1</a></span>. This specification also delegates OPRF group
-choice and operations to <span>[<a href="#I-D.irtf-cfrg-voprf" class="cite xref">I-D.irtf-cfrg-voprf</a>]</span>. As such, the prime-order group as used
+<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>. This specification also delegates OPRF group
+choice and operations to <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. As such, the prime-order group as used
 in the OPRF and 3DH as specified in this document both adhere to the requirements as
 <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span>.<a href="#section-10.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -3531,10 +3531,10 @@ in the OPRF and 3DH as specified in this document both adhere to the requirement
 the OPRF functionality in the protocol. A critical part of DH-OPRF is the
 hash-to-group operation, which was not instantiated in the original analysis.
 However, the requirements for this operation were included. This specification
-instantiates the OPRF functionality based on the <span>[<a href="#I-D.irtf-cfrg-voprf" class="cite xref">I-D.irtf-cfrg-voprf</a>]</span>, which
+instantiates the OPRF functionality based on the <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, which
 is identical to the DH-OPRF functionality in <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span> and, concretely, uses
-the hash-to-curve functions in <span>[<a href="#I-D.irtf-cfrg-hash-to-curve" class="cite xref">I-D.irtf-cfrg-hash-to-curve</a>]</span>. All hash-to-curve
-methods in <span>[<a href="#I-D.irtf-cfrg-hash-to-curve" class="cite xref">I-D.irtf-cfrg-hash-to-curve</a>]</span> are compliant with the requirement
+the hash-to-curve functions in <span>[<a href="#RFC9380" class="cite xref">RFC9380</a>]</span>. All hash-to-curve
+methods in <span>[<a href="#RFC9380" class="cite xref">RFC9380</a>]</span> are compliant with the requirement
 in <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span>, namely, that the output be a member of the prime-order group.<a href="#section-10.1-5.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-10.1-5.3">
@@ -3671,7 +3671,7 @@ order of computing discrete logarithms or solving Diffie-Hellman, Brown and
 Gallant <span>[<a href="#BG04" class="cite xref">BG04</a>]</span> and Cheon <span>[<a href="#Cheon06" class="cite xref">Cheon06</a>]</span> show an attack that slightly improves
 on generic attacks. For typical curves, the attack requires an infeasible
 number of calls to the OPRF or results in insignificant security loss;
-see <span>[<a href="#OPRF" class="cite xref">OPRF</a>]</span> for more information. For OPAQUE, these attacks
+see <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> for more information. For OPAQUE, these attacks
 are particularly impractical as they translate into an infeasible number of
 failed authentication attempts directed at individual users.<a href="#section-10.5-1" class="pilcrow">¶</a></p>
 </section>
@@ -3829,14 +3829,6 @@ incompatible with the OPRF algorithm.<a href="#section-10.12-1" class="pilcrow">
 <a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
         </h3>
 <dl class="references">
-<dt id="I-D.irtf-cfrg-voprf">[I-D.irtf-cfrg-voprf]</dt>
-        <dd>
-<span class="refAuthor">Davidson, A.</span>, <span class="refAuthor">Faz-Hernandez, A.</span>, <span class="refAuthor">Sullivan, N.</span>, and <span class="refAuthor">C. A. Wood</span>, <span class="refTitle">"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-voprf-21</span>, <time datetime="2023-02-21" class="refDate">21 February 2023</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21">https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="OPRF">[OPRF]</dt>
-        <dd>
-<span class="refAuthor">Davidson, A.</span>, <span class="refAuthor">Faz-Hernandez, A.</span>, <span class="refAuthor">Sullivan, N.</span>, and <span class="refAuthor">C. A. Wood</span>, <span class="refTitle">"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-voprf-21</span>, <time datetime="2023-02-21" class="refDate">21 February 2023</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21">https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="RFC2104">[RFC2104]</dt>
         <dd>
 <span class="refAuthor">Krawczyk, H.</span>, <span class="refAuthor">Bellare, M.</span>, and <span class="refAuthor">R. Canetti</span>, <span class="refTitle">"HMAC: Keyed-Hashing for Message Authentication"</span>, <span class="seriesInfo">RFC 2104</span>, <span class="seriesInfo">DOI 10.17487/RFC2104</span>, <time datetime="1997-02" class="refDate">February 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2104">https://www.rfc-editor.org/rfc/rfc2104</a>&gt;</span>. </dd>
@@ -3850,8 +3842,12 @@ incompatible with the OPRF algorithm.<a href="#section-10.12-1" class="pilcrow">
 <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Schiller, J.</span>, and <span class="refAuthor">S. Crocker</span>, <span class="refTitle">"Randomness Requirements for Security"</span>, <span class="seriesInfo">BCP 106</span>, <span class="seriesInfo">RFC 4086</span>, <span class="seriesInfo">DOI 10.17487/RFC4086</span>, <time datetime="2005-06" class="refDate">June 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc4086">https://www.rfc-editor.org/rfc/rfc4086</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8174">[RFC8174]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9497">[RFC9497]</dt>
+      <dd>
+<span class="refAuthor">Davidson, A.</span>, <span class="refAuthor">Faz-Hernandez, A.</span>, <span class="refAuthor">Sullivan, N.</span>, and <span class="refAuthor">C. A. Wood</span>, <span class="refTitle">"Oblivious Pseudorandom Functions (OPRFs) Using Prime-Order Groups"</span>, <span class="seriesInfo">RFC 9497</span>, <span class="seriesInfo">DOI 10.17487/RFC9497</span>, <time datetime="2023-12" class="refDate">December 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9497">https://www.rfc-editor.org/rfc/rfc9497</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
@@ -3910,10 +3906,6 @@ incompatible with the OPRF algorithm.<a href="#section-10.12-1" class="pilcrow">
         <dd>
 <span class="refAuthor">Krawczyk, H.</span>, <span class="refTitle">"HMQV: A high-performance secure Diffie-Hellman protocol"</span>, <span class="seriesInfo">CRYPTO </span>, <time datetime="2005" class="refDate">2005</time>. </dd>
 <dd class="break"></dd>
-<dt id="I-D.irtf-cfrg-hash-to-curve">[I-D.irtf-cfrg-hash-to-curve]</dt>
-        <dd>
-<span class="refAuthor">Faz-Hernandez, A.</span>, <span class="refAuthor">Scott, S.</span>, <span class="refAuthor">Sullivan, N.</span>, <span class="refAuthor">Wahby, R. S.</span>, and <span class="refAuthor">C. A. Wood</span>, <span class="refTitle">"Hashing to Elliptic Curves"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-irtf-cfrg-hash-to-curve-16</span>, <time datetime="2022-06-15" class="refDate">15 June 2022</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16">https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="I-D.krawczyk-cfrg-opaque-03">[I-D.krawczyk-cfrg-opaque-03]</dt>
         <dd>
 <span class="refTitle">"The OPAQUE Asymmetric PAKE Protocol"</span>, <span>n.d.</span>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03">https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03</a>&gt;</span>. </dd>
@@ -3965,6 +3957,10 @@ incompatible with the OPRF algorithm.<a href="#section-10.12-1" class="pilcrow">
 <dt id="RFC9180">[RFC9180]</dt>
         <dd>
 <span class="refAuthor">Barnes, R.</span>, <span class="refAuthor">Bhargavan, K.</span>, <span class="refAuthor">Lipp, B.</span>, and <span class="refAuthor">C. Wood</span>, <span class="refTitle">"Hybrid Public Key Encryption"</span>, <span class="seriesInfo">RFC 9180</span>, <span class="seriesInfo">DOI 10.17487/RFC9180</span>, <time datetime="2022-02" class="refDate">February 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9180">https://www.rfc-editor.org/rfc/rfc9180</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9380">[RFC9380]</dt>
+        <dd>
+<span class="refAuthor">Faz-Hernandez, A.</span>, <span class="refAuthor">Scott, S.</span>, <span class="refAuthor">Sullivan, N.</span>, <span class="refAuthor">Wahby, R. S.</span>, and <span class="refAuthor">C. A. Wood</span>, <span class="refTitle">"Hashing to Elliptic Curves"</span>, <span class="seriesInfo">RFC 9380</span>, <span class="seriesInfo">DOI 10.17487/RFC9380</span>, <time datetime="2023-08" class="refDate">August 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9380">https://www.rfc-editor.org/rfc/rfc9380</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RISTRETTO">[RISTRETTO]</dt>
         <dd>
@@ -4144,7 +4140,7 @@ outputs computed during the authentication of an unknown or unregistered user. N
 <p id="appendix-D-3">All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
 matches that which is used in the OPRF. These test vectors were generated using
-draft-21 of <span>[<a href="#OPRF" class="cite xref">OPRF</a>]</span>. The KSF used for each test vector is the identity function
+<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. The KSF used for each test vector is the identity function
 (denoted Identity), which returns as output the input message supplied to the function
 without any modification, i.e., msg = Stretch(msg).<a href="#appendix-D-3" class="pilcrow">¶</a></p>
 <div id="real-vectors">

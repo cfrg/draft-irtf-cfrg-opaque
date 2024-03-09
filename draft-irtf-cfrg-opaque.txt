@@ -290,8 +290,8 @@ Table of Contents
    client.  The client does not learn anything about the PRF other than
    the obtained output and the server learns nothing about the client's
    input or the function output.  This specification depends on the
-   prime-order OPRF construction specified in [OPRF], draft version -21,
-   using the OPRF mode (0x00) from [OPRF], Section 3.1.
+   prime-order OPRF construction specified in [RFC9497], using the OPRF
+   mode (0x00) from [RFC9497], Section 3.1.
 
    The following OPRF client APIs are used:
 
@@ -309,12 +309,12 @@ Table of Contents
    *  BlindEvaluate(k, blinded_element): Evaluate blinded input element
       blinded_element using input key k, yielding output element
       evaluated_element.  This is equivalent to the BlindEvaluate
-      function described in [OPRF], Section 3.3.1, where k is the
+      function described in [RFC9497], Section 3.3.1, where k is the
       private key parameter.
 
    *  DeriveKeyPair(seed, info): Create and output (sk, pk), consisting
       of a private and public key derived deterministically from a seed
-      and info parameter, as described in [OPRF], Section 3.2.
+      and info parameter, as described in [RFC9497], Section 3.2.
 
    Finally, this specification makes use of the following shared APIs
    and parameters:
@@ -324,7 +324,7 @@ Table of Contents
 
    *  DeserializeElement(buf): Attempt to map input byte array buf to an
       OPRF group element.  This function can raise a DeserializeError
-      upon failure; see [OPRF], Section 2.1 for more details.
+      upon failure; see [RFC9497], Section 2.1 for more details.
 
    *  Noe: The size of a serialized OPRF group element output from
       SerializeElement.
@@ -1375,16 +1375,16 @@ def RecoverCredentials(password, blind, response,
 
    *  DeriveDiffieHellmanKeyPair(seed): This function is implemented as
       DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where
-      DeriveKeyPair is as specified in [OPRF], Section 3.2.  The public
-      value from DeriveKeyPair is encoded using SerializeElement from
-      Section 2.1 of [OPRF].
+      DeriveKeyPair is as specified in [RFC9497], Section 3.2.  The
+      public value from DeriveKeyPair is encoded using SerializeElement
+      from Section 2.1 of [RFC9497].
 
    *  DiffieHellman(k, B): Implemented as scalar multiplication as
       described in Section 4 of [RISTRETTO] after decoding B from its
       encoded input using the Decode function in Section 4.3.1 of
       [RISTRETTO].  The output is then encoded using the
-      SerializeElement function of the OPRF group described in [OPRF],
-      Section 2.1.
+      SerializeElement function of the OPRF group described in
+      [RFC9497], Section 2.1.
 
 6.4.1.2.  3DH P-256
 
@@ -1393,16 +1393,16 @@ def RecoverCredentials(password, blind, response,
 
    *  DeriveDiffieHellmanKeyPair(seed): This function is implemented as
       DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where
-      DeriveKeyPair is as specified in [OPRF], Section 3.2.  The public
-      value from DeriveKeyPair is encoded using SerializeElement from
-      Section 2.1 of [OPRF].
+      DeriveKeyPair is as specified in [RFC9497], Section 3.2.  The
+      public value from DeriveKeyPair is encoded using SerializeElement
+      from Section 2.1 of [RFC9497].
 
    *  DiffieHellman(k, B): Implemented as scalar multiplication as
       described in [NISTCurves], after decoding B from its encoded input
       using the compressed Octet-String-to-Elliptic-Curve-Point method
       according to [NISTCurves].  The output is then encoded using the
-      SerializeElement function of the OPRF group described in [OPRF],
-      Section 2.1.
+      SerializeElement function of the OPRF group described in
+      [RFC9497], Section 2.1.
 
 6.4.1.3.  3DH Curve25519
 
@@ -1650,7 +1650,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    An OPAQUE-3DH configuration is a tuple (OPRF, KDF, MAC, Hash, KSF,
    Group, Context) such that the following conditions are met:
 
-   *  The OPRF protocol uses the "base mode" variant of [OPRF] and
+   *  The OPRF protocol uses the "base mode" variant of [RFC9497] and
       implements the interface in Section 2.  Examples include
       ristretto255-SHA512 and P256-SHA256.
 
@@ -1979,23 +1979,21 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       when receiving attacker-controlled values over the wire.  This
       specification instantiates the prime-order group used for 3DH
       using prime-order groups based on elliptic curves, as described in
-      [I-D.irtf-cfrg-voprf], Section 2.1.  This specification also
-      delegates OPRF group choice and operations to
-      [I-D.irtf-cfrg-voprf].  As such, the prime-order group as used in
-      the OPRF and 3DH as specified in this document both adhere to the
-      requirements as [JKX18].
+      [RFC9497], Section 2.1.  This specification also delegates OPRF
+      group choice and operations to [RFC9497].  As such, the prime-
+      order group as used in the OPRF and 3DH as specified in this
+      document both adhere to the requirements as [JKX18].
 
    *  [JKX18] specified DH-OPRF (see Appendix B) to instantiate the OPRF
       functionality in the protocol.  A critical part of DH-OPRF is the
       hash-to-group operation, which was not instantiated in the
       original analysis.  However, the requirements for this operation
       were included.  This specification instantiates the OPRF
-      functionality based on the [I-D.irtf-cfrg-voprf], which is
-      identical to the DH-OPRF functionality in [JKX18] and, concretely,
-      uses the hash-to-curve functions in [I-D.irtf-cfrg-hash-to-curve].
-      All hash-to-curve methods in [I-D.irtf-cfrg-hash-to-curve] are
-      compliant with the requirement in [JKX18], namely, that the output
-      be a member of the prime-order group.
+      functionality based on the [RFC9497], which is identical to the
+      DH-OPRF functionality in [JKX18] and, concretely, uses the hash-
+      to-curve functions in [RFC9380].  All hash-to-curve methods in
+      [RFC9380] are compliant with the requirement in [JKX18], namely,
+      that the output be a member of the prime-order group.
 
    *  [JKX18] and [I-D.krawczyk-cfrg-opaque-03] both used HMQV as the
       AKE for the protocol.  However, this document fully specifies 3DH
@@ -2135,7 +2133,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    Diffie-Hellman, Brown and Gallant [BG04] and Cheon [Cheon06] show an
    attack that slightly improves on generic attacks.  For typical
    curves, the attack requires an infeasible number of calls to the OPRF
-   or results in insignificant security loss; see [OPRF] for more
+   or results in insignificant security loss; see [RFC9497] for more
    information.  For OPAQUE, these attacks are particularly impractical
    as they translate into an infeasible number of failed authentication
    attempts directed at individual users.
@@ -2272,21 +2270,6 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
 12.1.  Normative References
 
-   [I-D.irtf-cfrg-voprf]
-              Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A.
-              Wood, "Oblivious Pseudorandom Functions (OPRFs) using
-              Prime-Order Groups", Work in Progress, Internet-Draft,
-              draft-irtf-cfrg-voprf-21, 21 February 2023,
-              <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-
-              voprf-21>.
-
-   [OPRF]     Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A.
-              Wood, "Oblivious Pseudorandom Functions (OPRFs) using
-              Prime-Order Groups", Work in Progress, Internet-Draft,
-              draft-irtf-cfrg-voprf-21, 21 February 2023,
-              <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-
-              voprf-21>.
-
    [RFC2104]  Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-
               Hashing for Message Authentication", RFC 2104,
               DOI 10.17487/RFC2104, February 1997,
@@ -2305,6 +2288,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC9497]  Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A.
+              Wood, "Oblivious Pseudorandom Functions (OPRFs) Using
+              Prime-Order Groups", RFC 9497, DOI 10.17487/RFC9497,
+              December 2023, <https://www.rfc-editor.org/rfc/rfc9497>.
 
 12.2.  Informative References
 
@@ -2358,13 +2346,6 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
    [HMQV]     Krawczyk, H., "HMQV: A high-performance secure Diffie-
               Hellman protocol", CRYPTO , 2005.
-
-   [I-D.irtf-cfrg-hash-to-curve]
-              Faz-Hernandez, A., Scott, S., Sullivan, N., Wahby, R. S.,
-              and C. A. Wood, "Hashing to Elliptic Curves", Work in
-              Progress, Internet-Draft, draft-irtf-cfrg-hash-to-curve-
-              16, 15 June 2022, <https://datatracker.ietf.org/doc/html/
-              draft-irtf-cfrg-hash-to-curve-16>.
 
    [I-D.krawczyk-cfrg-opaque-03]
               "The OPAQUE Asymmetric PAKE Protocol", n.d.,
@@ -2427,6 +2408,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    [RFC9180]  Barnes, R., Bhargavan, K., Lipp, B., and C. Wood, "Hybrid
               Public Key Encryption", RFC 9180, DOI 10.17487/RFC9180,
               February 2022, <https://www.rfc-editor.org/rfc/rfc9180>.
+
+   [RFC9380]  Faz-Hernandez, A., Scott, S., Sullivan, N., Wahby, R. S.,
+              and C. A. Wood, "Hashing to Elliptic Curves", RFC 9380,
+              DOI 10.17487/RFC9380, August 2023,
+              <https://www.rfc-editor.org/rfc/rfc9380>.
 
    [RISTRETTO]
               de Valence, H., Grigg, J., Hamburg, M., Lovecruft, I.,
@@ -2595,10 +2581,10 @@ Appendix D.  Test Vectors
    All values are encoded in hexadecimal strings.  The configuration
    information includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context)
    tuple, where the Group matches that which is used in the OPRF.  These
-   test vectors were generated using draft-21 of [OPRF].  The KSF used
-   for each test vector is the identity function (denoted Identity),
-   which returns as output the input message supplied to the function
-   without any modification, i.e., msg = Stretch(msg).
+   test vectors were generated using [RFC9497].  The KSF used for each
+   test vector is the identity function (denoted Identity), which
+   returns as output the input message supplied to the function without
+   any modification, i.e., msg = Stretch(msg).
 
 D.1.  Real Test Vectors
 
