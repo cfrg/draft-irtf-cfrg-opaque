@@ -1964,7 +1964,10 @@ implementation considerations.
   pseudorandom. Deriving these keys via a single PRF (i.e., with a single
   cross-user key) applied to users' identities satisfies this assumption.
   This change was made to support real-world use cases where client or user
-  enumeration is a security (or privacy) risk.
+  enumeration is a security (or privacy) risk. Note that the derivation of the
+  OPRF key via a PRF keyed by `oprf_seed` and applied to the unique
+  `credential_identifier` ensures the critical requirement of the per-user OPRF keys
+  being unique per client.
 - The protocol outputs an export key for the client in addition to a shared
   session key that can be used for application-specific purposes. This key
   is a pseudorandom value derived from the client password (among other values) and
