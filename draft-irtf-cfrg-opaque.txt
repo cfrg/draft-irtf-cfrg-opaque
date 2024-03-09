@@ -5,12 +5,12 @@
 Network Working Group                                        D. Bourdrez
 Internet-Draft                                                          
 Intended status: Informational                               H. Krawczyk
-Expires: 8 September 2024                                            AWS
+Expires: 10 September 2024                                           AWS
                                                                  K. Lewi
                                                                     Meta
                                                               C. A. Wood
                                                         Cloudflare, Inc.
-                                                            7 March 2024
+                                                            9 March 2024
 
 
                   The OPAQUE Asymmetric PAKE Protocol
@@ -49,7 +49,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 8 September 2024.
+   This Internet-Draft will expire on 10 September 2024.
 
 Copyright Notice
 
@@ -112,17 +112,16 @@ Table of Contents
    10. Security Considerations
      10.1.  Notable Design Differences
      10.2.  Security Analysis
-     10.3.  Related Protocols
-     10.4.  Identities
-     10.5.  Export Key Usage
-     10.6.  Static Diffie-Hellman Oracles
-     10.7.  Random-Key Robust MACs
-     10.8.  Input Validation
-     10.9.  OPRF Key Stretching
-     10.10. Client Enumeration
-     10.11. Protecting the Registration Masking Key
-     10.12. Password Salt and Storage Implications
-     10.13. AKE Private Key Storage
+     10.3.  Identities
+     10.4.  Export Key Usage
+     10.5.  Static Diffie-Hellman Oracles
+     10.6.  Random-Key Robust MACs
+     10.7.  Input Validation
+     10.8.  OPRF Key Stretching
+     10.9.  Client Enumeration
+     10.10. Protecting the Registration Masking Key
+     10.11. Password Salt and Storage Implications
+     10.12. AKE Private Key Storage
    11. IANA Considerations
    12. References
      12.1.  Normative References
@@ -210,8 +209,8 @@ Table of Contents
    additional mechanisms to prevent an active attacker from interacting
    with the server to guess or confirm clients registered via the first
    phase.  Servers can use this mechanism to safeguard registered
-   clients against this type of enumeration attack; see Section 10.10
-   for more discussion.
+   clients against this type of enumeration attack; see Section 10.9 for
+   more discussion.
 
    The name OPAQUE is a homonym of O-PAKE where O is for Oblivious.  The
    name OPAKE was taken.
@@ -349,7 +348,7 @@ Table of Contents
    *  Nx: The output size of the Extract() function in bytes.
 
    This specification also makes use of a random-key robust Message
-   Authentication Code (MAC).  See Section 10.7 for more details on this
+   Authentication Code (MAC).  See Section 10.6 for more details on this
    property.  The API and parameters for the random-key robust MAC are
    as follows:
 
@@ -397,7 +396,7 @@ Table of Contents
    each client, so long as they are maintained across the registration
    and online AKE stages, and kept consistent for each client (since an
    inconsistent mapping of clients to seeds could leak information as
-   described in Section 10.10).
+   described in Section 10.9).
 
 3.2.  Registration
 
@@ -514,7 +513,7 @@ Table of Contents
 
    *  server_identity: The server identity.  This is typically a domain
       name, e.g., example.com.  If not specified, it defaults to the
-      server's public key.  See Section 10.4 for information about this
+      server's public key.  See Section 10.3 for information about this
       identity.
 
    A subset of these credential values are used in the
@@ -707,14 +706,14 @@ def Recover(randomized_password, server_public_key, envelope,
    credential_identifier and client_identity (if different).  Note that
    the values oprf_seed and server_private_key from the server's setup
    phase must also be persisted.  The oprf_seed value SHOULD be used for
-   all clients; see Section 10.10.  The server_private_key may be unique
+   all clients; see Section 10.9.  The server_private_key may be unique
    for each client.
 
    Both client and server MUST validate the other party's public key
-   before use.  See Section 10.8 for more details.  Upon completion, the
+   before use.  See Section 10.7 for more details.  Upon completion, the
    server stores the client's credentials for later use.  Moreover, the
    client MAY use the output export_key for further application-specific
-   purposes; see Section 10.5.
+   purposes; see Section 10.4.
 
 5.1.  Registration Messages
 
@@ -899,7 +898,7 @@ def FinalizeRegistrationRequest(password, blind, response, server_identity, clie
    The client receives two outputs: a session secret and an export key.
    The export key is only available to the client and may be used for
    additional application-specific purposes, as outlined in
-   Section 10.5.  Clients MUST NOT use the output export_key before
+   Section 10.4.  Clients MUST NOT use the output export_key before
    authenticating the peer in the authenticated key exchange protocol.
    See Appendix B for more details about this requirement.  The server
    receives a single output: a session secret matching the client's.
@@ -1753,7 +1752,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
    *  Password hardening parameters: Key stretching is done to help
       prevent password disclosure in the event of server compromise; see
-      Section 10.9.  There is no ideal or default set of parameters,
+      Section 10.8.  There is no ideal or default set of parameters,
       though relevant specifications for KSFs give some reasonable
       defaults.
 
@@ -1762,7 +1761,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       they SHOULD respond with a "fake" response to prevent active
       client enumeration attacks.  Servers that implement this
       mitigation SHOULD use the same configuration information (such as
-      the oprf_seed) for all clients; see Section 10.10.  In settings
+      the oprf_seed) for all clients; see Section 10.9.  In settings
       where this attack is not a concern, servers may choose to not
       support this functionality.
 
@@ -1900,7 +1899,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
       simplifying the client interface to the protocol.
 
    *  Envelopes are masked with a per-user masking key as a way of
-      preventing client enumeration attacks.  See Section 10.10 for more
+      preventing client enumeration attacks.  See Section 10.9 for more
       details.  This extension is not needed for the security of OPAQUE
       as an aPAKE but only used to provide a defense against enumeration
       attacks.  In the analysis, the masking key can be simulated as a
@@ -1910,8 +1909,8 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
 
    *  Per-user OPRF keys are derived from a client identity and cross-
       user PRF seed as a mitigation against client enumeration attacks.
-      See Section 10.10 for more details.  The analysis of OPAQUE
-      assumes OPRF keys of different users are independently random or
+      See Section 10.9 for more details.  The analysis of OPAQUE assumes
+      OPRF keys of different users are independently random or
       pseudorandom.  Deriving these keys via a single PRF (i.e., with a
       single cross-user key) applied to users' identities satisfies this
       assumption.  This change was made to support real-world use cases
@@ -2066,33 +2065,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    OPRF input provides domain separation for clients that reuse the same
    client_identity across different server instantiations.
 
-10.3.  Related Protocols
-
-   Despite the existence of multiple designs for (PKI-free) aPAKE
-   protocols, none of these protocols are secure against pre-computation
-   attacks.  This includes protocols that have recent analyses in the UC
-   model such as AuCPace [AuCPace] and SPAKE2+ [SPAKE2plus].  In
-   particular, none of these protocols can use the standard technique
-   against pre-computation that combines secret random values ("salt")
-   into the one-way password mappings.  Either these protocols do not
-   use a salt at all or, if they do, they transmit the salt from server
-   to client in the clear, hence losing the secrecy of the salt and its
-   defense against pre-computation.
-
-   We note that as shown in [JKX18], these protocols, and any aPAKE in
-   the model from [GMR06], can be converted into an aPAKE secure against
-   pre-computation attacks at the expense of an additional OPRF
-   execution.
-
-   Beyond AuCPace and SPAKE2+, the most widely deployed PKI-free aPAKE
-   is SRP [RFC2945], which is vulnerable to pre-computation attacks,
-   lacks proof of security, and is less efficient than OPAQUE.
-   Moreover, SRP requires a ring as it mixes addition and multiplication
-   operations, and thus does not work over standard elliptic curves.
-   OPAQUE is therefore a suitable replacement for applications that use
-   SRP.
-
-10.4.  Identities
+10.3.  Identities
 
    AKE protocols generate keys that need to be uniquely and verifiably
    bound to a pair of identities.  In the case of OPAQUE, those
@@ -2144,7 +2117,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    unspecified (and using client_public_key and server_public_key
    instead) is acceptable.
 
-10.5.  Export Key Usage
+10.4.  Export Key Usage
 
    The export key can be used (separately from the OPAQUE protocol) to
    provide confidentiality and integrity to other data which only the
@@ -2154,7 +2127,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    from a passive adversary that does not have access to the server's
    secret keys or the client's password.
 
-10.6.  Static Diffie-Hellman Oracles
+10.5.  Static Diffie-Hellman Oracles
 
    While one can expect the practical security of the OPRF function
    (namely, the hardness of computing the function without knowing the
@@ -2167,7 +2140,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    as they translate into an infeasible number of failed authentication
    attempts directed at individual users.
 
-10.7.  Random-Key Robust MACs
+10.6.  Random-Key Robust MACs
 
    The random-key robustness property for a MAC states that, given two
    random keys k1 and k2, it is infeasible to find a message m such that
@@ -2181,7 +2154,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    key-robust MAC for the creation of the auth_tag parameter in
    Section 4.1.2.
 
-10.8.  Input Validation
+10.7.  Input Validation
 
    Both client and server MUST validate the other party's public key(s)
    used for the execution of OPAQUE.  This includes the keys shared
@@ -2195,7 +2168,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    at infinity.  Additionally, validation MUST ensure the Diffie-Hellman
    shared secret is not the point at infinity.
 
-10.9.  OPRF Key Stretching
+10.8.  OPRF Key Stretching
 
    Applying a key stretching function to the output of the OPRF greatly
    increases the cost of an offline attack upon the compromise of the
@@ -2208,7 +2181,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    protocol on clients (specifically low-end devices) and protection
    against offline attacks after a server compromise.
 
-10.10.  Client Enumeration
+10.9.  Client Enumeration
 
    Client enumeration refers to attacks where the attacker tries to
    learn whether a given user identity is registered with a server or
@@ -2239,7 +2212,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    Applications should mitigate against this type of attack by rate
    limiting or otherwise restricting the registration flow.
 
-10.11.  Protecting the Registration Masking Key
+10.10.  Protecting the Registration Masking Key
 
    The user enumeration prevention method described in this document
    uses a symmetric encryption key, masking_key, generated and sent to
@@ -2251,7 +2224,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    e.g., with HPKE [RFC9180].  However, the details of this mechanism
    are out of scope for this document.
 
-10.12.  Password Salt and Storage Implications
+10.11.  Password Salt and Storage Implications
 
    In OPAQUE, the OPRF key acts as the secret salt value that ensures
    the infeasibility of pre-computation attacks.  No extra salt value is
@@ -2279,7 +2252,7 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
    avoid being susceptible to recovery through dictionary attacks, both
    online and offline.
 
-10.13.  AKE Private Key Storage
+10.12.  AKE Private Key Storage
 
    Server implementations of OPAQUE do not need access to the raw AKE
    private key.  They only require the ability to compute shared secrets
@@ -2433,10 +2406,6 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
               DOI 10.17487/RFC2898, September 2000,
               <https://www.rfc-editor.org/rfc/rfc2898>.
 
-   [RFC2945]  Wu, T., "The SRP Authentication and Key Exchange System",
-              RFC 2945, DOI 10.17487/RFC2945, September 2000,
-              <https://www.rfc-editor.org/rfc/rfc2945>.
-
    [RFC5869]  Krawczyk, H. and P. Eronen, "HMAC-based Extract-and-Expand
               Key Derivation Function (HKDF)", RFC 5869,
               DOI 10.17487/RFC5869, May 2010,
@@ -2589,7 +2558,7 @@ C.1.  HMQV Instantiation Sketch
    Hash is the same hash function used in the main OPAQUE protocol for
    key derivation.  Its output length (in bits) must be at least L.
 
-   Both parties should perform validation (as in Section 10.8) on each
+   Both parties should perform validation (as in Section 10.7) on each
    other's public keys before computing the above parameters.
 
 C.2.  SIGMA-I Instantiation Sketch
