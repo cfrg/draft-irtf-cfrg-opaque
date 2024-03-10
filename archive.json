@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-07T00:55:51.873324+00:00",
+  "timestamp": "2024-03-10T01:11:29.573800+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9200,15 +9200,15 @@
       "id": "I_kwDOD79ejs5-jEvy",
       "title": "2 citation anchors for 1 document",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/442",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "tsahara",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "In https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-opaque-13#name-informative-references\r\n\r\n> 12.1. Normative References\r\n>\r\n> [I-D.irtf-cfrg-voprf]\r\n> Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A. Wood, \"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups\", Work in Progress, Internet-Draft, draft-irtf-cfrg-voprf-21, 21 February 2023, <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21>.\r\n>\r\n> [OPRF]\r\n> Davidson, A., Faz-Hernandez, A., Sullivan, N., and C. A. Wood, \"Oblivious Pseudorandom Functions (OPRFs) using Prime-Order Groups\", Work in Progress, Internet-Draft, draft-irtf-cfrg-voprf-21, 21 February 2023, <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-21>.\r\n\r\n\r\n[I-D.irtf-cfrg-voprf] and [OPRF] point to the same internet-draft.",
       "createdAt": "2024-02-07T14:09:40Z",
-      "updatedAt": "2024-02-07T14:09:40Z",
-      "closedAt": null,
+      "updatedAt": "2024-03-09T01:05:58Z",
+      "closedAt": "2024-03-09T01:05:58Z",
       "comments": []
     },
     {
@@ -34178,24 +34178,26 @@
       "id": "PR_kwDOD79ejs5iwc6L",
       "title": "Some corrections to the text",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/438",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "bytemare",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "As I was rereading the draft, I saw a couple of mistakes and missing spaces. So I ran the text through a corrector that found some other suggestions.",
       "createdAt": "2023-12-26T02:59:20Z",
-      "updatedAt": "2024-03-05T06:49:51Z",
+      "updatedAt": "2024-03-07T01:32:52Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "cfrg/draft-irtf-cfrg-opaque",
       "headRefName": "dbz/draft-corrections",
       "headRefOid": "c9e4971e9b455f32ccf1b853b62c73916f9daf7a",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-03-07T01:32:52Z",
+      "mergedAt": "2024-03-07T01:32:52Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "36470f84ec1f6bffd76dc98203298b7d031654f2"
+      },
       "comments": [],
       "reviews": [
         {
@@ -34308,24 +34310,26 @@
       "id": "PR_kwDOD79ejs5kMo6T",
       "title": "changed offline registration -> registration",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/439",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "reviewing the document at a whole for the rglc, i notice that registration is consistently referred to as \"offline registration\" - as the meme goes \"You Keep Using That Word, I Do Not Think It Means What You Think It Means\". most people understand offline as something that doesn't need a network connection. and with opaque `offline` in the context of `registration` has a much more nuanced and different meaning, which is confusing for the casual reader and implementer. and thus i think there is two options, the more expensive let's explicitly define \"offline\" in this context (and not mix it up with the other use through out this document in the context of attacks) or simply and cheaply delete the offline adjective from the context of registrations. i think this change eliminates one source of confusion and while doing so decreases entropy.",
       "createdAt": "2024-01-16T14:00:11Z",
-      "updatedAt": "2024-03-05T06:35:28Z",
+      "updatedAt": "2024-03-07T01:33:02Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "offline-registration",
       "headRefOid": "9059a19da6957dc53bb08065e5d1f38f0cef6fad",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-03-07T01:33:02Z",
+      "mergedAt": "2024-03-07T01:33:02Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "e43e11328f9ef40481448c4f1a7931078fcd05e4"
+      },
       "comments": [],
       "reviews": [
         {
@@ -34348,24 +34352,26 @@
       "id": "PR_kwDOD79ejs5kNRYR",
       "title": "export_key is only used by clients",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/441",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "only clients use the export_key.",
       "createdAt": "2024-01-16T15:05:31Z",
-      "updatedAt": "2024-02-12T05:03:52Z",
+      "updatedAt": "2024-03-07T01:33:12Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "stef/draft-irtf-cfrg-opaque",
       "headRefName": "export_key",
       "headRefOid": "203dd460f713f048a172b72aff5e48c4c7dd4928",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-03-07T01:33:12Z",
+      "mergedAt": "2024-03-07T01:33:12Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "9b99e80632229f716377f6d201418ccad8a0e19a"
+      },
       "comments": [],
       "reviews": [
         {
@@ -34388,72 +34394,203 @@
       "id": "PR_kwDOD79ejs5mmLM0",
       "title": "Remove Related Protocols section",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/443",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "As suggested in https://mailarchive.ietf.org/arch/msg/cfrg/Fxxdbe6sBae9yqTtZfwrGvtAKRQ/, this section is out-of-date and does not need to stay in the draft.",
       "createdAt": "2024-02-12T04:34:19Z",
-      "updatedAt": "2024-02-12T04:36:29Z",
+      "updatedAt": "2024-03-09T01:02:29Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "remove_related_protocols",
       "headRefOid": "4a6c2ed225a4173fbd11cb8e5f27fb3687d5822e",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-03-09T01:02:29Z",
+      "mergedAt": "2024-03-09T01:02:29Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "da597bbd6bf1d876d27fa10db9fd98973d7f747b"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5yzT-L",
+          "commit": {
+            "abbreviatedOid": "4a6c2ed"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-09T01:02:19Z",
+          "updatedAt": "2024-03-09T01:02:19Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 445,
       "id": "PR_kwDOD79ejs5nlSK4",
       "title": "Clarifying the requirement that OPRF keys must be unique per client",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/445",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "From correspondence with Hugo Krawczyk -- let's make it extra clear that OPRF keys must be unique per client (addendum to the security considerations section)",
       "createdAt": "2024-02-21T22:56:14Z",
-      "updatedAt": "2024-02-21T23:49:34Z",
+      "updatedAt": "2024-03-09T01:44:54Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "add_unique_oprf_keys_requirement",
       "headRefOid": "1b5b3a893dc29e0dc262ec52465441602d12b06c",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-03-09T01:44:54Z",
+      "mergedAt": "2024-03-09T01:44:54Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "a4d55bd8ed60b0c57102fb8eb7fe9f47f648c21b"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5yzXC4",
+          "commit": {
+            "abbreviatedOid": "1b5b3a8"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-09T01:44:46Z",
+          "updatedAt": "2024-03-09T01:44:46Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 446,
       "id": "PR_kwDOD79ejs5n25fV",
       "title": "Update references to published drafts for voprf and h2c",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/446",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Closes #442 \r\n\r\nUpdates references from \"draft voprf\" to RFC9497\r\nSame with draft hash-to-curve and RFC9380",
       "createdAt": "2024-02-26T01:58:22Z",
-      "updatedAt": "2024-02-27T09:17:22Z",
+      "updatedAt": "2024-03-09T01:05:57Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f036cf2dfcdf5a33b8f28c194003ac2455ba501b",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "update_oprf_refs",
       "headRefOid": "59b1de530335385bcf18bee9be136763772d9963",
+      "closedAt": "2024-03-09T01:05:57Z",
+      "mergedAt": "2024-03-09T01:05:57Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "6690ad48913b470391d704dfc5b16e21fc278671"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5yzUPH",
+          "commit": {
+            "abbreviatedOid": "59b1de5"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-09T01:05:51Z",
+          "updatedAt": "2024-03-09T01:05:51Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 447,
+      "id": "PR_kwDOD79ejs5o6Jfq",
+      "title": "Updating acknowledgments",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/447",
+      "state": "MERGED",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Adding Marta Mularczyk under the Acknowledgments section",
+      "createdAt": "2024-03-07T01:58:01Z",
+      "updatedAt": "2024-03-09T01:59:23Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "6690ad48913b470391d704dfc5b16e21fc278671",
+      "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
+      "headRefName": "update_acks",
+      "headRefOid": "70328241b31d8dab11db83988d26b3445e8e9a24",
+      "closedAt": "2024-03-09T01:45:57Z",
+      "mergedAt": "2024-03-09T01:45:57Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1"
+      },
+      "comments": [
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "\ud83d\udc4d for adding @stef ",
+          "createdAt": "2024-03-09T01:45:31Z",
+          "updatedAt": "2024-03-09T01:45:31Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "<3",
+          "createdAt": "2024-03-09T01:59:22Z",
+          "updatedAt": "2024-03-09T01:59:22Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs5yzXJg",
+          "commit": {
+            "abbreviatedOid": "7032824"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-09T01:45:51Z",
+          "updatedAt": "2024-03-09T01:45:51Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 448,
+      "id": "PR_kwDOD79ejs5pJ-io",
+      "title": "OPAQUE is an sdPAKE",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/448",
+      "state": "OPEN",
+      "author": "Sc00bz",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "* Replaced \"asymmetric PAKE\" with augmented PAKE since \"asymmetric PAKE\" is incorrect terminology.\r\n* Added info on doubly augmented PAKEs (dPAKE).\r\n* Stated OPAQUE is a strong dPAKE (sdPAKE).\r\n* Replaced \"secure aPAKE\" with \"strong dPAKE\" (sdPAKE). Strong being what academic papers use to describe PAKEs that are secure against pre-computation attacks.\r\n\r\nThe following might need to be reworded or use a different source. Since JKX18 defined an saPAKE vs sdPAKE. The difference being that the client can also store data that can be used to authenticate to the server but not used to authenticate to the client. Lines 325-326:\r\n\r\n> \\- This document describes OPAQUE, an aPAKE that is secure against pre-computation attacks (as defined in {{JKX18}}).\r\n\r\n> \\+ This document describes OPAQUE, an sdPAKE (as defined in {{JKX18}}).\r\n\r\nNote I moved \"secure against pre-computation attacks\" to here since that's part of being an sdPAKE. Lines 312-313:\r\n\r\n> \\- A secure aPAKE should provide the best possible security for a password protocol.\r\n\r\n> \\+ A strong dPAKE (sdPAKE) should provide the best possible security for a password protocol which includes being secure against pre-computation attacks.\r\n\r\nAlso the \"Security Analysis\" section needs updating since the source proved the security of OPAQUE in an saPAKE model instead of an sdPAKE model. The difference in the proof is minor and would likely be obvious for anyone that knows how to write a proof. It's basically something along the lines of \"the private client identity key and public server identity key are unrelated to the password thus you can't use it to make offline password guesses. Without knowing the private server identity key means you can't authenticate as the server (which should already part of the saPAKE model proof).\" Also since it's an sdPAKE the client data can't be used for offline password guesses (even if the private keys are related to the password) because of the OPRF. Although I hear that people don't like \"story proofs\". So I'm not sure how to prove this correctly. Lines 2061-2063:\r\n\r\n> Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the design differences outlined in {{notable-design-differences}}) in a strong aPAKE model...",
+      "createdAt": "2024-03-09T23:36:03Z",
+      "updatedAt": "2024-03-09T23:36:03Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
+      "headRepository": "Sc00bz/draft-irtf-cfrg-opaque",
+      "headRefName": "doubly-augmented",
+      "headRefOid": "da55681e11f2cdf5d47c04527ff171e2fb19880e",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
