@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-10T01:11:29.573800+00:00",
+  "timestamp": "2024-03-12T01:06:32.720480+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34584,7 +34584,7 @@
       "labels": [],
       "body": "* Replaced \"asymmetric PAKE\" with augmented PAKE since \"asymmetric PAKE\" is incorrect terminology.\r\n* Added info on doubly augmented PAKEs (dPAKE).\r\n* Stated OPAQUE is a strong dPAKE (sdPAKE).\r\n* Replaced \"secure aPAKE\" with \"strong dPAKE\" (sdPAKE). Strong being what academic papers use to describe PAKEs that are secure against pre-computation attacks.\r\n\r\nThe following might need to be reworded or use a different source. Since JKX18 defined an saPAKE vs sdPAKE. The difference being that the client can also store data that can be used to authenticate to the server but not used to authenticate to the client. Lines 325-326:\r\n\r\n> \\- This document describes OPAQUE, an aPAKE that is secure against pre-computation attacks (as defined in {{JKX18}}).\r\n\r\n> \\+ This document describes OPAQUE, an sdPAKE (as defined in {{JKX18}}).\r\n\r\nNote I moved \"secure against pre-computation attacks\" to here since that's part of being an sdPAKE. Lines 312-313:\r\n\r\n> \\- A secure aPAKE should provide the best possible security for a password protocol.\r\n\r\n> \\+ A strong dPAKE (sdPAKE) should provide the best possible security for a password protocol which includes being secure against pre-computation attacks.\r\n\r\nAlso the \"Security Analysis\" section needs updating since the source proved the security of OPAQUE in an saPAKE model instead of an sdPAKE model. The difference in the proof is minor and would likely be obvious for anyone that knows how to write a proof. It's basically something along the lines of \"the private client identity key and public server identity key are unrelated to the password thus you can't use it to make offline password guesses. Without knowing the private server identity key means you can't authenticate as the server (which should already part of the saPAKE model proof).\" Also since it's an sdPAKE the client data can't be used for offline password guesses (even if the private keys are related to the password) because of the OPRF. Although I hear that people don't like \"story proofs\". So I'm not sure how to prove this correctly. Lines 2061-2063:\r\n\r\n> Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the design differences outlined in {{notable-design-differences}}) in a strong aPAKE model...",
       "createdAt": "2024-03-09T23:36:03Z",
-      "updatedAt": "2024-03-09T23:36:03Z",
+      "updatedAt": "2024-03-11T23:03:50Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
@@ -34595,7 +34595,15 @@
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@Sc00bz Thanks for the PR!\r\n\r\nI think the terminology change from \"asymmetric\" -> \"augmented\" is something I am supportive of (though don't have too strong of a preference either way)\r\n\r\nHowever, rather than defining OPAQUE as a strong doubly-augmented PAKE, I would prefer to still define OPAQUE as being a strong augmented PAKE, and then within the document we can also add a paragraph about the fact that it is doubly-augmented.\r\n\r\nThe reasons being that:\r\n- The proofs in the paper prove that it is a strong aPAKE and not a strong sdPAKE as you also remarked, and it is cleaner to simply say that the proofs support that it meets the bar of strong aPAKEs\r\n- The term \"doubly augmented\" is not as widely known as simply \"augmented\", and so I hesitate to include it in the title of the draft / first paragraph.\r\n- We can still include the points that you wanted in the doc about doubly-augmented, just surfaced less prominently, if that is alright with you!",
+          "createdAt": "2024-03-11T23:03:50Z",
+          "updatedAt": "2024-03-11T23:03:50Z"
+        }
+      ],
       "reviews": []
     }
   ]
