@@ -1,5 +1,5 @@
 ---
-title: The OPAQUE Doubly Augmented PAKE Protocol
+title: The OPAQUE Augmented PAKE Protocol
 abbrev: OPAQUE
 docname: draft-irtf-cfrg-opaque-latest
 date:
@@ -271,8 +271,8 @@ protocols"
 
 --- abstract
 
-This document describes the OPAQUE protocol, a strong doubly augmented
-password-authenticated key exchange (sdPAKE) that supports mutual
+This document describes the OPAQUE protocol, an augmented (or asymmetric)
+password-authenticated key exchange (aPAKE) that supports mutual
 authentication in a client-server setting without reliance on PKI and
 with security against pre-computation attacks upon server compromise.
 In addition, the protocol provides forward secrecy and the ability to
@@ -296,22 +296,13 @@ TLS is also vulnerable to cases where TLS may fail, including PKI
 attacks, certificate mishandling, termination outside the security
 perimeter, visibility to TLS-terminating intermediaries, and more.
 
-Doubly Augmented Password Authenticated Key Exchange (dPAKE)
+Augmented (or Asymmetric) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without
 relying on PKI (except during client registration) and without
 disclosing passwords to servers or other entities other than the client
-machine. A dPAKE differs from an augmented PAKE (aPAKE) in that the client
-can also store a proof of the password. This client proof can only be used
-to authenticate to a server but not masquerade as a server. One can think of
-OPAQUE as a cert delivery protocol. A good use case for a dPAKE is WiFi. A
-compromised client can't be used to act as an access point. In the case of
-OPAQUE (and other sdPAKEs), the compromised client data can't be used to
-make offline password guesses.
-
-A strong dPAKE (sdPAKE) should provide the best possible security for a
-password protocol which includes being secure against pre-computation attacks.
-Indeed, some attacks are inevitable, such as
+machine. A secure aPAKE should provide the best possible security for a
+password protocol. Indeed, some attacks are inevitable, such as
 online impersonation attempts with guessed client passwords and offline
 dictionary attacks upon the compromise of a server and leakage of its
 credential file. In the latter case, the attacker learns a mapping of
@@ -322,8 +313,8 @@ Otherwise, the attacker can pre-compute a deterministic list of mapped
 passwords leading to almost instantaneous leakage of passwords upon
 server compromise.
 
-This document describes OPAQUE, an sdPAKE
-(as defined in {{JKX18}}). OPAQUE provides forward
+This document describes OPAQUE, an aPAKE that is secure against
+pre-computation attacks (as defined in {{JKX18}}). OPAQUE provides forward
 secrecy with respect to password leakage while also hiding the password from
 the server, even during password registration. OPAQUE allows applications
 to increase the difficulty of offline dictionary attacks via iterated
@@ -334,8 +325,8 @@ using only their password.
 OPAQUE is defined and proven as the composition of three functionalities:
 an oblivious pseudorandom function (OPRF), a key recovery mechanism,
 and an authenticated key exchange (AKE) protocol. It can be seen
-as a "compiler" for transforming any suitable AKE protocol into a strong
-dPAKE protocol. (See {{security-considerations}} for requirements of the
+as a "compiler" for transforming any suitable AKE protocol into a secure
+aPAKE protocol. (See {{security-considerations}} for requirements of the
 OPRF and AKE protocols.) This document specifies one OPAQUE instantiation
 based on {{TripleDH}}. Other instantiations are possible, as discussed in
 {{alternate-akes}}, but their details are out of scope for this document.
@@ -1869,7 +1860,7 @@ password as input to the OPRF. Furthermore, it is RECOMMENDED to incorporate
 additions provide domain separation for clients and servers; see
 {{security-analysis}}.
 
-Finally, note that online guessing attacks (against any aPAKE or dPAKE) can be done from
+Finally, note that online guessing attacks (against any aPAKE) can be done from
 both the client side and the server side. In particular, a malicious server can
 attempt to simulate honest responses to learn the client's password.
 While this constitutes an exhaustive online attack, hence as expensive as an
@@ -1917,7 +1908,7 @@ happens with negligible probability
 OPAQUE is defined as the composition of two functionalities: an OPRF and
 an AKE protocol. It can be seen as a "compiler" for transforming any AKE
 protocol (with KCI security and forward secrecy; see below)
-into an sdPAKE protocol. In OPAQUE, the client derives a private key
+into a secure aPAKE protocol. In OPAQUE, the client derives a private key
 during password registration and retrieves this key each time
 it needs to authenticate to the server. The OPRF security properties
 ensure that only the correct password can unlock the private key
@@ -1961,7 +1952,7 @@ implementation considerations.
   thereby simplifying the client interface to the protocol.
 - Envelopes are masked with a per-user masking key as a way of preventing
   client enumeration attacks. See {{preventing-client-enumeration}} for more
-  details. This extension is not needed for the security of OPAQUE as an sdPAKE
+  details. This extension is not needed for the security of OPAQUE as an aPAKE
   but only used to provide a defense against enumeration attacks. In the
   analysis, the masking key can be simulated as a (pseudo) random key. This
   change was made to support real-world use cases where client or user
@@ -2247,7 +2238,7 @@ In OPAQUE, the OPRF key acts as the secret salt value that ensures the infeasibi
 of pre-computation attacks. No extra salt value is needed. Also, clients never
 disclose their passwords to the server, even during registration. Note that a corrupted
 server can run an exhaustive offline dictionary attack to validate guesses for the client's
-password; this is inevitable in any (single-server) aPAKE or dPAKE protocol. It can be avoided in
+password; this is inevitable in any (single-server) aPAKE protocol. It can be avoided in
 the case of OPAQUE by resorting to a multi-server threshold OPRF implementation,
 e.g., {{TOPPSS}}. Furthermore, if the server does not
 sample the PRF seed with sufficiently high entropy, or if it is not kept hidden from an
@@ -2272,6 +2263,23 @@ similar. Upon compromise of the OPRF seed and client envelopes, this would preve
 attacker from using this data to mount a server spoofing attack. Supporting implementations
 need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
+
+## Client Authentication Using Credentials
+
+For scenarios in which the client has access to private state that can be persisted across
+registration and login, the client can back up the `randomized_password` variable (as
+computed in {{finalize-request}}) so that upon a future login attempt, the client can
+authenticate to the server using `randomized_password` instead of the original password.
+This can be achieved by supplying an arbitrary password as input to
+`CreateCredentialRequest` in the login phase, and then using `randomized_password` from
+the backup in `RecoverCredentials` (invoked by `GenerateKE3`) rather than computing it from
+the password.
+
+This provides an advantage over the regular authentication flow for login
+in that if `randomized_password` is compromised, an adversary cannot use this value to
+successfully impersonate the server to the client during login. The drawback is that it is
+only applicable to settings where `randomized_password` can be treated as a credential
+which can be stored securely after registration and retrieved upon login.
 
 # IANA Considerations
 
