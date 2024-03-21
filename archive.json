@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-19T01:07:58.801933+00:00",
+  "timestamp": "2024-03-21T01:08:49.462745+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34584,13 +34584,13 @@
       "labels": [],
       "body": "* Replaced \"asymmetric PAKE\" with augmented PAKE since \"asymmetric PAKE\" is incorrect terminology.\r\n* Added info on doubly augmented PAKEs (dPAKE).\r\n* Stated OPAQUE is a strong dPAKE (sdPAKE).\r\n* Replaced \"secure aPAKE\" with \"strong dPAKE\" (sdPAKE). Strong being what academic papers use to describe PAKEs that are secure against pre-computation attacks.\r\n\r\nThe following might need to be reworded or use a different source. Since JKX18 defined an saPAKE vs sdPAKE. The difference being that the client can also store data that can be used to authenticate to the server but not used to authenticate to the client. Lines 325-326:\r\n\r\n> \\- This document describes OPAQUE, an aPAKE that is secure against pre-computation attacks (as defined in {{JKX18}}).\r\n\r\n> \\+ This document describes OPAQUE, an sdPAKE (as defined in {{JKX18}}).\r\n\r\nNote I moved \"secure against pre-computation attacks\" to here since that's part of being an sdPAKE. Lines 312-313:\r\n\r\n> \\- A secure aPAKE should provide the best possible security for a password protocol.\r\n\r\n> \\+ A strong dPAKE (sdPAKE) should provide the best possible security for a password protocol which includes being secure against pre-computation attacks.\r\n\r\nAlso the \"Security Analysis\" section needs updating since the source proved the security of OPAQUE in an saPAKE model instead of an sdPAKE model. The difference in the proof is minor and would likely be obvious for anyone that knows how to write a proof. It's basically something along the lines of \"the private client identity key and public server identity key are unrelated to the password thus you can't use it to make offline password guesses. Without knowing the private server identity key means you can't authenticate as the server (which should already part of the saPAKE model proof).\" Also since it's an sdPAKE the client data can't be used for offline password guesses (even if the private keys are related to the password) because of the OPRF. Although I hear that people don't like \"story proofs\". So I'm not sure how to prove this correctly. Lines 2061-2063:\r\n\r\n> Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the design differences outlined in {{notable-design-differences}}) in a strong aPAKE model...",
       "createdAt": "2024-03-09T23:36:03Z",
-      "updatedAt": "2024-03-14T22:25:28Z",
+      "updatedAt": "2024-03-20T06:00:22Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
       "headRepository": "Sc00bz/draft-irtf-cfrg-opaque",
       "headRefName": "doubly-augmented",
-      "headRefOid": "1fa23d75f6f3458a42008819307f32f86cf89d81",
+      "headRefOid": "d915914ba2f8667532f6ba9656eadb65a1ef6ea0",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
@@ -34609,6 +34609,13 @@
           "body": "Modified the PR to address my previous comments. Please see the text of the new subsection:\r\n\r\n> ## Client Authentication Using Credentials\r\n\r\nand let me know if this suffices. As mentioned above, I think we are aiming to avoid defining OPAQUE as a doubly augmented PAKE, even though it does satisfy those properties, because there isn't a proof for it at the moment (nor a formal UC-style definition of doubly-augmented), and the original OPAQUE paper only proves it with respect to a strong augmented PAKE.\r\n\r\nHowever, the property itself is still worth mentioning.\r\n\r\nThanks @Sc00bz and appreciate your patience on getting this right.",
           "createdAt": "2024-03-14T22:25:26Z",
           "updatedAt": "2024-03-14T22:25:26Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@Sc00bz ^ can you check the revisions that I made and let us know if this is acceptable? We'd like to merge this PR in and publish the next draft once this is unblocked. Thank you!",
+          "createdAt": "2024-03-20T06:00:21Z",
+          "updatedAt": "2024-03-20T06:00:21Z"
         }
       ],
       "reviews": []
