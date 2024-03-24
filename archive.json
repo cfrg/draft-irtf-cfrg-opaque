@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-21T01:08:49.462745+00:00",
+  "timestamp": "2024-03-24T01:13:59.781009+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34584,7 +34584,7 @@
       "labels": [],
       "body": "* Replaced \"asymmetric PAKE\" with augmented PAKE since \"asymmetric PAKE\" is incorrect terminology.\r\n* Added info on doubly augmented PAKEs (dPAKE).\r\n* Stated OPAQUE is a strong dPAKE (sdPAKE).\r\n* Replaced \"secure aPAKE\" with \"strong dPAKE\" (sdPAKE). Strong being what academic papers use to describe PAKEs that are secure against pre-computation attacks.\r\n\r\nThe following might need to be reworded or use a different source. Since JKX18 defined an saPAKE vs sdPAKE. The difference being that the client can also store data that can be used to authenticate to the server but not used to authenticate to the client. Lines 325-326:\r\n\r\n> \\- This document describes OPAQUE, an aPAKE that is secure against pre-computation attacks (as defined in {{JKX18}}).\r\n\r\n> \\+ This document describes OPAQUE, an sdPAKE (as defined in {{JKX18}}).\r\n\r\nNote I moved \"secure against pre-computation attacks\" to here since that's part of being an sdPAKE. Lines 312-313:\r\n\r\n> \\- A secure aPAKE should provide the best possible security for a password protocol.\r\n\r\n> \\+ A strong dPAKE (sdPAKE) should provide the best possible security for a password protocol which includes being secure against pre-computation attacks.\r\n\r\nAlso the \"Security Analysis\" section needs updating since the source proved the security of OPAQUE in an saPAKE model instead of an sdPAKE model. The difference in the proof is minor and would likely be obvious for anyone that knows how to write a proof. It's basically something along the lines of \"the private client identity key and public server identity key are unrelated to the password thus you can't use it to make offline password guesses. Without knowing the private server identity key means you can't authenticate as the server (which should already part of the saPAKE model proof).\" Also since it's an sdPAKE the client data can't be used for offline password guesses (even if the private keys are related to the password) because of the OPRF. Although I hear that people don't like \"story proofs\". So I'm not sure how to prove this correctly. Lines 2061-2063:\r\n\r\n> Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the design differences outlined in {{notable-design-differences}}) in a strong aPAKE model...",
       "createdAt": "2024-03-09T23:36:03Z",
-      "updatedAt": "2024-03-20T06:00:22Z",
+      "updatedAt": "2024-03-24T00:00:47Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
@@ -34618,7 +34618,28 @@
           "updatedAt": "2024-03-20T06:00:21Z"
         }
       ],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs50nRHm",
+          "commit": {
+            "abbreviatedOid": "d915914"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-03-24T00:00:41Z",
+          "updatedAt": "2024-03-24T00:00:47Z",
+          "comments": [
+            {
+              "originalPosition": 36,
+              "body": "I suggest we add that we give all the details on how to do it, adding that the OPRF finish/output and stretching can be skipped in favor of directly using the randomized henceforth. What do you think?",
+              "createdAt": "2024-03-24T00:00:42Z",
+              "updatedAt": "2024-03-24T00:00:47Z"
+            }
+          ]
+        }
+      ]
     },
     {
       "number": 449,
@@ -34632,7 +34653,7 @@
       "labels": [],
       "body": "Resolving a slight wording ambiguity that could be interpreted not the way we intend. Servers should consistently assign one  seed for a client, but across clients, different seeds could be used, so long as they are kept consistent.\r\n\r\nSpawned from discussion offline with Hugo Krawczyk who requested this change.",
       "createdAt": "2024-03-14T22:30:30Z",
-      "updatedAt": "2024-03-14T22:30:34Z",
+      "updatedAt": "2024-03-23T23:49:35Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
@@ -34644,7 +34665,28 @@
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs50nQ7i",
+          "commit": {
+            "abbreviatedOid": "d9bf3f6"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-03-23T23:48:50Z",
+          "updatedAt": "2024-03-23T23:49:35Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "I find \"use different seeds for each client\" can be confusing.\n\nWhat do you think about \"use a different seed for each client (i.e. each client should...\" ?",
+              "createdAt": "2024-03-23T23:48:50Z",
+              "updatedAt": "2024-03-23T23:49:35Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
