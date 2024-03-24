@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta content="Common,Latin" name="scripts">
 <meta content="initial-scale=1.0" name="viewport">
-<title>The OPAQUE Asymmetric PAKE Protocol</title>
+<title>The OPAQUE Augmented PAKE Protocol</title>
 <meta content="Daniel Bourdrez" name="author">
 <meta content="Hugo Krawczyk" name="author">
 <meta content="Kevin Lewi" name="author">
 <meta content="Christopher A. Wood" name="author">
 <meta content="
-       This document describes the OPAQUE protocol, a secure asymmetric
+       This document describes the OPAQUE protocol, an augmented (or asymmetric)
 password-authenticated key exchange (aPAKE) that supports mutual
 authentication in a client-server setting without reliance on PKI and
 with security against pre-computation attacks upon server compromise.
@@ -1078,10 +1078,10 @@ svg :is([fill="white"], [fill^="#fff"]) {
 </dd>
 </dl>
 </div>
-<h1 id="title">The OPAQUE Asymmetric PAKE Protocol</h1>
+<h1 id="title">The OPAQUE Augmented PAKE Protocol</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">This document describes the OPAQUE protocol, a secure asymmetric
+<p id="section-abstract-1">This document describes the OPAQUE protocol, an augmented (or asymmetric)
 password-authenticated key exchange (aPAKE) that supports mutual
 authentication in a client-server setting without reliance on PKI and
 with security against pre-computation attacks upon server compromise.
@@ -1335,6 +1335,9 @@ based on 3DH.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.12">
                 <p id="section-toc.1-1.10.2.12.1"><a href="#section-10.12" class="auto internal xref">10.12</a>. <a href="#name-ake-private-key-storage" class="internal xref">AKE Private Key Storage</a></p>
 </li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.13">
+                <p id="section-toc.1-1.10.2.13.1"><a href="#section-10.13" class="auto internal xref">10.13</a>. <a href="#name-client-authentication-using" class="internal xref">Client Authentication Using Credentials</a></p>
+</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
@@ -1433,7 +1436,7 @@ Moreover, plaintext password authentication over secure channels such as
 TLS is also vulnerable to cases where TLS may fail, including PKI
 attacks, certificate mishandling, termination outside the security
 perimeter, visibility to TLS-terminating intermediaries, and more.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
+<p id="section-1-2">Augmented (or Asymmetric) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without
 relying on PKI (except during client registration) and without
@@ -3811,6 +3814,26 @@ similar. Upon compromise of the OPRF seed and client envelopes, this would preve
 attacker from using this data to mount a server spoofing attack. Supporting implementations
 need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.<a href="#section-10.12-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="client-authentication-using-credentials">
+<section id="section-10.13">
+        <h3 id="name-client-authentication-using">
+<a href="#section-10.13" class="section-number selfRef">10.13. </a><a href="#name-client-authentication-using" class="section-name selfRef">Client Authentication Using Credentials</a>
+        </h3>
+<p id="section-10.13-1">For scenarios in which the client has access to private state that can be persisted across
+registration and login, the client can back up the <code>randomized_password</code> variable (as
+computed in <a href="#finalize-request" class="auto internal xref">Section 5.2.3</a>) so that upon a future login attempt, the client can
+authenticate to the server using <code>randomized_password</code> instead of the original password.
+This can be achieved by supplying an arbitrary password as input to
+<code>CreateCredentialRequest</code> in the login phase, and then using <code>randomized_password</code> from
+the backup in <code>RecoverCredentials</code> (invoked by <code>GenerateKE3</code>) rather than computing it from
+the password.<a href="#section-10.13-1" class="pilcrow">¶</a></p>
+<p id="section-10.13-2">This provides an advantage over the regular authentication flow for login
+in that if <code>randomized_password</code> is compromised, an adversary cannot use this value to
+successfully impersonate the server to the client during login. The drawback is that it is
+only applicable to settings where <code>randomized_password</code> can be treated as a credential
+which can be stored securely after registration and retrieved upon login.<a href="#section-10.13-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
