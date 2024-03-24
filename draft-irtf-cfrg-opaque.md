@@ -1,5 +1,5 @@
 ---
-title: The OPAQUE Asymmetric PAKE Protocol
+title: The OPAQUE Augmented PAKE Protocol
 abbrev: OPAQUE
 docname: draft-irtf-cfrg-opaque-latest
 date:
@@ -271,7 +271,7 @@ protocols"
 
 --- abstract
 
-This document describes the OPAQUE protocol, a secure asymmetric
+This document describes the OPAQUE protocol, an augmented (or asymmetric)
 password-authenticated key exchange (aPAKE) that supports mutual
 authentication in a client-server setting without reliance on PKI and
 with security against pre-computation attacks upon server compromise.
@@ -296,7 +296,7 @@ TLS is also vulnerable to cases where TLS may fail, including PKI
 attacks, certificate mishandling, termination outside the security
 perimeter, visibility to TLS-terminating intermediaries, and more.
 
-Asymmetric (or Augmented) Password Authenticated Key Exchange (aPAKE)
+Augmented (or Asymmetric) Password Authenticated Key Exchange (aPAKE)
 protocols are designed to provide password authentication and
 mutually authenticated key exchange in a client-server setting without
 relying on PKI (except during client registration) and without
@@ -2264,6 +2264,23 @@ similar. Upon compromise of the OPRF seed and client envelopes, this would preve
 attacker from using this data to mount a server spoofing attack. Supporting implementations
 need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
+
+## Client Authentication Using Credentials
+
+For scenarios in which the client has access to private state that can be persisted across
+registration and login, the client can back up the `randomized_password` variable (as
+computed in {{finalize-request}}) so that upon a future login attempt, the client can
+authenticate to the server using `randomized_password` instead of the original password.
+This can be achieved by supplying an arbitrary password as input to
+`CreateCredentialRequest` in the login phase, and then using `randomized_password` from
+the backup in `RecoverCredentials` (invoked by `GenerateKE3`) rather than computing it from
+the password.
+
+This provides an advantage over the regular authentication flow for login
+in that if `randomized_password` is compromised, an adversary cannot use this value to
+successfully impersonate the server to the client during login. The drawback is that it is
+only applicable to settings where `randomized_password` can be treated as a credential
+which can be stored securely after registration and retrieved upon login.
 
 # IANA Considerations
 
