@@ -485,10 +485,11 @@ protocol; see {{configurations}} for details.
 The server chooses a pair of keys (`server_private_key` and `server_public_key`)
 for the AKE, and chooses a seed (`oprf_seed`) of `Nh` bytes for the OPRF.
 The server can use `server_private_key` and `server_public_key` with multiple
-clients. The server can also opt to use different seeds for each client,
-so long as they are maintained across the registration and online AKE stages, and
-kept consistent for each client (since an inconsistent mapping of clients to seeds
-could leak information as described in {{preventing-client-enumeration}}).
+clients. The server can also opt to use a different seed for each client
+(i.e. each client can be assigned a single seed), so long as they are maintained
+across the registration and online AKE stages, and kept consistent for each
+client (since an inconsistent mapping of clients to seeds could leak information
+as described in {{preventing-client-enumeration}}).
 
 ## Registration
 
