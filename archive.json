@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-24T01:13:59.781009+00:00",
+  "timestamp": "2024-03-26T01:07:44.444279+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -34577,24 +34577,26 @@
       "id": "PR_kwDOD79ejs5pJ-io",
       "title": "OPAQUE is an sdPAKE",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/448",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "Sc00bz",
-      "authorAssociation": "NONE",
+      "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "* Replaced \"asymmetric PAKE\" with augmented PAKE since \"asymmetric PAKE\" is incorrect terminology.\r\n* Added info on doubly augmented PAKEs (dPAKE).\r\n* Stated OPAQUE is a strong dPAKE (sdPAKE).\r\n* Replaced \"secure aPAKE\" with \"strong dPAKE\" (sdPAKE). Strong being what academic papers use to describe PAKEs that are secure against pre-computation attacks.\r\n\r\nThe following might need to be reworded or use a different source. Since JKX18 defined an saPAKE vs sdPAKE. The difference being that the client can also store data that can be used to authenticate to the server but not used to authenticate to the client. Lines 325-326:\r\n\r\n> \\- This document describes OPAQUE, an aPAKE that is secure against pre-computation attacks (as defined in {{JKX18}}).\r\n\r\n> \\+ This document describes OPAQUE, an sdPAKE (as defined in {{JKX18}}).\r\n\r\nNote I moved \"secure against pre-computation attacks\" to here since that's part of being an sdPAKE. Lines 312-313:\r\n\r\n> \\- A secure aPAKE should provide the best possible security for a password protocol.\r\n\r\n> \\+ A strong dPAKE (sdPAKE) should provide the best possible security for a password protocol which includes being secure against pre-computation attacks.\r\n\r\nAlso the \"Security Analysis\" section needs updating since the source proved the security of OPAQUE in an saPAKE model instead of an sdPAKE model. The difference in the proof is minor and would likely be obvious for anyone that knows how to write a proof. It's basically something along the lines of \"the private client identity key and public server identity key are unrelated to the password thus you can't use it to make offline password guesses. Without knowing the private server identity key means you can't authenticate as the server (which should already part of the saPAKE model proof).\" Also since it's an sdPAKE the client data can't be used for offline password guesses (even if the private keys are related to the password) because of the OPRF. Although I hear that people don't like \"story proofs\". So I'm not sure how to prove this correctly. Lines 2061-2063:\r\n\r\n> Jarecki et al. {{JKX18}} proved the security of OPAQUE (modulo the design differences outlined in {{notable-design-differences}}) in a strong aPAKE model...",
       "createdAt": "2024-03-09T23:36:03Z",
-      "updatedAt": "2024-03-24T00:00:47Z",
+      "updatedAt": "2024-03-24T12:04:20Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
-      "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
+      "baseRefOid": "4b3c6b117b0478872d8c3b3c1c07bd52aa82d028",
       "headRepository": "Sc00bz/draft-irtf-cfrg-opaque",
       "headRefName": "doubly-augmented",
-      "headRefOid": "d915914ba2f8667532f6ba9656eadb65a1ef6ea0",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "fa8886344917e53496dd4aacd7a40704b91c3423",
+      "closedAt": "2024-03-24T12:04:20Z",
+      "mergedAt": "2024-03-24T12:04:20Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "dc86a06db68367efca044b3ff45a1e244e2f2099"
+      },
       "comments": [
         {
           "author": "kevinlewi",
@@ -34616,6 +34618,13 @@
           "body": "@Sc00bz ^ can you check the revisions that I made and let us know if this is acceptable? We'd like to merge this PR in and publish the next draft once this is unblocked. Thank you!",
           "createdAt": "2024-03-20T06:00:21Z",
           "updatedAt": "2024-03-20T06:00:21Z"
+        },
+        {
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Looks good to me :) thank you @Sc00bz and @kevinlewi ! \ud83d\udc4d",
+          "createdAt": "2024-03-24T12:03:47Z",
+          "updatedAt": "2024-03-24T12:03:47Z"
         }
       ],
       "reviews": [
@@ -34638,6 +34647,79 @@
               "updatedAt": "2024-03-24T00:00:47Z"
             }
           ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50necE",
+          "commit": {
+            "abbreviatedOid": "d915914"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-03-24T08:50:53Z",
+          "updatedAt": "2024-03-24T08:50:54Z",
+          "comments": [
+            {
+              "originalPosition": 36,
+              "body": "Good idea. I added a little bit more to the description to clarify how this would be done. Let me know what you think!",
+              "createdAt": "2024-03-24T08:50:53Z",
+              "updatedAt": "2024-03-24T08:50:54Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50ne1s",
+          "commit": {
+            "abbreviatedOid": "f1a658b"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "",
+          "createdAt": "2024-03-24T09:01:40Z",
+          "updatedAt": "2024-03-24T09:02:53Z",
+          "comments": [
+            {
+              "originalPosition": 37,
+              "body": "```suggestion\nThis can be achieved by supplying an arbitrary password as input to\n`CreateCredentialRequest` in the login phase, and then using the `randomized_password` from the backup in `RecoverCredentials` (invoked by `GenerateKE3`) rather than computing it from\n```\n",
+              "createdAt": "2024-03-24T09:01:40Z",
+              "updatedAt": "2024-03-24T12:01:37Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50nfkP",
+          "commit": {
+            "abbreviatedOid": "f1a658b"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-03-24T09:19:08Z",
+          "updatedAt": "2024-03-24T09:19:08Z",
+          "comments": [
+            {
+              "originalPosition": 37,
+              "body": "(Updated, and removed the extraneous \"the\" before `randomized_password`)",
+              "createdAt": "2024-03-24T09:19:08Z",
+              "updatedAt": "2024-03-24T09:19:24Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50nllN",
+          "commit": {
+            "abbreviatedOid": "fa88863"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-24T12:04:03Z",
+          "updatedAt": "2024-03-24T12:04:03Z",
+          "comments": []
         }
       ]
     },
@@ -34646,24 +34728,26 @@
       "id": "PR_kwDOD79ejs5pr5xE",
       "title": "Clarifying wording about multiple seeds per client",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/449",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Resolving a slight wording ambiguity that could be interpreted not the way we intend. Servers should consistently assign one  seed for a client, but across clients, different seeds could be used, so long as they are kept consistent.\r\n\r\nSpawned from discussion offline with Hugo Krawczyk who requested this change.",
       "createdAt": "2024-03-14T22:30:30Z",
-      "updatedAt": "2024-03-23T23:49:35Z",
+      "updatedAt": "2024-03-24T08:57:46Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "3f026d1dafd824a5fc3b98812d8a7b449b8c62a1",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "clarifying_multiple_seeds",
-      "headRefOid": "d9bf3f6f12b76e9ed8cb6988d9e775008012b4d9",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "91664ba7394dd7ab31eef0135f17647a4ad8167c",
+      "closedAt": "2024-03-24T08:57:45Z",
+      "mergedAt": "2024-03-24T08:57:45Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "4b3c6b117b0478872d8c3b3c1c07bd52aa82d028"
+      },
       "comments": [],
       "reviews": [
         {
@@ -34685,6 +34769,39 @@
               "updatedAt": "2024-03-23T23:49:35Z"
             }
           ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50nenY",
+          "commit": {
+            "abbreviatedOid": "d9bf3f6"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-03-24T08:55:54Z",
+          "updatedAt": "2024-03-24T08:55:56Z",
+          "comments": [
+            {
+              "originalPosition": 8,
+              "body": "Sounds good to me, thanks for the suggestion!",
+              "createdAt": "2024-03-24T08:55:55Z",
+              "updatedAt": "2024-03-24T08:55:56Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs50neq8",
+          "commit": {
+            "abbreviatedOid": "91664ba"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-03-24T08:57:34Z",
+          "updatedAt": "2024-03-24T08:57:35Z",
+          "comments": []
         }
       ]
     }
