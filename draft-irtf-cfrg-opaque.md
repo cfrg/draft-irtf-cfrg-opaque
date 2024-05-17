@@ -172,6 +172,22 @@ protocols"
     seriesinfo: Eurocrypt
     date: 2018
 
+  JKX18Full:
+    title: "OPAQUE: An Asymmetric PAKE Protocol Secure Against Pre-Computation Attacks (Full Version)"
+    # see the quotes above? Needed because of the embedded colon.
+    author:
+      -
+        ins: S. Jarecki
+        name: Stanislaw Jarecki
+      -
+        ins: H. Krawczyk
+        name: Hugo Krawczyk
+      -
+        ins: J. Xu
+        name: Jiayu Xu
+    seriesinfo: https://eprint.iacr.org/2018/163
+    date: 2018
+
   JKKX16:
     title: "Highly-efficient and composable password-protected secret sharing (or: how to protect your bitcoin wallet online)"
     # see the quotes above? Needed because of the embedded colon.
@@ -1976,6 +1992,11 @@ implementation considerations.
   random output). This change was made to support more application use cases
   for OPAQUE, such as the use of OPAQUE for end-to-end encrypted backups;
   see {{WhatsAppE2E}}.
+- The AKE describes a 3-message protocol where the third message includes client
+  authentication material that the server is required to verify. This change
+  (from the original 2-message protocol) was made to provide explicit client
+  authentication and full forward security. The 3-message protocol is analyzed
+  in {{JKX18Full}}.
 - The protocol admits optional application-layer client and server identities.
   In the absence of these identities, the client and server are authenticated
   against their public keys. Binding authentication to identities is part
