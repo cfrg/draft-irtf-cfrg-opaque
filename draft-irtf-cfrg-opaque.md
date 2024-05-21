@@ -85,6 +85,19 @@ protocols"
     seriesinfo: Eurocrypt
     date: 2006
 
+  DL24:
+    title: "(Strong) aPAKE Revisited: Capturing Multi-User Security and Salting"
+    author:
+      -
+        ins: D. Dayanikli
+        name: Dennis Dayanikli
+      -
+        ins: A. Lehmann
+        name: Anja Lehmann
+
+    seriesinfo: https://eprint.iacr.org/2024/756
+    date: 2024
+
   FK00:
     title: Server-assisted generation of a strong secret from a password
     author:
@@ -808,8 +821,11 @@ At the end of this interaction, the server stores the `record` object as the
 credential file for each client along with the associated `credential_identifier`
 and `client_identity` (if different). Note that the values `oprf_seed` and
 `server_private_key` from the server's setup phase must also be persisted.
-The `oprf_seed` value SHOULD be used for all clients; see {{preventing-client-enumeration}}.
-The `server_private_key` may be unique for each client.
+The `oprf_seed` value SHOULD be used for all clients; see {{preventing-client-enumeration}}
+for the justification behind this, along with a description of the exception in which
+applications may choose to avoid the use of a global `oprf_seed` value across clients
+and instead sample OPRF keys uniquely for each client. The `server_private_key` may
+be unique for each client.
 
 Both client and server MUST validate the other party's public key before use.
 See {{validation}} for more details. Upon completion, the server stores
@@ -2242,6 +2258,12 @@ registered and unregistered clients. This allows an attacker to use the server's
 response during registration as an oracle for whether a given client identity is
 registered. Applications should mitigate against this type of attack by rate
 limiting or otherwise restricting the registration flow.
+
+Finally, applications that do not require protection against
+client enumeration attacks can choose to derive independent OPRF keys for different
+clients. The advantage to using independently-derived OPRF keys is that the server
+avoids keeping the `oprf_seed` value across different clients, which if leaked would
+compromise the security for all clients reliant on `oprf_seed`, as noted in {{DL24}}.
 
 ## Protecting the Registration Masking Key
 
