@@ -1893,7 +1893,9 @@ password as input to the OPRF. Furthermore, it is RECOMMENDED to incorporate
 additions provide domain separation for clients and servers; see
 {{security-analysis}}.
 
-Finally, note that online guessing attacks (against any aPAKE) can be done from
+## Handling Online Guessing Attacks
+
+Online guessing attacks (against any aPAKE) can be done from
 both the client side and the server side. In particular, a malicious server can
 attempt to simulate honest responses to learn the client's password.
 While this constitutes an exhaustive online attack, hence as expensive as an
@@ -1902,6 +1904,14 @@ between client and server is authenticated, e.g., using server-authenticated TLS
 In such cases, these online attacks are limited to clients and the authenticated server
 itself. Moreover, such a channel provides privacy of user information, including identity
 and envelope values.
+
+Additionally, note that a client participating in the online login stage
+will learn whether or not authentication is successful after receiving the
+`KE2` message. This means that the server should treat any client which fails to
+send a subsequent `KE3` message as an authentication failure. This can be handled
+in applications that wish to track authentication failures by, for example,
+assuming by default that any client authentication attempt is a failure unless a `KE3`
+message is received by the server and passes `ServerFinish` without error.
 
 ## Error Considerations
 
