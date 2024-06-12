@@ -1977,12 +1977,6 @@ The errors in this document are meant as a guide for implementors. They are not 
 exhaustive list of all the errors an implementation might emit. For example, an
 implementation might run out of memory.
 
-<!--
-TODO(caw): As part of https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/312, address
-the failure case that occurs when Blind fails, noting that this is an exceptional case that
-happens with negligible probability
--->
-
 # Security Considerations {#security-considerations}
 
 OPAQUE is defined as the composition of two functionalities: an OPRF and
