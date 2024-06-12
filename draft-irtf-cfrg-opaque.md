@@ -33,13 +33,9 @@ author:
     email: caw@heapingbits.net
 
 informative:
-  I-D.krawczyk-cfrg-opaque-03:
+  I-D.krawczyk-cfrg-opaque-06:
     title: The OPAQUE Asymmetric PAKE Protocol
-    target: https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-03
-
-  PAKE-Selection:
-    title: CFRG PAKE selection process repository
-    target: https://github.com/cfrg/pake-selection
+    target: https://datatracker.ietf.org/doc/html/draft-krawczyk-cfrg-opaque-06
 
   Boyen09:
     title: "HPAKE: Password Authentication Secure against Cross-Site User Impersonation"
@@ -119,22 +115,6 @@ protocols"
       -
         org: National Institute of Standards and Technology (NIST)
 
-  GMR06:
-    title: "A method for making password-based key exchange resilient to server compromise"
-    author:
-      -
-        ins: C. Gentry
-        name: Craig Gentry
-      -
-        ins: P. MacKenzie
-        name: Phil MacKenzie
-      -
-        ins: Z, Ramzan
-        name: Zulfikar Ramzan
-
-    seriesinfo: CRYPTO
-    date: 2006
-
   HJKW23:
     title: "Password-Authenticated TLS via OPAQUE and Post-Handshake Authentication"
     author:
@@ -153,19 +133,6 @@ protocols"
 
     seriesinfo: EUROCRYPT
     date: 2023
-
-  AuCPace:
-    title: "AuCPace: Efficient verifier-based PAKE protocol tailored for the IIoT"
-    author:
-      -
-        ins: B. Haase
-        name: Bjorn Haase
-      -
-        ins: B. Labrique
-        name: Benoit Labrique
-
-    seriesinfo: http://eprint.iacr.org/2018/286
-    date: 2018
 
   keyagreement: DOI.10.6028/NIST.SP.800-56Ar3
 
@@ -244,7 +211,7 @@ protocols"
     date: 2005
 
   SIGMA-I:
-    title: "SIGMA: The ‘SIGn-and-MAc’ Approach to Authenticated Diffie-Hellman and its Use in the IKE Protocols"
+    title: "SIGMA: The 'SIGn-and-MAc' Approach to Authenticated Diffie-Hellman and its Use in the IKE Protocols"
     author:
       -
         ins: H. Krawczyk
@@ -252,16 +219,6 @@ protocols"
 
     seriesinfo: https://www.iacr.org/cryptodb/archive/2003/CRYPTO/1495/1495.pdf
     date: 2003
-
-  SPAKE2plus:
-    title: "Security Analysis of SPAKE2+"
-    author:
-      -
-        ins: V. Shoup
-        name: Victor Shoup
-
-    seriesinfo: http://eprint.iacr.org/2020/313
-    date: 2020
 
   TripleDH:
     title: "Simplifying OTR deniability"
@@ -279,7 +236,7 @@ protocols"
 
   TOPPSS:
     title: "TOPPSS: Cost-minimal Password-Protected Secret Sharing based on Threshold OPRF"
-    seriesinfo: Applied Cryptology and Network Security – ACNS 2017
+    seriesinfo: Applied Cryptology and Network Security - ACNS 2017
     date: 2017
     author:
       -
@@ -307,7 +264,8 @@ with security against pre-computation attacks upon server compromise.
 In addition, the protocol provides forward secrecy and the ability to
 hide the password from the server, even during password registration.
 This document specifies the core OPAQUE protocol and one instantiation
-based on 3DH.
+based on 3DH. This document is a product of the Crypto Forum Research
+Group (CFRG) in the IRTF.
 
 --- middle
 
@@ -378,7 +336,8 @@ The name OPAQUE is a homonym of O-PAKE where O is for Oblivious. The name
 OPAKE was taken.
 
 This draft complies with the requirements for PAKE protocols set forth in
-{{RFC8125}}.
+{{RFC8125}}. This document represents the consensus of the Crypto Forum
+Research Group (CFRG).
 
 ## Requirements Notation
 
@@ -656,7 +615,8 @@ Output:
 
 def CreateCleartextCredentials(server_public_key, client_public_key,
                                server_identity, client_identity):
-  # Set identities as public keys if no application-layer identity is provided
+  # Set identities as public keys if no
+  # application-layer identity is provided
   if server_identity == nil
     server_identity = server_public_key
   if client_identity == nil
@@ -709,22 +669,30 @@ Input:
 Output:
 - envelope, the client's Envelope structure.
 - client_public_key, the client's AKE public key.
-- masking_key, an encryption key used by the server with the sole purpose
-  of defending against client enumeration attacks.
+- masking_key, an encryption key used by the server with the
+  sole purpose of defending against client enumeration attacks.
 - export_key, an additional client key.
 
-def Store(randomized_password, server_public_key, server_identity, client_identity):
+def Store(randomized_password, server_public_key,
+          server_identity, client_identity):
   envelope_nonce = random(Nn)
   masking_key = Expand(randomized_password, "MaskingKey", Nh)
-  auth_key = Expand(randomized_password, concat(envelope_nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_password, concat(envelope_nonce, "ExportKey"), Nh)
-  seed = Expand(randomized_password, concat(envelope_nonce, "PrivateKey"), Nseed)
+  auth_key =
+    Expand(randomized_password, concat(envelope_nonce, "AuthKey"),
+           Nh)
+  export_key =
+    Expand(randomized_password, concat(envelope_nonce, "ExportKey"),
+           Nh)
+  seed =
+    Expand(randomized_password, concat(envelope_nonce, "PrivateKey"),
+           Nseed)
   (_, client_public_key) = DeriveDiffieHellmanKeyPair(seed)
 
   cleartext_credentials =
     CreateCleartextCredentials(server_public_key, client_public_key,
                                server_identity, client_identity)
-  auth_tag = MAC(auth_key, concat(envelope_nonce, cleartext_credentials))
+  auth_tag =
+    MAC(auth_key, concat(envelope_nonce, cleartext_credentials))
 
   Create Envelope envelope with (envelope_nonce, auth_tag)
   return (envelope, client_public_key, masking_key, export_key)
@@ -740,13 +708,15 @@ Recover
 
 Input:
 - randomized_password, a randomized password.
-- server_public_key, the encoded server public key for the AKE protocol.
+- server_public_key, the encoded server public key for the
+  AKE protocol.
 - envelope, the client's Envelope structure.
 - server_identity, the optional encoded server identity.
 - client_identity, the optional encoded client identity.
 
 Output:
-- client_private_key, the encoded client private key for the AKE protocol.
+- client_private_key, the encoded client private key for the
+  AKE protocol.
 - cleartext_credentials, a CleartextCredentials structure.
 - export_key, an additional client key.
 
@@ -755,14 +725,23 @@ Exceptions:
 
 def Recover(randomized_password, server_public_key, envelope,
             server_identity, client_identity):
-  auth_key = Expand(randomized_password, concat(envelope.nonce, "AuthKey"), Nh)
-  export_key = Expand(randomized_password, concat(envelope.nonce, "ExportKey"), Nh)
-  seed = Expand(randomized_password, concat(envelope.nonce, "PrivateKey"), Nseed)
-  (client_private_key, client_public_key) = DeriveDiffieHellmanKeyPair(seed)
+  auth_key =
+    Expand(randomized_password, concat(envelope.nonce, "AuthKey"),
+           Nh)
+  export_key =
+    Expand(randomized_password, concat(envelope.nonce, "ExportKey"),
+           Nh)
+  seed =
+    Expand(randomized_password, concat(envelope.nonce, "PrivateKey"),
+           Nseed)
+  (client_private_key, client_public_key) =
+    DeriveDiffieHellmanKeyPair(seed)
 
-  cleartext_credentials = CreateCleartextCredentials(server_public_key,
-                      client_public_key, server_identity, client_identity)
-  expected_tag = MAC(auth_key, concat(envelope.nonce, cleartext_credentials))
+  cleartext_credentials =
+    CreateCleartextCredentials(server_public_key, client_public_key,
+                               server_identity, client_identity)
+  expected_tag =
+    MAC(auth_key, concat(envelope.nonce, cleartext_credentials))
   If !ct_equal(envelope.auth_tag, expected_tag)
     raise EnvelopeRecoveryError
   return (client_private_key, cleartext_credentials, export_key)
@@ -920,8 +899,10 @@ CreateRegistrationResponse
 Input:
 - request, a RegistrationRequest structure.
 - server_public_key, the server's public key.
-- credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the seed of Nh bytes used by the server to generate an oprf_key.
+- credential_identifier, an identifier that uniquely represents
+  the credential.
+- oprf_seed, the seed of Nh bytes used by the server to generate
+  an oprf_key.
 
 Output:
 - response, a RegistrationResponse structure.
@@ -932,14 +913,17 @@ Exceptions:
 
 def CreateRegistrationResponse(request, server_public_key,
                                credential_identifier, oprf_seed):
-  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+  seed =
+   Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
   (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
   evaluated_element = BlindEvaluate(oprf_key, blinded_element)
   evaluated_message = SerializeElement(evaluated_element)
 
-  Create RegistrationResponse response with (evaluated_message, server_public_key)
+  Create RegistrationResponse response with
+   (evaluated_message, server_public_key)
+
   return response
 ~~~
 
@@ -965,17 +949,22 @@ Output:
 Exceptions:
 - DeserializeError, when OPRF element deserialization fails.
 
-def FinalizeRegistrationRequest(password, blind, response, server_identity, client_identity):
+def FinalizeRegistrationRequest(password, blind, response,
+                                server_identity, client_identity):
   evaluated_element = DeserializeElement(response.evaluated_message)
   oprf_output = Finalize(password, blind, evaluated_element)
 
   stretched_oprf_output = Stretch(oprf_output)
-  randomized_password = Extract("", concat(oprf_output, stretched_oprf_output))
+  randomized_password =
+    Extract("", concat(oprf_output, stretched_oprf_output))
 
   (envelope, client_public_key, masking_key, export_key) =
     Store(randomized_password, response.server_public_key,
           server_identity, client_identity)
-  Create RegistrationRecord record with (client_public_key, masking_key, envelope)
+
+  Create RegistrationRecord record with
+    (client_public_key, masking_key, envelope)
+
   return (record, export_key)
 ~~~
 
@@ -1184,29 +1173,40 @@ State:
 - state, a ServerState structure.
 
 Input:
-- server_identity, the optional encoded server identity, which is set to
-  server_public_key if not specified.
+- server_identity, the optional encoded server identity, which is
+  set to server_public_key if not specified.
 - server_private_key, the server's private key.
 - server_public_key, the server's public key.
 - record, the client's RegistrationRecord structure.
-- credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- credential_identifier, an identifier that uniquely represents
+  the credential.
+- oprf_seed, the server-side seed of Nh bytes used to generate
+  an oprf_key.
 - ke1, a KE1 message structure.
-- client_identity, the optional encoded client identity, which is set to
-  client_public_key if not specified.
+- client_identity, the optional encoded client identity, which is
+  set to client_public_key if not specified.
 
 Output:
 - ke2, a KE2 structure.
 
 def GenerateKE2(server_identity, server_private_key, server_public_key,
-               record, credential_identifier, oprf_seed, ke1, client_identity):
-  credential_response = CreateCredentialResponse(ke1.credential_request, server_public_key, record,
-    credential_identifier, oprf_seed)
-  cleartext_credentials = CreateCleartextCredentials(server_public_key,
-                      record.client_public_key, server_identity, client_identity)
-  auth_response = AuthServerRespond(cleartext_credentials, server_private_key,
-                      record.client_public_key, ke1, credential_response)
+               record, credential_identifier, oprf_seed, ke1,
+               client_identity):
+  credential_response =
+    CreateCredentialResponse(ke1.credential_request,
+                             server_public_key, record,
+                             credential_identifier, oprf_seed)
+  cleartext_credentials =
+    CreateCleartextCredentials(server_public_key,
+                               record.client_public_key,
+                               server_identity, client_identity)
+  auth_response =
+    AuthServerRespond(cleartext_credentials, server_private_key,
+                      record.client_public_key, ke1,
+                      credential_response)
+
   Create KE2 ke2 with (credential_response, auth_response)
+
   return ke2
 ~~~
 
@@ -1223,10 +1223,10 @@ State:
 - state, a ClientState structure.
 
 Input:
-- client_identity, the optional encoded client identity, which is set
-  to client_public_key if not specified.
-- server_identity, the optional encoded server identity, which is set
-  to server_public_key if not specified.
+- client_identity, the optional encoded client identity, which is
+  set to client_public_key if not specified.
+- server_identity, the optional encoded server identity, which is
+  set to server_public_key if not specified.
 - ke2, a KE2 message structure.
 
 Output:
@@ -1236,7 +1236,8 @@ Output:
 
 def GenerateKE3(client_identity, server_identity, ke2):
   (client_private_key, cleartext_credentials, export_key) =
-    RecoverCredentials(state.password, state.blind, ke2.credential_response,
+    RecoverCredentials(state.password, state.blind,
+                       ke2.credential_response,
                        server_identity, client_identity)
   (ke3, session_key) =
     AuthClientFinalize(cleartext_credentials, client_private_key, ke2)
@@ -1363,8 +1364,10 @@ Input:
 - server_public_key, the public key of the server.
 - record, an instance of RegistrationRecord which is the server's
   output from registration.
-- credential_identifier, an identifier that uniquely represents the credential.
-- oprf_seed, the server-side seed of Nh bytes used to generate an oprf_key.
+- credential_identifier, an identifier that uniquely represents
+  the credential.
+- oprf_seed, the server-side seed of Nh bytes used to generate
+  an oprf_key.
 
 Output:
 - response, a CredentialResponse structure.
@@ -1374,7 +1377,8 @@ Exceptions:
 
 def CreateCredentialResponse(request, server_public_key, record,
                              credential_identifier, oprf_seed):
-  seed = Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
+  seed =
+    Expand(oprf_seed, concat(credential_identifier, "OprfKey"), Nok)
   (oprf_key, _) = DeriveKeyPair(seed, "OPAQUE-DeriveKeyPair")
 
   blinded_element = DeserializeElement(request.blinded_message)
@@ -1383,11 +1387,15 @@ def CreateCredentialResponse(request, server_public_key, record,
 
   masking_nonce = random(Nn)
   credential_response_pad = Expand(record.masking_key,
-                                   concat(masking_nonce, "CredentialResponsePad"),
+                                   concat(masking_nonce,
+                                   "CredentialResponsePad"),
                                    Npk + Nn + Nm)
   masked_response = xor(credential_response_pad,
                         concat(server_public_key, record.envelope))
-  Create CredentialResponse response with (evaluated_message, masking_nonce, masked_response)
+
+  Create CredentialResponse response with
+    (evaluated_message, masking_nonce, masked_response)
+
   return response
 ~~~
 
@@ -1424,7 +1432,8 @@ Input:
 - client_identity, The encoded client identity.
 
 Output:
-- client_private_key, the encoded client private key for the AKE protocol.
+- client_private_key, the encoded client private key for
+  the AKE protocol.
 - cleartext_credentials, a CleartextCredentials structure.
 - export_key, an additional client key.
 
@@ -1437,14 +1446,20 @@ def RecoverCredentials(password, blind, response,
 
   oprf_output = Finalize(password, blind, evaluated_element)
   stretched_oprf_output = Stretch(oprf_output)
-  randomized_password = Extract("", concat(oprf_output, stretched_oprf_output))
+
+  randomized_password =
+    Extract("", concat(oprf_output, stretched_oprf_output))
 
   masking_key = Expand(randomized_password, "MaskingKey", Nh)
-  credential_response_pad = Expand(masking_key,
-                                   concat(response.masking_nonce, "CredentialResponsePad"),
-                                   Npk + Nn + Nm)
-  concat(server_public_key, envelope) = xor(credential_response_pad,
-                                              response.masked_response)
+
+  credential_response_pad =
+    Expand(masking_key,
+           concat(response.masking_nonce, "CredentialResponsePad"),
+           Npk + Nn + Nm)
+
+  concat(server_public_key, envelope) =
+    xor(credential_response_pad, response.masked_response)
+
   (client_private_key, cleartext_credentials, export_key) =
     Recover(randomized_password, server_public_key, envelope,
             server_identity, client_identity)
@@ -1579,8 +1594,10 @@ Input:
 - server_identity, the optional encoded server identity, which is set
   to server_public_key if not specified.
 - credential_response, the corresponding field on the KE2 structure.
-- server_nonce, the corresponding field on the AuthResponse structure.
-- server_public_keyshare, the corresponding field on the AuthResponse structure.
+- server_nonce, the corresponding field on the AuthResponse
+  structure.
+- server_public_keyshare, the corresponding field on the AuthResponse
+  structure.
 
 Output:
 - preamble, the protocol transcript with identities and messages.
@@ -1617,8 +1634,10 @@ Output:
 
 def DeriveKeys(ikm, preamble):
   prk = Extract("", ikm)
-  handshake_secret = Derive-Secret(prk, "HandshakeSecret", Hash(preamble))
-  session_key = Derive-Secret(prk, "SessionKey", Hash(preamble))
+  handshake_secret =
+    Derive-Secret(prk, "HandshakeSecret",Hash(preamble))
+  session_key =
+    Derive-Secret(prk, "SessionKey", Hash(preamble))
   Km2 = Derive-Secret(handshake_secret, "ServerMAC", "")
   Km3 = Derive-Secret(handshake_secret, "ClientMAC", "")
   return (Km2, Km3, session_key)
@@ -1647,9 +1666,15 @@ Output:
 def AuthClientStart(credential_request):
   client_nonce = random(Nn)
   client_keyshare_seed = random(Nseed)
-  (client_secret, client_public_keyshare) = DeriveDiffieHellmanKeyPair(client_keyshare_seed)
-  Create AuthRequest auth_request with (client_nonce, client_public_keyshare)
-  Create KE1 ke1 with (credential_request, auth_request)
+  (client_secret, client_public_keyshare) =
+    DeriveDiffieHellmanKeyPair(client_keyshare_seed)
+
+  Create AuthRequest auth_request with
+    (client_nonce, client_public_keyshare)
+
+  Create KE1 ke1 with
+    (credential_request, auth_request)
+
   state.client_secret = client_secret
   state.ke1 = ke1
   return ke1
@@ -1679,9 +1704,12 @@ Exceptions:
 
 def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
 
-  dh1 = DiffieHellman(state.client_secret, ke2.auth_response.server_public_keyshare)
-  dh2 = DiffieHellman(state.client_secret, cleartext_credentials.server_public_key)
-  dh3 = DiffieHellman(client_private_key, ke2.auth_response.server_public_keyshare)
+  dh1 = DiffieHellman(state.client_secret,
+                      ke2.auth_response.server_public_keyshare)
+  dh2 = DiffieHellman(state.client_secret,
+                      cleartext_credentials.server_public_key)
+  dh3 = DiffieHellman(client_private_key,
+                      ke2.auth_response.server_public_keyshare)
   ikm = concat(dh1, dh2, dh3)
 
   preamble = Preamble(cleartext_credentials.client_identity,
@@ -1722,10 +1750,12 @@ Input:
 Output:
 - auth_response, an AuthResponse structure.
 
-def AuthServerRespond(cleartext_credentials, server_private_key, client_public_key, ke1, credential_response):
+def AuthServerRespond(cleartext_credentials, server_private_key,
+                      client_public_key, ke1, credential_response):
   server_nonce = random(Nn)
   server_keyshare_seed = random(Nseed)
-  (server_private_keyshare, server_public_keyshare) = DeriveDiffieHellmanKeyPair(server_keyshare_seed)
+  (server_private_keyshare, server_public_keyshare) =
+    DeriveDiffieHellmanKeyPair(server_keyshare_seed)
   preamble = Preamble(cleartext_credentials.client_identity,
                       ke1,
                       cleartext_credentials.server_identity,
@@ -1733,17 +1763,24 @@ def AuthServerRespond(cleartext_credentials, server_private_key, client_public_k
                       server_nonce,
                       server_public_keyshare)
 
-  dh1 = DiffieHellman(server_private_keyshare, ke1.auth_request.client_public_keyshare)
-  dh2 = DiffieHellman(server_private_key, ke1.auth_request.client_public_keyshare)
-  dh3 = DiffieHellman(server_private_keyshare, client_public_key)
+  dh1 = DiffieHellman(server_private_keyshare,
+                      ke1.auth_request.client_public_keyshare)
+  dh2 = DiffieHellman(server_private_key,
+                      ke1.auth_request.client_public_keyshare)
+  dh3 = DiffieHellman(server_private_keyshare,
+                      client_public_key)
   ikm = concat(dh1, dh2, dh3)
 
   Km2, Km3, session_key = DeriveKeys(ikm, preamble)
   server_mac = MAC(Km2, Hash(preamble))
 
-  state.expected_client_mac = MAC(Km3, Hash(concat(preamble, server_mac)))
+  state.expected_client_mac =
+    MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
-  Create AuthResponse auth_response with (server_nonce, server_public_keyshare, server_mac)
+
+  Create AuthResponse auth_response with
+    (server_nonce, server_public_keyshare, server_mac)
+
   return auth_response
 ~~~
 
@@ -1789,7 +1826,7 @@ such that the following conditions are met:
 - The KSF is determined by the application and implements the interface in
   {{dependencies}}. As noted, collision resistance is required. Examples for KSF
   include Argon2id {{?ARGON2=RFC9106}}, scrypt {{?SCRYPT=RFC7914}}, and PBKDF2
-  {{?PBKDF2=RFC2898}} with fixed parameter choices. See {{app-considerations}}
+  {{?PBKDF2=RFC8018}} with fixed parameter choices. See {{app-considerations}}
   for more information about this choice of function.
 - The Group mode identifies the group used in the OPAQUE-3DH AKE. This SHOULD
   match that of the OPRF. For example, if the OPRF is ristretto255-SHA512,
@@ -1964,7 +2001,7 @@ protocols such as TLS.
 ## Notable Design Differences {#notable-design-differences}
 
 The specification as written here differs from the original cryptographic design in {{JKX18}}
-and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-03}}, both of which were used
+and the corresponding CFRG document {{I-D.krawczyk-cfrg-opaque-06}}, both of which were used
 as input to the CFRG PAKE competition. This section describes these differences, including
 their motivation and explanation as to why they preserve the provable security of OPAQUE based
 on {{JKX18}}.
@@ -2059,7 +2096,7 @@ implementation considerations.
 
 The following list enumerates notable differences and refinements from the original
 cryptographic design in {{JKX18}} and the corresponding CFRG document
-{{I-D.krawczyk-cfrg-opaque-03}} that were made to make this specification
+{{I-D.krawczyk-cfrg-opaque-06}} that were made to make this specification
 suitable for interoperable implementations.
 
 - {{JKX18}} used a generic prime-order group for the DH-OPRF and HMQV operations,
@@ -2079,11 +2116,11 @@ suitable for interoperable implementations.
   the hash-to-curve functions in {{?RFC9380}}. All hash-to-curve
   methods in {{RFC9380}} are compliant with the requirement
   in {{JKX18}}, namely, that the output be a member of the prime-order group.
-- {{JKX18}} and {{I-D.krawczyk-cfrg-opaque-03}} both used HMQV as the AKE
+- {{JKX18}} and {{I-D.krawczyk-cfrg-opaque-06}} both used HMQV as the AKE
   for the protocol. However, this document fully specifies 3DH instead of HMQV
   (though a sketch for how to instantiate OPAQUE using HMQV is included in {{hmqv-sketch}}).
   Since 3DH satisfies the essential requirements for the AKE as described in {{JKX18}}
-  and {{I-D.krawczyk-cfrg-opaque-03}}, as recalled in {{security-analysis}}, this change
+  and {{I-D.krawczyk-cfrg-opaque-06}}, as recalled in {{security-analysis}}, this change
   preserves the overall security of the protocol. 3DH was chosen for its
   simplicity and ease of implementation.
 - The DH-OPRF and HMQV instantiation of OPAQUE in {{JKX18}}, Figure 12 uses
@@ -2091,7 +2128,7 @@ suitable for interoperable implementations.
   the key exchange transcript specified in {{protocol-3dh}} is a superset of the transcript
   as defined in {{JKX18}}. This was done to align with best practices, such as is
   done for key exchange protocols like TLS 1.3 {{RFC8446}}.
-- Neither {{JKX18}} nor {{I-D.krawczyk-cfrg-opaque-03}} included wire format details for the
+- Neither {{JKX18}} nor {{I-D.krawczyk-cfrg-opaque-06}} included wire format details for the
   protocol, which is essential for interoperability. This specification fills this
   gap by including such wire format details and corresponding test vectors; see {{test-vectors}}.
 
