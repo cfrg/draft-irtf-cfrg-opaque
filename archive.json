@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-06-27T01:16:39.744627+00:00",
+  "timestamp": "2024-06-30T01:22:37.726803+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -35188,6 +35188,32 @@
           "comments": []
         }
       ]
+    },
+    {
+      "number": 458,
+      "id": "PR_kwDOD79ejs5z75z8",
+      "title": "Adds inputs necessary for reproducing the fake test vectors.",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/458",
+      "state": "OPEN",
+      "author": "armfazh",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "While working on updating the [opaque-ts](https://github.com/cloudflare/opaque-ts/) implementation I found that some extra fields are needed to reproduce the fake test vectors.\r\n\r\nIn particular, this allows the client to invoke the first part of login, and in the second part, after receiving a fake response from the server,  it should fail.\r\n\r\nSupport for draft v16: https://github.com/cloudflare/opaque-ts/pull/19",
+      "createdAt": "2024-06-28T21:51:42Z",
+      "updatedAt": "2024-06-28T21:51:42Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "0cd4251786b54c623bf1eceaff15892616e53ea6",
+      "headRepository": "armfazh/draft-irtf-cfrg-opaque",
+      "headRefName": "fakeVectors",
+      "headRefOid": "83686d9c8018f0eb895f9b210a69c2d1d51da0fa",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
