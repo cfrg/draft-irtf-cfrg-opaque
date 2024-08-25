@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-08-22T01:22:04.704480+00:00",
+  "timestamp": "2024-08-25T01:33:23.270072+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9484,6 +9484,22 @@
           "updatedAt": "2024-05-31T14:40:34Z"
         }
       ]
+    },
+    {
+      "number": 459,
+      "id": "I_kwDOD79ejs6UGZas",
+      "title": "export_key encrypted blobs stored on the server come with liabilities",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/459",
+      "state": "OPEN",
+      "author": "stef",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "> The client output of this stage is a single value export_key that the client may use for application-specific purposes, e.g., as a symmetric key used to encrypt additional information for storage on the server.\r\n\r\nthis is a dangerous feature, as a malicious user can use this to store plaintext data (for example incriminating CSAM) on the server, and in jurisdictions like germany this can lead to criminal conviction of the unassuming operator of the server. a server has no way of (except for estimating entropy) checking if the data stored is indeed encrypted in any way (may or may not be using export_key). furthermore this can also be used to distribute other illegal content like piracy, command and control infrastructure for malware, etc (if the encrypted data is provided by the server at the createcredentialresponse step). One way to make mitigate against this feature being abused as a public data distribution mechanism, the export_key \"encrypted-or-not\" blob should be only dispensed after the client successfully authenticated themselves to the server.\r\n\r\nmaybe this or something similar should be added to the security considerations?\r\n",
+      "createdAt": "2024-08-24T16:21:41Z",
+      "updatedAt": "2024-08-24T16:21:41Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
