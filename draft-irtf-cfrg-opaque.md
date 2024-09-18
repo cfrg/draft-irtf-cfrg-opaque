@@ -429,7 +429,7 @@ This specification uses a KDF with the following API and parameters:
 
 - Extract(salt, ikm): Extract a pseudorandom key of fixed length `Nx` bytes from
   input keying material `ikm` and an optional byte string `salt`.
-- Expand(prk, info, L): Expand a pseudorandom key `prk` using the optional string `info`
+- Expand(prk, info, L): Expand a pseudorandom key `prk`, using the string `info`,
   into `L` bytes of output keying material.
 - Nx: The output size of the `Extract()` function in bytes.
 
@@ -497,7 +497,8 @@ The server output of this stage is a record corresponding to the client's
 registration that it stores in a credential file alongside other clients
 registrations as needed.
 
-The registration flow is shown below:
+The registration flow is shown below, and the process is described in more detail in
+{{registration-phase}}:
 
 ~~~
     creds                                   parameters
