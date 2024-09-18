@@ -622,8 +622,12 @@ def CreateCleartextCredentials(server_public_key, client_public_key,
   if client_identity == nil
     client_identity = client_public_key
 
-  Create CleartextCredentials cleartext_credentials with
-    (server_public_key, server_identity, client_identity)
+  cleartext_credentials = CleartextCredentials {
+    server_public_key,
+    server_identity,
+    client_identity
+  }
+
   return cleartext_credentials
 ~~~
 
@@ -639,15 +643,15 @@ The key recovery mechanism defines its `Envelope` as follows:
 
 ~~~
 struct {
-  uint8 nonce[Nn];
+  uint8 envelope_nonce[Nn];
   uint8 auth_tag[Nm];
 } Envelope;
 ~~~
 
-nonce: A randomly-sampled nonce of length `Nn`, used to protect this `Envelope`.
+envelope_nonce: A randomly-sampled nonce of length `Nn`, used to protect this `Envelope`.
 
 auth_tag: An authentication tag protecting the contents of the envelope, covering
-the envelope nonce and `CleartextCredentials`.
+`envelope_nonce` and `CleartextCredentials`.
 
 ### Envelope Creation {#envelope-creation}
 
@@ -694,7 +698,11 @@ def Store(randomized_password, server_public_key,
   auth_tag =
     MAC(auth_key, concat(envelope_nonce, cleartext_credentials))
 
-  Create Envelope envelope with (envelope_nonce, auth_tag)
+  envelope = Envelope {
+    envelope_nonce,
+    auth_tag
+  }
+
   return (envelope, client_public_key, masking_key, export_key)
 ~~~
 
@@ -881,7 +889,9 @@ Exceptions:
 def CreateRegistrationRequest(password):
   (blind, blinded_element) = Blind(password)
   blinded_message = SerializeElement(blinded_element)
-  Create RegistrationRequest request with blinded_message
+  request = RegistrationRequest {
+    blinded_message
+  }
   return (request, blind)
 ~~~
 
@@ -921,8 +931,10 @@ def CreateRegistrationResponse(request, server_public_key,
   evaluated_element = BlindEvaluate(oprf_key, blinded_element)
   evaluated_message = SerializeElement(evaluated_element)
 
-  Create RegistrationResponse response with
-   (evaluated_message, server_public_key)
+  response = RegistrationResponse {
+    evaluated_message,
+    server_public_key
+  }
 
   return response
 ~~~
@@ -962,8 +974,11 @@ def FinalizeRegistrationRequest(password, blind, response,
     Store(randomized_password, response.server_public_key,
           server_identity, client_identity)
 
-  Create RegistrationRecord record with
-    (client_public_key, masking_key, envelope)
+  record = RegistrationRecord {
+    client_public_key,
+    masking_key,
+    envelope
+  }
 
   return (record, export_key)
 ~~~
@@ -1205,7 +1220,10 @@ def GenerateKE2(server_identity, server_private_key, server_public_key,
                       record.client_public_key, ke1,
                       credential_response)
 
-  Create KE2 ke2 with (credential_response, auth_response)
+  ke2 = KE2 {
+    credential_response,
+    auth_response
+  }
 
   return ke2
 ~~~
@@ -1337,7 +1355,9 @@ Exceptions:
 def CreateCredentialRequest(password):
   (blind, blinded_element) = Blind(password)
   blinded_message = SerializeElement(blinded_element)
-  Create CredentialRequest request with blinded_message
+  request = CredentialRequest {
+    blinded_message
+  }
   return (request, blind)
 ~~~
 
@@ -1393,8 +1413,11 @@ def CreateCredentialResponse(request, server_public_key, record,
   masked_response = xor(credential_response_pad,
                         concat(server_public_key, record.envelope))
 
-  Create CredentialResponse response with
-    (evaluated_message, masking_nonce, masked_response)
+  response = CredentialResponse {
+    evaluated_message,
+    masking_nonce,
+    masked_response
+  }
 
   return response
 ~~~
@@ -1669,11 +1692,15 @@ def AuthClientStart(credential_request):
   (client_secret, client_public_keyshare) =
     DeriveDiffieHellmanKeyPair(client_keyshare_seed)
 
-  Create AuthRequest auth_request with
-    (client_nonce, client_public_keyshare)
+  auth_request = AuthRequest {
+    client_nonce,
+    client_public_keyshare
+  }
 
-  Create KE1 ke1 with
-    (credential_request, auth_request)
+  ke1 = KE1 {
+    credential_request,
+    auth_request
+  }
 
   state.client_secret = client_secret
   state.ke1 = ke1
@@ -1723,7 +1750,9 @@ def AuthClientFinalize(cleartext_credentials, client_private_key, ke2):
   if !ct_equal(ke2.auth_response.server_mac, expected_server_mac),
     raise ServerAuthenticationError
   client_mac = MAC(Km3, Hash(concat(preamble, expected_server_mac)))
-  Create KE3 ke3 with client_mac
+  ke3 = KE3 {
+    client_mac
+  }
   return (ke3, session_key)
 ~~~
 
@@ -1778,8 +1807,11 @@ def AuthServerRespond(cleartext_credentials, server_private_key,
     MAC(Km3, Hash(concat(preamble, server_mac)))
   state.session_key = session_key
 
-  Create AuthResponse auth_response with
-    (server_nonce, server_public_keyshare, server_mac)
+  auth_response = AuthResponse {
+    server_nonce,
+    server_public_keyshare,
+    server_mac
+  }
 
   return auth_response
 ~~~
