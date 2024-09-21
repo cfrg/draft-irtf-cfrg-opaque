@@ -337,7 +337,7 @@ OPAKE was taken.
 
 This draft complies with the requirements for PAKE protocols set forth in
 {{RFC8125}}. This document represents the consensus of the Crypto Forum
-Research Group (CFRG).
+Research Group (CFRG). It is not an IETF product and is not a standard.
 
 ## Requirements Notation
 
