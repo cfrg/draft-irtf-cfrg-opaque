@@ -1542,7 +1542,7 @@ a cryptographically strong pseudorandom generator, according to the requirements
 in <span>[<a href="#RFC4086" class="cite xref">RFC4086</a>]</span>, or pseudorandom function. For convenience, we define <code>nil</code> as a
 lack of value.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
 <p id="section-1.2-4">All protocol messages and structures defined in this document use the syntax from
-<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>], <a href="https://rfc-editor.org/rfc/rfc8446#section-3" class="relref">Section 3</a></span>.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+Section 3 of <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1585,7 +1585,7 @@ and the input to the function is provided by the client.  The client does not
 learn anything about the PRF other than the obtained output and the server
 learns nothing about the client's input or the function output.
 This specification depends on the prime-order OPRF construction specified
-in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, using the OPRF mode (0x00) from <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.1" class="relref">Section 3.1</a></span>.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
+as <code>modeOPRF</code> (<code>0x00</code>) from Section 3.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
 <p id="section-2.1-2">The following OPRF client APIs are used:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-2.1-3.1">
@@ -1603,11 +1603,11 @@ random inverter <code>blind</code>, and evaluation output <code>evaluated_elemen
 <li class="normal" id="section-2.1-5.1">
             <p id="section-2.1-5.1.1">BlindEvaluate(k, blinded_element): Evaluate blinded input element <code>blinded_element</code> using
 input key <code>k</code>, yielding output element <code>evaluated_element</code>. This is equivalent to
-the BlindEvaluate function described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.3.1" class="relref">Section 3.3.1</a></span>, where <code>k</code> is the private key parameter.<a href="#section-2.1-5.1.1" class="pilcrow">¶</a></p>
+the BlindEvaluate function described in Section 3.3.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, where <code>k</code> is the private key parameter.<a href="#section-2.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-2.1-5.2">
             <p id="section-2.1-5.2.1">DeriveKeyPair(seed, info): Create and output (<code>sk</code>, <code>pk</code>), consisting of a private and public key derived
-deterministically from a <code>seed</code> and <code>info</code> parameter, as described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>.<a href="#section-2.1-5.2.1" class="pilcrow">¶</a></p>
+deterministically from a <code>seed</code> and <code>info</code> parameter, as described in Section 3.2 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-2.1-5.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-2.1-6">Finally, this specification makes use of the following shared APIs and parameters:<a href="#section-2.1-6" class="pilcrow">¶</a></p>
@@ -1617,7 +1617,7 @@ deterministically from a <code>seed</code> and <code>info</code> parameter, as d
 </li>
           <li class="normal" id="section-2.1-7.2">
             <p id="section-2.1-7.2.1">DeserializeElement(buf): Attempt to map input byte array <code>buf</code> to an OPRF group element.
-This function can raise a DeserializeError upon failure; see <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>
+This function can raise a DeserializeError upon failure; see Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>
 for more details.<a href="#section-2.1-7.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-2.1-7.3">
@@ -2915,15 +2915,15 @@ as defined in <span>[<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span
 <li class="normal" id="section-6.4.1.1-2.1">
                 <p id="section-6.4.1.1-2.1.1">DeriveDiffieHellmanKeyPair(seed): This function is implemented as
 DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where DeriveKeyPair is
-as specified in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
-is encoded using SerializeElement from <span><a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a> of [<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.1-2.1.1" class="pilcrow">¶</a></p>
+as specified in Section 3.2 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. The public value from DeriveKeyPair
+is encoded using SerializeElement from Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-6.4.1.1-2.2">
                 <p id="section-6.4.1.1-2.2.1">DiffieHellman(k, B): Implemented as scalar multiplication as described in
-<span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-08#section-4" class="relref">Section 4</a> of [<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span> after decoding <code>B</code> from its encoded input using
-the Decode function in <span><a href="https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-08#section-4.3.1" class="relref">Section 4.3.1</a> of [<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span>. The output is then
+Section 4 of <span>[<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span> after decoding <code>B</code> from its encoded input using
+the Decode function in Section 4.3.1 of <span>[<a href="#RISTRETTO" class="cite xref">RISTRETTO</a>]</span>. The output is then
 encoded using the SerializeElement function of the OPRF group described in
-<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.1-2.2.1" class="pilcrow">¶</a></p>
+Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
 </section>
@@ -2939,15 +2939,15 @@ as defined in <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</sp
 <li class="normal" id="section-6.4.1.2-2.1">
                 <p id="section-6.4.1.2-2.1.1">DeriveDiffieHellmanKeyPair(seed): This function is implemented as
 DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair"), where DeriveKeyPair is
-as specified in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-3.2" class="relref">Section 3.2</a></span>. The public value from DeriveKeyPair
-is encoded using SerializeElement from <span><a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a> of [<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.2-2.1.1" class="pilcrow">¶</a></p>
+as specified in Section 3.2 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. The public value from DeriveKeyPair
+is encoded using SerializeElement from Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.2-2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-6.4.1.2-2.2">
                 <p id="section-6.4.1.2-2.2.1">DiffieHellman(k, B): Implemented as scalar multiplication as described in
 <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</span>, after decoding <code>B</code> from its encoded input using
 the compressed Octet-String-to-Elliptic-Curve-Point method according to <span>[<a href="#NISTCurves" class="cite xref">NISTCurves</a>]</span>.
 The output is then encoded using the SerializeElement function of the OPRF
-group described in <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>.<a href="#section-6.4.1.2-2.2.1" class="pilcrow">¶</a></p>
+group described in Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>.<a href="#section-6.4.1.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
 </section>
@@ -2962,11 +2962,11 @@ as defined in <span>[<a href="#Curve25519" class="cite xref">Curve25519</a>]</sp
 <ul class="normal">
 <li class="normal" id="section-6.4.1.3-2.1">
                 <p id="section-6.4.1.3-2.1.1">DeriveDiffieHellmanKeyPair(seed): This function is implemented by returning the private
-key <code>k</code> based on seed (of length <code>Nseed = 32</code> bytes), as described in <span><a href="https://rfc-editor.org/rfc/rfc7748#section-5" class="relref">Section 5</a> of [<a href="#Curve25519" class="cite xref">Curve25519</a>]</span>,
+key <code>k</code> based on seed (of length <code>Nseed = 32</code> bytes), as described in Section 5 of <span>[<a href="#Curve25519" class="cite xref">Curve25519</a>]</span>,
 as well as the result of DiffieHellman(k, B), where B is the base point of Curve25519.<a href="#section-6.4.1.3-2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-6.4.1.3-2.2">
-                <p id="section-6.4.1.3-2.2.1">DiffieHellman(k, B): Implemented using the X25519 function in <span><a href="https://rfc-editor.org/rfc/rfc7748#section-5" class="relref">Section 5</a> of [<a href="#Curve25519" class="cite xref">Curve25519</a>]</span>.
+                <p id="section-6.4.1.3-2.2.1">DiffieHellman(k, B): Implemented using the X25519 function in Section 5 of <span>[<a href="#Curve25519" class="cite xref">Curve25519</a>]</span>.
 The output is then used raw, with no processing.<a href="#section-6.4.1.3-2.2.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
@@ -3271,9 +3271,9 @@ def AuthServerFinalize(ke3):
 such that the following conditions are met:<a href="#section-7-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-7-2.1">
-          <p id="section-7-2.1.1">The OPRF protocol uses the "base mode" variant of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> and implements
-the interface in <a href="#dependencies" class="auto internal xref">Section 2</a>. Examples include ristretto255-SHA512 and
-P256-SHA256.<a href="#section-7-2.1.1" class="pilcrow">¶</a></p>
+          <p id="section-7-2.1.1">The OPRF protocol uses the <code>modeOPRF</code> configuration of Section 3.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> and
+implements the interface in <a href="#dependencies" class="auto internal xref">Section 2</a>. Examples include ristretto255-SHA512
+and P256-SHA256.<a href="#section-7-2.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-7-2.2">
           <p id="section-7-2.2.1">The KDF, MAC, and Hash functions implement the interfaces in <a href="#dependencies" class="auto internal xref">Section 2</a>.
@@ -3635,8 +3635,8 @@ suitable for interoperable implementations.<a href="#section-10.1-4" class="pilc
 and includes necessary prime-order subgroup checks when receiving attacker-controlled
 values over the wire. This specification instantiates the prime-order group used for
 3DH using prime-order groups based on elliptic curves, as described in
-<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>], <a href="https://rfc-editor.org/rfc/rfc9497#section-2.1" class="relref">Section 2.1</a></span>. This specification also delegates OPRF group
-choice and operations to <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. As such, the prime-order group as used
+Section 2.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. This specification also delegates OPRF group
+choice and operations to Section 4 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. As such, the prime-order group as used
 in the OPRF and 3DH as specified in this document both adhere to the requirements as
 <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span>.<a href="#section-10.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -3645,7 +3645,7 @@ in the OPRF and 3DH as specified in this document both adhere to the requirement
 the OPRF functionality in the protocol. A critical part of DH-OPRF is the
 hash-to-group operation, which was not instantiated in the original analysis.
 However, the requirements for this operation were included. This specification
-instantiates the OPRF functionality based on the <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, which
+instantiates the OPRF functionality based on Section 3.3.1 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>, which
 is identical to the DH-OPRF functionality in <span>[<a href="#JKX18" class="cite xref">JKX18</a>]</span> and, concretely, uses
 the hash-to-curve functions in <span>[<a href="#RFC9380" class="cite xref">RFC9380</a>]</span>. All hash-to-curve
 methods in <span>[<a href="#RFC9380" class="cite xref">RFC9380</a>]</span> are compliant with the requirement
@@ -3785,7 +3785,7 @@ order of computing discrete logarithms or solving Diffie-Hellman, Brown and
 Gallant <span>[<a href="#BG04" class="cite xref">BG04</a>]</span> and Cheon <span>[<a href="#Cheon06" class="cite xref">Cheon06</a>]</span> show an attack that slightly improves
 on generic attacks. For typical curves, the attack requires an infeasible
 number of calls to the OPRF or results in insignificant security loss;
-see <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> for more information. For OPAQUE, these attacks
+see Section 7.2.3 of <span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span> for more information. For OPAQUE, these attacks
 are particularly impractical as they translate into an infeasible number of
 failed authentication attempts directed at individual users.<a href="#section-10.5-1" class="pilcrow">¶</a></p>
 </section>
@@ -4273,10 +4273,9 @@ outputs computed during the authentication of an unknown or unregistered user. N
 <code>masking_key</code> for the fake record's masking key parameter.<a href="#appendix-D-2" class="pilcrow">¶</a></p>
 <p id="appendix-D-3">All values are encoded in hexadecimal strings. The configuration information
 includes the (OPRF, Hash, KSF, KDF, MAC, Group, Context) tuple, where the Group
-matches that which is used in the OPRF. These test vectors were generated using
-<span>[<a href="#RFC9497" class="cite xref">RFC9497</a>]</span>. The KSF used for each test vector is the identity function
-(denoted Identity), which returns as output the input message supplied to the function
-without any modification, i.e., msg = Stretch(msg).<a href="#appendix-D-3" class="pilcrow">¶</a></p>
+matches that which is used in the OPRF. The KSF used for each test vector is the
+identity function (denoted Identity), which returns as output the input message
+supplied to the function without any modification, i.e., msg = Stretch(msg).<a href="#appendix-D-3" class="pilcrow">¶</a></p>
 <div id="real-vectors">
 <section id="appendix-D.1">
         <h3 id="name-real-test-vectors">
