@@ -725,7 +725,9 @@ def CreateCleartextCredentials(server_public_key, client_public_key,
                            response
                  <-------------------------
 
-    (record, export_key) = FinalizeRegistrationRequest(response,
+    (record, export_key) = FinalizeRegistrationRequest(password,
+                                                       blind,
+                                                       response,
                                                        server_identity,
                                                        client_identity)
 
