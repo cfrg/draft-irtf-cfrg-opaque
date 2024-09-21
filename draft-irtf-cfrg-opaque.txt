@@ -5,12 +5,12 @@
 Network Working Group                                        D. Bourdrez
 Internet-Draft                                                          
 Intended status: Informational                               H. Krawczyk
-Expires: 22 March 2025                                               AWS
+Expires: 25 March 2025                                               AWS
                                                                  K. Lewi
                                                                     Meta
                                                               C. A. Wood
                                                         Cloudflare, Inc.
-                                                       18 September 2024
+                                                       21 September 2024
 
 
                    The OPAQUE Augmented PAKE Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 22 March 2025.
+   This Internet-Draft will expire on 25 March 2025.
 
 Copyright Notice
 
@@ -220,7 +220,8 @@ Table of Contents
 
    This draft complies with the requirements for PAKE protocols set
    forth in [RFC8125].  This document represents the consensus of the
-   Crypto Forum Research Group (CFRG).
+   Crypto Forum Research Group (CFRG).  It is not an IETF product and is
+   not a standard.
 
 1.1.  Requirements Notation
 
