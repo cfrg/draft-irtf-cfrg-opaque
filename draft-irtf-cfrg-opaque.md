@@ -793,7 +793,9 @@ The registration protocol then runs as shown below:
                         response
               <-------------------------
 
- (record, export_key) = FinalizeRegistrationRequest(response,
+ (record, export_key) = FinalizeRegistrationRequest(password,
+                                                    blind,
+                                                    response,
                                                     server_identity,
                                                     client_identity)
 
