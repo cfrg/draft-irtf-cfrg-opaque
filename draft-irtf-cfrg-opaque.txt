@@ -347,8 +347,8 @@ Table of Contents
       bytes from input keying material ikm and an optional byte string
       salt.
 
-   *  Expand(prk, info, L): Expand a pseudorandom key prk using the
-      optional string info into L bytes of output keying material.
+   *  Expand(prk, info, L): Expand a pseudorandom key prk, using the
+      string info, into L bytes of output keying material.
 
    *  Nx: The output size of the Extract() function in bytes.
 
@@ -423,7 +423,8 @@ Table of Contents
    client's registration that it stores in a credential file alongside
    other clients registrations as needed.
 
-   The registration flow is shown below:
+   The registration flow is shown below, and the process is described in
+   more detail in Section 5:
 
        creds                                   parameters
          |                                         |
