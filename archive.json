@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-09-19T01:26:43.169558+00:00",
+  "timestamp": "2024-09-22T01:41:07.861549+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9511,7 +9511,7 @@
       "labels": [],
       "body": "> The client output of this stage is a single value export_key that the client may use for application-specific purposes, e.g., as a symmetric key used to encrypt additional information for storage on the server.\r\n\r\nthis is a dangerous feature, as a malicious user can use this to store plaintext data (for example incriminating CSAM) on the server, and in jurisdictions like germany this can lead to criminal conviction of the unassuming operator of the server. a server has no way of (except for estimating entropy) checking if the data stored is indeed encrypted in any way (may or may not be using export_key). furthermore this can also be used to distribute other illegal content like piracy, command and control infrastructure for malware, etc (if the encrypted data is provided by the server at the createcredentialresponse step). One way to make mitigate against this feature being abused as a public data distribution mechanism, the export_key \"encrypted-or-not\" blob should be only dispensed after the client successfully authenticated themselves to the server.\r\n\r\nmaybe this or something similar should be added to the security considerations?\r\n",
       "createdAt": "2024-08-24T16:21:41Z",
-      "updatedAt": "2024-09-18T18:34:33Z",
+      "updatedAt": "2024-09-20T20:25:38Z",
       "closedAt": null,
       "comments": [
         {
@@ -9520,6 +9520,20 @@
           "body": "@stef Sorry for the delays in replying! The clause \"e.g., as a symmetric key used to encrypt additional information for storage on the server.\" is meant to be an example on what \"application-specific purposes\" the export key can be used for.\r\n\r\nIt certainly isn't meant to be a recommendation that exhaustively considers all of the security implications of doing so. As you point out, there should probably be other mechanisms to authenticate what the client stores on the server using this manner. However, this is outside of the scope of the exposition here, and I don't think merits expanding on in the security considerations. Really, the protocol recommendations end once the export_key is produced, and we are not trying to say how this export key should be used for a secure application.\r\n\r\nTogether with the fact that we are nearing the end of the draft review process (and not wanting to kick back up more discussion that isn't essential), I'm inclined to not make changes to the security considerations text at this point. Hope that works for you!",
           "createdAt": "2024-09-18T18:34:32Z",
           "updatedAt": "2024-09-18T18:34:32Z"
+        },
+        {
+          "author": "stef",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "as you seem to be closing other issues of mine as well, i will write a blogpost with all the open questions that are out of scope or delaying the finalization of the doc. people can then find this additional commentary (pointing also back at these issues and your answer) as additional context. indeed i think (most if not all of) the issues associated with this doc, are incredibly useful for understanding decisions and other aspects that are not covered in the doc itself. as such if nothing else i would insist of a reference in the doc itself to the all the issues in this repository. hope that works for you.",
+          "createdAt": "2024-09-20T15:01:38Z",
+          "updatedAt": "2024-09-20T15:01:38Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Hi @stef, sounds good to me! This github repo will be added as a link to the \"Additional Resources\" section of the data tracker website for the document. That will hopefully be a way for others to track down these discussions from the official website.",
+          "createdAt": "2024-09-20T20:25:37Z",
+          "updatedAt": "2024-09-20T20:25:37Z"
         }
       ]
     }
@@ -35292,26 +35306,42 @@
       "id": "PR_kwDOD79ejs572mVY",
       "title": "Adding IETF note for RFC5743",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/460",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Adding a sentence to the end of the Introduction to say \u201cThis document is not an IETF product and is not a standard\u201d to meet the requirements of RFC 5743.",
       "createdAt": "2024-09-18T06:27:10Z",
-      "updatedAt": "2024-09-18T07:16:47Z",
+      "updatedAt": "2024-09-21T13:44:15Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f56995d301af56e8204e9e4cd8814f7de456237a",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "add_note",
       "headRefOid": "994e5475842391041840f9e84f1be6debfbe3067",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-09-21T13:44:15Z",
+      "mergedAt": "2024-09-21T13:44:15Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "368797f0afed8af6aaf6ee4c3c00a3bcbc374321"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6KRIh7",
+          "commit": {
+            "abbreviatedOid": "994e547"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-09-21T13:44:09Z",
+          "updatedAt": "2024-09-21T13:44:09Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 461,
@@ -35374,104 +35404,168 @@
       "id": "PR_kwDOD79ejs572679",
       "title": "Normalize RFC9497 references",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/463",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Some of the APIs reference specific sections of RFC 9497, some do not. This PR ensures that we consistently reference RFC 9497 in cases when the APIs are defined there",
       "createdAt": "2024-09-18T07:20:49Z",
-      "updatedAt": "2024-09-18T17:24:30Z",
+      "updatedAt": "2024-09-21T13:48:07Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f56995d301af56e8204e9e4cd8814f7de456237a",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "normalize_rfc_references",
       "headRefOid": "8939ad7baa36963a6fd096a4c167b4d2235a04b1",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-09-21T13:48:06Z",
+      "mergedAt": "2024-09-21T13:48:06Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "5d0140ec753df258c318a3776838fa32482061a8"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6KRJcn",
+          "commit": {
+            "abbreviatedOid": "8939ad7"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-09-21T13:48:02Z",
+          "updatedAt": "2024-09-21T13:48:02Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 464,
       "id": "PR_kwDOD79ejs577qsn",
       "title": "Incorporating minor editorial clarifications",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/464",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Two small edits:\r\n1) The Expand interface as used in the protocol always has the info string supplied. I edited the text and removed the word \u201coptional\u201d to make this more clear\r\n2) For clarity, changing \u201cThe registration flow is shown below\u201d to \u201cThe registration message flow is shown below and the process is described in detail in Section 5\u201d.",
       "createdAt": "2024-09-18T17:38:26Z",
-      "updatedAt": "2024-09-18T17:47:39Z",
+      "updatedAt": "2024-09-21T13:56:06Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f56995d301af56e8204e9e4cd8814f7de456237a",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "minor_edits",
       "headRefOid": "98696246fd54b7ce0313ef809bbdae71fc393a9e",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-09-21T13:56:06Z",
+      "mergedAt": "2024-09-21T13:56:06Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "72703ea4e89e619b86943a8f2d850fe77e31ecd5"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6KRJ86",
+          "commit": {
+            "abbreviatedOid": "9869624"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-09-21T13:55:56Z",
+          "updatedAt": "2024-09-21T13:55:56Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 465,
       "id": "PR_kwDOD79ejs577stM",
       "title": "Fixing FinalizeRegistrationRequest diagram API",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/465",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "There was a mismatch between the definition of FinalizeRegistrationRequest, and its representation in the protocol diagram. This adds the missing parameters (password, blind) to the diagram.",
       "createdAt": "2024-09-18T17:44:10Z",
-      "updatedAt": "2024-09-18T17:47:44Z",
+      "updatedAt": "2024-09-21T13:56:57Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f56995d301af56e8204e9e4cd8814f7de456237a",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "fix_finalize_registration",
       "headRefOid": "80f2e26b7e1ddd1b043328bbc4fd3a60a2a3e01b",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-09-21T13:56:57Z",
+      "mergedAt": "2024-09-21T13:56:57Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "ec775419e24c39cd421de274c185e866f569c868"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6KRKxg",
+          "commit": {
+            "abbreviatedOid": "80f2e26"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-09-21T13:56:51Z",
+          "updatedAt": "2024-09-21T13:56:51Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 466,
       "id": "PR_kwDOD79ejs577zuX",
       "title": "Fixing constructors for structs in pseudocode",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/466",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Instead of the using the syntax\r\n\r\n```\r\nCreate Envelope envelope with (envelope_nonce, auth_tag)\r\n```\r\n\r\nin pseudocode, we now say:\r\n```\r\nenvelope = Envelope {\r\n  envelope_nonce,\r\n  auth_tag\r\n}\r\n```\r\n\r\nThis is done for all of the instantiated structs in the protocol.\r\n\r\nAlso, we are renaming the `nonce` field of an `Envelope` to be called `envelope_nonce`, as this will match the protocol and test vectors.",
       "createdAt": "2024-09-18T18:02:53Z",
-      "updatedAt": "2024-09-18T18:05:51Z",
+      "updatedAt": "2024-09-21T13:49:16Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "f56995d301af56e8204e9e4cd8814f7de456237a",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "fix_struct_constructors",
       "headRefOid": "bcaff8baa17bae770b15dabba9c74683ec44b176",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-09-21T13:49:16Z",
+      "mergedAt": "2024-09-21T13:49:16Z",
+      "mergedBy": "bytemare",
+      "mergeCommit": {
+        "oid": "ceafef6e4ac33f48d8fa552f259801c803f5ac38"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6KRJfW",
+          "commit": {
+            "abbreviatedOid": "bcaff8b"
+          },
+          "author": "bytemare",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2024-09-21T13:49:12Z",
+          "updatedAt": "2024-09-21T13:49:12Z",
+          "comments": []
+        }
+      ]
     }
   ]
 }
