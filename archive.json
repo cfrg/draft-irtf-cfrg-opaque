@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-10-24T01:36:34.952344+00:00",
+  "timestamp": "2024-10-27T01:42:34.689768+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9536,6 +9536,22 @@
           "updatedAt": "2024-09-20T20:25:37Z"
         }
       ]
+    },
+    {
+      "number": 467,
+      "id": "I_kwDOD79ejs6b5xLW",
+      "title": "Recommended Configurations",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/467",
+      "state": "OPEN",
+      "author": "nikgraf",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "I'm the maintainer of https://github.com/serenity-kit/opaque which is a WebAssembly package on top of opaque-ke.\r\n\r\nI'm wondering if the [recommended configurations](https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-17.html#name-configurations) for argon2id should be extended or changed.\r\n\r\nIn a browser environment (Chrome on a MacBook Pro M1 2020, 16GB RAM) running client.finishRegistration and client.finishLogin each run for about ~13 seconds. This is with the recommended configuration of 2GB  memory, one iteration and parallelism of 4.\r\n\r\nI'm wondering if the recommended configuration should be changed or extended to also include a configuration that makes sense for such a browser environment.\r\n\r\nPossible option:\r\n- 2^16 (64MB) memory, 3 iterations, 4 parallelism. This is the recommendation of the Argon2id RFC for memory-constrained environments [https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations](https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations). This makes the functions each to run for about ~1 second in Chrome on a MacBook Pro M1 2020, 16GB RAM.\r\n\r\nAnother option would be one of those: [https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id)\r\n\r\nNote: We noticed that when using 2^21 memory WebAssembly would error once the function is invoked. It works with (2^21)-1. This could be an implementation detail, but thought it was worth mentioning.\r\n\r\nFeedback is very welcome. If it doesn't make sense to change the options I'm wondering what might be good parameters as defaults/presets in our case. Here our WIP PR: https://github.com/serenity-kit/opaque/pull/127",
+      "createdAt": "2024-10-26T06:58:51Z",
+      "updatedAt": "2024-10-26T06:58:51Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
