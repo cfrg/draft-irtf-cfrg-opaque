@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-11-05T01:35:29.312762+00:00",
+  "timestamp": "2024-11-07T01:35:09.178537+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9550,6 +9550,22 @@
       "body": "I'm the maintainer of https://github.com/serenity-kit/opaque which is a WebAssembly package on top of opaque-ke.\r\n\r\nI'm wondering if the [recommended configurations](https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-17.html#name-configurations) for argon2id should be extended or changed.\r\n\r\nIn a browser environment (Chrome on a MacBook Pro M1 2020, 16GB RAM) running client.finishRegistration and client.finishLogin each run for about ~13 seconds. This is with the recommended configuration of 2GB  memory, one iteration and parallelism of 4.\r\n\r\nI'm wondering if the recommended configuration should be changed or extended to also include a configuration that makes sense for such a browser environment.\r\n\r\nPossible option:\r\n- 2^16 (64MB) memory, 3 iterations, 4 parallelism. This is the recommendation of the Argon2id RFC for memory-constrained environments [https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations](https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations). This makes the functions each to run for about ~1 second in Chrome on a MacBook Pro M1 2020, 16GB RAM.\r\n\r\nAnother option would be one of those: [https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id)\r\n\r\nNote: We noticed that when using 2^21 memory WebAssembly would error once the function is invoked. It works with (2^21)-1. This could be an implementation detail, but thought it was worth mentioning.\r\n\r\nFeedback is very welcome. If it doesn't make sense to change the options I'm wondering what might be good parameters as defaults/presets in our case. Here our WIP PR: https://github.com/serenity-kit/opaque/pull/127",
       "createdAt": "2024-10-26T06:58:51Z",
       "updatedAt": "2024-10-26T06:58:51Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 468,
+      "id": "I_kwDOD79ejs6dHXMX",
+      "title": "Is the recommended scrypt configuration incomplete?",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/468",
+      "state": "OPEN",
+      "author": "iaik-jheher",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "The latest RFC draft (draft 17), in section `7. Configurations`, specifies the recommended scrypt parameters as `(N = 32768, r = 8, p = 1)`, and refers to [RFC 7914](https://www.rfc-editor.org/rfc/rfc7914) for the definition of scrypt.\r\n\r\nAs best as I can tell, `scrypt` as specified in RFC 7914 takes parameters `P` (passphrase), `S` (salt), `N` (cost parameter), `r` (block size), `p` (parallelization difficulty), and `dkLen` (output length).\r\n\r\nIt is clear that `P = msg`, and the draft specifies values for `N`, `r`, and `p`. However, the other parameters are not explicitly specified.\r\n\r\nMy best guesses are:\r\n* `S = zeroes(16)`, because that's what everything else uses\r\n* `dkLen = 32`, since that's the output length of the P256-SHA256 OPRF, and I assume that KSF input length and output length are equal\r\n\r\nStill, I think these values -- unless I am completely missing something -- are missing, and should be specified explicitly.",
+      "createdAt": "2024-11-05T16:39:50Z",
+      "updatedAt": "2024-11-05T16:39:50Z",
       "closedAt": null,
       "comments": []
     }
