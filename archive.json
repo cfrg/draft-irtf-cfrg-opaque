@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-11-12T01:26:58.418434+00:00",
+  "timestamp": "2024-11-14T01:36:21.919048+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9568,6 +9568,30 @@
       "updatedAt": "2024-11-05T16:39:50Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 469,
+      "id": "I_kwDOD79ejs6eSCZs",
+      "title": "CleartextCredentials serialization is unspecified",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/469",
+      "state": "OPEN",
+      "author": "iaik-jheher",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "CleartextCredentials is specified as:\r\n```\r\nstruct {\r\n  uint8 server_public_key[Npk];\r\n  uint8 server_identity<1..2^16-1>;\r\n  uint8 client_identity<1..2^16-1>;\r\n} CleartextCredentials;\r\n```\r\n\r\nAn instance of `CleartextCredentials` is then concatenated with the envelope nonce to generate the `auth_tag`:\r\n```\r\nauth_tag =\r\n    MAC(auth_key, concat(envelope_nonce, cleartext_credentials))\r\n```\r\n\r\nHowever, the document does not specify anywhere how to serialize a `CleartextCredentials` structure to bytes. As opposed to every other structure in the document, which has fixed field lengths (and can simply be serialized by concatenating the fields), `CleartextCredentials` has two fields with dynamic lengths. It is not immediately obvious how it should be serialized.\r\n\r\nI was able to make an educated guess (based on the length constraint) that `CleartextCredentials` should be serialized as:\r\n```\r\nconcat(\r\n    server_public_key,\r\n    I2OSP(len(server_identity), 2), server_identity,\r\n    I2OSP(len(client_identity), 2), client_identity)\r\n```\r\n\r\nWhich also then matches the provided test vectors. Nevertheless, this should be specified in the document.",
+      "createdAt": "2024-11-13T13:27:49Z",
+      "updatedAt": "2024-11-13T15:14:49Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "iaik-jheher",
+          "authorAssociation": "NONE",
+          "body": "This also affects `CustomLabel`. I suspect that language similar to RFC 8446's section 3.4 is missing.",
+          "createdAt": "2024-11-13T15:14:47Z",
+          "updatedAt": "2024-11-13T15:14:47Z"
+        }
+      ]
     }
   ],
   "pulls": [
