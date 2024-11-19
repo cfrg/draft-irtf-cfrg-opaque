@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-11-17T01:45:59.988989+00:00",
+  "timestamp": "2024-11-19T01:41:59.631314+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -35630,6 +35630,32 @@
           "comments": []
         }
       ]
+    },
+    {
+      "number": 470,
+      "id": "PR_kwDOD79ejs6CUM6W",
+      "title": "Addressing comments from ISRG review",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/470",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "See https://mailarchive.ietf.org/arch/msg/cfrg/dkobloepKBl8kmpcyMb71rX03ms/\r\n\r\nAnd the responses:\r\n\r\n\r\n1. Updated\r\n2. Updated\r\n3. Changed, but simply removed the word \u201chence\u201d instead of adding a comma between \u201chence\u201d and \u201cdetermined\u201d\r\n4. Added notes that \u201cThis is equivalent to the Blind/Finalize function described in Section 3.3.1 of {{RFC9497}}.\u201d\r\n5. Updated\r\n6. I think that how the session_key gets used as the output of the key exchange is outside the scope of this document. We added clarification for the usage of export_key because it is an atypical output for key exchange, but we expect session_key to be more well-understood. Additionally, it is difficult to arrive at a consensus for how session_key is used, since it is likely to be application-specific. However, unless others chime in with the opinion that a subsection on Session Key Usage should be added to the document, we are omitting further explanation of this parameter in the draft.\r\n7. Changed, since creds/credentials was the only mismatch, we instead just updated the diagram to use \u201ccredentials\u201d rather than \u201ccreds\u201d.\r\n8. Both options are acceptable and I think it is application-specific as to which is preferable. The advantage to using separate server_private_key parameters for different clients is to allow for domain separation and enable smoother key rotation. However, these are optional benefits, since the drawback is that the server has to store more key material if it is per-client.\r\n9. Updated. The same fake record should be returned. The text has been modified slightly to hopefully make this more clear:\r\n\u201cIt is RECOMMENDED that a fake client record is created once (e.g. as the first user record of the application) and then stored alongside legitimate client records, to serve subsequent client requests. This allows servers to retrieve the record in a time comparable to that of a legitimate client record.\u201d\r\n10. Updated, to point to the Security Analysis section.\r\n11. Updated, amended the text to say \u201cwith previous UC security modeling\u201d.\r\n12. The convention we follow for each of these pseudocode function definitions is to simply list the exception cases but not actually incorporate them into the function descriptions.\r\n13. Updated\r\n",
+      "createdAt": "2024-11-18T23:27:20Z",
+      "updatedAt": "2024-11-18T23:27:20Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
+      "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
+      "headRefName": "isrg_review_changes",
+      "headRefOid": "3e267c91c2d1a3f47157425a025c6988cc3f5db1",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
     }
   ]
 }
