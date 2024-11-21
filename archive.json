@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-11-19T01:41:59.631314+00:00",
+  "timestamp": "2024-11-21T01:40:40.860155+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9504,15 +9504,15 @@
       "id": "I_kwDOD79ejs6UGZas",
       "title": "export_key encrypted blobs stored on the server come with liabilities",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/459",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "stef",
       "authorAssociation": "CONTRIBUTOR",
       "assignees": [],
       "labels": [],
       "body": "> The client output of this stage is a single value export_key that the client may use for application-specific purposes, e.g., as a symmetric key used to encrypt additional information for storage on the server.\r\n\r\nthis is a dangerous feature, as a malicious user can use this to store plaintext data (for example incriminating CSAM) on the server, and in jurisdictions like germany this can lead to criminal conviction of the unassuming operator of the server. a server has no way of (except for estimating entropy) checking if the data stored is indeed encrypted in any way (may or may not be using export_key). furthermore this can also be used to distribute other illegal content like piracy, command and control infrastructure for malware, etc (if the encrypted data is provided by the server at the createcredentialresponse step). One way to make mitigate against this feature being abused as a public data distribution mechanism, the export_key \"encrypted-or-not\" blob should be only dispensed after the client successfully authenticated themselves to the server.\r\n\r\nmaybe this or something similar should be added to the security considerations?\r\n",
       "createdAt": "2024-08-24T16:21:41Z",
-      "updatedAt": "2024-09-20T20:25:38Z",
-      "closedAt": null,
+      "updatedAt": "2024-11-20T18:17:46Z",
+      "closedAt": "2024-11-20T18:17:46Z",
       "comments": [
         {
           "author": "kevinlewi",
@@ -9534,6 +9534,13 @@
           "body": "Hi @stef, sounds good to me! This github repo will be added as a link to the \"Additional Resources\" section of the data tracker website for the document. That will hopefully be a way for others to track down these discussions from the official website.",
           "createdAt": "2024-09-20T20:25:37Z",
           "updatedAt": "2024-09-20T20:25:37Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "A link to this github repository has been added to https://datatracker.ietf.org/doc/draft-irtf-cfrg-opaque/ . Closing this issue.",
+          "createdAt": "2024-11-20T18:17:46Z",
+          "updatedAt": "2024-11-20T18:17:46Z"
         }
       ]
     },
@@ -9549,9 +9556,17 @@
       "labels": [],
       "body": "I'm the maintainer of https://github.com/serenity-kit/opaque which is a WebAssembly package on top of opaque-ke.\r\n\r\nI'm wondering if the [recommended configurations](https://www.ietf.org/archive/id/draft-irtf-cfrg-opaque-17.html#name-configurations) for argon2id should be extended or changed.\r\n\r\nIn a browser environment (Chrome on a MacBook Pro M1 2020, 16GB RAM) running client.finishRegistration and client.finishLogin each run for about ~13 seconds. This is with the recommended configuration of 2GB  memory, one iteration and parallelism of 4.\r\n\r\nI'm wondering if the recommended configuration should be changed or extended to also include a configuration that makes sense for such a browser environment.\r\n\r\nPossible option:\r\n- 2^16 (64MB) memory, 3 iterations, 4 parallelism. This is the recommendation of the Argon2id RFC for memory-constrained environments [https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations](https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations). This makes the functions each to run for about ~1 second in Chrome on a MacBook Pro M1 2020, 16GB RAM.\r\n\r\nAnother option would be one of those: [https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id)\r\n\r\nNote: We noticed that when using 2^21 memory WebAssembly would error once the function is invoked. It works with (2^21)-1. This could be an implementation detail, but thought it was worth mentioning.\r\n\r\nFeedback is very welcome. If it doesn't make sense to change the options I'm wondering what might be good parameters as defaults/presets in our case. Here our WIP PR: https://github.com/serenity-kit/opaque/pull/127",
       "createdAt": "2024-10-26T06:58:51Z",
-      "updatedAt": "2024-10-26T06:58:51Z",
+      "updatedAt": "2024-11-20T18:16:29Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Hi @nikgraf, the configurations section caveats these parameter choices with the following statement:\r\n\r\n> **Absent an application-specific profile**, the following configurations are RECOMMENDED:\r\n\r\nIt's difficult for the draft to take a stance on these parameters which would work for all contexts, and a browser environment / WebAssembly with limited memory would definitely constitute as an \"application-specific profile\" in my mind. So, if I were you, I would go with the \"2^16 (64MB) memory, 3 iterations, 4 parallelism\" option that the Argon2id RFC recommends.\r\n\r\nHowever, I don't think we will change the existing draft text to accommodate this option, since the text already comes with the caveat mentioned above.\r\n\r\nHope this helps!",
+          "createdAt": "2024-11-20T18:16:27Z",
+          "updatedAt": "2024-11-20T18:16:27Z"
+        }
+      ]
     },
     {
       "number": 468,
@@ -9565,9 +9580,24 @@
       "labels": [],
       "body": "The latest RFC draft (draft 17), in section `7. Configurations`, specifies the recommended scrypt parameters as `(N = 32768, r = 8, p = 1)`, and refers to [RFC 7914](https://www.rfc-editor.org/rfc/rfc7914) for the definition of scrypt.\r\n\r\nAs best as I can tell, `scrypt` as specified in RFC 7914 takes parameters `P` (passphrase), `S` (salt), `N` (cost parameter), `r` (block size), `p` (parallelization difficulty), and `dkLen` (output length).\r\n\r\nIt is clear that `P = msg`, and the draft specifies values for `N`, `r`, and `p`. However, the other parameters are not explicitly specified.\r\n\r\nMy best guesses are:\r\n* `S = zeroes(16)`, because that's what everything else uses\r\n* `dkLen = 32`, since that's the output length of the P256-SHA256 OPRF, and I assume that KSF input length and output length are equal\r\n\r\nStill, I think these values -- unless I am completely missing something -- are missing, and should be specified explicitly.",
       "createdAt": "2024-11-05T16:39:50Z",
-      "updatedAt": "2024-11-05T16:39:50Z",
+      "updatedAt": "2024-11-20T10:36:47Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Thanks, you are right. Although the salt doesn't matter and the output length just needs to satisfy collision-resistance (for 128-bit security as mentioned in that section, dkLen = 32 suffices), it would be a good idea to mention these explicitly.\r\n\r\nI have updated this in https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/472",
+          "createdAt": "2024-11-20T00:15:12Z",
+          "updatedAt": "2024-11-20T00:15:12Z"
+        },
+        {
+          "author": "iaik-jheher",
+          "authorAssociation": "NONE",
+          "body": "Looks good, thanks!",
+          "createdAt": "2024-11-20T10:36:46Z",
+          "updatedAt": "2024-11-20T10:36:46Z"
+        }
+      ]
     },
     {
       "number": 469,
@@ -9581,7 +9611,7 @@
       "labels": [],
       "body": "CleartextCredentials is specified as:\r\n```\r\nstruct {\r\n  uint8 server_public_key[Npk];\r\n  uint8 server_identity<1..2^16-1>;\r\n  uint8 client_identity<1..2^16-1>;\r\n} CleartextCredentials;\r\n```\r\n\r\nAn instance of `CleartextCredentials` is then concatenated with the envelope nonce to generate the `auth_tag`:\r\n```\r\nauth_tag =\r\n    MAC(auth_key, concat(envelope_nonce, cleartext_credentials))\r\n```\r\n\r\nHowever, the document does not specify anywhere how to serialize a `CleartextCredentials` structure to bytes. As opposed to every other structure in the document, which has fixed field lengths (and can simply be serialized by concatenating the fields), `CleartextCredentials` has two fields with dynamic lengths. It is not immediately obvious how it should be serialized.\r\n\r\nI was able to make an educated guess (based on the length constraint) that `CleartextCredentials` should be serialized as:\r\n```\r\nconcat(\r\n    server_public_key,\r\n    I2OSP(len(server_identity), 2), server_identity,\r\n    I2OSP(len(client_identity), 2), client_identity)\r\n```\r\n\r\nWhich also then matches the provided test vectors. Nevertheless, this should be specified in the document.",
       "createdAt": "2024-11-13T13:27:49Z",
-      "updatedAt": "2024-11-13T15:14:49Z",
+      "updatedAt": "2024-11-20T10:36:29Z",
       "closedAt": null,
       "comments": [
         {
@@ -9590,6 +9620,20 @@
           "body": "This also affects `CustomLabel`. I suspect that language similar to RFC 8446's section 3.4 is missing.",
           "createdAt": "2024-11-13T15:14:47Z",
           "updatedAt": "2024-11-13T15:14:47Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "@iaik-jheher Thank you for pointing this out! This has been addressed in #471 , please take a look and let me know if this looks good.",
+          "createdAt": "2024-11-19T22:46:25Z",
+          "updatedAt": "2024-11-19T22:46:25Z"
+        },
+        {
+          "author": "iaik-jheher",
+          "authorAssociation": "NONE",
+          "body": "Looks good to me!",
+          "createdAt": "2024-11-20T10:36:27Z",
+          "updatedAt": "2024-11-20T10:36:27Z"
         }
       ]
     }
@@ -35650,6 +35694,99 @@
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "isrg_review_changes",
       "headRefOid": "3e267c91c2d1a3f47157425a025c6988cc3f5db1",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 471,
+      "id": "PR_kwDOD79ejs6CcyX6",
+      "title": "Adding missing encodings for CleartextCredentials and CustomLabel",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/471",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Addresses #469 ",
+      "createdAt": "2024-11-19T22:45:54Z",
+      "updatedAt": "2024-11-20T18:09:14Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
+      "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
+      "headRefName": "add_encodings",
+      "headRefOid": "03db58c0073ee2eeb1acc2ef27a570ba6f43e7ff",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDOD79ejs6R7Ye7",
+          "commit": {
+            "abbreviatedOid": "03db58c"
+          },
+          "author": "iaik-jheher",
+          "authorAssociation": "NONE",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-11-20T10:54:23Z",
+          "updatedAt": "2024-11-20T10:54:24Z",
+          "comments": [
+            {
+              "originalPosition": 21,
+              "body": "A reference to RFC8446 might potentially be overkill here.\r\n\r\nYou might also specify `CustomLabel` as the concatenation of `I2OSP(Length, 2)`, `I2OSP(len(\"OPAQUE-\" + Label), 2)`, `\"OPAQUE-\"`, `Label`, `I2OSP(len(Context))`, and `Context`. This would also match how `Preamble` is specified in 6.4.2.1.",
+              "createdAt": "2024-11-20T10:54:23Z",
+              "updatedAt": "2024-11-20T10:54:24Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOD79ejs6R_mDR",
+          "commit": {
+            "abbreviatedOid": "03db58c"
+          },
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2024-11-20T18:09:14Z",
+          "updatedAt": "2024-11-20T18:09:14Z",
+          "comments": [
+            {
+              "originalPosition": 21,
+              "body": "Thanks! I contemplated doing it this way, but ultimately decided that referencing the section in RFC8446 was a more concise way to describe the concatenation. Hope that this is still clear enough.",
+              "createdAt": "2024-11-20T18:09:14Z",
+              "updatedAt": "2024-11-20T18:09:15Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 472,
+      "id": "PR_kwDOD79ejs6CdLQO",
+      "title": "Updating scrypt salt + output length params",
+      "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/472",
+      "state": "OPEN",
+      "author": "kevinlewi",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Addresses https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/468",
+      "createdAt": "2024-11-20T00:14:57Z",
+      "updatedAt": "2024-11-20T00:14:57Z",
+      "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
+      "baseRefName": "master",
+      "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
+      "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
+      "headRefName": "scrypt_params",
+      "headRefOid": "d202762fbbca682db7f512aec921f918ca498ff5",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
