@@ -391,7 +391,7 @@ the OPAQUE protocol are of length `Nn` and `Nseed` bytes, respectively, where
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between
 client and server for computing a PRF, where the PRF key is held by the server
 and the input to the function is provided by the client.  The client does not
-learn anything about the PRF other than the obtained output and the server
+learn anything about the PRF other than the obtained output, and the server
 learns nothing about the client's input or the function output.
 This specification depends on the prime-order OPRF construction specified
 as `modeOPRF` (`0x00`) from Section 3.1 of {{RFC9497}}.
@@ -400,17 +400,19 @@ The following OPRF client APIs are used:
 
 - Blind(element): Create and output (`blind`, `blinded_element`), consisting of a blinded
   representation of input `element`, denoted `blinded_element`, along with a value to revert
-  the blinding process, denoted `blind`.
+  the blinding process, denoted `blind`. This is equivalent to the Blind function
+  described in Section 3.3.1 of {{RFC9497}}.
 - Finalize(element, blind, evaluated_element): Finalize the OPRF evaluation using input `element`,
   random inverter `blind`, and evaluation output `evaluated_element`, yielding output `oprf_output`.
+  This is equivalent to the Finalize function described in Section 3.3.1 of {{RFC9497}}.
 
 Moreover, the following OPRF server APIs are used:
 
-- BlindEvaluate(k, blinded_element): Evaluate blinded input element `blinded_element` using
+- BlindEvaluate(k, blinded_element): Evaluate blinded input `blinded_element` using
   input key `k`, yielding output element `evaluated_element`. This is equivalent to
   the BlindEvaluate function described in Section 3.3.1 of {{RFC9497}}, where `k` is the private key parameter.
 - DeriveKeyPair(seed, info): Create and output (`sk`, `pk`), consisting of a private and public key derived
-  deterministically from a `seed` and `info` parameter, as described in Section 3.2 of {{RFC9497}}.
+  deterministically from an input `seed` and input `info` parameter, as described in Section 3.2 of {{RFC9497}}.
 
 Finally, this specification makes use of the following shared APIs and parameters:
 
@@ -501,7 +503,7 @@ The registration flow is shown below, and the process is described in more detai
 {{registration-phase}}:
 
 ~~~
-    creds                                   parameters
+  credentials                               parameters
       |                                         |
       v                                         v
     Client                                    Server
@@ -512,7 +514,7 @@ The registration flow is shown below, and the process is described in more detai
              <-------------------------
                       record
              ------------------------->
-   ------------------------------------------------
+    ------------------------------------------------
       |                                         |
       v                                         v
   export_key                                 record
@@ -538,7 +540,7 @@ use these values as needed.
 The authenticated key exchange flow is shown below:
 
 ~~~
-    creds                             (parameters, record)
+  credentials                          (parameters, record)
       |                                         |
       v                                         v
     Client                                    Server
@@ -549,7 +551,7 @@ The authenticated key exchange flow is shown below:
              <-------------------------
                    AKE message 3
              ------------------------->
-   ------------------------------------------------
+    ------------------------------------------------
       |                                         |
       v                                         v
 (export_key, session_key)                  session_key
@@ -1435,8 +1437,9 @@ argument that is configured so that:
 - `record.envelope` is set to the byte string consisting only of zeros of length `Nn + Nm`
 
 It is RECOMMENDED that a fake client record is created once (e.g. as the first user record
-of the application) and stored alongside legitimate client records. This allows servers to retrieve
-the record in a time comparable to that of a legitimate client record.
+of the application) and then stored alongside legitimate client records, to serve
+subsequent client requests. This allows servers to retrieve the record in a time comparable
+to that of a legitimate client record.
 
 Note that the responses output by either scenario are indistinguishable to an adversary
 that is unable to guess the registered password for the client corresponding to `credential_identifier`.
@@ -2016,7 +2019,7 @@ implementation might run out of memory.
 
 OPAQUE is defined as the composition of two functionalities: an OPRF and
 an AKE protocol. It can be seen as a "compiler" for transforming any AKE
-protocol (with KCI security and forward secrecy; see below)
+protocol (with KCI security and forward secrecy; see {{security-analysis}})
 into a secure aPAKE protocol. In OPAQUE, the client derives a private key
 during password registration and retrieves this key each time
 it needs to authenticate to the server. The OPRF security properties
@@ -2043,7 +2046,7 @@ implementation considerations.
   server, as described in {{registration-phase}}, whereas the servers construct
   envelopes in {{JKX18}}. This change adds to the security of the protocol.
   {{JKX18}} considered the case where the envelope was constructed by the
-  server for reasons of compatibility with previous UC modeling. {{HJKW23}}
+  server for reasons of compatibility with previous UC security modeling. {{HJKW23}}
   analyzes the registration phase as specified in this document. This
   change was made to support registration flows where the client chooses the
   password and wishes to keep it secret from the server, and it is compatible
@@ -2220,7 +2223,7 @@ the OPAQUE protocol begins).
 
 Applications may have different policies about how and when identities are
 determined. A natural approach is to tie client_identity to the identity the server uses
-to fetch the envelope (hence determined during password registration) and to tie server_identity
+to fetch the envelope (determined during password registration) and to tie server_identity
 to the server identity used by the client to initiate an offline password
 registration or online authenticated key exchange session. server_identity and client_identity can also
 be part of the envelope or be tied to the parties' public keys. In principle, identities
@@ -2379,7 +2382,7 @@ to recovery through dictionary attacks, both online and offline.
 Server implementations of OPAQUE do not need access to the raw AKE private key. They only require
 the ability to compute shared secrets as specified in {{key-schedule-functions}}. Thus, applications
 may store the server AKE private key in a Hardware Security Module (HSM) or
-similar. Upon compromise of the OPRF seed and client envelopes, this would prevent an
+similar. Upon compromise of `oprf_seed` and client envelopes, this would prevent an
 attacker from using this data to mount a server spoofing attack. Supporting implementations
 need to consider allowing separate AKE and OPRF algorithms in cases where the HSM is
 incompatible with the OPRF algorithm.
@@ -2514,7 +2517,7 @@ A {{SIGMA-I}} instantiation differs more drastically from OPAQUE-3DH since authe
 uses digital signatures instead of Diffie-Hellman. In particular, both KE2 and KE3
 would carry a digital signature, computed using the server and client private keys
 established during registration, respectively, as well as a MAC, where the MAC is
-computed as in OPAQUE-3DH.
+computed as in OPAQUE-3DH but it also covers the identity of the sender.
 
 The key schedule would also change. Specifically, the key schedule `preamble` value would
 use a different constant prefix -- "SIGMA-I" instead of "3DH" -- and the `IKM` computation
