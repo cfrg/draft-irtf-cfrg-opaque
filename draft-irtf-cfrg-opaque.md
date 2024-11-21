@@ -699,7 +699,14 @@ def Store(randomized_password, server_public_key,
     CreateCleartextCredentials(server_public_key, client_public_key,
                                server_identity, client_identity)
   auth_tag =
-    MAC(auth_key, concat(envelope_nonce, cleartext_credentials))
+    MAC(auth_key, concat(
+      envelope_nonce,
+      server_public_key,
+      I2OSP(len(cleartext_credentials.server_identity), 2),
+      cleartext_credentials.server_identity,
+      I2OSP(len(cleartext_credentials.client_identity), 2),
+      cleartext_credentials.client_identity
+    ))
 
   envelope = Envelope {
     envelope_nonce,
@@ -1589,7 +1596,7 @@ Expand-Label(Secret, Label, Context, Length) =
     Expand(Secret, CustomLabel, Length)
 ~~~
 
-Where CustomLabel is specified as:
+Where CustomLabel is specified and encoded (following Section 3.4 of {{?RFC8446}}) as:
 
 ~~~
 struct {
