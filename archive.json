@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-11-21T01:40:40.860155+00:00",
+  "timestamp": "2024-11-24T01:47:31.936205+00:00",
   "repo": "cfrg/draft-irtf-cfrg-opaque",
   "labels": [
     {
@@ -9573,15 +9573,15 @@
       "id": "I_kwDOD79ejs6dHXMX",
       "title": "Is the recommended scrypt configuration incomplete?",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/468",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "iaik-jheher",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "The latest RFC draft (draft 17), in section `7. Configurations`, specifies the recommended scrypt parameters as `(N = 32768, r = 8, p = 1)`, and refers to [RFC 7914](https://www.rfc-editor.org/rfc/rfc7914) for the definition of scrypt.\r\n\r\nAs best as I can tell, `scrypt` as specified in RFC 7914 takes parameters `P` (passphrase), `S` (salt), `N` (cost parameter), `r` (block size), `p` (parallelization difficulty), and `dkLen` (output length).\r\n\r\nIt is clear that `P = msg`, and the draft specifies values for `N`, `r`, and `p`. However, the other parameters are not explicitly specified.\r\n\r\nMy best guesses are:\r\n* `S = zeroes(16)`, because that's what everything else uses\r\n* `dkLen = 32`, since that's the output length of the P256-SHA256 OPRF, and I assume that KSF input length and output length are equal\r\n\r\nStill, I think these values -- unless I am completely missing something -- are missing, and should be specified explicitly.",
       "createdAt": "2024-11-05T16:39:50Z",
-      "updatedAt": "2024-11-20T10:36:47Z",
-      "closedAt": null,
+      "updatedAt": "2024-11-21T23:57:34Z",
+      "closedAt": "2024-11-21T23:57:34Z",
       "comments": [
         {
           "author": "kevinlewi",
@@ -9596,6 +9596,13 @@
           "body": "Looks good, thanks!",
           "createdAt": "2024-11-20T10:36:46Z",
           "updatedAt": "2024-11-20T10:36:46Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closed by #472 ",
+          "createdAt": "2024-11-21T23:57:34Z",
+          "updatedAt": "2024-11-21T23:57:34Z"
         }
       ]
     },
@@ -9604,15 +9611,15 @@
       "id": "I_kwDOD79ejs6eSCZs",
       "title": "CleartextCredentials serialization is unspecified",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/469",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "iaik-jheher",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "CleartextCredentials is specified as:\r\n```\r\nstruct {\r\n  uint8 server_public_key[Npk];\r\n  uint8 server_identity<1..2^16-1>;\r\n  uint8 client_identity<1..2^16-1>;\r\n} CleartextCredentials;\r\n```\r\n\r\nAn instance of `CleartextCredentials` is then concatenated with the envelope nonce to generate the `auth_tag`:\r\n```\r\nauth_tag =\r\n    MAC(auth_key, concat(envelope_nonce, cleartext_credentials))\r\n```\r\n\r\nHowever, the document does not specify anywhere how to serialize a `CleartextCredentials` structure to bytes. As opposed to every other structure in the document, which has fixed field lengths (and can simply be serialized by concatenating the fields), `CleartextCredentials` has two fields with dynamic lengths. It is not immediately obvious how it should be serialized.\r\n\r\nI was able to make an educated guess (based on the length constraint) that `CleartextCredentials` should be serialized as:\r\n```\r\nconcat(\r\n    server_public_key,\r\n    I2OSP(len(server_identity), 2), server_identity,\r\n    I2OSP(len(client_identity), 2), client_identity)\r\n```\r\n\r\nWhich also then matches the provided test vectors. Nevertheless, this should be specified in the document.",
       "createdAt": "2024-11-13T13:27:49Z",
-      "updatedAt": "2024-11-20T10:36:29Z",
-      "closedAt": null,
+      "updatedAt": "2024-11-21T23:57:20Z",
+      "closedAt": "2024-11-21T23:57:19Z",
       "comments": [
         {
           "author": "iaik-jheher",
@@ -9634,6 +9641,13 @@
           "body": "Looks good to me!",
           "createdAt": "2024-11-20T10:36:27Z",
           "updatedAt": "2024-11-20T10:36:27Z"
+        },
+        {
+          "author": "kevinlewi",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closed by #471 ",
+          "createdAt": "2024-11-21T23:57:19Z",
+          "updatedAt": "2024-11-21T23:57:19Z"
         }
       ]
     }
@@ -35680,24 +35694,26 @@
       "id": "PR_kwDOD79ejs6CUM6W",
       "title": "Addressing comments from ISRG review",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/470",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "See https://mailarchive.ietf.org/arch/msg/cfrg/dkobloepKBl8kmpcyMb71rX03ms/\r\n\r\nAnd the responses:\r\n\r\n\r\n1. Updated\r\n2. Updated\r\n3. Changed, but simply removed the word \u201chence\u201d instead of adding a comma between \u201chence\u201d and \u201cdetermined\u201d\r\n4. Added notes that \u201cThis is equivalent to the Blind/Finalize function described in Section 3.3.1 of {{RFC9497}}.\u201d\r\n5. Updated\r\n6. I think that how the session_key gets used as the output of the key exchange is outside the scope of this document. We added clarification for the usage of export_key because it is an atypical output for key exchange, but we expect session_key to be more well-understood. Additionally, it is difficult to arrive at a consensus for how session_key is used, since it is likely to be application-specific. However, unless others chime in with the opinion that a subsection on Session Key Usage should be added to the document, we are omitting further explanation of this parameter in the draft.\r\n7. Changed, since creds/credentials was the only mismatch, we instead just updated the diagram to use \u201ccredentials\u201d rather than \u201ccreds\u201d.\r\n8. Both options are acceptable and I think it is application-specific as to which is preferable. The advantage to using separate server_private_key parameters for different clients is to allow for domain separation and enable smoother key rotation. However, these are optional benefits, since the drawback is that the server has to store more key material if it is per-client.\r\n9. Updated. The same fake record should be returned. The text has been modified slightly to hopefully make this more clear:\r\n\u201cIt is RECOMMENDED that a fake client record is created once (e.g. as the first user record of the application) and then stored alongside legitimate client records, to serve subsequent client requests. This allows servers to retrieve the record in a time comparable to that of a legitimate client record.\u201d\r\n10. Updated, to point to the Security Analysis section.\r\n11. Updated, amended the text to say \u201cwith previous UC security modeling\u201d.\r\n12. The convention we follow for each of these pseudocode function definitions is to simply list the exception cases but not actually incorporate them into the function descriptions.\r\n13. Updated\r\n",
       "createdAt": "2024-11-18T23:27:20Z",
-      "updatedAt": "2024-11-18T23:27:20Z",
+      "updatedAt": "2024-11-21T22:06:22Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "isrg_review_changes",
       "headRefOid": "3e267c91c2d1a3f47157425a025c6988cc3f5db1",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-11-21T22:06:22Z",
+      "mergedAt": "2024-11-21T22:06:22Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "b1bcca64a54fc29a53945c7f6fed7092756e1ee7"
+      },
       "comments": [],
       "reviews": []
     },
@@ -35706,24 +35722,26 @@
       "id": "PR_kwDOD79ejs6CcyX6",
       "title": "Adding missing encodings for CleartextCredentials and CustomLabel",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/471",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Addresses #469 ",
       "createdAt": "2024-11-19T22:45:54Z",
-      "updatedAt": "2024-11-20T18:09:14Z",
+      "updatedAt": "2024-11-21T22:06:47Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "add_encodings",
       "headRefOid": "03db58c0073ee2eeb1acc2ef27a570ba6f43e7ff",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-11-21T22:06:47Z",
+      "mergedAt": "2024-11-21T22:06:47Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "bc85917fd407c8e5a65f93093b4dd03dc11f366d"
+      },
       "comments": [],
       "reviews": [
         {
@@ -35773,24 +35791,26 @@
       "id": "PR_kwDOD79ejs6CdLQO",
       "title": "Updating scrypt salt + output length params",
       "url": "https://github.com/cfrg/draft-irtf-cfrg-opaque/pull/472",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "kevinlewi",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Addresses https://github.com/cfrg/draft-irtf-cfrg-opaque/issues/468",
       "createdAt": "2024-11-20T00:14:57Z",
-      "updatedAt": "2024-11-20T00:14:57Z",
+      "updatedAt": "2024-11-21T22:06:59Z",
       "baseRepository": "cfrg/draft-irtf-cfrg-opaque",
       "baseRefName": "master",
       "baseRefOid": "ec775419e24c39cd421de274c185e866f569c868",
       "headRepository": "kevinlewi/draft-irtf-cfrg-opaque",
       "headRefName": "scrypt_params",
       "headRefOid": "d202762fbbca682db7f512aec921f918ca498ff5",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2024-11-21T22:06:59Z",
+      "mergedAt": "2024-11-21T22:06:59Z",
+      "mergedBy": "kevinlewi",
+      "mergeCommit": {
+        "oid": "78597fc81b7947470eccadedbd5469f8350e52d1"
+      },
       "comments": [],
       "reviews": []
     }
